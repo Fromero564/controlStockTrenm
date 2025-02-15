@@ -4,6 +4,7 @@ import { useState } from 'react';
 const Register = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [role, setRole] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
 
@@ -15,7 +16,7 @@ const Register = () => {
       return;
     }
 
-    const userData = { username, password };
+    const userData = { username,role, password };
 
     try {
       const res = await fetch("http://localhost:3000/register", {
@@ -49,6 +50,15 @@ const Register = () => {
           required
         />
       </div>
+      <div>
+      <label>Rol:</label>
+         <select value={role} onChange={(e) => setRole(e.target.value)} required>
+          <option value="">Seleccione un rol</option>
+          <option value="operario">Operario</option>
+          <option value="administrativo">Administrativo</option>
+            </select>
+      </div>
+
 
       <div>
         <label>Contraseña:</label>
