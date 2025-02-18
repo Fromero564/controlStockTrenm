@@ -16,7 +16,7 @@ const Register = () => {
       return;
     }
 
-    const userData = { username,role, password };
+    const userData = { username, role, password };
 
     try {
       const res = await fetch("http://localhost:3000/register", {
@@ -51,12 +51,12 @@ const Register = () => {
         />
       </div>
       <div>
-      <label>Rol:</label>
-         <select value={role} onChange={(e) => setRole(e.target.value)} required>
+        <label>Rol:</label>
+        <select value={role} onChange={(e) => setRole(e.target.value)} required>
           <option value="">Seleccione un rol</option>
           <option value="operario">Operario</option>
           <option value="administrativo">Administrativo</option>
-            </select>
+        </select>
       </div>
 
 

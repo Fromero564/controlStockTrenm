@@ -1,10 +1,12 @@
 import { useState, useContext } from 'react';
 import { AuthContext } from '../context/AuthProvider.jsx';
+import { useNavigate } from 'react-router-dom';
 
 const Login = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const { login } = useContext(AuthContext);
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -17,10 +19,12 @@ const Login = () => {
 
     const data = await res.json();
     if (res.ok) {
-     
-      localStorage.setItem("token", data.token);
-      login(username);
-      alert("Usuario Loggeado correctamente")
+      // Guarda el access token en localStorage
+      localStorage.setItem("token", data.accessToken);
+
+      login(username, data.accessToken);
+      alert("Usuario Loggeado correctamente");
+      navigate("/dashboard"); // Redirige a dashboard
     } else {
       alert(data.message);
     }
