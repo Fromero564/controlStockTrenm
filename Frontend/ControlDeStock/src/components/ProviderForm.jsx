@@ -1,4 +1,12 @@
+import { useContext } from "react";
+import { AuthContext } from "../context/AuthProvider.jsx";
+import { useNavigate } from "react-router-dom";
+
 const ProviderForm = () => {
+
+    const navigate = useNavigate();
+
+
     const handleSubmit = async (e) => {
         e.preventDefault();
 
@@ -29,7 +37,7 @@ const ProviderForm = () => {
             console.error("Error en la solicitud:", error);
         }
     };
-
+  
     return (
         <form onSubmit={handleSubmit}>
             <label>
@@ -59,8 +67,8 @@ const ProviderForm = () => {
                 Nº Remito:
                 <input type="number" name="remito" />
             </label>
-            <button type="submit">Cargar</button>
-            <button type="button" onClick={() => console.log("Operación cancelada")}>Cancelar</button>
+            <button type="submit" onClick={()=> navigate("/dashboard")}>Cargar</button>
+            <button type="button" onClick={()=> navigate("/dashboard")}>Cancelar</button>
         </form>
     );
 };
