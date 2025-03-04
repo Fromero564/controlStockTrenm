@@ -24,7 +24,10 @@ app.use(methodOverride("_method"));
 app.use(express.json());
 
 //Se utiliza cors
-app.use(cors());
+app.use(cors({
+  origin: "http://localhost:5173", 
+  credentials: true 
+}));
 
 //Acceso a la carpeta Public
 app.use(express.static(path.join(__dirname, "public")));

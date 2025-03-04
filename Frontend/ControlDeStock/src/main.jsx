@@ -7,6 +7,8 @@ import Register from './components/Register.jsx';
 import Dashboard from './components/Dashboard.jsx';
 import MeatIncome from './components/MeatIncome.jsx';
 import ProviderForm from './components/ProviderForm.jsx';
+import OperatorPanel from './components/Operatorpanel.jsx';
+import MeatLoad from './components/MeatLoad.jsx';
 import { AuthProvider } from './context/AuthProvider.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 
@@ -19,26 +21,45 @@ const router = createBrowserRouter([
   {
     path: "/registro",
     element: <Register />,
-  },
+  }, 
+ 
+    {
+      path: "/dashboard",
+      element:( <ProtectedRoute>
+        <Dashboard />
+      </ProtectedRoute>
+      )
+    }, 
   {
-    path: "/dashboard",
-    element: <ProtectedRoute>
-      <Dashboard />
-    </ProtectedRoute>
-  }, {
     path: "/provider-form",
     element: (
-      <ProtectedRoute>
+  
         <ProviderForm />
-      </ProtectedRoute>
+   
+    ),
+  },
+  {
+    path: "/operator-panel",
+    element: (
+     
+        < OperatorPanel/>
+    
+    ),
+  },
+  {
+    path: "/meat-load",
+    element: (
+    
+        < MeatLoad/>
+ 
     ),
   },
   {
     path: "/meat-income/:id/:remitoId", 
     element: (
-      <ProtectedRoute>
+      
         <MeatIncome />
-      </ProtectedRoute>
+   
     ),
   }
 ]);
@@ -49,4 +70,6 @@ createRoot(document.getElementById('root')).render(
       <RouterProvider router={router} />
     </AuthProvider>
   </StrictMode>
+
+
 );

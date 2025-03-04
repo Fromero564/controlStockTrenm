@@ -1,0 +1,106 @@
+
+.container {
+    width: 90%;
+    margin: auto;
+    font-family: Arial, sans-serif;
+}
+
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.header h2 {
+    font-size: 24px;
+    font-weight: bold;
+}
+
+
+.new-button {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.new-button:hover {
+    background-color: #0056b3;
+}
+
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    border: 2px solid lightblue; 
+}
+
+
+.table th {
+    background-color: #e3f2fd; 
+    font-weight: bold;
+    padding: 10px;
+    text-align: center;
+    border-bottom: 2px solid #000; 
+}
+
+
+.table td {
+    padding: 10px;
+    text-align: center;
+}
+
+
+.table td, .table th {
+    border: none;
+}
+
+.table tbody tr {
+    border-bottom: 1px solid #ccc;
+}
+
+
+.edit-button, .delete-button {
+    border: none;
+    cursor: pointer;
+    padding: 8px 12px;
+    margin: 6px;
+    font-size: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 5px; 
+    width: 40px; 
+    height: 35px;
+}
+
+
+.edit-button {
+    background-color: #5bc0de; 
+    color: white;
+}
+
+.edit-button:hover {
+    background-color: #31b0d5;
+}
+
+
+.delete-button {
+    background-color: #d9534f; 
+    color: white;
+}
+
+.delete-button:hover {
+    background-color: #c9302c;
+}
+
+
+.edit-button svg, .delete-button svg {
+    font-size: 16px; /* 🔹 Tamaño adecuado para iconos */
+}

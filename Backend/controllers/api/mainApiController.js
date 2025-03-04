@@ -50,71 +50,61 @@ const mainApiController = {
       const { username, password } = req.body;
 
       // Buscar usuario en la BD
-      const userData = await User.findOne({ where: { user: username } });  // Asegúrate de que el campo sea "user"
+      const userData = await User.findOne({ where: { user: username } });
+
+      console.log(userData);
       if (!userData) {
         return res.status(401).json({ message: "Credenciales inválidas" });
       }
 
       // Comparar contraseña
-      const isMatch = await bcrypt.compare(password, userData.password);  // Cambié user.password por userData.password
+      const isMatch = await bcrypt.compare(password, userData.password);
       if (!isMatch) {
         return res.status(401).json({ message: "Credenciales inválidas" });
       }
 
-      // Generar JWT Tokens
-      const accessToken = jwt.sign({ id: userData.id }, process.env.JWT_ACCESS_SECRET, { expiresIn: "15m" });
-      const refreshToken = jwt.sign({ id: userData.id }, process.env.JWT_REFRESH_SECRET, { expiresIn: "7d" });
+      let userDataJson = {
+        id: userData.dataValues.id,
+        user: userData.dataValues.user,
+        rol: userData.dataValues.rol,
+      }
 
-      // Verifica si ambos tokens están siendo generados correctamente
-      console.log("Access Token:", accessToken);
-      console.log("Refresh Token:", refreshToken);
+      const jwtGenerado = jwt.sign(userDataJson, process.env.JWT_ACCESS_SECRET, { expiresIn: '1h' });
 
-      res.cookie("refreshToken", refreshToken, { httpOnly: true, sameSite: "Strict" });
-      res.json({ accessToken });
 
-      ;
+      res.json({ "token": jwtGenerado });
+
+
     } catch (error) {
       res.status(500).json({ message: "Error al iniciar sesión" });
     }
-  },
-  refresh: async (req, res) => {
-    try {
-      const refreshToken = req.cookies?.refreshToken;
-      if (!refreshToken) {
-        return res.status(401).json({ message: "No autorizado" });
-      }
 
-      jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET, (err, decoded) => {
-        if (err) {
-          res.clearCookie("refreshToken");
-          return res.status(403).json({ message: "Token inválido" });
-        }
-
-        // Generar un nuevo access token
-        const newAccessToken = jwt.sign({ id: decoded.id }, process.env.JWT_ACCESS_SECRET, { expiresIn: "15m" });
-
-        res.json({ accessToken: newAccessToken });
-      });
-    } catch (error) {
-      res.status(500).json({ message: "Error en el servidor" });
-    }
   },
   profile: async (req, res) => {
     try {
+      console.log("req.user:", req.user);
 
-      const userId = req.user.id;
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(400).json({ message: "ID de usuario no encontrado en la petición" });
+      }
 
+      console.log("Buscando usuario con ID:", userId);
 
-      const user = await User.findByPk(userId, { attributes: { exclude: ['password'] } });  // Excluye la contraseña
+      const user = await User.findByPk(userId, { attributes: { exclude: ["password"] } });
 
       if (!user) {
+        console.log("Usuario no encontrado en la base de datos");
         return res.status(404).json({ message: "Usuario no encontrado" });
       }
 
+      console.log("Usuario encontrado:", user.toJSON());
       res.json({ user });
     } catch (error) {
+      console.error("Error en profile:", error);
       res.status(500).json({ message: "Error al obtener el perfil" });
     }
+
 
   },
 

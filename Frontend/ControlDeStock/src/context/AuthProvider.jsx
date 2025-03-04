@@ -4,6 +4,7 @@ export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [userRol, setUserRol] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -28,45 +29,38 @@ export const AuthProvider = ({ children }) => {
         const data = await res.json();
         if (data.username) {
           setUser({ name: data.username });
+          setUserRol(data.rol);
+        } else if (data.user) {
+          // Si la respuesta tiene `user`, viene de /profile
+          setUser({ name: data.user.user });
+          setUserRol(data.user.rol);
         } else {
-          logout();
+          // logout();
+          console.log("Error en refresh")
         }
       }
     } catch (error) {
-      logout();
+      // logout();
+      console.log("Error en Auth")
     } finally {
       setLoading(false);
     }
   };
 
-  const refreshToken = async () => {
-    try {
-      const res = await fetch("http://localhost:3000/refresh", {
-        method: "GET",
-      });
-
-      if (!res.ok) throw new Error("No se pudo refrescar el token");
-
-      const data = await res.json();
-      localStorage.setItem("token", data.accessToken);
-      await verifyToken(data.accessToken);
-    } catch (error) {
-      logout();
-    }
-  };
-
-  const login = (username, token) => {
+  const login = (username, token, rol) => {
     localStorage.setItem("token", token);
     setUser({ name: username });
+    setUserRol(rol);
   };
 
-  const logout = () => {
-    localStorage.removeItem("token");
-    setUser(null);
-  };
+  // const logout = () => {
+  //   localStorage.removeItem("token");
+  //   setUser(null);
+  //   setUserRol(null); 
+  // };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading }}>
+    <AuthContext.Provider value={{ user, userRol, login, loading }}>
       {children}
     </AuthContext.Provider>
   );

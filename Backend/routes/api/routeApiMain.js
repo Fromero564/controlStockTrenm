@@ -4,16 +4,16 @@ const path = require("path");
 const apiMain= require("../../controllers/api/mainApiController");
 const { authenticateJWT } = require('../../middlewares/authMiddleware.js');
 
-
+//Verifica que el usuario logeado exista, que el token corresponda y toma el nombre junto con su rol
+router.get("/profile",authenticateJWT,apiMain.profile);
 
 router.post("/register",apiMain.register);
+
 router.post("/login",apiMain.login);
 
-// Ruta para obtener el perfil del usuario
-router.get("/profile", authenticateJWT, apiMain.profile);
 
-//Verifica el estado JWT token 
-router.get('/refresh', apiMain.refresh); 
+
+
 
 
 
