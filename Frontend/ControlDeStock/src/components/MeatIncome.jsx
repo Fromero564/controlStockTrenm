@@ -4,50 +4,68 @@ import "./styles/meatIncome.css";
 
 function MeatIncome() {
     const { id, remitoId } = useParams();
+    const [cortes, setCortes] = useState([]); 
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
+    useEffect(() => {
+        const fetchProductos = async () => {
+            try {
+                const response = await fetch("http://localhost:3000/product-primary-name"); 
+                if (!response.ok) throw new Error("Error al cargar los productos");
 
-    const [cortes, setCortes] = useState([
-        { id: 1, nombre: 'Capon', cantidad: 0 },
-        { id: 2, nombre: 'Media Res Capon', cantidad: 0 },
-        { id: 3, nombre: 'Media Res Chancha', cantidad: 0 },
-        { id: 4, nombre: 'Media Res Padrillo', cantidad: 0 },
-        { id: 5, nombre: 'Cabezas', cantidad: 0 },
-    ]);
+                const data = await response.json();
+             
 
+              
+                const productosConCantidad = data.map((nombre, index) => ({
+                    id: index + 1, 
+                    nombre,
+                    cantidad: 0, 
+                }));
+
+                setCortes(productosConCantidad);
+            } catch (err) {
+                console.error("Error al obtener los productos:", err);
+                setError("Error al cargar los productos");
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchProductos();
+    }, []);
 
     const handleCantidadChange = (id, cantidad) => {
-
-        const cantidadValida = cantidad === "" || cantidad == null ? 0 : cantidad;
+        const cantidadValida = cantidad === "" || cantidad == null ? 0 : parseInt(cantidad, 10);
 
         setCortes((prevCortes) =>
             prevCortes.map((corte) =>
-                corte.id === id
-                    ? { ...corte, cantidad: cantidadValida }
-                    : corte
+                corte.id === id ? { ...corte, cantidad: cantidadValida } : corte
             )
         );
     };
 
     const handleSubmit = async () => {
         try {
-            const payload = cortes.reduce((acc, corte) => {
-                const key = corte.nombre.toLowerCase().replace(/\s+/g, '_') + '_stock';
-                acc[key] = corte.cantidad ?? 0;
-                return acc;
-            }, { id_received_suppliers: id });
+            const productosNombres = cortes.map((corte) => corte.nombre).join(";"); 
+            const productosCantidades = cortes.map((corte) => corte.cantidad).join(";"); 
 
-            console.log("Payload enviado:", payload);
+            const payload = {
+                id_received_suppliers: id,
+                productos: productosNombres,
+                cantidades: productosCantidades
+            };
+
+            console.log("Payload enviado:", JSON.stringify(payload, null, 2));
 
             const response = await fetch(`http://localhost:3000/addProducts/${id}`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
             });
 
             if (!response.ok) {
-
                 const errorData = await response.json();
                 console.error("Error en la respuesta del servidor:", errorData);
                 return;
@@ -59,6 +77,9 @@ function MeatIncome() {
             console.error('Error al guardar los datos', error);
         }
     };
+
+    if (loading) return <p>Cargando productos...</p>;
+    if (error) return <p>{error}</p>;
 
     return (
         <div>

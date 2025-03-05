@@ -72,7 +72,11 @@ const mainApiController = {
       const jwtGenerado = jwt.sign(userDataJson, process.env.JWT_ACCESS_SECRET, { expiresIn: '1h' });
 
 
-      res.json({ "token": jwtGenerado });
+      res.json({ 
+        token: jwtGenerado,
+        rol: userDataJson.rol, 
+        username: userDataJson.user
+      });
 
 
     } catch (error) {

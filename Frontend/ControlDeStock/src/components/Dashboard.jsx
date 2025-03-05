@@ -3,20 +3,20 @@ import { AuthContext } from "../context/AuthProvider.jsx";
 import { useNavigate } from "react-router-dom";
 
 const Dashboard = () => {
-    const { user, userRol,  } = useContext(AuthContext);
+    const { user, userRol, logout } = useContext(AuthContext);
     const navigate = useNavigate();
 
     return (
         <div>
             <div>
                 <h1>Bienvenido, {user?.name || "Usuario"}!</h1>
-                <p>Rol: {userRol || "Desconocido"}</p>
-                <button onClick={() => {  navigate("/"); }}>Cerrar sesión</button>
+                <p>Rol: {userRol ? userRol : "Cargando..."}</p>
+                <button onClick={logout}>Cerrar sesión</button>
                 <button >Configuracion</button>
             </div>
             <div>
 
-                <button onClick={()=>console.log("hola")}>Administrativo</button>
+                <button onClick={()=>navigate("/administrative-panel")}>Administrativo</button>
             </div>
             <div>
 

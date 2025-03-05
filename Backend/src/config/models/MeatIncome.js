@@ -1,39 +1,28 @@
-module.exports = (sequelize, DataTypes) => {
+module.exports = (sequelize, dataTypes) => {
     let alias = "MeatIncome";
     let cols = {
         id: {
-            type: DataTypes.INTEGER,
+            type: dataTypes.INTEGER,
             primaryKey: true,
             autoIncrement: true,
         },
         id_received_suppliers: {
-            type: DataTypes.INTEGER,
+            type: dataTypes.INTEGER,
             allowNull: false,
             references: {
                 model: "received_suppliers", 
                 key: "id",
             },
         },
-        capon_stock: {
-            type: DataTypes.INTEGER,
-            allowNull: false,
+        products_name: {
+            type: dataTypes.STRING(255),
+            allowNull: false
         },
-        media_res_capon_stock: {
-            type: DataTypes.INTEGER,
-            allowNull: false,
+        products_quantity: {
+            type: dataTypes.STRING(255),
+            allowNull: false
         },
-        media_res_chancha_stock: {
-            type: DataTypes.INTEGER,
-            allowNull: false,
-        },
-        media_res_padrillo_stock: {
-            type: DataTypes.INTEGER,
-            allowNull: false,
-        },
-        cabezas_stock: {
-            type: DataTypes.INTEGER,
-            allowNull: false,
-        }
+      
     };
 
     let config = {

@@ -8,7 +8,7 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
 
-  const { login } = useContext(AuthContext); 
+  const { login } = useContext(AuthContext);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -22,12 +22,10 @@ const Login = () => {
 
     const data = await res.json();
     if (res.ok) {
-      if (res.ok) {
-        const { token, rol } = data; 
-        login(username, token, rol);
-        alert("Usuario Loggeado correctamente");
-        navigate("/dashboard");
-      }
+      const { token, rol } = data;
+      login(username, token, rol);
+      alert("Usuario Loggeado correctamente");
+      navigate("/dashboard");
     } else {
       alert(data.message);
     }

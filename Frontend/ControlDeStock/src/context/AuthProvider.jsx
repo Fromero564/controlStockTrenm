@@ -22,45 +22,43 @@ export const AuthProvider = ({ children }) => {
       const res = await fetch("http://localhost:3000/profile", {
         headers: { Authorization: `Bearer ${token}` },
       });
-
+  
       if (res.status === 401 || res.status === 403) {
-        await refreshToken();
+        logout();
       } else {
         const data = await res.json();
-        if (data.username) {
-          setUser({ name: data.username });
-          setUserRol(data.rol);
-        } else if (data.user) {
-          // Si la respuesta tiene `user`, viene de /profile
-          setUser({ name: data.user.user });
-          setUserRol(data.user.rol);
+        
+        const username = data.username || data.user?.user;
+        const rol = data.rol || data.user?.rol;
+  
+        if (username && rol) {
+          setUser({ name: username });
+          setUserRol(rol);
         } else {
-          // logout();
-          console.log("Error en refresh")
+          logout();
         }
       }
     } catch (error) {
-      // logout();
-      console.log("Error en Auth")
+      logout();
+      console.log("Error en Auth", error);
     } finally {
       setLoading(false);
     }
   };
-
   const login = (username, token, rol) => {
     localStorage.setItem("token", token);
     setUser({ name: username });
     setUserRol(rol);
   };
 
-  // const logout = () => {
-  //   localStorage.removeItem("token");
-  //   setUser(null);
-  //   setUserRol(null); 
-  // };
+  const logout = () => {
+    localStorage.removeItem("token");
+    setUser(null);
+    setUserRol(null);
+  };
 
   return (
-    <AuthContext.Provider value={{ user, userRol, login, loading }}>
+    <AuthContext.Provider value={{ user, userRol, login, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );

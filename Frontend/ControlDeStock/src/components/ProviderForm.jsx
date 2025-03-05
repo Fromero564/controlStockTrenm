@@ -1,26 +1,26 @@
-import { useContext } from "react";
+import { useContext,useState } from "react";
 // import { AuthContext } from "../context/AuthProvider.jsx";
 import { useNavigate } from "react-router-dom";
 import "./styles/providerForm.css";
 
 const ProviderForm = () => {
-
+    const [tipoIngreso, setTipoIngreso] = useState("romaneo");
     const navigate = useNavigate();
 
 
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-  
+
 
         const formData = {
             proveedor: e.target.proveedor.value,
             pesoTotal: e.target.pesoTotal.value,
             unidadPeso: e.target.unidadPeso.value,
             cabezas: e.target.cabezas.value,
-            fecha: e.target.fecha.value,
-            horario: e.target.horario.value,
-            remito: e.target.remito.value,
+            romaneo: e.target.romaneo.value,
+            comprobanteInterno: e.target.comprobanteInterno.value,
+            tipoIngreso: tipoIngreso,
         };
 
         try {
@@ -41,22 +41,25 @@ const ProviderForm = () => {
             console.error("Error en la solicitud:", error);
         }
     };
-  
+
+    const handleRadioChange = (e) => {
+        setTipoIngreso(e.target.value);
+    };
     return (
         <div className="provider-form">
-        <form onSubmit={handleSubmit} className="form-container">
-        <h2 className="form-title">INGRESAR MERCADERIA</h2>
-            <label className="label">
-                Proveedor:
-                <select name="proveedor"  className="input">
-                    <option value="Monsanto">Monsanto</option>
-                    <option value="Otro">Otro</option>
-                </select>
-            </label>
-            <label className="label">
-                    Peso Total:
+            <form onSubmit={handleSubmit} className="form-container">
+                <h2 className="form-title">INGRESAR MERCADERIA</h2>
+                <label className="label">
+                    Proveedor:
+                    <select name="proveedor" className="input">
+                        <option value="Monsanto">Monsanto</option>
+                        <option value="Otro">Otro</option>
+                    </select>
+                </label>
+                <label className="label">
+                    Peso total declarado en romaneo:
                     <div className="peso-container">
-                        <input type="text" name="pesoTotal" className="input"/>
+                        <input type="text" name="pesoTotal" className="input" />
                         <select name="unidadPeso" className="input">
                             <option value="kg">Kg</option>
                             <option value="g">Gramos</option>
@@ -65,22 +68,55 @@ const ProviderForm = () => {
                     </div>
                 </label>
 
-            <label className="label">
-                Cabezas:
-                <input type="number" name="cabezas"  className="input" />
-            </label>
-            <label className="label">
-                Cantidad de animales
-                <input type="number" name="cantAnimales"  className="input" />
-            </label>
-           
-            <label className="label">
-                Nº Remito:
-                <input type="number" name="remito"  className="input" />
-            </label>
-            <button type="submit" onClick={()=> navigate("/operator-panel")}>Cargar</button>
-            <button type="button" onClick={()=> navigate("/operator-panel")}>Cancelar</button>
-        </form>
+                <label className="label">
+                    Cabezas:
+                    <input type="number" name="cabezas" className="input" />
+                </label>
+                <label className="label">
+                    Cantidad de animales
+                    <input type="number" name="cantAnimales" className="input" />
+                </label>
+
+                <label className="label">
+                    Nº comprobante romaneo:
+                    <input type="number" name="romaneo" className="input" />
+                </label>
+                <label className="label">
+                    Nº comprobante interno:
+                    <input type="number" name="comprobanteInterno" className="input" />
+                </label>
+                <fieldset>
+                    <legend>Tipo de ingreso:</legend>
+
+                    <div>
+                        <input
+                            type="radio"
+                            id="romaneo_check"
+                            name="tipoIngreso"
+                            value="romaneo"
+                            checked={tipoIngreso === "romaneo"} // Controla el estado
+                            onChange={handleRadioChange} // Cambia el estado cuando se selecciona
+                        />
+                        <label htmlFor="romaneo_check">Romaneo</label>
+                    </div>
+
+                    <div>
+                        <input
+                            type="radio"
+                            id="manual_check"
+                            name="tipoIngreso"
+                            value="manual"
+                            checked={tipoIngreso === "manual"} // Controla el estado
+                            onChange={handleRadioChange} // Cambia el estado cuando se selecciona
+                        />
+                        <label htmlFor="manual_check">Manual</label>
+                    </div>
+                </fieldset>
+
+
+                <button type="submit" onClick={() => navigate("/meat-load")}>Cargar</button>
+                <button type="button" onClick={() => navigate("/operator-panel")}>Cancelar</button>
+            </form>
         </div>
     );
 };

@@ -7,10 +7,11 @@ const OperatorPanel = ()=>{
         <div>
             <h2>Panel Operaciones</h2>
             <button onClick={()=>navigate("/meat-load")}>Ingreso Mercaderia</button>
-            <button onClick={()=>navigate("/meat-load")}>Desposte</button>
-            <button onClick={()=>navigate("/meat-load")}>Consultar Stock</button>
-            <button onClick={()=>navigate("/meat-load")}>Proveedores</button>
-            <button onClick={()=>navigate("/meat-load")}>Productos & subproductos (Carga)</button>
+            <button onClick={()=>console.log("Boton a completar")}>Desposte</button>
+            <button onClick={()=>console.log("Boton a completar")}>Consultar Stock</button>
+            <button onClick={()=>console.log("Boton a completar")}>Proveedores</button>
+            <button onClick={()=>console.log("Boton a completar")}>Productos & subproductos (Carga)</button>
+            <button onClick={()=>navigate("/dashboard")}>Volver al dashboard</button>
         </div>
     );
 }

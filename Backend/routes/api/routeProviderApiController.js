@@ -5,6 +5,9 @@ const apiProviderController= require("../../controllers/api/providerApiControlle
 
 //Api para ver productos cargados
 router.get("/allProducts",apiProviderController.allProducts);
+
+//Api para ver stock productos
+router.get("/allProductsStock",apiProviderController.productStock);
 //Api para cargar productos
 router.post("/uploadProduct",apiProviderController.uploadProducts);
 //Api para cargar cortes que vienen por remito

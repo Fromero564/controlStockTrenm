@@ -18,18 +18,26 @@ module.exports = (sequelize, dataTypes) => {
             type: dataTypes.STRING(255),
             allowNull: false
         },
-        actual_date: {
-            type: dataTypes.DATE(255),
+        unit_weight: {
+            type: dataTypes.STRING(255),
             allowNull: false
         },
-        time_hours: {
-            type: dataTypes.STRING(11),
+        internal_number:{
+            type: dataTypes.BIGINT(10),
             allowNull: false
         },
        
-        remit_number:{
+        romaneo_number:{
             type: dataTypes.BIGINT(10),
             allowNull: false
+        },
+         income_state: {
+            type: dataTypes.STRING(255),
+            allowNull: false
+        },  
+        check_state: {
+            type: dataTypes.BOOLEAN,
+            allowNull: false,
         }
     };
     let config = {

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPen, faTrash } from "@fortawesome/free-solid-svg-icons"; 
+import { faPen, faTrash } from "@fortawesome/free-solid-svg-icons";
 import "./styles/meatLoad.css";
 
 const MeatLoad = () => {
@@ -15,9 +15,9 @@ const MeatLoad = () => {
             .catch((error) => console.error("Error al obtener productos:", error));
     }, []);
 
-    const handleEdit = (id, remitNumber) => {
+    const handleEdit = (id, internalNumber) => {
         console.log(`Editar producto con ID: ${id}`);
-        navigate(`/meat-income/${id}/${remitNumber}`);
+        navigate(`/meat-income/${id}/${internalNumber}`);
     };
 
     const handleDelete = (id) => {
@@ -41,23 +41,28 @@ const MeatLoad = () => {
                         <th>Proveedor</th>
                         <th>Fecha</th>
                         <th>Hora</th>
-                        <th>Peso Inicial</th>
+                        <th>Peso Total</th>
+                        <th>Unidad de Peso</th>
                         <th>Cabezas</th>
-                        <th>N° Romaneo</th>
+                        <th>N° comprobante romaneo</th>
+                        <th>N° comprobante interno</th>
                         <th>Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
                     {products.map((product) => (
-                        <tr key={product.id}>
+                        <tr key={product.id}
+                            className={product.income_state === "manual" ? "red-row" : ""}>
                             <td>{product.supplier}</td>
                             <td>{new Date(product.createdAt).toLocaleDateString("es-ES")}</td>
                             <td>{new Date(product.createdAt).toLocaleTimeString()}</td>
                             <td>{product.total_weight}</td>
+                            <td>{product.unit_weight}</td>
                             <td>{product.head_quantity}</td>
-                            <td>{product.remit_number}</td>
+                            <td>{product.romaneo_number}</td>
+                            <td>{product.internal_number}</td>
                             <td>
-                                <button className="edit-button" onClick={() => handleEdit(product.id, product.remit_number)}>
+                                <button className="edit-button" onClick={() => handleEdit(product.id, product.internal_number)}>
                                     <FontAwesomeIcon icon={faPen} />
                                 </button>
                                 <button className="delete-button" onClick={() => handleDelete(product.id)}>

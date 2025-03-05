@@ -7,7 +7,9 @@ import Register from './components/Register.jsx';
 import Dashboard from './components/Dashboard.jsx';
 import MeatIncome from './components/MeatIncome.jsx';
 import ProviderForm from './components/ProviderForm.jsx';
-import OperatorPanel from './components/Operatorpanel.jsx';
+import OperatorPanel from './components/OperatorPanel.jsx';
+import AdministrativePanel from './components/AdministrativePanel.jsx';
+import LoadNewProduct from './components/LoadNewProduct.jsx';
 import MeatLoad from './components/MeatLoad.jsx';
 import { AuthProvider } from './context/AuthProvider.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
@@ -44,6 +46,18 @@ const router = createBrowserRouter([
      
         < OperatorPanel/>
     
+    ),
+  },
+  {
+    path: "/administrative-panel",
+    element: (
+    <AdministrativePanel/>
+    ),
+  },
+  {
+    path: "/product-load",
+    element: (
+    <LoadNewProduct/>
     ),
   },
   {
