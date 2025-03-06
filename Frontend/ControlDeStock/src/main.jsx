@@ -10,6 +10,8 @@ import ProviderForm from './components/ProviderForm.jsx';
 import OperatorPanel from './components/OperatorPanel.jsx';
 import AdministrativePanel from './components/AdministrativePanel.jsx';
 import LoadNewProduct from './components/LoadNewProduct.jsx';
+import LoadNewProvider from './components/LoadNewProvider.jsx'
+import ProviderList from './components/ProviderList.jsx'
 import MeatLoad from './components/MeatLoad.jsx';
 import { AuthProvider } from './context/AuthProvider.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
@@ -61,11 +63,23 @@ const router = createBrowserRouter([
     ),
   },
   {
+    path: "/provider-load",
+    element: (
+    <LoadNewProvider/>
+    ),
+  },
+  {
     path: "/meat-load",
     element: (
     
         < MeatLoad/>
  
+    ),
+  },
+  {
+    path: "/provider-list",
+    element: (
+      <ProviderList/>
     ),
   },
   {

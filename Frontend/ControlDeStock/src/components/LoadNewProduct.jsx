@@ -35,7 +35,7 @@ const LoadNewProduct = ()=>{
   return (
     <div>
         <form onSubmit={handleSubmit}>
-            <label htmlFor="">Nombre del Producto</label>
+            <label htmlFor="productName">Nombre del Producto</label>
             <input type="text" name="productName" id="productName" />
             <select name="selectCategory" id="selectCategory">
                 <option value="primario">Primario</option>
