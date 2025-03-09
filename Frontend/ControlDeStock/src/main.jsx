@@ -25,69 +25,77 @@ const router = createBrowserRouter([
   {
     path: "/registro",
     element: <Register />,
-  }, 
- 
-    {
-      path: "/dashboard",
-      element:( <ProtectedRoute>
-        <Dashboard />
-      </ProtectedRoute>
-      )
-    }, 
+  },
+
+  {
+    path: "/dashboard",
+    element: (<ProtectedRoute>
+      <Dashboard />
+    </ProtectedRoute>
+    )
+  },
   {
     path: "/provider-form",
     element: (
-  
+      <ProtectedRoute>
         <ProviderForm />
-   
+      </ProtectedRoute>
     ),
   },
   {
     path: "/operator-panel",
     element: (
-     
-        < OperatorPanel/>
-    
+      <ProtectedRoute>
+        < OperatorPanel />
+      </ProtectedRoute>
     ),
   },
   {
     path: "/administrative-panel",
     element: (
-    <AdministrativePanel/>
+      <ProtectedRoute>
+        <AdministrativePanel />
+      </ProtectedRoute>
     ),
   },
   {
     path: "/product-load",
     element: (
-    <LoadNewProduct/>
+      <ProtectedRoute>
+        <LoadNewProduct />
+      </ProtectedRoute>
     ),
   },
   {
     path: "/provider-load",
     element: (
-    <LoadNewProvider/>
+      <ProtectedRoute>
+        <LoadNewProvider />
+      </ProtectedRoute>
     ),
   },
   {
     path: "/meat-load",
     element: (
-    
-        < MeatLoad/>
- 
+      <ProtectedRoute>
+        < MeatLoad />
+      </ProtectedRoute>
     ),
   },
   {
     path: "/provider-list",
     element: (
-      <ProviderList/>
+      <ProtectedRoute>
+        <ProviderList />
+      </ProtectedRoute>
     ),
   },
   {
-    path: "/meat-income/:id/:remitoId", 
+    path: "/meat-income/:id/:remitoId",
     element: (
-      
+      <ProtectedRoute>
         <MeatIncome />
-   
+      </ProtectedRoute>
     ),
   }
 ]);
