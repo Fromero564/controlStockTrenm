@@ -1,12 +1,12 @@
-import { useContext } from "react";
+
 import { useNavigate } from "react-router-dom";
-import { AuthContext } from "../context/AuthProvider.jsx";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faEye, faPlus, faSignOutAlt } from "@fortawesome/free-solid-svg-icons";
+import Navbar from "./Navbar.jsx";
+import { faEye, faPlus} from "@fortawesome/free-solid-svg-icons";
 import "./styles/operatorpanel.css";
 
 const OperatorPanel = () => {
-    const { user, logout } = useContext(AuthContext);
+   
     const navigate = useNavigate();
 
     const sections = [
@@ -20,16 +20,7 @@ const OperatorPanel = () => {
 
     return (
         <div className="">
-            <div className="navbar">
-                <a href="/dashboard" className="navbar-inicio">INICIO</a>
-                <div className="navbar-options">
-                    <a href="#">Configuración</a>
-                    <a href="#" onClick={logout}>
-                        <p>{user?.name || "Usuario"}</p>
-                        <FontAwesomeIcon icon={faSignOutAlt} />
-                    </a>
-                </div>
-            </div>
+            <Navbar />
 
             <h2 className="title">Producción y stock</h2>
 

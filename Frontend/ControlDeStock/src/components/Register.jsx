@@ -1,4 +1,4 @@
-// src/components/Register.jsx
+
 import { useState } from 'react';
 
 const Register = () => {
@@ -29,7 +29,7 @@ const Register = () => {
 
       if (res.ok) {
         alert("Registro exitoso");
-        // Aquí podrías redirigir al usuario a la página de login o a su perfil
+        
       } else {
         setError(data.message || "Error en el registro");
       }

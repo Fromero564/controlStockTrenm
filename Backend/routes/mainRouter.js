@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const apiMainRoutes = require("./api/routeApiMain.js");
-const apiProviderRouters= require("./api/routeProviderApiController.js")
+const apiOperatorRouters= require("./api/routeOperatorApiController.js")
 const apiAdministativeRouters= require("./api/routerAdministrativeApiController.js")
 
 
@@ -9,7 +9,7 @@ const apiAdministativeRouters= require("./api/routerAdministrativeApiController.
 router.use("/", apiMainRoutes);
 
 //Se traen datos de Api Proveedores
-router.use("/", apiProviderRouters)
+router.use("/", apiOperatorRouters)
 
 //Se traen datos de Api Administrativo
 router.use("/", apiAdministativeRouters)

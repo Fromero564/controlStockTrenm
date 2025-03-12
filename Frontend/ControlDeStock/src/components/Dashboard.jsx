@@ -1,27 +1,20 @@
-import { useContext, useEffect, useState } from "react";
+import { useContext } from "react";
 import { AuthContext } from "../context/AuthProvider.jsx";
-import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCogs, faSignOutAlt, faChartBar, faCow, faDollarSign } from "@fortawesome/free-solid-svg-icons";
+import {  faChartBar, faCow, faDollarSign } from "@fortawesome/free-solid-svg-icons";
+import Navbar from "./Navbar.jsx";
 import "./styles/dashboard.css";
 
 
 const Dashboard = () => {
-    const { user, userRol, logout } = useContext(AuthContext);
-    const navigate = useNavigate();
+    const { user} = useContext(AuthContext);
+  
 
     return (
         <div>
-            <div className="navbar">
-                <a href="#" className="navbar-inicio">INICIO</a>
-                <div className="navbar-options">
-                    <a href="#">Configuración</a>
-                    <a href="#" onClick={logout}>
-                        <p>{user?.name || "Usuario"}</p>
-                        <FontAwesomeIcon icon={faSignOutAlt} />
-                    </a>
-                </div>
-            </div>
+           
+            <Navbar />
+
             <div className="dashboard-title">
                 <h1 >¡Hola, {user?.name || "Usuario"}!</h1>
             </div>

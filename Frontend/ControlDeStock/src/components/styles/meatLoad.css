@@ -10,6 +10,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    margin-top: 10px;
     margin-bottom: 10px;
 }
 
@@ -108,4 +109,46 @@
 .red-row {
     background-color: red;
     color: white;
+}
+
+
+/*Pop-up*/
+.custom-popup {
+    border-radius: 10px;
+    padding: 20px;
+    font-family: Arial, sans-serif;
+}
+
+.custom-confirm-button {
+    background-color: #a11212;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 5px;
+    font-weight: bold;
+    font-size: 16px;
+    width: 100%;
+    border: none;
+    cursor: pointer;
+    margin:10px;
+}
+
+.custom-confirm-button:hover {
+    background-color: #860f0f;
+}
+
+.custom-cancel-button {
+    background-color: transparent;
+    color: #0056b3;
+    padding: 10px 20px;
+    border-radius: 5px;
+    font-weight: bold;
+    font-size: 16px;
+    width: 100%;
+    border: 2px solid #0056b3;
+    cursor: pointer;
+    margin:10px;
+}
+
+.custom-cancel-button:hover {
+    background-color: #e6f0ff;
 }

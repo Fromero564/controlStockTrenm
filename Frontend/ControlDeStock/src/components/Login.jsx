@@ -1,4 +1,4 @@
-import { useState, useContext } from "react";
+import { useState, useContext,useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthProvider";
 import "./styles/login.css";
@@ -8,7 +8,12 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
 
-  const { login } = useContext(AuthContext);
+  const { user, loading, login } = useContext(AuthContext);
+  useEffect(() => {
+    if (!loading && user) {
+      navigate("/dashboard"); 
+    }
+  }, [loading, user, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
