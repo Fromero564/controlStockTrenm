@@ -23,7 +23,7 @@ const Dashboard = () => {
                 </div>
             </div>
             <div className="dashboard-title">
-                <h1 >¡Hola {user?.name || "Usuario"}!</h1>
+                <h1 >¡Hola, {user?.name || "Usuario"}!</h1>
             </div>
             <div className="dashboard-options">
                 <a href="/operator-panel" className="dashboard-card">
