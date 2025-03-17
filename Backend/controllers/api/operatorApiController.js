@@ -21,7 +21,7 @@ const operatorApiController = {
             console.log(proveedor, pesoTotal, cabezas, unidadPeso, romaneo, comprobanteInterno, tipoIngreso)
 
             if (tipoIngreso === "romaneo") {
-                await receivedSupplier.create({
+                const nuevoRegistro = await receivedSupplier.create({
                     supplier: proveedor,
                     total_weight: pesoTotal,
                     head_quantity: cabezas,
@@ -31,8 +31,9 @@ const operatorApiController = {
                     income_state: tipoIngreso,
                     check_state: true,
                 });
+                return res.status(201).json({ id: nuevoRegistro.id, romaneo: nuevoRegistro.romaneo_number });
             } else if (tipoIngreso === "manual") {
-                await receivedSupplier.create({
+                const nuevoRegistro = await receivedSupplier.create({
                     supplier: proveedor,
                     total_weight: pesoTotal,
                     head_quantity: cabezas,
@@ -42,6 +43,7 @@ const operatorApiController = {
                     income_state: tipoIngreso,
                     check_state: false,
                 });
+                return res.status(201).json({ id: nuevoRegistro.id, romaneo: nuevoRegistro.romaneo_number });
             }
         } catch (error) {
             console.error("Error al cargar datos:", error);
@@ -51,7 +53,9 @@ const operatorApiController = {
     },
     allProducts: async (req, res) => {
         try {
-            const allproducts = await receivedSupplier.findAll();
+            const allproducts = await receivedSupplier.findAll({
+                order: [['id', 'DESC']]
+            });
             res.json(allproducts);
         } catch (error) {
             console.error("Error al obtener productos:", error);
@@ -97,6 +101,24 @@ const operatorApiController = {
             console.log(allproductsStock)
         } catch (error) {
             console.error("Error al obtener stock:", error);
+            return res.status(500).json({ message: "Error interno del servidor" });
+        }
+    },
+    findRemit:async(req,res)=>{
+        try {
+            let id = req.params.remitoId;
+    
+            const remitoEncontrado = await receivedSupplier.findOne({
+                where: { id: id },
+            });
+    
+            if (!remitoEncontrado) {
+                return res.status(404).json({ message: "Remito no encontrado" });
+            }
+    
+            return res.status(200).json(remitoEncontrado);
+        } catch (error) {
+            console.error("Error al buscar el remito:", error);
             return res.status(500).json({ message: "Error interno del servidor" });
         }
     },

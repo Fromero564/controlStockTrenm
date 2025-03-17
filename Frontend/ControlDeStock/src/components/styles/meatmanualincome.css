@@ -1,0 +1,42 @@
+.main-container{
+    display: flex;
+    align-items: center;
+    justify-content:flex-start;
+    flex-direction: column;
+    margin-top: 20px;
+}
+.mercaderia-container {
+    background-color: #f5f9ff;
+    padding: 15px;
+    border-radius: 8px;
+    display: inline-block;
+    box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
+    font-family: Arial, sans-serif;
+}
+ h2{
+  margin-top: 10px;
+  margin-bottom: 10px;
+}
+
+.mercaderia-container p {
+    margin: 5px 0;
+    font-size: 14px;
+}
+
+.mercaderia-info-row {
+    display: flex;
+    justify-content: space-between; 
+    flex-wrap: wrap; 
+}
+
+.mercaderia-info-row div {
+    flex: 1; 
+    min-width: 200px; 
+    text-align: left;
+    margin: 10px;
+}
+
+.label {
+    font-weight: bold;
+    color: #333;
+}

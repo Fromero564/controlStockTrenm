@@ -14,7 +14,9 @@ import LoadNewProvider from './components/LoadNewProvider.jsx'
 import ProviderList from './components/ProviderList.jsx'
 import MeatLoad from './components/MeatLoad.jsx';
 import { AuthProvider } from './context/AuthProvider.jsx';
+import MeatManualIncome from './components/MeatManualIncome.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
+
 
 
 const router = createBrowserRouter([
@@ -95,6 +97,14 @@ const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <MeatIncome />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/meat-manual-icome/:remitoId/",
+    element: (
+      <ProtectedRoute>
+        <MeatManualIncome />
       </ProtectedRoute>
     ),
   }

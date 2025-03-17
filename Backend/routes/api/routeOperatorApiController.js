@@ -5,9 +5,11 @@ const apiOperatorController= require("../../controllers/api/operatorApiControlle
 
 //Api para ver productos cargados
 router.get("/allProducts",apiOperatorController.allProducts);
-
 //Api para ver stock productos
 router.get("/allProductsStock",apiOperatorController.productStock);
+//Api para encontrar productos
+router.get("/find-remit/:remitoId",apiOperatorController.findRemit);
+
 //Api para cargar productos
 router.post("/uploadProduct",apiOperatorController.uploadProducts);
 //Api para cargar cortes que vienen por remito

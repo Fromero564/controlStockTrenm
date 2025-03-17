@@ -57,7 +57,6 @@ function MeatIncome() {
                 cantidades: productosCantidades
             };
 
-            console.log("Payload enviado:", JSON.stringify(payload, null, 2));
 
             const response = await fetch(`http://localhost:3000/addProducts/${id}`, {
                 method: 'POST',
