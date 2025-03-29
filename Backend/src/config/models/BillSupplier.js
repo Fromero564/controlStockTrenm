@@ -1,5 +1,5 @@
 module.exports = (sequelize, dataTypes) => {
-    let alias = 'ReceivedSupplier';
+    let alias = 'BillSupplier';
     let cols = {
         id: {
             type: dataTypes.BIGINT(10).UNSIGNED,
@@ -41,12 +41,12 @@ module.exports = (sequelize, dataTypes) => {
         }
     };
     let config = {
-        tableName:"received_suppliers",
+        tableName:"bill_suppliers",
         timestamps: true, 
     };
-    const ReceivedSupplier = sequelize.define(alias, cols, config);
+    const BillSupplier = sequelize.define(alias, cols, config);
 
 
-    return ReceivedSupplier
+    return BillSupplier
 
 };

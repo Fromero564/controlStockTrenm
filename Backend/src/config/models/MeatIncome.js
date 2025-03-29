@@ -10,7 +10,7 @@ module.exports = (sequelize, dataTypes) => {
             type: dataTypes.INTEGER,
             allowNull: false,
             references: {
-                model: "received_suppliers", 
+                model: "bill_suppliers", 
                 key: "id",
             },
         },
@@ -34,7 +34,7 @@ module.exports = (sequelize, dataTypes) => {
 
     // Definir relaciones
     MeatIncome.associate = (models) => {
-        MeatIncome.belongsTo(models.ReceivedSupplier, {
+        MeatIncome.belongsTo(models.BillSupplier, {
             foreignKey: "id_received_suppliers",
             as: "supplier", 
         });

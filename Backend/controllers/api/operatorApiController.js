@@ -4,7 +4,7 @@ const sequelize = db.sequelize;
 const { Op, where } = require("sequelize");
 const moment = require("moment");
 
-const receivedSupplier = db.ReceivedSupplier;
+const billSupplier = db.BillSupplier;
 const meatIncome = db.MeatIncome;
 
 const operatorApiController = {
@@ -21,7 +21,7 @@ const operatorApiController = {
             console.log(proveedor, pesoTotal, cabezas, unidadPeso, romaneo, comprobanteInterno, tipoIngreso)
 
             if (tipoIngreso === "romaneo") {
-                const nuevoRegistro = await receivedSupplier.create({
+                const nuevoRegistro = await billSupplier.create({
                     supplier: proveedor,
                     total_weight: pesoTotal,
                     head_quantity: cabezas,
@@ -33,7 +33,7 @@ const operatorApiController = {
                 });
                 return res.status(201).json({ id: nuevoRegistro.id, romaneo: nuevoRegistro.romaneo_number });
             } else if (tipoIngreso === "manual") {
-                const nuevoRegistro = await receivedSupplier.create({
+                const nuevoRegistro = await billSupplier.create({
                     supplier: proveedor,
                     total_weight: pesoTotal,
                     head_quantity: cabezas,
@@ -53,7 +53,7 @@ const operatorApiController = {
     },
     allProducts: async (req, res) => {
         try {
-            const allproducts = await receivedSupplier.findAll({
+            const allproducts = await billSupplier.findAll({
                 order: [['id', 'DESC']]
             });
             res.json(allproducts);
@@ -108,7 +108,7 @@ const operatorApiController = {
         try {
             let id = req.params.remitoId;
     
-            const remitoEncontrado = await receivedSupplier.findOne({
+            const remitoEncontrado = await billSupplier.findOne({
                 where: { id: id },
             });
     
@@ -127,7 +127,7 @@ const operatorApiController = {
             let id = req.params.id;
 
 
-            const product = await receivedSupplier.findOne({
+            const product = await billSupplier.findOne({
                 where: { id: id },
             });
 
@@ -136,7 +136,7 @@ const operatorApiController = {
             }
 
 
-            await receivedSupplier.destroy({
+            await billSupplier.destroy({
                 where: { id: id },
             });
 
