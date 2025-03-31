@@ -1,13 +1,21 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "./Navbar.jsx";
 import "./styles/providerForm.css";
 
 const ProviderForm = () => {
     const [tipoIngreso, setTipoIngreso] = useState("romaneo");
+    const [providers, setProviders] = useState([]);
+
     const navigate = useNavigate();
 
 
+    useEffect(() => {
+        fetch("http://localhost:3000/allProviders")
+            .then((response) => response.json())
+            .then((data) => setProviders(data))
+            .catch((error) => console.error("Error al obtener productos:", error));
+    }, []);
     const handleSubmit = async (e) => {
         e.preventDefault();
 
@@ -42,7 +50,7 @@ const ProviderForm = () => {
                 } else {
                     navigate(`/meat-manual-icome/${productoId}`);
                 }
-              
+
             } else {
                 console.error("Error al enviar los datos");
             }
@@ -59,17 +67,52 @@ const ProviderForm = () => {
             <Navbar />
             <div className="provider-form">
 
-                <form onSubmit={handleSubmit} className="form-container">
+                <form onSubmit={handleSubmit} className="form-container-provider">
                     <h2 className="form-title">INGRESAR MERCADERIA</h2>
-                    <label className="label">
-                        Proveedor:
+
+
+                    <label className="label-provider-form">
+                        TIPO DE INGRESO
+                        <div className="radio-buttons">
+                            <div className="radius-style">
+                                <input
+                                    type="radio"
+                                    id="romaneo_check"
+                                    name="tipoIngreso"
+                                    value="romaneo"
+                                    checked={tipoIngreso === "romaneo"}
+                                    onChange={handleRadioChange}
+                                />
+                                <label htmlFor="romaneo_check">Romaneo</label>
+                            </div>
+
+                            <div className="radius-style">
+                                <input
+                                    type="radio"
+                                    id="manual_check"
+                                    name="tipoIngreso"
+                                    value="manual"
+                                    checked={tipoIngreso === "manual"}
+                                    onChange={handleRadioChange}
+                                />
+                                <label htmlFor="manual_check">Manual</label>
+                            </div>
+                        </div>
+                    </label>
+                    <label className="label-provider-form">
+                        PROVEEDOR:
                         <select name="proveedor" className="input">
-                            <option value="Monsanto">Monsanto</option>
-                            <option value="Otro">Otro</option>
+
+                            {providers.map((provider) => (
+                                <tr key={provider.id}>
+                                    <option value={provider.provider_name}>{provider.provider_name}</option>
+
+                                </tr>
+                            ))}
                         </select>
                     </label>
-                    <label className="label">
-                        Peso total declarado en romaneo:
+                    <label className="label-provider-form">
+                        PESO TOTAL DECLARADO EN ROMANEO:
                         <div className="peso-container">
                             <input type="text" name="pesoTotal" className="input" />
                             <select name="unidadPeso" className="input">
@@ -80,56 +123,33 @@ const ProviderForm = () => {
                         </div>
                     </label>
 
-                    <label className="label">
-                        Cabezas:
-                        <input type="number" name="cabezas" className="input" />
+                    <label className="label-provider-form">
+                        CABEZAS:
+                        <input type="number" name="cabezas" className="input" min="0" />
                     </label>
-                    <label className="label">
-                        Cantidad de animales
+                    <label className="label-provider-form">
+                        CANTIDAD DE ANIMALES:
                         <input type="number" name="cantAnimales" className="input" />
                     </label>
 
-                    <label className="label">
-                        Nº comprobante romaneo:
+                    <label className="label-provider-form">
+                        Nº COMPROBANTE ROMANEO:
                         <input type="number" name="romaneo" className="input" />
                     </label>
-                    <label className="label">
-                        Nº comprobante interno:
+                    <label className="label-provider-form">
+                        Nº COMPROBANTE INTERNO:
                         <input type="number" name="comprobanteInterno" className="input" />
                     </label>
-                    <fieldset>
-                        <legend>Tipo de ingreso:</legend>
-
-                        <div>
-                            <input
-                                type="radio"
-                                id="romaneo_check"
-                                name="tipoIngreso"
-                                value="romaneo"
-                                checked={tipoIngreso === "romaneo"}
-                                onChange={handleRadioChange}
-                            />
-                            <label htmlFor="romaneo_check">Romaneo</label>
-                        </div>
-
-                        <div>
-                            <input
-                                type="radio"
-                                id="manual_check"
-                                name="tipoIngreso"
-                                value="manual"
-                                checked={tipoIngreso === "manual"}
-                                onChange={handleRadioChange}
-                            />
-                            <label htmlFor="manual_check">Manual</label>
-                        </div>
-                    </fieldset>
 
 
-                    <button type="submit">
-                        {tipoIngreso === "romaneo" ? "Cargar" : "Cargar y completar carga manual"}
-                    </button>
-                    <button type="button" onClick={() => navigate("/operator-panel")}>Cancelar</button>
+                    <div className="button-container">
+                        <button type="submit" className="button-primary">
+                            {tipoIngreso === "romaneo" ? "Agregar y continuar a pesaje" : "Cargar y completar carga manual"}
+                        </button>
+                        <button type="button" className="button-secondary" onClick={() => navigate("/operator-panel")}>
+                            Cancelar
+                        </button>
+                    </div>
                 </form>
             </div>
         </div>

@@ -99,6 +99,7 @@ const MeatManualIncome = () => {
         <div>
             <Navbar />
             <div className="main-container">
+                <div>
                 <h2>Detalle Mercadería</h2>
                 <div>
                 <div className="mercaderia-container">
@@ -112,6 +113,7 @@ const MeatManualIncome = () => {
                         <div><p className="label">PESO TOTAL DECLARADO EN ROMANEO:</p><p>{data.total_weight} KG</p></div>
                         <div><p className="label">CANTIDAD CABEZAS:</p><p>{data.head_quantity}</p></div>
                     </div>
+                </div>
                 </div>
                 </div>
                 <div className="formulario-corte">

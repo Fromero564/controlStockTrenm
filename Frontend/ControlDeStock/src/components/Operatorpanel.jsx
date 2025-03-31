@@ -10,11 +10,12 @@ const OperatorPanel = () => {
     const navigate = useNavigate();
 
     const sections = [
-        { title: "INGRESOS", desc: "Registra el ingreso de nuevos productos al stock del frigorífico.", viewPath: "/meat-load", newPath: "/provider-form", newText: "Nuevo ingreso" },
-        { title: "DESPOSTE", desc: "Registra el ingreso de nuevos productos al stock del frigorífico.", viewPath: "/view-desposte", newPath: "/desposte", newText: "Nuevo desposte" },
-        { title: "STOCK", desc: "Registra el ingreso de nuevos productos al stock del frigorífico.", viewPath: "/stock", newText: "Consultar stock" },
+        { title: "INGRESOS", desc: "Ingreso Mercaderia proveniente de proveedores", viewPath: "/meat-load", newPath: "/provider-form", newText: "Nuevo ingreso" },
+        { title: "PROCESO PRODUCTIVO", desc: "Realiza el desposte de piezas cargadas para obtener productos y subproductos", viewPath: "/view-desposte", newPath: "/desposte", newText: "Nuevo desposte" },
+        { title: "STOCK", desc: "Revisa el stock de piezas, productos y subproductos.", viewPath: "/stock", newText: "Consultar stock" },
         { title: "PRODUCTOS Y SUBPRODUCTOS", desc: "Registra el ingreso de nuevos productos al stock del frigorífico.", viewPath: "/view-productos", newPath: "/carga-productos", newText: "Nueva carga" },
-        { title: "PROVEEDORES", desc: "Registra el ingreso de nuevos productos al stock del frigorífico.", viewPath: "/view-proveedores", newPath: "/provider-load", newText: "Cargar" },
+        { title: "PROVEEDORES", desc: "Administa a los agentes que proveen de mercadería al frigorífico.", viewPath: "/view-proveedores", newPath: "/provider-load", newText: "Cargar" },
+        { title: "TARAS", desc: "Registra las taras para medir el peso de las mismas al momento del pesaje.", viewPath: "/view-proveedores", newPath: "/provider-load", newText: "Cargar" },
       
     ];
 
