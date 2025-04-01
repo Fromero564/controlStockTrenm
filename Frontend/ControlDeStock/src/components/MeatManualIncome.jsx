@@ -15,7 +15,8 @@ const MeatManualIncome = () => {
         cabeza: 0,
         cantidad: 0,
         pesoBruto: 0,
-        tara: 0
+        tara: 0,
+        garron:"",
     });
 
     useEffect(() => {
@@ -62,13 +63,23 @@ const MeatManualIncome = () => {
 
     const handleChange = (e) => {
         const { name, value } = e.target;
+        let newValue = parseFloat(value);
+    
+        if (name !== "tipo") {
+            newValue = isNaN(newValue) ? "" : Math.abs(newValue); 
+        }
+    
         setFormData((prev) => ({
             ...prev,
-            [name]: name === "tipo" ? value : parseFloat(value) || 0
+            [name]: name === "tipo" ? value : newValue,
         }));
     };
 
     const agregarCorte = () => {
+        if (!formData.tipo || formData.cabeza === "" || formData.cantidad === "" || formData.pesoBruto === "" || formData.tara === "" || formData.garron === "") {
+            alert("Por favor, complete todos los campos antes de agregar.");
+            return;
+        }
         const nuevoCorte = {
             ...formData,
             pesoNeto: formData.pesoBruto - formData.tara
@@ -80,7 +91,8 @@ const MeatManualIncome = () => {
             cabeza: 0,
             cantidad: 0,
             pesoBruto: 0,
-            tara: 0
+            tara: 0,
+            garron:"",
         });
     };
 
@@ -118,7 +130,7 @@ const MeatManualIncome = () => {
                 </div>
                 <div className="formulario-corte">
                     <label>Tipo</label>
-                    <select name="tipo" value={formData.tipo} onChange={handleChange}>
+                    <select name="tipo" value={formData.tipo} onChange={handleChange} required>
                         <option value="">Seleccionar</option>
                         {cortes.map((corte) => (
                             <option key={corte.id} value={corte.nombre}>{corte.nombre}</option>
@@ -126,24 +138,28 @@ const MeatManualIncome = () => {
                     </select>
 
                     <div className="form-group">
+                    <div>
+                            <label>Garron</label>
+                            <input type="text" name="garron"  onChange={handleChange} required />
+                        </div>
                         <div>
                             <label>Cabeza</label>
-                            <input type="number" name="cabeza" value={formData.cabeza} onChange={handleChange} />
+                            <input type="number" name="cabeza" min="0" onChange={handleChange} required />
                         </div>
                         <div>
                             <label>Cantidad</label>
-                            <input type="number" name="cantidad" value={formData.cantidad} onChange={handleChange} />
+                            <input type="number" name="cantidad" min="0" onChange={handleChange} required />
                         </div>
                     </div>
 
                     <div className="form-group">
                         <div>
                             <label>Peso Bruto</label>
-                            <input type="number" name="pesoBruto" value={formData.pesoBruto} onChange={handleChange} />
+                            <input type="number" name="pesoBruto" min="0" onChange={handleChange} required />
                         </div>
                         <div>
                             <label>Tara</label>
-                            <input type="number" name="tara" value={formData.tara} onChange={handleChange} />
+                            <input type="number" name="tara" min="0" onChange={handleChange}required />
                         </div>
                     </div>
 
@@ -152,6 +168,7 @@ const MeatManualIncome = () => {
                     <table className="table-cortes">
                         <thead>
                             <tr>
+                            <th>Garron</th>
                                 <th>Tipo</th>
                                 <th>Cabeza</th>
                                 <th>Cantidad</th>
@@ -164,6 +181,7 @@ const MeatManualIncome = () => {
                         <tbody>
                             {cortesAgregados.map((corte, index) => (
                                 <tr key={index}>
+                                       <td>{corte.garron}</td>
                                     <td>{corte.tipo}</td>
                                     <td>{corte.cabeza}</td>
                                     <td>{corte.cantidad}</td>

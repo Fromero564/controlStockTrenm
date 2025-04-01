@@ -4,24 +4,24 @@ import "./styles/meatIncome.css";
 
 function MeatIncome() {
     const { id, remitoId } = useParams();
-    const [cortes, setCortes] = useState([]); 
+    const [cortes, setCortes] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
     useEffect(() => {
         const fetchProductos = async () => {
             try {
-                const response = await fetch("http://localhost:3000/product-primary-name"); 
+                const response = await fetch("http://localhost:3000/product-primary-name");
                 if (!response.ok) throw new Error("Error al cargar los productos");
 
                 const data = await response.json();
-             
 
-              
+
+
                 const productosConCantidad = data.map((nombre, index) => ({
-                    id: index + 1, 
+                    id: index + 1,
                     nombre,
-                    cantidad: 0, 
+                    cantidad: 0,
                 }));
 
                 setCortes(productosConCantidad);
@@ -48,8 +48,8 @@ function MeatIncome() {
 
     const handleSubmit = async () => {
         try {
-            const productosNombres = cortes.map((corte) => corte.nombre).join(";"); 
-            const productosCantidades = cortes.map((corte) => corte.cantidad).join(";"); 
+            const productosNombres = cortes.map((corte) => corte.nombre).join(";");
+            const productosCantidades = cortes.map((corte) => corte.cantidad).join(";");
 
             const payload = {
                 id_received_suppliers: id,
@@ -90,10 +90,11 @@ function MeatIncome() {
                         <input
                             type="number"
                             min="0"
-                            value={corte.cantidad}
-                            onChange={(e) => handleCantidadChange(corte.id, e.target.value)}
+                            value={corte.cantidad === 0 ? "" : corte.cantidad}
+                            onChange={(e) => handleCantidadChange(corte.id, parseFloat(e.target.value) || 0)}
                             placeholder="Cantidad"
                         />
+
                     </div>
                 ))}
             </div>
