@@ -3,6 +3,7 @@ const db = require("../../src/config/models");
 const sequelize = db.sequelize;
 const { Op, where } = require("sequelize");
 const moment = require("moment");
+const { stringify } = require("querystring");
 
 const billSupplier = db.BillSupplier;
 const meatIncome = db.MeatIncome;
@@ -11,24 +12,22 @@ const operatorApiController = {
     uploadProducts: async (req, res) => {
         try {
 
-            const { proveedor, pesoTotal, cabezas, unidadPeso, romaneo, comprobanteInterno, tipoIngreso } = req.body;
+            const { proveedor, pesoTotal, cabezas,  romaneo, pesoFinal, tipoIngreso } = req.body;
 
             // Verifica que no hay campos vacíos
-            if (!proveedor || !pesoTotal || !cabezas || !unidadPeso || !romaneo || !comprobanteInterno) {
+            if (!proveedor || !pesoTotal || !cabezas  || !romaneo || !pesoFinal) {
                 return res.status(400).json({ message: "Todos los campos son obligatorios" });
             }
 
-            console.log(proveedor, pesoTotal, cabezas, unidadPeso, romaneo, comprobanteInterno, tipoIngreso)
 
             if (tipoIngreso === "romaneo") {
                 const nuevoRegistro = await billSupplier.create({
                     supplier: proveedor,
                     total_weight: pesoTotal,
-                    head_quantity: cabezas,
-                    unit_weight: unidadPeso,
-                    internal_number: comprobanteInterno,
+                    head_quantity: cabezas,  
                     romaneo_number: romaneo,
                     income_state: tipoIngreso,
+                    final_weight:pesoFinal,
                     check_state: true,
                 });
                 return res.status(201).json({ id: nuevoRegistro.id, romaneo: nuevoRegistro.romaneo_number });
@@ -37,10 +36,9 @@ const operatorApiController = {
                     supplier: proveedor,
                     total_weight: pesoTotal,
                     head_quantity: cabezas,
-                    unit_weight: unidadPeso,
-                    internal_number: comprobanteInterno,
                     romaneo_number: romaneo,
                     income_state: tipoIngreso,
+                    final_weight:pesoFinal,
                     check_state: false,
                 });
                 return res.status(201).json({ id: nuevoRegistro.id, romaneo: nuevoRegistro.romaneo_number });
@@ -65,34 +63,54 @@ const operatorApiController = {
     },
     addIncomeMeat: async (req, res) => {
         try {
-            let Supplierid = req.params.id;
-            const { productos, cantidades } = req.body;
-
-
-
-            const productosArray = productos.split(";");
-            const cantidadesArray = cantidades.split(";");
-
-
-            if (productosArray.length !== cantidadesArray.length) {
-                return res.status(400).json({ mensaje: "Los productos y cantidades no coinciden" });
+            const Supplierid = req.params.id;
+            const cortes = req.body;
+    
+            if (!Array.isArray(cortes) || cortes.length === 0) {
+                return res.status(400).json({ mensaje: "El cuerpo de la solicitud debe contener una lista de productos." });
             }
-
-
-            for (let i = 0; i < productosArray.length; i++) {
+    
+            for (const corte of cortes) {
+                const {
+                    tipo,
+                    garron,
+                    cabeza,
+                    cantidad,
+                    pesoBruto,
+                    tara,
+                    pesoNeto
+                } = corte;
+    
+                // Validación
+                if (!tipo || !garron || cabeza == null || cantidad == null || pesoBruto == null || tara == null || pesoNeto == null) {
+                    return res.status(400).json({ mensaje: "Faltan campos obligatorios en al menos un producto." });
+                }
+    
+              
+                const existente = await meatIncome.findByPk(garron);
+                if (existente) {
+                    return res.status(400).json({ mensaje: `El garrón ${garron} ya existe.` });
+                }
+    
                 await meatIncome.create({
-                    id_received_suppliers: Supplierid,
-                    products_name: productosArray[i],
-                    products_quantity: cantidadesArray[i],
+                    id: garron, 
+                    id_bill_suppliers: Supplierid,
+                    products_name: tipo,
+                    product_head: cabeza,
+                    products_quantity: cantidad,
+                    gross_weight: pesoBruto,
+                    tare: tara,
+                    net_weight: pesoNeto
                 });
             }
-
-            res.status(201).json({ mensaje: "Ingreso registrado con éxito" });
+    
+            return res.status(201).json({ mensaje: "Todos los productos fueron cargados correctamente." });
+    
         } catch (error) {
             console.error("Error en la base de datos:", error);
             return res.status(500).json({ mensaje: "Error en la base de datos", error: error.message });
         }
-
+    
     },
     productStock: async (req, res) => {
         try {
@@ -111,6 +129,8 @@ const operatorApiController = {
             const remitoEncontrado = await billSupplier.findOne({
                 where: { id: id },
             });
+            
+    
     
             if (!remitoEncontrado) {
                 return res.status(404).json({ message: "Remito no encontrado" });

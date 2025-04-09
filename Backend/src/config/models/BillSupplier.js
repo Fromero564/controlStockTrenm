@@ -18,11 +18,8 @@ module.exports = (sequelize, dataTypes) => {
             type: dataTypes.STRING(255),
             allowNull: false
         },
-        unit_weight: {
-            type: dataTypes.STRING(255),
-            allowNull: false
-        },
-        internal_number:{
+       
+        final_weight:{
             type: dataTypes.BIGINT(10),
             allowNull: false
         },

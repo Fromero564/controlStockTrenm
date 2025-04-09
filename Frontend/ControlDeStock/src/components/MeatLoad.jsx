@@ -10,7 +10,7 @@ const MeatLoad = () => {
     const navigate = useNavigate();
     const [products, setProducts] = useState([]);
     const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 10; 
+    const itemsPerPage = 10;
 
     useEffect(() => {
         fetch("http://localhost:3000/allproducts")
@@ -42,15 +42,15 @@ const MeatLoad = () => {
                 fetch(`http://localhost:3000/products/${id}`, {
                     method: "DELETE",
                 })
-                .then((response) => {
-                    if (response.ok) {
-                        setProducts(products.filter((product) => product.id !== id));
-                        Swal.fire("Eliminado", "El ingreso ha sido eliminado.", "success");
-                    } else {
-                        Swal.fire("Error", "No se pudo eliminar el ingreso.", "error");
-                    }
-                })
-                .catch((error) => console.error("Error al eliminar:", error));
+                    .then((response) => {
+                        if (response.ok) {
+                            setProducts(products.filter((product) => product.id !== id));
+                            Swal.fire("Eliminado", "El ingreso ha sido eliminado.", "success");
+                        } else {
+                            Swal.fire("Error", "No se pudo eliminar el ingreso.", "error");
+                        }
+                    })
+                    .catch((error) => console.error("Error al eliminar:", error));
             }
         });
     };
@@ -58,7 +58,7 @@ const MeatLoad = () => {
     // Calcular los índices de los productos a mostrar en la página actual
     const indexOfLastItem = currentPage * itemsPerPage;
     const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-    const currentProducts = products.slice(indexOfFirstItem, indexOfLastItem);
+    const currentProducts = Array.isArray(products) ? products.slice(indexOfFirstItem, indexOfLastItem) : [];
 
     // Calcular total de páginas
     const totalPages = Math.ceil(products.length / itemsPerPage);
@@ -92,28 +92,30 @@ const MeatLoad = () => {
                 <table className="table">
                     <thead>
                         <tr>
+                            <th>N°Ingreso</th>
                             <th>Proveedor</th>
                             <th>Fecha</th>
                             <th>Hora</th>
-                            <th>Peso Total</th>
-                            <th>Unidad de Peso</th>
+                            <th>N° Romaneo</th>
+                            <th>Estado de Carga</th>
+                            <th>Peso Romaneo</th>
                             <th>Cabezas</th>
-                            <th>N° comprobante romaneo</th>
-                            <th>N° comprobante interno</th>
+                            <th>Peso Recepcion</th>
                             <th>Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
                         {currentProducts.map((product) => (
                             <tr key={product.id} className={product.income_state === "manual" ? "red-row" : ""}>
+                                <td>{product.id}</td>
                                 <td>{product.supplier}</td>
                                 <td>{new Date(product.createdAt).toLocaleDateString("es-ES")}</td>
                                 <td>{new Date(product.createdAt).toLocaleTimeString()}</td>
-                                <td>{product.total_weight}</td>
-                                <td>{product.unit_weight}</td>
-                                <td>{product.head_quantity}</td>
                                 <td>{product.romaneo_number}</td>
-                                <td>{product.internal_number}</td>
+                                <td>{product.check_state ? "Romaneo" : "Manual"}</td>
+                                <td>{product.total_weight}</td>
+                                <td>{product.head_quantity}</td>
+                                <td>{product.final_weight}</td>
                                 <td>
                                     <button className="edit-button" onClick={() => handleEdit(product.id, product.internal_number)}>
                                         <FontAwesomeIcon icon={faPen} />
@@ -127,13 +129,13 @@ const MeatLoad = () => {
                     </tbody>
                 </table>
 
-           
+
                 <div className="pagination">
                     <button onClick={goToPrevPage} disabled={currentPage === 1}>
                         ← Anterior
                     </button>
-                    <span>Página {currentPage} de {totalPages}</span>
-                    <button onClick={goToNextPage} disabled={currentPage === totalPages}>
+                    <span>Página <strong>{currentPage}</strong> de <strong>{isNaN(totalPages) ? 1 : totalPages}</strong></span>
+                    <button onClick={goToNextPage} disabled={currentPage === totalPages || totalPages === 0}>
                         Siguiente →
                     </button>
                 </div>

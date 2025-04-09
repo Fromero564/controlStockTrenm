@@ -24,10 +24,9 @@ const ProviderForm = () => {
         const formData = {
             proveedor: e.target.proveedor.value,
             pesoTotal: e.target.pesoTotal.value,
-            unidadPeso: e.target.unidadPeso.value,
             cabezas: e.target.cabezas.value,
             romaneo: e.target.romaneo.value,
-            comprobanteInterno: e.target.comprobanteInterno.value,
+            pesoFinal: e.target.pesoFinal.value,
             tipoIngreso: tipoIngreso,
         };
 
@@ -102,25 +101,16 @@ const ProviderForm = () => {
                     <label className="label-provider-form">
                         PROVEEDOR:
                         <select name="proveedor" className="input">
-
                             {providers.map((provider) => (
-                                <tr key={provider.id}>
-                                    <option value={provider.provider_name}>{provider.provider_name}</option>
-
-                                </tr>
+                                <option key={provider.id} value={provider.provider_name}>
+                                    {provider.provider_name}
+                                </option>
                             ))}
                         </select>
                     </label>
                     <label className="label-provider-form">
-                        PESO TOTAL DECLARADO EN ROMANEO:
-                        <div className="peso-container">
-                            <input type="text" name="pesoTotal" className="input" />
-                            <select name="unidadPeso" className="input">
-                                <option value="kg">Kg</option>
-                                <option value="g">Gramos</option>
-                                <option value="lb">Libras</option>
-                            </select>
-                        </div>
+                        PESO TOTAL:
+                        <input type="number" name="pesoTotal" className="input" />
                     </label>
 
                     <label className="label-provider-form">
@@ -136,11 +126,11 @@ const ProviderForm = () => {
                         Nº COMPROBANTE ROMANEO:
                         <input type="number" name="romaneo" className="input" />
                     </label>
-                    <label className="label-provider-form">
-                        Nº COMPROBANTE INTERNO:
-                        <input type="number" name="comprobanteInterno" className="input" />
-                    </label>
 
+                    <label className="label-provider-form">
+                        PESO FINAL:
+                        <input type="number" name="pesoFinal" className="input" />
+                    </label>
 
                     <div className="button-container">
                         <button type="submit" className="button-primary">

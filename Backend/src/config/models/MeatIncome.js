@@ -1,42 +1,57 @@
-module.exports = (sequelize, dataTypes) => {
+module.exports = (sequelize, DataTypes) => {
     let alias = "MeatIncome";
+
     let cols = {
         id: {
-            type: dataTypes.INTEGER,
+            type: DataTypes.INTEGER,
             primaryKey: true,
-            autoIncrement: true,
+            allowNull: false, 
         },
-        id_received_suppliers: {
-            type: dataTypes.INTEGER,
+        id_bill_suppliers: {
+            type: DataTypes.INTEGER,
             allowNull: false,
             references: {
-                model: "bill_suppliers", 
+                model: "bill_suppliers",
                 key: "id",
             },
         },
         products_name: {
-            type: dataTypes.STRING(255),
-            allowNull: false
+            type: DataTypes.STRING(255),
+            allowNull: false,
         },
         products_quantity: {
-            type: dataTypes.STRING(255),
-            allowNull: false
+            type: DataTypes.STRING(255),
+            allowNull: false,
         },
-      
+        product_head: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+        },
+        gross_weight: {
+            type: DataTypes.DECIMAL(8, 2),
+            allowNull: false,
+        },
+        tare: {
+            type: DataTypes.DECIMAL(8, 2),
+            allowNull: false,
+        },
+        net_weight: {
+            type: DataTypes.DECIMAL(8, 2),
+            allowNull: false,
+        }
     };
 
     let config = {
         tableName: "meat_income",
-        timestamps: false, 
+        timestamps: false,
     };
 
     const MeatIncome = sequelize.define(alias, cols, config);
 
-    // Definir relaciones
     MeatIncome.associate = (models) => {
         MeatIncome.belongsTo(models.BillSupplier, {
-            foreignKey: "id_received_suppliers",
-            as: "supplier", 
+            foreignKey: "id_bill_suppliers",
+            as: "supplier",
         });
     };
 
