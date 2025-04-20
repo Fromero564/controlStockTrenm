@@ -1,4 +1,4 @@
-import { useParams,useNavigate } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 
 import { useState, useEffect } from "react";
 import Navbar from "./Navbar";
@@ -12,6 +12,8 @@ const MeatManualIncome = () => {
     const [error, setError] = useState(null);
     const [cortes, setCortes] = useState([]);
     const [cortesAgregados, setCortesAgregados] = useState([]);
+    const [tares, setTares] = useState([]);
+    const [taraSeleccionadaId, setTaraSeleccionadaId] = useState("");
     const [formData, setFormData] = useState({
         tipo: "",
         cabeza: 0,
@@ -21,7 +23,7 @@ const MeatManualIncome = () => {
         garron: "",
     });
 
- 
+
 
 
     useEffect(() => {
@@ -47,12 +49,36 @@ const MeatManualIncome = () => {
 
         fetchProductos();
     }, []);
+    useEffect(() => {
+        const fetchTares = async () => {
+            try {
+                const response = await fetch("http://localhost:3000/allTares");
+                if (!response.ok) throw new Error("Error al cargar todas las taras");
+
+                const data = await response.json();
+                const tarasConIndex = data.map((item) => ({
+                    id: item.id,
+                    nombre: item.tare_name,
+                    peso: item.tare_weight
+                }));
+                setTares(tarasConIndex);
+            } catch (err) {
+                console.error("Error al obtener las taras:", err);
+                setError("Error al cargar las taras");
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchTares();
+    }, []);
+
     const handleGuardar = async () => {
         if (cortesAgregados.length === 0) {
             alert("No hay cortes agregados para guardar.");
             return;
         }
-    
+
         try {
             const response = await fetch(`http://localhost:3000/addProducts/${data.id}`, {
                 method: "POST",
@@ -61,11 +87,11 @@ const MeatManualIncome = () => {
                 },
                 body: JSON.stringify(cortesAgregados),
             });
-    
+
             if (!response.ok) throw new Error("Error al guardar los cortes");
-    
+
             alert("Cortes guardados correctamente.");
-            setCortesAgregados([]); 
+            setCortesAgregados([]);
         } catch (err) {
             console.error("Error al enviar los cortes:", err);
             alert("Ocurrió un error al guardar los cortes.");
@@ -200,8 +226,27 @@ const MeatManualIncome = () => {
                         </div>
                         <div>
                             <label>Tara</label>
-                            <input type="number" name="tara" min="0" value={formData.tara} onChange={handleChange} required />
+                            <select
+                                name="tara"
+                                value={taraSeleccionadaId}
+                                onChange={(e) => {
+                                    const selected = tares.find(t => t.id === parseInt(e.target.value));
+                                    setTaraSeleccionadaId(e.target.value);
+                                    setFormData(prev => ({
+                                        ...prev,
+                                        tara: selected?.peso || 0
+                                    }));
+                                }}
+                                required
+                            >
+                                <option value="">Seleccionar</option>
+                                {tares.map(t => (
+                                    <option key={t.id} value={t.id}>{t.nombre} ({t.peso} kg)</option>
+                                ))}
+                            </select>
+
                         </div>
+
                     </div>
 
                     <button className="btn-agregar" onClick={agregarCorte}>Agregar pieza +</button>

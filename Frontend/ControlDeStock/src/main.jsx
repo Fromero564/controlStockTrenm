@@ -16,6 +16,7 @@ import MeatLoad from './components/MeatLoad.jsx';
 import { AuthProvider } from './context/AuthProvider.jsx';
 import MeatManualIncome from './components/MeatManualIncome.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
+import Tareload from './components/TareLoad.jsx';
 
 
 
@@ -107,7 +108,15 @@ const router = createBrowserRouter([
         <MeatManualIncome />
       </ProtectedRoute>
     ),
-  }
+  },
+  {
+    path: "/tare-load",
+    element: (
+      <ProtectedRoute>
+        <Tareload/>
+      </ProtectedRoute>
+    ),
+  },
 ]);
 
 createRoot(document.getElementById('root')).render(

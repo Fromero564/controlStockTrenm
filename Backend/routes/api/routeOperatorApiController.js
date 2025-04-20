@@ -9,9 +9,12 @@ router.get("/allProducts",apiOperatorController.allProducts);
 router.get("/allProductsStock",apiOperatorController.productStock);
 //Api para encontrar productos
 router.get("/find-remit/:remitoId",apiOperatorController.findRemit);
-
+//Api todas las Taras
+router.get("/allTares",apiOperatorController.alltares);
 //Api para cargar productos
 router.post("/uploadProduct",apiOperatorController.uploadProducts);
+//Api para cargar Taras
+router.post("/tareLoad",apiOperatorController.tareLoad);
 //Api para cargar cortes que vienen por remito
 router.post("/addProducts/:id",apiOperatorController.addIncomeMeat);
 //Api para eliminar un carga de producto proveniente del proveedor

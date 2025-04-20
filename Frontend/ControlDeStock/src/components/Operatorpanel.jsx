@@ -15,7 +15,7 @@ const OperatorPanel = () => {
         { title: "STOCK", desc: "Revisa el stock de piezas, productos y subproductos.", viewPath: "/stock", newText: "Consultar stock" },
         { title: "PRODUCTOS Y SUBPRODUCTOS", desc: "Registra el ingreso de nuevos productos al stock del frigorífico.", viewPath: "/view-productos", newPath: "/carga-productos", newText: "Nueva carga" },
         { title: "PROVEEDORES", desc: "Administa a los agentes que proveen de mercadería al frigorífico.", viewPath: "/view-proveedores", newPath: "/provider-load", newText: "Cargar" },
-        { title: "TARAS", desc: "Registra las taras para medir el peso de las mismas al momento del pesaje.", viewPath: "/view-proveedores", newPath: "/provider-load", newText: "Cargar" },
+        { title: "TARAS", desc: "Registra las taras para medir el peso de las mismas al momento del pesaje.", viewPath: "/view-proveedores", newPath: "/tare-load", newText: "Cargar" },
       
     ];
 

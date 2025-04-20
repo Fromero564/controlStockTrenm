@@ -18,31 +18,31 @@ module.exports = (sequelize, dataTypes) => {
             type: dataTypes.STRING(255),
             allowNull: false
         },
-       
-        final_weight:{
+
+
+
+        romaneo_number: {
             type: dataTypes.BIGINT(10),
             allowNull: false
         },
-       
-        romaneo_number:{
-            type: dataTypes.BIGINT(10),
-            allowNull: false
-        },
-         income_state: {
+        income_state: {
             type: dataTypes.STRING(255),
             allowNull: false
-        },  
+        },
         check_state: {
             type: dataTypes.BOOLEAN,
             allowNull: false,
         }
     };
     let config = {
-        tableName:"bill_suppliers",
-        timestamps: true, 
+        tableName: "bill_suppliers",
+        timestamps: true,
     };
     const BillSupplier = sequelize.define(alias, cols, config);
-
+    BillSupplier.hasMany(sequelize.models.BillDetail, {
+        foreignKey: 'bill_supplier_id',
+        as: 'billDetails'
+    });
 
     return BillSupplier
 
