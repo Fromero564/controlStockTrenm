@@ -122,7 +122,8 @@ const operatorApiController = {
                     cantidad,
                     pesoBruto,
                     tara,
-                    pesoNeto
+                    pesoNeto,
+                    pesoProveedor
                 } = corte;
 
                 // Validación
@@ -140,8 +141,10 @@ const operatorApiController = {
                     id: garron,
                     id_bill_suppliers: Supplierid,
                     products_name: tipo,
+                    products_garron: garron,
                     product_head: cabeza,
                     products_quantity: cantidad,
+                    provider_weight: pesoProveedor,
                     gross_weight: pesoBruto,
                     tare: tara,
                     net_weight: pesoNeto

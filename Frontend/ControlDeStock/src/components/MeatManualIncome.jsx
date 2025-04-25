@@ -18,6 +18,7 @@ const MeatManualIncome = () => {
         tipo: "",
         cabeza: 0,
         cantidad: 0,
+        pesoProveedor:0,
         pesoBruto: 0,
         tara: 0,
         garron: "",
@@ -146,6 +147,7 @@ const MeatManualIncome = () => {
             tipo: "",
             cabeza: 0,
             cantidad: 0,
+            pesoProveedor:0,
             pesoBruto: 0,
             tara: 0,
             garron: "",
@@ -197,7 +199,7 @@ const MeatManualIncome = () => {
 
                     <div className="form-group">
                         <div>
-                            <label>Tipo</label>
+                            <label>TIPO</label>
                             <select name="tipo" value={formData.tipo} onChange={handleChange} required>
                                 <option value="">Seleccionar</option>
                                 {cortes.map((corte) => (
@@ -206,26 +208,29 @@ const MeatManualIncome = () => {
                             </select>
                         </div>
                         <div>
-                            <label>Garron</label>
+                            <label>GARRON</label>
                             <input type="text" name="garron" value={formData.garron} onChange={handleChange} required />
                         </div>
                         <div>
-                            <label>Cabeza</label>
+                            <label>CABEZA</label>
                             <input type="number" name="cabeza" min="0" value={formData.cabeza} onChange={handleChange} required />
                         </div>
                         <div>
-                            <label>Cantidad</label>
+                            <label>CANTIDAD</label>
                             <input type="number" name="cantidad" min="0" value={formData.cantidad} onChange={handleChange} required />
+                        </div>
+                        <div>
+                            <label>PESO DECLARADO PROVEEDOR </label>
+                            <input type="number" name="pesoProveedor" min="0" value={formData.pesoProveedor} onChange={handleChange} required />
                         </div>
 
 
-
                         <div>
-                            <label>Peso Bruto</label>
+                            <label>PESO BRUTO BALANZA </label>
                             <input type="number" name="pesoBruto" min="0" value={formData.pesoBruto} onChange={handleChange} required />
                         </div>
                         <div>
-                            <label>Tara</label>
+                            <label>TARA</label>
                             <select
                                 name="tara"
                                 value={taraSeleccionadaId}
@@ -253,14 +258,15 @@ const MeatManualIncome = () => {
 
                     <div className="cortes-lista">
                         <div className="corte-encabezado">
-                            <div><strong>Tipo</strong></div>
-                            <div><strong>Garrón</strong></div>
-                            <div><strong>Cabeza</strong></div>
-                            <div><strong>Cantidad</strong></div>
-                            <div><strong>Peso Bruto</strong></div>
-                            <div><strong>Tara</strong></div>
-                            <div><strong>Peso Neto</strong></div>
-                            <div><strong>Acciones</strong></div>
+                            <div><strong>TIPO</strong></div>
+                            <div><strong>GARRON</strong></div>
+                            <div><strong>CABEZA</strong></div>
+                            <div><strong>CANTIDAD</strong></div>
+                            <div><strong>PESO DECLARADO PROVEEDOR</strong></div>
+                            <div><strong>PESO BRUTO BALANZA</strong></div>
+                            <div><strong>TARA</strong></div>
+                            <div><strong>PESO NETO</strong></div>
+                            <div><strong>ACCIONES</strong></div>
                         </div>
 
                         {cortesAgregados.map((corte, index) => (
@@ -276,6 +282,9 @@ const MeatManualIncome = () => {
                                 </div>
                                 <div>
                                     <p className="dato">{corte.cantidad}</p>
+                                </div>
+                                <div>
+                                    <p className="dato">{corte.pesoProveedor}</p>
                                 </div>
                                 <div>
                                     <p className="dato">{corte.pesoBruto}</p>

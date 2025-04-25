@@ -15,6 +15,10 @@ module.exports = (sequelize, DataTypes) => {
                 key: "id",
             },
         },
+        products_garron: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+        },
         products_name: {
             type: DataTypes.STRING(255),
             allowNull: false,
@@ -25,6 +29,10 @@ module.exports = (sequelize, DataTypes) => {
         },
         product_head: {
             type: DataTypes.INTEGER,
+            allowNull: false,
+        },
+        provider_weight: {
+            type: DataTypes.DECIMAL(8, 2),
             allowNull: false,
         },
         gross_weight: {
