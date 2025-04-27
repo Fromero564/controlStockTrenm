@@ -17,6 +17,7 @@ import { AuthProvider } from './context/AuthProvider.jsx';
 import MeatManualIncome from './components/MeatManualIncome.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import Tareload from './components/TareLoad.jsx';
+import ProductionProcess from './components/ProductionProcess.jsx';;
 
 
 
@@ -114,6 +115,14 @@ const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <Tareload/>
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/production-process",
+    element: (
+      <ProtectedRoute>
+        <ProductionProcess/>
       </ProtectedRoute>
     ),
   },
