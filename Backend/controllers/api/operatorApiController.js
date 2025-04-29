@@ -9,8 +9,47 @@ const billSupplier = db.BillSupplier;
 const meatIncome = db.MeatIncome;
 const billDetail = db.BillDetail;
 const tare = db.Tare;
+const ProductsAvailable = db.ProductsAvailable;
+const ProcessMeat = db.ProcessMeat;
 
 const operatorApiController = {
+    stockAvailable:async(req,res)=>{
+        try {
+            const billDetailProductos = await billDetail.findAll({
+                attributes: ['type', 'quantity'],
+                raw: true
+            });
+    
+            const processMeat = await ProcessMeat.findAll({
+                attributes: ['type', 'quantity'],
+                raw: true
+            });
+    
+        
+            const allProducts = [...billDetailProductos, ...processMeat];
+    
+       
+            const grouped = allProducts.reduce((acc, item) => {
+                if (!acc[item.type]) {
+                    acc[item.type] = 0;
+                }
+                acc[item.type] += item.quantity;
+                return acc;
+            }, {});
+    
+            
+            const result = Object.entries(grouped).map(([type, quantity]) => ({
+                type,
+                quantity
+            }));
+    
+            res.json(result);
+        } catch (error) {
+            console.error(error);
+            res.status(500).json({ message: 'Error al obtener el stock disponible' });
+        }
+       
+    },
     alltares: async (req, res) => {
         try {
             const alltares = await tare.findAll({});
@@ -92,7 +131,29 @@ const operatorApiController = {
             return res.status(500).json({ message: "Error interno del servidor", error: error.message });
         }
     },
+    uploadProductsProcess:async(req,res)=>{
+        try {
+            console.log("Body recibido:", req.body); 
+        const{ tipo,promedio,cantidad,pesoBruto,tara,pesoNeto} = req.body;
 
+       if (!tipo || !promedio || !cantidad || !pesoBruto|| !tara|| !pesoNeto) {
+        return res.status(400).json({ message: "Faltan campos obligatorios." });
+       }
+ 
+       await ProcessMeat.create({
+          type:tipo,
+          average:promedio,
+          quantity:cantidad,
+          gross_weight:pesoBruto,
+          tares:tara,
+          net_weight:pesoNeto,
+       })
+       return res.status(201).json({ message: "Corte guardado correctamente.", data: req.body });
+    }catch (error) {
+        console.error("Error al cargar datos:", error);
+        return res.status(500).json({ message: "Error interno del servidor", error: error.message });
+    }
+    },
     allProducts: async (req, res) => {
         try {
             const allproducts = await billSupplier.findAll({
@@ -213,7 +274,37 @@ const operatorApiController = {
             console.error("Error al eliminar el producto:", error);
             return res.status(500).json({ mensaje: "Error interno del servidor", error: error.message });
         }
-    }
+    },
+    loadProductsPrimaryCategory: async (req, res) => {
+        try {
+            const allProductsPrimary = await ProductsAvailable.findAll({
+                attributes: ['product_name'],
+                where: {
+                    product_category: "primario",
+                },
+            });
+            const productNames = allProductsPrimary.map(product => product.product_name);
+
+            res.json(productNames);
+        } catch (error) {
+            console.error("Error al obtener productos:", error);
+            return res.status(500).json({ message: "Error interno del servidor" });
+        }
+       
+    },
+    loadAllProductsCategories: async (req, res) => {
+        try {
+            const allProductsCategories= await ProductsAvailable.findAll({
+                attributes: ['product_name'],
+            });
+            const productNamesCategories = allProductsCategories.map(product => product.product_name);
+
+            res.json(productNamesCategories);
+        } catch (error) {
+            console.error("Error al obtener productos:", error);
+            return res.status(500).json({ message: "Error interno del servidor" });
+        }
+    },
 
 }
 

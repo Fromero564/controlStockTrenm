@@ -30,7 +30,7 @@ const MeatManualIncome = () => {
     useEffect(() => {
         const fetchProductos = async () => {
             try {
-                const response = await fetch("http://localhost:3000/product-primary-name");
+                const response = await fetch("http://localhost:3000/product-name");
                 if (!response.ok) throw new Error("Error al cargar los productos");
 
                 const data = await response.json();

@@ -7,8 +7,7 @@ const apiAdministrativeController= require("../../controllers/api/administrative
 
 //Api para ver proveedores cargados
 router.get("/allProviders",apiAdministrativeController.allProviders);
-//Cargar los nombres de los productos
-router.get("/product-primary-name",apiAdministrativeController.loadProductsPrimary);
+
 
 //Cargar nuevo proveedor
 router.post("/provider-load",apiAdministrativeController.loadNewProvider);

@@ -59,22 +59,7 @@ const administrativeApiController = {
         }
 
     },
-    loadProductsPrimary: async (req, res) => {
-        try {
-            const allProductsPrimary = await ProductsAvailable.findAll({
-                attributes: ['product_name'],
-                where: {
-                    product_category: "primario",
-                },
-            });
-            const productNames = allProductsPrimary.map(product => product.product_name);
-
-            res.json(productNames);
-        } catch (error) {
-            console.error("Error al obtener productos:", error);
-            return res.status(500).json({ message: "Error interno del servidor" });
-        }
-    },
+  
     allProviders: async(req,res)=>{
        
         try {

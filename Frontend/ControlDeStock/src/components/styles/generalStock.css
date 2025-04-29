@@ -1,0 +1,56 @@
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f9fbff;
+  }
+  
+  .stock-container {
+    max-width: 800px;
+    margin: 40px auto;
+    padding: 0 20px;
+  }
+  
+  .stock-title {
+    font-size: 32px;
+    font-weight: 700;
+    color: #4a4a4a;
+    margin-bottom: 20px;
+  }
+  
+  .table-wrapper {
+    border: 1px solid #dce6f0;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  
+  .stock-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+  }
+  
+  .stock-table thead {
+    background-color: #f3f7fd;
+    color: #3a3a3a;
+    font-size: 14px;
+  }
+  
+  .stock-table th, .stock-table td {
+    padding: 14px;
+    border-bottom: 1px solid #e5ecf5;
+  }
+  
+  .stock-table tr:last-child td {
+    border-bottom: none;
+  }
+  
+  .stock-table tbody tr:hover {
+    background-color: #f8faff;
+    transition: background-color 0.2s;
+  }
+  
+  .loading {
+    text-align: center;
+    color: #777;
+    font-size: 16px;
+  }
+  

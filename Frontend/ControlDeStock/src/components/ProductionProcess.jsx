@@ -1,23 +1,44 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import Navbar from "./Navbar";
 
 
 const ProductionProcess = () => {
-
+    const navigate = useNavigate();
     const [cortes, setCortes] = useState([]);
     const [tares, setTares] = useState([]);
     const [cortesAgregados, setCortesAgregados] = useState([]);
     const [taraSeleccionadaId, setTaraSeleccionadaId] = useState("");
     const [formData, setFormData] = useState({
         tipo: "",
-        promedio:0,
+        promedio: 0,
         cantidad: 0,
         pesoBruto: 0,
         tara: 0,
-        pesoNeto:0,
+        pesoNeto: 0,
     });
 
+    useEffect(() => {
+        const fetchProductos = async () => {
+            try {
+                const response = await fetch("http://localhost:3000/product-name");
+                if (!response.ok) throw new Error("Error al cargar los productos");
 
+                const data = await response.json();
+                const productosConCantidad = data.map((nombre, index) => ({
+                    id: index + 1,
+                    nombre,
+                    cantidad: 0,
+                }));
+                setCortes(productosConCantidad);
+            } catch (err) {
+                console.error("Error al obtener los productos:", err);
+                setError("Error al cargar los productos");
+            }
+        };
+
+        fetchProductos();
+    }, []);
 
     useEffect(() => {
         const fetchTares = async () => {
@@ -35,8 +56,6 @@ const ProductionProcess = () => {
             } catch (err) {
                 console.error("Error al obtener las taras:", err);
                 setError("Error al cargar las taras");
-            } finally {
-                setLoading(false);
             }
         };
 
@@ -49,15 +68,24 @@ const ProductionProcess = () => {
         }
 
         try {
-            const response = await fetch('http://localhost:3000/addProducts', {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify(cortesAgregados),
-            });
-
-            if (!response.ok) throw new Error("Error al guardar los cortes");
+            for (const corte of cortesAgregados) {
+                const response = await fetch('http://localhost:3000/uploadProcessMeat', {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        tipo: corte.tipo,
+                        promedio: corte.promedio,
+                        cantidad: corte.cantidad,
+                        pesoBruto: corte.pesoBruto,
+                        tara: corte.tara,
+                        pesoNeto: corte.pesoNeto,
+                    }),
+                });
+                if (!response.ok) throw new Error("Error al guardar los cortes");
+            }    
+          
 
             alert("Cortes guardados correctamente.");
             setCortesAgregados([]);
@@ -83,7 +111,7 @@ const ProductionProcess = () => {
     };
 
     const agregarCorte = () => {
-        if (!formData.tipo || formData.cabeza === "" || formData.cantidad === "" || formData.pesoBruto === "" || formData.tara === "" ) {
+        if (!formData.tipo || formData.cabeza === "" || formData.cantidad === "" || formData.pesoBruto === "" || formData.tara === "") {
             alert("Por favor, complete todos los campos antes de agregar.");
             return;
         }
@@ -98,6 +126,8 @@ const ProductionProcess = () => {
     const eliminarCorte = (index) => {
         setCortesAgregados(cortesAgregados.filter((_, i) => i !== index));
     };
+
+
 
     return (
         <>
@@ -125,7 +155,7 @@ const ProductionProcess = () => {
                             <label>CANTIDAD</label>
                             <input type="number" name="cantidad" value={formData.cantidad} min="0" onChange={handleChange} required />
                         </div>
-                       
+
                         <div>
                             <label>PESO BRUTO </label>
                             <input type="number" name="pesoBruto" value={formData.pesoBruto} min="0" onChange={handleChange} required />
@@ -157,7 +187,12 @@ const ProductionProcess = () => {
                         </div>
                         <div>
                             <label>PESO NETO</label>
-                            <input type="number" name="pesoNeto" value={formData.pesoNeto}min="0" onChange={handleChange} required />
+                            <input
+                                type="number"
+                                name="pesoNeto"
+                                value={(formData.pesoBruto - formData.tara).toFixed(2)}
+                                disabled
+                            />
                         </div>
 
                     </div>
@@ -231,7 +266,7 @@ const ProductionProcess = () => {
                 </div>
 
                 <button className="btn-guardar" onClick={handleGuardar}>
-                    Guardar todo
+                    Guardar y terminar carga
                 </button>
             </div>
         </>

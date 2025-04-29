@@ -18,6 +18,7 @@ import MeatManualIncome from './components/MeatManualIncome.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import Tareload from './components/TareLoad.jsx';
 import ProductionProcess from './components/ProductionProcess.jsx';;
+import GeneralStock from './components/GeneralStock.jsx'; 
 
 
 
@@ -123,6 +124,14 @@ const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <ProductionProcess/>
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/general-stock",
+    element: (
+      <ProtectedRoute>
+        <GeneralStock/>
       </ProtectedRoute>
     ),
   },
