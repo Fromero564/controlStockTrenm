@@ -8,6 +8,7 @@ const ProviderForm = () => {
     const [providers, setProviders] = useState([]);
     const [cortes, setCortes] = useState([]);
     const [cortesAgregados, setCortesAgregados] = useState([]);
+    const [ultimoRegistroFactura,setUltimoRegistroFactura]=useState([]);
     const [nuevoCorte, setNuevoCorte] = useState({
         tipo: "",
         cantidad: 0,
@@ -23,6 +24,16 @@ const ProviderForm = () => {
             .catch((error) => console.error("Error al obtener productos:", error));
     }, []);
 
+    useEffect(() => {
+        fetch("http://localhost:3000/last-provider-bill")
+            .then((response) => response.json())
+            .then((data) => {
+            
+                const nuevoNumero = data?.id ? data.id + 1 : 1;
+                setUltimoRegistroFactura(nuevoNumero);
+            })
+            .catch((error) => console.error("Error al obtener ultima factura:", error));
+    }, []);
     useEffect(() => {
         const fetchProductos = async () => {
             try {
@@ -54,6 +65,10 @@ const ProviderForm = () => {
 
     const agregarCorte = () => {
         if (!nuevoCorte.tipo || nuevoCorte.cantidad <= 0) return;
+    
+        const existe = cortesAgregados.some(corte => corte.tipo === nuevoCorte.tipo);
+        if (existe) return; 
+    
         setCortesAgregados([...cortesAgregados, nuevoCorte]);
         setNuevoCorte({ tipo: "", cantidad: 0, cabezas: 0 });
     };
@@ -142,7 +157,7 @@ const ProviderForm = () => {
                             </div>
                         </div>
                     </label>
-                    <div>
+                    <div className="provider-remit-romaneo">
                         <label className="label-provider-form">
                             PROVEEDOR:
                             <select name="proveedor" className="input">
@@ -233,8 +248,8 @@ const ProviderForm = () => {
                     </label>
 
                     <label className="label-provider-form">
-                        COMPRABANTE INTERNO:
-                        <input type="number" name="pesoFinal" className="input" />
+                       SU COMPRABANTE INTERNO ES:
+                        <input type="number" name="pesoFinal" className="input"   value={ultimoRegistroFactura} disabled/>
                     </label>
 
                     <div className="button-container">

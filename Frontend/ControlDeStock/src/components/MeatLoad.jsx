@@ -9,6 +9,7 @@ import "./styles/meatLoad.css";
 const MeatLoad = () => {
     const navigate = useNavigate();
     const [products, setProducts] = useState([]);
+    const [search, setSearch] = useState(""); // AGREGADO
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
 
@@ -55,15 +56,17 @@ const MeatLoad = () => {
         });
     };
 
-    // Calcular los índices de los productos a mostrar en la página actual
+    // FILTRO POR N° INGRESO (id)
+    const filteredProducts = products.filter((product) =>
+        product.id.toString().includes(search)
+    );
+
+    // PAGINACIÓN
     const indexOfLastItem = currentPage * itemsPerPage;
     const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-    const currentProducts = Array.isArray(products) ? products.slice(indexOfFirstItem, indexOfLastItem) : [];
+    const currentProducts = filteredProducts.slice(indexOfFirstItem, indexOfLastItem);
+    const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
 
-    // Calcular total de páginas
-    const totalPages = Math.ceil(products.length / itemsPerPage);
-
-    // Cambiar de página
     const goToNextPage = () => {
         if (currentPage < totalPages) {
             setCurrentPage(currentPage + 1);
@@ -80,8 +83,25 @@ const MeatLoad = () => {
         <div>
             <Navbar />
             <div className="container">
+            <h2>Mercaderías</h2>
                 <div className="header">
-                    <h2>Mercaderías</h2>
+                   
+                    <div className="search-section">
+                        <label htmlFor="search">N°Comprobante</label>
+                        <input
+                            type="text"
+                            id="search"
+                            placeholder="Buscar por N°Comprobante"
+                            value={search}
+                            onChange={(e) => {
+                                setSearch(e.target.value);
+                                setCurrentPage(1);
+                            }}
+                            className="search-input"
+                        />
+                        <button className="search-button" onClick={() => setCurrentPage(1)}>Buscar</button>
+                    </div>
+
                     <button className="new-button" onClick={() => navigate("/operator-panel")}>
                         Volver panel operario
                     </button>
@@ -89,10 +109,11 @@ const MeatLoad = () => {
                         Nueva mercadería +
                     </button>
                 </div>
+
                 <table className="table">
                     <thead>
                         <tr>
-                            <th>N°Ingreso</th>
+                            <th>N°Comprobante</th>
                             <th>Proveedor</th>
                             <th>Fecha</th>
                             <th>Hora</th>
@@ -129,12 +150,11 @@ const MeatLoad = () => {
                     </tbody>
                 </table>
 
-
                 <div className="pagination">
                     <button onClick={goToPrevPage} disabled={currentPage === 1}>
                         ← Anterior
                     </button>
-                    <span>Página <strong>{currentPage}</strong> de <strong>{isNaN(totalPages) ? 1 : totalPages}</strong></span>
+                    <span>Página <strong>{currentPage}</strong> de <strong>{totalPages || 1}</strong></span>
                     <button onClick={goToNextPage} disabled={currentPage === totalPages || totalPages === 0}>
                         Siguiente →
                     </button>
@@ -142,6 +162,6 @@ const MeatLoad = () => {
             </div>
         </div>
     );
-}
+};
 
 export default MeatLoad;

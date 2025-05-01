@@ -48,7 +48,8 @@ h2 {
 }
 
 .formulario-corte {
-    background: #f8f9fa;
+    /* background: #f8f9fa; */
+    background: #fff;
     padding: 20px;
     border-radius: 10px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
@@ -170,4 +171,11 @@ h2 {
 .corte-encabezado {
     font-weight: bold;
     border-bottom: 2px solid #ccc;
+  }
+
+  .info-weight-observations{
+    width: 100%;
+     max-width: 900px;
+     display: flex;
+     justify-content: space-between;
   }

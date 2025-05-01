@@ -17,6 +17,8 @@ router.get("/product-primary-name",apiOperatorController.loadProductsPrimaryCate
 router.get("/stock-available",apiOperatorController.stockAvailable);
 //Api Cargar todos los productos 
 router.get("/product-name",apiOperatorController.loadAllProductsCategories);
+//Api Cargar ultimo boleta de venta del proveedor
+router.get("/last-provider-bill",apiOperatorController.loadLastBillSupplier);
 //Api para cargar productos
 router.post("/uploadProduct",apiOperatorController.uploadProducts);
 //Api para cargar productos de proceso

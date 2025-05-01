@@ -1,0 +1,165 @@
+.alltares-container {
+    padding: 2rem;
+    font-family: "Segoe UI", sans-serif;
+  }
+  
+  .title {
+    font-size: 1.8rem;
+    font-weight: bold;
+    margin-bottom: 1.5rem;
+    color: #333;
+  }
+  
+  /* Top bar: buscador y botón */
+  .top-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  
+  .search-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .search-section label {
+    font-size: 0.75rem;
+    font-weight: bold;
+    color: #666;
+  }
+  
+  .search-input {
+    padding: 0.75rem;
+    width: 200px;
+    border: none;
+    background-color: #e5e5e5;
+    border-radius: 6px;
+    font-size: 0.95rem;
+  }
+  
+  .search-button {
+    padding: 0.75rem 1.5rem;
+    border: 2px solid #0077b6;
+    background: white;
+    color: #0077b6;
+    font-weight: bold;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  
+  .search-button:hover {
+    background-color: #0077b6;
+    color: white;
+  }
+  
+  /* Nueva tara button */
+  .new-button {
+    background-color: #0077b6;
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 0.95rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .new-button:hover {
+    background-color: #005f8d;
+  }
+  
+  /* Tabla */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95rem;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
+  }
+  
+  thead {
+    background-color: #f0f4fa;
+  }
+  
+  th {
+    text-align: left;
+    padding: 0.85rem;
+    color: #555;
+    font-weight: bold;
+    border-bottom: 1px solid #e0e0e0;
+  }
+  
+  td {
+    padding: 0.85rem;
+    border-bottom: 1px solid #f0f0f0;
+    color: #333;
+  }
+  
+  /* Botones de acciones */
+  .edit-button {
+    background-color: #e0f0ff;
+    border: none;
+    padding: 0.4rem 0.6rem;
+    margin-right: 0.5rem;
+    border-radius: 6px;
+    cursor: pointer;
+    color: #0077b6;
+  }
+  
+  .delete-button {
+    background-color: #fde2e2;
+    border: none;
+    padding: 0.4rem 0.6rem;
+    border-radius: 6px;
+    cursor: pointer;
+    color: #d62828;
+  }
+  
+  .edit-button:hover {
+    background-color: #cbe7ff;
+  }
+  
+  .delete-button:hover {
+    background-color: #f9bdbd;
+  }
+  .pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 20px;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+.pagination button {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    margin: 0 5px;
+    cursor: pointer;
+    border-radius: 5px;
+    transition: background 0.3s ease;
+}
+
+.pagination button:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+}
+
+.pagination button:hover:not(:disabled) {
+    background-color: #0056b3;
+}
+
+.pagination span {
+    margin: 0 10px;
+    color: #333;
+}
+  

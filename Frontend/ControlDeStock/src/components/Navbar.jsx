@@ -1,16 +1,18 @@
-import { useContext} from "react";
+import { useContext } from "react";
 import { AuthContext } from "../context/AuthProvider.jsx";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faSignOutAlt } from "@fortawesome/free-solid-svg-icons";
+import { faSignOutAlt, faHouse } from "@fortawesome/free-solid-svg-icons";
 import "./styles/navbar.css";
 
 
 const Navbar = () => {
-    const { userlogout,logout,user } = useContext(AuthContext);
-   
+    const { userlogout, logout, user } = useContext(AuthContext);
+
     return (
         <div className="navbar">
-            <a href="/dashboard" className="navbar-inicio">INICIO</a>
+            <a href="/dashboard" className="navbar-inicio">
+                <FontAwesomeIcon icon={faHouse} />
+            </a>
             <div className="navbar-options">
                 <a href="#">Configuración</a>
                 <a href="#" onClick={logout}>

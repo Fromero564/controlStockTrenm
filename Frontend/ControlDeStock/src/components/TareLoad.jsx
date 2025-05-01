@@ -1,8 +1,14 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import Navbar from "./Navbar";
+import './styles/Tareload.css';
 
 const Tareload = () => {
     const [tare, setTare] = useState({});
-    const [mensaje, setMensaje] = useState(null); 
+    const [mensaje, setMensaje] = useState(null);
+    const navigate = useNavigate();
+ 
+
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -42,19 +48,29 @@ const Tareload = () => {
 
     return (
         <>
-            <h1>NUEVA TARA</h1>
+            <Navbar />
+       
 
             {mensaje && <p>{mensaje}</p>}
+            <div className="tara-form-container">
+                <h1 className="tara-form-title">NUEVA TARA</h1>
 
-            <form onSubmit={handleSubmit}>
-                <label htmlFor="tareName">Nombre</label>
-                <input type="text" name="tareName" id="tareName" placeholder="Nombre" required />
+                {mensaje && <p className="tara-form-message">{mensaje}</p>}
 
-                <label htmlFor="tareWeight">Peso Kg</label>
-                <input type="number" name="tareWeight" id="tareWeight" placeholder="Peso Kg" step="0.01" required />
+                <form className="tara-form" onSubmit={handleSubmit}>
+                    <label htmlFor="tareName" className="tara-label">NOMBRE</label>
+                    <input type="text" name="tareName" id="tareName" placeholder="Nombre" required className="tara-input" />
 
-                <button type="submit">Cargar</button>
-            </form>
+                    <label htmlFor="tareWeight" className="tara-label">PESO KG</label>
+                    <input type="number" name="tareWeight" id="tareWeight" placeholder="Peso Kg" step="0.01" required className="tara-input" />
+
+                    <div className="tara-form-buttons">
+                        <button type="submit" className="tara-btn-primary">Agregar tara</button>
+                        <button type="button" className="tara-btn-secondary" onClick={() => navigate("/operator-panel")}>Cancelar</button>
+                    </div>
+                </form>
+            </div>
+
         </>
     );
 };

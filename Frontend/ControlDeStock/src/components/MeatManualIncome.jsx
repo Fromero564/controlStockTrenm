@@ -18,7 +18,7 @@ const MeatManualIncome = () => {
         tipo: "",
         cabeza: 0,
         cantidad: 0,
-        pesoProveedor:0,
+        pesoProveedor: 0,
         pesoBruto: 0,
         tara: 0,
         garron: "",
@@ -81,19 +81,25 @@ const MeatManualIncome = () => {
         }
 
         try {
+            const payload = {
+                cortes: cortesAgregados,
+                observacion: formData.observaciones?.trim() || null,
+            };
+        
             const response = await fetch(`http://localhost:3000/addProducts/${data.id}`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify(cortesAgregados),
+                body: JSON.stringify(payload),
             });
-
-            if (!response.ok) throw new Error("Error al guardar los cortes");
-
+        
+            if (!response.ok) throw new Error("Error al guardar los datos");
             alert("Cortes guardados correctamente.");
             setCortesAgregados([]);
-        } catch (err) {
+        } 
+          
+         catch (err) {
             console.error("Error al enviar los cortes:", err);
             alert("Ocurrió un error al guardar los cortes.");
         }
@@ -120,16 +126,21 @@ const MeatManualIncome = () => {
 
     const handleChange = (e) => {
         const { name, value } = e.target;
-        let newValue = parseFloat(value);
-
-        if (name !== "tipo") {
-            newValue = isNaN(newValue) ? "" : Math.abs(newValue);
+    
+        if (["tipo", "observaciones", "garron"].includes(name)) {
+            // estos campos son texto
+            setFormData((prev) => ({
+                ...prev,
+                [name]: value,
+            }));
+        } else {
+            // estos campos son números
+            const numericValue = parseFloat(value);
+            setFormData((prev) => ({
+                ...prev,
+                [name]: isNaN(numericValue) ? "" : Math.abs(numericValue),
+            }));
         }
-
-        setFormData((prev) => ({
-            ...prev,
-            [name]: name === "tipo" ? value : newValue,
-        }));
     };
 
     const agregarCorte = () => {
@@ -147,7 +158,7 @@ const MeatManualIncome = () => {
             tipo: "",
             cabeza: 0,
             cantidad: 0,
-            pesoProveedor:0,
+            pesoProveedor: 0,
             pesoBruto: 0,
             tara: 0,
             garron: "",
@@ -166,6 +177,13 @@ const MeatManualIncome = () => {
         const date = new Date(dateString);
         return date.toLocaleDateString('es-AR');
     };
+
+    const avergeDataDiference = (PesoRomaneo, PesoNeto) => {
+        if (!PesoRomaneo || PesoRomaneo === 0) return NaN;
+        const porcentaje = (PesoNeto * 100) / PesoRomaneo;
+        return porcentaje - 100;
+    }
+
 
     if (loading) return <p>Cargando...</p>;
     if (error) return <p>Error: {error}</p>;
@@ -213,14 +231,14 @@ const MeatManualIncome = () => {
                         </div>
                         <div>
                             <label>CABEZA</label>
-                            <input type="number" name="cabeza" min="0" value={formData.cabeza} onChange={handleChange} required />
+                            <input type="number" name="cabeza" min="0" max="1" value={formData.cabeza} onChange={handleChange} required />
                         </div>
                         <div>
                             <label>CANTIDAD</label>
-                            <input type="number" name="cantidad" min="0" value={formData.cantidad} onChange={handleChange} required />
+                            <input type="number" name="cantidad" min="0" max="1" value={formData.cantidad} onChange={handleChange} required />
                         </div>
                         <div>
-                            <label>PESO DECLARADO PROVEEDOR </label>
+                            <label>PESO PROVEEDOR </label>
                             <input type="number" name="pesoProveedor" min="0" value={formData.pesoProveedor} onChange={handleChange} required />
                         </div>
 
@@ -257,7 +275,7 @@ const MeatManualIncome = () => {
                     <button className="btn-agregar" onClick={agregarCorte}>Agregar pieza +</button>
 
                     <div className="cortes-lista">
-                        <div className="corte-encabezado">
+                        {/* <div className="corte-encabezado">
                             <div><strong>TIPO</strong></div>
                             <div><strong>GARRON</strong></div>
                             <div><strong>CABEZA</strong></div>
@@ -267,7 +285,7 @@ const MeatManualIncome = () => {
                             <div><strong>TARA</strong></div>
                             <div><strong>PESO NETO</strong></div>
                             <div><strong>ACCIONES</strong></div>
-                        </div>
+                        </div> */}
 
                         {cortesAgregados.map((corte, index) => (
                             <div key={index} className="corte-mostrado">
@@ -303,18 +321,55 @@ const MeatManualIncome = () => {
                     </div>
 
 
+                </div>
+                <div className="info-weight-observations">
+                    <div>
+                        <h3>RESUMEN</h3>
+                        <div className="table-wrapper">
+                            <table className="stock-table">
+                                <thead>
+                                    <tr>
+                                        <th>TIPO</th>
+                                        <th>PESO NETO</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {cortesAgregados.map((corte, index) => {
+                                        const diferencia = avergeDataDiference(corte.pesoProveedor, corte.pesoNeto);
+                                        const color = diferencia >= 0 ? "green" : "red";
+                                        return (
+                                            <tr key={index}>
+                                                <td>{corte.tipo}</td>
+                                                <td>
+                                                    {corte.pesoNeto.toFixed(2)} kg{" "}
+                                                    <span style={{ color }}>
+                                                        ({diferencia.toFixed(1)}%)
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        )
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <textarea name="observaciones" id="" placeholder="Observaciones" value={formData.observaciones} onChange={handleChange}></textarea>
 
 
+                        <button className="btn-agregar" onClick={handleGuardar}>
+                            Guardar y terminar carga
+                        </button>
 
-                    <div className="total-peso">
-                        <strong>Total Peso Neto:</strong> {cortesAgregados.reduce((acc, item) => acc + (item.pesoBruto - item.tara), 0).toFixed(2)} kg
+                    </div>
+                    <div>
+                        <div className="total-peso">
+                            <strong>Total Peso Neto:</strong> {cortesAgregados.reduce((acc, item) => acc + (item.pesoBruto - item.tara), 0).toFixed(2)} kg
+                        </div>
+
                     </div>
                 </div>
-
-                <button className="btn-guardar" onClick={handleGuardar}>
-                    Guardar todo
-                </button>
             </div>
+
         </div>
     );
 };

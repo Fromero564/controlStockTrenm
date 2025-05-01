@@ -212,3 +212,11 @@
   background-color: #b02a37;
 }
 
+.provider-remit-romaneo{
+ display: flex;
+ justify-content: space-between;
+}
+
+.provider-remit-romaneo label{
+  max-width: 50%;
+}

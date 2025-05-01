@@ -11,24 +11,38 @@ const billDetail = db.BillDetail;
 const tare = db.Tare;
 const ProductsAvailable = db.ProductsAvailable;
 const ProcessMeat = db.ProcessMeat;
+const ObservationsMeatIncome = db.ObservationsMeatIncome;
 
 const operatorApiController = {
-    stockAvailable:async(req,res)=>{
+    loadLastBillSupplier:async(req,res)=>{
+        try {
+            const ultimoRegistro = await billSupplier.findOne({
+                order: [['id', 'DESC']], 
+            });
+    
+            res.json(ultimoRegistro);
+        } catch (error) {
+            console.error("Error al obtener el último registro:", error);
+            res.status(500).json({ error: "Error al obtener el último registro" });
+        }
+
+    },
+    stockAvailable: async (req, res) => {
         try {
             const billDetailProductos = await billDetail.findAll({
                 attributes: ['type', 'quantity'],
                 raw: true
             });
-    
+
             const processMeat = await ProcessMeat.findAll({
                 attributes: ['type', 'quantity'],
                 raw: true
             });
-    
-        
+
+
             const allProducts = [...billDetailProductos, ...processMeat];
-    
-       
+
+
             const grouped = allProducts.reduce((acc, item) => {
                 if (!acc[item.type]) {
                     acc[item.type] = 0;
@@ -36,19 +50,19 @@ const operatorApiController = {
                 acc[item.type] += item.quantity;
                 return acc;
             }, {});
-    
-            
+
+
             const result = Object.entries(grouped).map(([type, quantity]) => ({
                 type,
                 quantity
             }));
-    
+
             res.json(result);
         } catch (error) {
             console.error(error);
             res.status(500).json({ message: 'Error al obtener el stock disponible' });
         }
-       
+
     },
     alltares: async (req, res) => {
         try {
@@ -131,28 +145,28 @@ const operatorApiController = {
             return res.status(500).json({ message: "Error interno del servidor", error: error.message });
         }
     },
-    uploadProductsProcess:async(req,res)=>{
+    uploadProductsProcess: async (req, res) => {
         try {
-            console.log("Body recibido:", req.body); 
-        const{ tipo,promedio,cantidad,pesoBruto,tara,pesoNeto} = req.body;
 
-       if (!tipo || !promedio || !cantidad || !pesoBruto|| !tara|| !pesoNeto) {
-        return res.status(400).json({ message: "Faltan campos obligatorios." });
-       }
- 
-       await ProcessMeat.create({
-          type:tipo,
-          average:promedio,
-          quantity:cantidad,
-          gross_weight:pesoBruto,
-          tares:tara,
-          net_weight:pesoNeto,
-       })
-       return res.status(201).json({ message: "Corte guardado correctamente.", data: req.body });
-    }catch (error) {
-        console.error("Error al cargar datos:", error);
-        return res.status(500).json({ message: "Error interno del servidor", error: error.message });
-    }
+            const { tipo, promedio, cantidad, pesoBruto, tara, pesoNeto } = req.body;
+
+            if (!tipo || !promedio || !cantidad || !pesoBruto || !tara || !pesoNeto) {
+                return res.status(400).json({ message: "Faltan campos obligatorios." });
+            }
+
+            await ProcessMeat.create({
+                type: tipo,
+                average: promedio,
+                quantity: cantidad,
+                gross_weight: pesoBruto,
+                tares: tara,
+                net_weight: pesoNeto,
+            })
+            return res.status(201).json({ message: "Corte guardado correctamente.", data: req.body });
+        } catch (error) {
+            console.error("Error al cargar datos:", error);
+            return res.status(500).json({ message: "Error interno del servidor", error: error.message });
+        }
     },
     allProducts: async (req, res) => {
         try {
@@ -169,13 +183,17 @@ const operatorApiController = {
     addIncomeMeat: async (req, res) => {
         try {
             const Supplierid = req.params.id;
-            const cortes = req.body;
+            const { cortes, observacion } = req.body;  
+
+            console.log("Cortes:", cortes);
+            console.log("Observación:", observacion);
 
             if (!Array.isArray(cortes) || cortes.length === 0) {
                 return res.status(400).json({ mensaje: "El cuerpo de la solicitud debe contener una lista de productos." });
             }
 
             for (const corte of cortes) {
+                console.log("Datos del corte recibido:", corte);
                 const {
                     tipo,
                     garron,
@@ -184,7 +202,8 @@ const operatorApiController = {
                     pesoBruto,
                     tara,
                     pesoNeto,
-                    pesoProveedor
+                    pesoProveedor,
+
                 } = corte;
 
                 // Validación
@@ -209,6 +228,14 @@ const operatorApiController = {
                     gross_weight: pesoBruto,
                     tare: tara,
                     net_weight: pesoNeto
+                });
+
+
+            }
+            if (observacion) {
+                await ObservationsMeatIncome.create({
+                    id: Supplierid,
+                    observation:observacion,
                 });
             }
 
@@ -290,11 +317,11 @@ const operatorApiController = {
             console.error("Error al obtener productos:", error);
             return res.status(500).json({ message: "Error interno del servidor" });
         }
-       
+
     },
     loadAllProductsCategories: async (req, res) => {
         try {
-            const allProductsCategories= await ProductsAvailable.findAll({
+            const allProductsCategories = await ProductsAvailable.findAll({
                 attributes: ['product_name'],
             });
             const productNamesCategories = allProductsCategories.map(product => product.product_name);

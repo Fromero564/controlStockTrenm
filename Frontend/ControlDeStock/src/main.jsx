@@ -19,6 +19,7 @@ import ProtectedRoute from './components/ProtectedRoute.jsx';
 import Tareload from './components/TareLoad.jsx';
 import ProductionProcess from './components/ProductionProcess.jsx';;
 import GeneralStock from './components/GeneralStock.jsx'; 
+import Alltares from './components/Alltares.jsx';
 
 
 
@@ -132,6 +133,14 @@ const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <GeneralStock/>
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/all-tares",
+    element: (
+      <ProtectedRoute>
+        <Alltares/>
       </ProtectedRoute>
     ),
   },

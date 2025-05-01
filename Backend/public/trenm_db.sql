@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 25-04-2025 a las 02:12:44
+-- Tiempo de generación: 01-05-2025 a las 20:18:58
 -- Versión del servidor: 10.4.28-MariaDB
 -- Versión de PHP: 8.2.4
 
@@ -48,7 +48,10 @@ INSERT INTO `bill_details` (`id`, `bill_supplier_id`, `type`, `quantity`, `heads
 (4, 3, 'Media Res Padrillo', 101, 101, '2025-04-20 21:17:33', '2025-04-20 21:17:33'),
 (5, 4, 'Media Res Capon', 50, 50, '2025-04-20 21:18:09', '2025-04-20 21:18:09'),
 (6, 5, 'Capon', 1, 1, '2025-04-24 15:05:47', '2025-04-24 15:05:47'),
-(7, 6, 'Capon', 3, 3, '2025-04-25 00:06:01', '2025-04-25 00:06:01');
+(7, 6, 'Capon', 3, 3, '2025-04-25 00:06:01', '2025-04-25 00:06:01'),
+(8, 7, 'Media Res Capon', 1, 1, '2025-04-29 15:48:36', '2025-04-29 15:48:36'),
+(9, 7, 'Media Res Capon', 4, 1, '2025-04-29 15:48:36', '2025-04-29 15:48:36'),
+(10, 8, 'Media Res Capon', 1, 1, '2025-04-30 18:32:07', '2025-04-30 18:32:07');
 
 -- --------------------------------------------------------
 
@@ -78,7 +81,9 @@ INSERT INTO `bill_suppliers` (`id`, `supplier`, `total_weight`, `head_quantity`,
 (3, 'EMPRESASOFT', '939', 111, 9654, 'romaneo', '2025-04-20 21:17:33', '2025-04-20 21:17:33', 1),
 (4, 'EMPRESASOFT', '50000', 50, 968, 'manual', '2025-04-20 21:18:08', '2025-04-20 21:18:08', 0),
 (5, 'EMPRESASOFT', '588', 1, 4563, 'manual', '2025-04-24 15:05:47', '2025-04-24 15:05:47', 0),
-(6, 'EMPRESASOFT', '459', 3, 459, 'manual', '2025-04-25 00:06:00', '2025-04-25 00:06:00', 0);
+(6, 'EMPRESASOFT', '459', 3, 459, 'manual', '2025-04-25 00:06:00', '2025-04-25 00:06:00', 0),
+(7, 'EMPRESASOFT', '1271', 2, 22528528, 'romaneo', '2025-04-29 15:48:36', '2025-04-29 15:48:36', 1),
+(8, 'EMPRESASOFT', '120', 1, 2563, 'manual', '2025-04-30 18:32:07', '2025-04-30 18:32:07', 0);
 
 -- --------------------------------------------------------
 
@@ -104,7 +109,62 @@ CREATE TABLE `meat_manual_income` (
 --
 
 INSERT INTO `meat_manual_income` (`id`, `id_bill_suppliers`, `products_name`, `products_garron`, `products_quantity`, `product_head`, `provider_weight`, `gross_weight`, `tare`, `net_weight`) VALUES
-(515, 5, 'Capon', 515, '515', 515, 515, 515, 2.5, 512.5);
+(1, 5, 'Media Res Chancha', 1, '1', 1, 11561, 1, 150.3, -149.3),
+(10, 5, 'Media Res Capon', 10, '1', 1, 1546160, 11, 0, 11),
+(120, 8, 'Capon', 120, '1', 1, 1515, 15616, 150.3, 15465.7),
+(515, 5, 'Capon', 515, '515', 515, 515, 515, 2.5, 512.5),
+(1256, 8, 'Capon', 1256, '1', 1, 11515, 1515, 150.3, 1364.7),
+(6983, 8, 'Media Res Chancha', 6983, '1', 1, 12151, 1515, 2.5, 1512.5),
+(12452, 8, 'Media Res Capon', 12452, '1', 1, 1, 1, 2.5, -1.5),
+(15154, 8, 'Media Res Capon', 15154, '1', 1, 158652000, 15, 150.3, -135.3),
+(15156, 8, 'Media Res Capon', 15156, '1', 1, 11181, 15, 0, 15),
+(15615, 8, 'Media Res Capon', 15615, '151', 15156, 151, 151, 2.5, 148.5),
+(21114, 8, 'Capon', 21114, '1', 1, 15151, 14145, 2.5, 14142.5),
+(35235, 8, 'Media Res Capon', 35235, '1', 1, 1586180, 18518, 150.3, 18367.7);
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `observations_meatincome`
+--
+
+CREATE TABLE `observations_meatincome` (
+  `id` int(11) NOT NULL,
+  `observation` varchar(255) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Volcado de datos para la tabla `observations_meatincome`
+--
+
+INSERT INTO `observations_meatincome` (`id`, `observation`) VALUES
+(8, 'ewrwrwerwerwer');
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `process_meats`
+--
+
+CREATE TABLE `process_meats` (
+  `id` int(11) NOT NULL,
+  `type` varchar(255) NOT NULL,
+  `average` float NOT NULL,
+  `quantity` int(11) NOT NULL,
+  `gross_weight` float NOT NULL,
+  `tares` float NOT NULL,
+  `net_weight` float NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Volcado de datos para la tabla `process_meats`
+--
+
+INSERT INTO `process_meats` (`id`, `type`, `average`, `quantity`, `gross_weight`, `tares`, `net_weight`) VALUES
+(1, 'Capon', 36, 89, 8, 2.5, 5.5),
+(2, 'Media Res Chancha', 789, 10, 789, 150.3, 638.7),
+(3, 'Media Res Capon', 78, 78, 78, 2.5, 75.5),
+(4, 'Media Res Capon', 8, 8, 8, 2.5, 5.5);
 
 -- --------------------------------------------------------
 
@@ -127,7 +187,8 @@ INSERT INTO `products_available` (`id`, `product_name`, `product_category`) VALU
 (2, 'Media Res Capon', 'primario'),
 (3, 'Media Res Chancha', 'primario'),
 (4, 'Media Res Padrillo', 'primario'),
-(5, 'Cabezas', 'primario');
+(5, 'Cabezas', 'primario'),
+(9, 'Matambre', 'subproducto');
 
 -- --------------------------------------------------------
 
@@ -228,6 +289,18 @@ ALTER TABLE `meat_manual_income`
   ADD KEY `id_received_suppliers` (`id_bill_suppliers`);
 
 --
+-- Indices de la tabla `observations_meatincome`
+--
+ALTER TABLE `observations_meatincome`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indices de la tabla `process_meats`
+--
+ALTER TABLE `process_meats`
+  ADD PRIMARY KEY (`id`);
+
+--
 -- Indices de la tabla `products_available`
 --
 ALTER TABLE `products_available`
@@ -259,19 +332,25 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT de la tabla `bill_details`
 --
 ALTER TABLE `bill_details`
-  MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- AUTO_INCREMENT de la tabla `bill_suppliers`
 --
 ALTER TABLE `bill_suppliers`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+
+--
+-- AUTO_INCREMENT de la tabla `process_meats`
+--
+ALTER TABLE `process_meats`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT de la tabla `products_available`
 --
 ALTER TABLE `products_available`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
 
 --
 -- AUTO_INCREMENT de la tabla `providers`
