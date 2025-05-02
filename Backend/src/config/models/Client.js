@@ -1,53 +1,57 @@
 module.exports = (sequelize, dataTypes) => {
-    let alias = 'Provider';
+    let alias = 'Client';
     let cols = {
         id: {
             type: dataTypes.BIGINT(10).UNSIGNED,
             primaryKey: true,
             autoIncrement: true
         },
-        provider_name: {
+        client_name: {
             type: dataTypes.STRING(255),
             allowNull: false
         },
        
-        provider_type_id: {
+        client_type_id: {
             type: dataTypes.STRING(255),
             allowNull: false
         },
        
-        provider_id_number:{
+        client_id_number:{
             type: dataTypes.BIGINT(10),
             allowNull: false
         },
-        provider_iva_condition: {
+        client_iva_condition: {
             type: dataTypes.STRING(255),
             allowNull: false
         },
-        provider_email: {
+        client_email: {
             type: dataTypes.STRING(255),
             allowNull: false
         },
-        provider_phone: {
+        client_phone: {
             type: dataTypes.STRING(20), 
             allowNull: false
         },
-        provider_adress: {
+        client_adress: {
             type: dataTypes.STRING(255),
             allowNull: false
         },
-        provider_country: {
+        client_country: {
             type: dataTypes.STRING(255),
             allowNull: false
         },
-        provider_province: {
+        client_province: {
             type: dataTypes.STRING(255),
             allowNull: false
         },
-        provider_location: {
+        client_location: {
             type: dataTypes.STRING(255),
             allowNull: false
         },
+        client_state: {
+            type: dataTypes.BOOLEAN,
+            allowNull: false,
+        }
 
     };
 
@@ -56,9 +60,9 @@ module.exports = (sequelize, dataTypes) => {
     let config = {
         timestamps: false,
     };
-    const Provider = sequelize.define(alias, cols, config);
+    const Client = sequelize.define(alias, cols, config);
 
 
-    return Provider
+    return Client;
 
 };

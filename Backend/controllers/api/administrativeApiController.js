@@ -8,6 +8,7 @@ const productsAvailable = require("../../src/config/models/productsAvailable");
 const ProductsAvailable = db.ProductsAvailable;
 const Provider = db.Provider;
 const meatIncome = db.MeatIncome;
+const Client= db.Client;
 
 const administrativeApiController = {
     loadNewProduct: async (req, res) => {
@@ -30,18 +31,17 @@ const administrativeApiController = {
     },
     loadNewProvider: async (req, res) => {
 
-        const { nombreProveedor, codigoProveedor, identidad, numeroIdentidad, ivaCondicion, emailProveedor, telefonoProveedor, domicilioProveedor, paisProveedor, provinciaProveedor, localidadProveedor } = req.body;
+        const { nombreProveedor, identidad, numeroIdentidad, ivaCondicion, emailProveedor, telefonoProveedor, domicilioProveedor, paisProveedor, provinciaProveedor, localidadProveedor } = req.body;
 
         const proveedorExistente = await Provider.findOne({
             where: {
-                provider_code: codigoProveedor,
+                provider_id_number: numeroIdentidad,
             }
         });
 
         if (!proveedorExistente) {
             await Provider.create({
                 provider_name: nombreProveedor.toUpperCase(),
-                provider_code: codigoProveedor,
                 provider_type_id: identidad.toUpperCase(),
                 provider_id_number: numeroIdentidad,
                 provider_iva_condition: ivaCondicion.toUpperCase(),
@@ -59,6 +59,36 @@ const administrativeApiController = {
         }
 
     },
+    loadNewClient:async(req,res)=>{
+        console.log("REQ BODY:", req.body); 
+        const { nombreCliente, identidad, numeroIdentidad, ivaCondicion, emailCliente, telefonoCliente, domicilioCliente, paisCliente, provinciaCliente, localidadCliente,  client_state } = req.body;
+
+        const clienteExistente = await Client.findOne({
+            where: {
+                client_id_number: numeroIdentidad,
+            }
+        });
+
+        if (!clienteExistente) {
+            await Client.create({
+                client_name: nombreCliente.toUpperCase(),
+                client_type_id: identidad.toUpperCase(),
+                client_id_number: numeroIdentidad,
+                client_iva_condition: ivaCondicion.toUpperCase(),
+                client_email: emailCliente,
+                client_phone: telefonoCliente,
+                client_adress: domicilioCliente.toUpperCase(),
+                client_country: paisCliente.toUpperCase(),
+                client_province: provinciaCliente.toUpperCase(),
+                client_location: localidadCliente.toUpperCase(),
+                client_state: client_state === true || client_state === "true" ? true : false
+            });
+
+            return res.status(201).json({ mensaje: 'Ingreso registrado con éxito' });
+        } else {
+            return res.status(400).json({ mensaje: 'El cliente con ese código ya existe' });
+        }
+    },
   
     allProviders: async(req,res)=>{
        
@@ -70,6 +100,17 @@ const administrativeApiController = {
             return res.status(500).json({ message: "Error interno del servidor" });
         }
     },
+    allClients: async(req,res)=>{
+       
+        try {
+            const allClients = await Client.findAll();
+            res.json(allClients);
+        } catch (error) {
+            console.error("Error al obtener clientes:", error);
+            return res.status(500).json({ message: "Error interno del servidor" });
+        }
+    },
+
 
 }
 

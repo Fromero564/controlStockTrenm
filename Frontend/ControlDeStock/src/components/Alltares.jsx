@@ -51,6 +51,7 @@ const Alltares = () => {
                 <div className="top-bar">
                     <div className="search-section">
                         <label htmlFor="search">BUSCAR</label>
+                        <div className="search-input-label">
                         <input
                             type="text"
                             id="search"
@@ -63,6 +64,7 @@ const Alltares = () => {
                             className="search-input"
                         />
                         <button className="search-button">Buscar</button>
+                        </div>
                     </div>
                     <button className="new-button" onClick={() => navigate("/tare-load")}>
                         Nueva tara <FontAwesomeIcon icon={faPlus} />

@@ -125,7 +125,7 @@ const ProviderForm = () => {
     return (
         <div>
             <Navbar />
-            <div className="provider-form">
+            <div className="">
                 <form onSubmit={handleSubmit} className="form-container-provider">
                     <h2 className="form-title">INGRESAR MERCADERIA</h2>
 

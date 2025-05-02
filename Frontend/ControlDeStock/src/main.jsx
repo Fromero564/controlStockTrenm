@@ -20,7 +20,8 @@ import Tareload from './components/TareLoad.jsx';
 import ProductionProcess from './components/ProductionProcess.jsx';;
 import GeneralStock from './components/GeneralStock.jsx'; 
 import Alltares from './components/Alltares.jsx';
-
+import LoadNewClient from './components/LoadNewClient.jsx';
+import ClientList from './components/ClientList.jsx';
 
 
 const router = createBrowserRouter([
@@ -141,6 +142,22 @@ const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <Alltares/>
+      </ProtectedRoute>
+    ),
+  }, 
+  {
+    path: "/client-load",
+    element: (
+      <ProtectedRoute>
+        <LoadNewClient/>
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/client-list",
+    element: (
+      <ProtectedRoute>
+        <ClientList/>
       </ProtectedRoute>
     ),
   },

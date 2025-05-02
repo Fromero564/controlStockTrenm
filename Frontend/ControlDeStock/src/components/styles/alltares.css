@@ -1,5 +1,5 @@
 .alltares-container {
-    padding: 2rem;
+    padding: 1rem;
     font-family: "Segoe UI", sans-serif;
   }
   
@@ -48,6 +48,7 @@
     color: #0077b6;
     font-weight: bold;
     border-radius: 6px;
+    margin-left:5px;
     cursor: pointer;
     transition: all 0.2s ease;
   }
@@ -57,6 +58,9 @@
     color: white;
   }
   
+  .search-input-label{
+    display: flex;
+  }
   /* Nueva tara button */
   .new-button {
     background-color: #0077b6;
