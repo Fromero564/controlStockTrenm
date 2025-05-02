@@ -125,9 +125,9 @@ const ProviderForm = () => {
     return (
         <div>
             <Navbar />
-            <div className="">
+            <div className="new-register-container">
                 <form onSubmit={handleSubmit} className="form-container-provider">
-                    <h2 className="form-title">INGRESAR MERCADERIA</h2>
+                    <h2 className="form-title">Nuevo Registro</h2>
 
                     <label className="label-provider-form">
                         TIPO DE INGRESO

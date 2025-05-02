@@ -88,6 +88,7 @@ const MeatLoad = () => {
                    
                     <div className="search-section">
                         <label htmlFor="search">N°Comprobante</label>
+                        <div className="search-input-label">
                         <input
                             type="text"
                             id="search"
@@ -100,13 +101,12 @@ const MeatLoad = () => {
                             className="search-input"
                         />
                         <button className="search-button" onClick={() => setCurrentPage(1)}>Buscar</button>
+                        </div>
                     </div>
 
-                    <button className="new-button" onClick={() => navigate("/operator-panel")}>
-                        Volver panel operario
-                    </button>
+                    
                     <button className="new-button" onClick={() => navigate("/provider-form")}>
-                        Nueva mercadería +
+                        Nueva Ingreso +
                     </button>
                 </div>
 

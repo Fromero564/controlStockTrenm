@@ -6,7 +6,9 @@
     margin-top: 10px;
     margin-bottom: 50px;
   }
-  
+  .new-register-container{
+    margin-top: 20px;
+  }
   .form-container-provider {
     background: white;
     padding: 20px;

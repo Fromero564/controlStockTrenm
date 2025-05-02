@@ -111,7 +111,9 @@
     color: black;
 }
 
-
+.search-input-label{
+    display: flex;
+  }
 /*Pop-up*/
 .custom-popup {
     border-radius: 10px;
