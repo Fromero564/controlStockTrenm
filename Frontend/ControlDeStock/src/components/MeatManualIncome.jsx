@@ -129,6 +129,7 @@ const MeatManualIncome = () => {
         value: corte.nombre,
         label: corte.nombre,
     }));
+
     const handleGuardar = async () => {
         if (cortesAgregados.length === 0) {
             alert("No hay cortes agregados para guardar.");
@@ -141,6 +142,7 @@ const MeatManualIncome = () => {
                 observacion: formData.observaciones?.trim() || null,
             };
 
+            // 1. Enviar cortes
             const response = await fetch(`http://localhost:3000/addProducts/${data.id}`, {
                 method: "POST",
                 headers: {
@@ -149,16 +151,33 @@ const MeatManualIncome = () => {
                 body: JSON.stringify(payload),
             });
 
-            if (!response.ok) throw new Error("Error al guardar los datos");
-            alert("Cortes guardados correctamente.");
-            setCortesAgregados([]);
-        }
+            if (!response.ok) throw new Error("Error al guardar los cortes");
 
-        catch (err) {
-            console.error("Error al enviar los cortes:", err);
-            alert("Ocurrió un error al guardar los cortes.");
+          
+            const updatePayload = {
+                cantidad_animales_cargados: totalAnimalesCargados,
+                cantidad_cabezas_cargadas: totalCabezasCargadas,
+                peso_total_neto_cargado: totalKgNeto,
+            };
+
+            const updateResponse = await fetch(`http://localhost:3000/updateBillSupplier/${data.id}`, {
+                method: "PUT", 
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(updatePayload),
+            });
+
+            if (!updateResponse.ok) throw new Error("Error al actualizar el remito");
+
+            alert("Cortes y datos de resumen guardados correctamente.");
+            setCortesAgregados([]);
+            navigate("/operator-panel");
+
+        } catch (err) {
+            console.error("Error al guardar los datos:", err);
+            alert("Ocurrió un error al guardar los datos.");
         }
-        navigate("/operator-panel");
     };
 
 

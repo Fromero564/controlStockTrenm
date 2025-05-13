@@ -14,12 +14,12 @@ const ProcessMeat = db.ProcessMeat;
 const ObservationsMeatIncome = db.ObservationsMeatIncome;
 
 const operatorApiController = {
-    loadLastBillSupplier:async(req,res)=>{
+    loadLastBillSupplier: async (req, res) => {
         try {
             const ultimoRegistro = await billSupplier.findOne({
-                order: [['id', 'DESC']], 
+                order: [['id', 'DESC']],
             });
-    
+
             res.json(ultimoRegistro);
         } catch (error) {
             console.error("Error al obtener el último registro:", error);
@@ -93,7 +93,7 @@ const operatorApiController = {
     },
     uploadProducts: async (req, res) => {
         try {
-          
+
             const { proveedor, pesoTotal, cabezas, romaneo, tipoIngreso, cantidad, cortes } = req.body;
 
             if (!proveedor || !pesoTotal || !cabezas || !romaneo) {
@@ -113,7 +113,7 @@ const operatorApiController = {
                 supplier: proveedor,
                 total_weight: pesoTotal,
                 head_quantity: cabezas,
-                quantity:cantidad,
+                quantity: cantidad,
                 romaneo_number: romaneo,
                 income_state: tipoIngreso,
                 check_state: tipoIngreso === "romaneo",
@@ -145,6 +145,36 @@ const operatorApiController = {
         } catch (error) {
             console.error("Error al cargar datos:", error);
             return res.status(500).json({ message: "Error interno del servidor", error: error.message });
+        }
+    },
+    updateBillSupplier: async (req, res) => {
+        const { id } = req.params;
+        const {
+            cantidad_animales_cargados,
+            cantidad_cabezas_cargadas,
+            peso_total_neto_cargado
+        } = req.body;
+
+        try {
+            const result = await billSupplier.update(
+                {
+                    total_weight: peso_total_neto_cargado,
+                    head_quantity: cantidad_cabezas_cargadas,
+                    quantity: cantidad_animales_cargados,
+                },
+                {
+                    where: { id: id },
+                }
+            );
+
+            if (result[0] === 0) {
+                return res.status(404).json({ message: "No se encontró el registro para actualizar" });
+            }
+
+            res.status(200).json({ message: "Registro actualizado correctamente" });
+        } catch (error) {
+            console.error("Error al actualizar:", error);
+            res.status(500).json({ message: "Error al actualizar el registro", error });
         }
     },
     uploadProductsProcess: async (req, res) => {
@@ -185,7 +215,7 @@ const operatorApiController = {
     addIncomeMeat: async (req, res) => {
         try {
             const Supplierid = req.params.id;
-            const { cortes, observacion } = req.body;  
+            const { cortes, observacion } = req.body;
 
             console.log("Cortes:", cortes);
             console.log("Observación:", observacion);
@@ -237,7 +267,7 @@ const operatorApiController = {
             if (observacion) {
                 await ObservationsMeatIncome.create({
                     id: Supplierid,
-                    observation:observacion,
+                    observation: observacion,
                 });
             }
 

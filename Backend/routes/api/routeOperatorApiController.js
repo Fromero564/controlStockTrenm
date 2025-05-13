@@ -27,6 +27,8 @@ router.post("/uploadProcessMeat",apiOperatorController.uploadProductsProcess);
 router.post("/tareLoad",apiOperatorController.tareLoad);
 //Api para cargar cortes que vienen por remito
 router.post("/addProducts/:id",apiOperatorController.addIncomeMeat);
+//Api para actualizar tabla
+router.put("/updateBillSupplier/:id",apiOperatorController.updateBillSupplier)
 //Api para eliminar un carga de producto proveniente del proveedor
 router.delete("/products/:id",apiOperatorController.deleteProduct);
 
