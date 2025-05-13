@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import Select from 'react-select';
 import Navbar from "./Navbar.jsx";
 import "./styles/providerForm.css";
 
@@ -8,7 +9,7 @@ const ProviderForm = () => {
     const [providers, setProviders] = useState([]);
     const [cortes, setCortes] = useState([]);
     const [cortesAgregados, setCortesAgregados] = useState([]);
-    const [ultimoRegistroFactura,setUltimoRegistroFactura]=useState([]);
+    const [ultimoRegistroFactura, setUltimoRegistroFactura] = useState([]);
     const [nuevoCorte, setNuevoCorte] = useState({
         tipo: "",
         cantidad: 0,
@@ -28,7 +29,7 @@ const ProviderForm = () => {
         fetch("http://localhost:3000/last-provider-bill")
             .then((response) => response.json())
             .then((data) => {
-            
+
                 const nuevoNumero = data?.id ? data.id + 1 : 1;
                 setUltimoRegistroFactura(nuevoNumero);
             })
@@ -54,7 +55,10 @@ const ProviderForm = () => {
 
         fetchProductos();
     }, []);
-
+    const opciones = cortes.map(corte => ({
+        value: corte.nombre,
+        label: corte.nombre
+    }));
     const handleCorteChange = (e) => {
         const { name, value } = e.target;
         setNuevoCorte({
@@ -65,10 +69,10 @@ const ProviderForm = () => {
 
     const agregarCorte = () => {
         if (!nuevoCorte.tipo || nuevoCorte.cantidad <= 0) return;
-    
+
         const existe = cortesAgregados.some(corte => corte.tipo === nuevoCorte.tipo);
-        if (existe) return; 
-    
+        if (existe) return;
+
         setCortesAgregados([...cortesAgregados, nuevoCorte]);
         setNuevoCorte({ tipo: "", cantidad: 0, cabezas: 0 });
     };
@@ -131,32 +135,33 @@ const ProviderForm = () => {
 
                     <label className="label-provider-form">
                         TIPO DE INGRESO
-                        <div className="radio-buttons">
-                            <div className="radius-style">
-                                <input
-                                    type="radio"
-                                    id="romaneo_check"
-                                    name="tipoIngreso"
-                                    value="romaneo"
-                                    checked={tipoIngreso === "romaneo"}
-                                    onChange={handleRadioChange}
-                                />
-                                <label htmlFor="romaneo_check">Romaneo</label>
-                            </div>
-
-                            <div className="radius-style">
-                                <input
-                                    type="radio"
-                                    id="manual_check"
-                                    name="tipoIngreso"
-                                    value="manual"
-                                    checked={tipoIngreso === "manual"}
-                                    onChange={handleRadioChange}
-                                />
-                                <label htmlFor="manual_check">Manual</label>
-                            </div>
-                        </div>
                     </label>
+                    <div className="radio-buttons">
+                        <div className="radius-style">
+                            <input
+                                type="radio"
+                                id="romaneo_check"
+                                name="tipoIngreso"
+                                value="romaneo"
+                                checked={tipoIngreso === "romaneo"}
+                                onChange={handleRadioChange}
+                            />
+                            <label htmlFor="romaneo_check">Romaneo</label>
+                        </div>
+
+                        <div className="radius-style">
+                            <input
+                                type="radio"
+                                id="manual_check"
+                                name="tipoIngreso"
+                                value="manual"
+                                checked={tipoIngreso === "manual"}
+                                onChange={handleRadioChange}
+                            />
+                            <label htmlFor="manual_check">Manual</label>
+                        </div>
+                    </div>
+
                     <div className="provider-remit-romaneo">
                         <label className="label-provider-form">
                             PROVEEDOR:
@@ -181,12 +186,15 @@ const ProviderForm = () => {
                             <div className="corte-card">
                                 <div className="input-group">
                                     <label>TIPO</label>
-                                    <select name="tipo" value={nuevoCorte.tipo} onChange={handleCorteChange}>
-                                        <option value="">Seleccionar corte</option>
-                                        {cortes.map((corte) => (
-                                            <option key={corte.id} value={corte.nombre}>{corte.nombre}</option>
-                                        ))}
-                                    </select>
+                                    <Select
+                                        options={opciones}
+                                        onChange={(selected) =>
+                                            setNuevoCorte({ ...nuevoCorte, tipo: selected?.value || "" })
+                                        }
+                                        value={opciones.find(o => o.value === nuevoCorte.tipo) || null}
+                                        placeholder={"Producto"}
+                                        isClearable
+                                    />
                                 </div>
                                 <div className="input-group">
                                     <label>CANTIDAD</label>
@@ -248,8 +256,8 @@ const ProviderForm = () => {
                     </label>
 
                     <label className="label-provider-form">
-                       SU COMPRABANTE INTERNO ES:
-                        <input type="number" name="pesoFinal" className="input"   value={ultimoRegistroFactura} disabled/>
+                        SU COMPRABANTE INTERNO ES:
+                        <input type="number" name="pesoFinal" className="input" value={ultimoRegistroFactura} disabled />
                     </label>
 
                     <div className="button-container">

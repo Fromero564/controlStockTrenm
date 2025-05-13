@@ -92,7 +92,8 @@ body {
 }
 
 .new-btn:hover {
-    background-color: #0056b3;
+    background-color: #0077b6;
+    color:white;
 }
 
 @media (max-width: 1024px) {

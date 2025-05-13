@@ -76,6 +76,21 @@ const LoadNewProvider = () => {
                         <label htmlFor="nombreProveedor">Nombre</label>
                         <input type="text" name="nombreProveedor" id="nombreProveedor" value={formData.nombreProveedor} onChange={handleChange} />
                     </div>
+                    <div className="form-group-provider">
+                        <label htmlFor="ivaCondicion">Condición IVA</label>
+                        <select name="ivaCondicion" id="ivaCondicion" value={formData.ivaCondicion} onChange={handleChange}>
+                            <option value="iva Responsable Inscripto">IVA Responsable Inscripto</option>
+                            <option value="iva Sujeto Exento">IVA Sujeto Exento</option>
+                            <option value="consumidor Final">Consumidor Final</option>
+                            <option value="responsable Monotributo">Responsable Monotributo</option>
+                            <option value="sujeto No Categorizado">Sujeto No Categorizado</option>
+                            <option value="proveedor Del Exterior">Proveedor del Exterior</option>
+                            <option value="cliente Del Exterior">Cliente del Exterior</option>
+                            <option value="iva Liberado">IVA Liberado - LEY N19640</option>
+                            <option value="monotributo Social">Monotributo Social</option>
+                            <option value="iva No Alcanzado">IVA No Alcanzado</option>
+                        </select>
+                    </div>
 
                     <div className="form-group-provider">
                         <label htmlFor="identidad">Tipo de identificación</label>
@@ -92,21 +107,7 @@ const LoadNewProvider = () => {
                         <input type="number" name="numeroIdentidad" id="numeroIdentidad" value={formData.numeroIdentidad} onChange={handleChange} />
                     </div>
 
-                    <div className="form-group-provider">
-                        <label htmlFor="ivaCondicion">Condición IVA</label>
-                        <select name="ivaCondicion" id="ivaCondicion" value={formData.ivaCondicion} onChange={handleChange}>
-                            <option value="iva Responsable Inscripto">IVA Responsable Inscripto</option>
-                            <option value="iva Sujeto Exento">IVA Sujeto Exento</option>
-                            <option value="consumidor Final">Consumidor Final</option>
-                            <option value="responsable Monotributo">Responsable Monotributo</option>
-                            <option value="sujeto No Categorizado">Sujeto No Categorizado</option>
-                            <option value="proveedor Del Exterior">Proveedor del Exterior</option>
-                            <option value="cliente Del Exterior">Cliente del Exterior</option>
-                            <option value="iva Liberado">IVA Liberado - LEY N19640</option>
-                            <option value="monotributo Social">Monotributo Social</option>
-                            <option value="iva No Alcanzado">IVA No Alcanzado</option>
-                        </select>
-                    </div>
+                  
 
                     <div className="form-group-provider">
                         <label htmlFor="emailProveedor">Email</label>

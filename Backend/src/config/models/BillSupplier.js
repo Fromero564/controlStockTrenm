@@ -17,6 +17,10 @@ module.exports = (sequelize, dataTypes) => {
         head_quantity: {
             type: dataTypes.STRING(255),
             allowNull: false
+        },  
+         quantity: {
+            type: dataTypes.BIGINT(10),
+            allowNull: false
         },
 
 

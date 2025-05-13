@@ -93,6 +93,7 @@ const operatorApiController = {
     },
     uploadProducts: async (req, res) => {
         try {
+          
             const { proveedor, pesoTotal, cabezas, romaneo, tipoIngreso, cantidad, cortes } = req.body;
 
             if (!proveedor || !pesoTotal || !cabezas || !romaneo) {
@@ -112,6 +113,7 @@ const operatorApiController = {
                 supplier: proveedor,
                 total_weight: pesoTotal,
                 head_quantity: cabezas,
+                quantity:cantidad,
                 romaneo_number: romaneo,
                 income_state: tipoIngreso,
                 check_state: tipoIngreso === "romaneo",

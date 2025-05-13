@@ -147,10 +147,7 @@ const ProductionProcess = () => {
                                 ))}
                             </select>
                         </div>
-                        <div>
-                            <label>PROMEDIO</label>
-                            <input type="text" name="promedio" value={formData.promedio} onChange={handleChange} required />
-                        </div>
+                     
                         <div>
                             <label>CANTIDAD</label>
                             <input type="number" name="cantidad" value={formData.cantidad} min="0" onChange={handleChange} required />
@@ -160,7 +157,7 @@ const ProductionProcess = () => {
                             <label>PESO BRUTO </label>
                             <input type="number" name="pesoBruto" value={formData.pesoBruto} min="0" onChange={handleChange} required />
                         </div>
-
+                         
 
 
                         <div>
@@ -194,6 +191,10 @@ const ProductionProcess = () => {
                                 disabled
                             />
                         </div>
+                        <div>
+                            <label>PROMEDIO</label>
+                            <input type="text" name="promedio" value={formData.promedio} onChange={handleChange} required />
+                        </div>
 
                     </div>
 
@@ -201,12 +202,13 @@ const ProductionProcess = () => {
                     <div className="cortes-lista">
                         <div className="corte-encabezado">
                             <div><strong>TIPO</strong></div>
-                            <div><strong>PROMEDIO</strong></div>
+                           
                             <div><strong>CANTIDAD</strong></div>
                             <div><strong>PESO BRUTO</strong></div>
                             <div><strong>TARA</strong></div>
                             <div><strong>PESO NETO</strong></div>
                             <div><strong>ACCIONES</strong></div>
+                            <div><strong>PROMEDIO</strong></div>
                         </div>
 
                         {cortesAgregados.map((corte, index) => (
@@ -220,11 +222,7 @@ const ProductionProcess = () => {
                                     </select>
                                 </div>
 
-                                {/* PROMEDIO */}
-                                <div>
-                                    <input type="text" value={corte.promedio} disabled />
-                                </div>
-
+                             
                                 {/* CANTIDAD */}
                                 <div>
                                     <input type="number" value={corte.cantidad} disabled />
@@ -248,6 +246,11 @@ const ProductionProcess = () => {
                                 <div>
                                     <input type="number" value={(corte.pesoBruto - corte.tara).toFixed(2)} disabled />
                                 </div>
+                                   {/* PROMEDIO */}
+                                   <div>
+                                    <input type="text" value={corte.promedio} disabled />
+                                </div>
+
 
                                 {/* BOTÓN ELIMINAR */}
                                 <div>

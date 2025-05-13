@@ -119,7 +119,7 @@ const MeatLoad = () => {
                             <th>Hora</th>
                             <th>N° Romaneo</th>
                             <th>Estado de Carga</th>
-                            <th>Peso Romaneo</th>
+                            <th>Peso recepción Romaneo</th>
                             <th>Cabezas</th>
                             <th>Peso Recepcion</th>
                             <th>Acciones</th>

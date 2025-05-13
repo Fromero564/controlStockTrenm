@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from "react-router-dom";
-
+import Select from 'react-select';
 import { useState, useEffect } from "react";
 import Navbar from "./Navbar";
 import "./styles/meatmanualincome.css";
@@ -7,6 +7,7 @@ import "./styles/meatmanualincome.css";
 const MeatManualIncome = () => {
     const navigate = useNavigate();
     const { remitoId } = useParams();
+    const [cantidad, setCantidad] = useState(null);
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -22,7 +23,26 @@ const MeatManualIncome = () => {
         pesoBruto: 0,
         tara: 0,
         garron: "",
+        observaciones: "",
     });
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const response = await fetch(`http://localhost:3000/find-remit/${remitoId}`);
+                if (!response.ok) throw new Error("Error en la solicitud");
+
+                const result = await response.json();
+                setData(result);
+            } catch (error) {
+                setError(error.message);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchData();
+    }, [remitoId]);
+
 
 
 
@@ -50,6 +70,34 @@ const MeatManualIncome = () => {
 
         fetchProductos();
     }, []);
+
+    useEffect(() => {
+        const fetchCantidad = async () => {
+            try {
+                const response = await fetch("http://localhost:3000/allProducts");
+                const allData = await response.json();
+
+                console.log("Data del remito:", data);
+                console.log("Productos recibidos:", allData);
+
+                const cortesDelRemito = allData.filter(item => item.id === data?.id);
+                console.log("Filtrados por remito:", cortesDelRemito);
+
+                const cantidadTotal = cortesDelRemito.reduce((acc, item) => acc + Number(item.quantity || 0), 0);
+                console.log("Cantidad total:", cantidadTotal);
+
+                setCantidad(cantidadTotal);
+            } catch (err) {
+                console.error("Error al obtener cantidad:", err);
+            }
+        };
+
+        if (data?.id) {
+            fetchCantidad();
+        }
+    }, [data]);
+
+
     useEffect(() => {
         const fetchTares = async () => {
             try {
@@ -74,6 +122,13 @@ const MeatManualIncome = () => {
         fetchTares();
     }, []);
 
+
+
+
+    const opcionesCortes = cortes.map((corte) => ({
+        value: corte.nombre,
+        label: corte.nombre,
+    }));
     const handleGuardar = async () => {
         if (cortesAgregados.length === 0) {
             alert("No hay cortes agregados para guardar.");
@@ -85,7 +140,7 @@ const MeatManualIncome = () => {
                 cortes: cortesAgregados,
                 observacion: formData.observaciones?.trim() || null,
             };
-        
+
             const response = await fetch(`http://localhost:3000/addProducts/${data.id}`, {
                 method: "POST",
                 headers: {
@@ -93,40 +148,24 @@ const MeatManualIncome = () => {
                 },
                 body: JSON.stringify(payload),
             });
-        
+
             if (!response.ok) throw new Error("Error al guardar los datos");
             alert("Cortes guardados correctamente.");
             setCortesAgregados([]);
-        } 
-          
-         catch (err) {
+        }
+
+        catch (err) {
             console.error("Error al enviar los cortes:", err);
             alert("Ocurrió un error al guardar los cortes.");
         }
         navigate("/operator-panel");
     };
 
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const response = await fetch(`http://localhost:3000/find-remit/${remitoId}`);
-                if (!response.ok) throw new Error("Error en la solicitud");
 
-                const result = await response.json();
-                setData(result);
-            } catch (error) {
-                setError(error.message);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchData();
-    }, [remitoId]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
-    
+
         if (["tipo", "observaciones", "garron"].includes(name)) {
             // estos campos son texto
             setFormData((prev) => ({
@@ -178,11 +217,23 @@ const MeatManualIncome = () => {
         return date.toLocaleDateString('es-AR');
     };
 
-    const avergeDataDiference = (PesoRomaneo, PesoNeto) => {
-        if (!PesoRomaneo || PesoRomaneo === 0) return NaN;
-        const porcentaje = (PesoNeto * 100) / PesoRomaneo;
-        return porcentaje - 100;
-    }
+
+
+    const totalKgNeto = cortesAgregados.reduce((acc, item) => acc + item.pesoNeto, 0);
+    const pesoTotalRomaneo = data?.total_weight ?? 0;
+    const diferenciaPeso = totalKgNeto - pesoTotalRomaneo;
+    const porcentajeDiferencia = pesoTotalRomaneo > 0 ? (diferenciaPeso / pesoTotalRomaneo) * 100 : 0;
+
+    let colorDiferencia = "blue";
+    if (porcentajeDiferencia < 0) colorDiferencia = "red";
+    else if (porcentajeDiferencia > 0) colorDiferencia = "green";
+
+    // Suma total de animales cargados (cantidad)
+    const totalAnimalesCargados = cortesAgregados.reduce((acc, item) => acc + item.cantidad, 0);
+
+    // Suma total de cabezas cargadas
+    const totalCabezasCargadas = cortesAgregados.reduce((acc, item) => acc + item.cabeza, 0);
+
 
 
     if (loading) return <p>Cargando...</p>;
@@ -200,13 +251,13 @@ const MeatManualIncome = () => {
                             <div className="mercaderia-info-row">
                                 <div><p className="label">PROVEEDOR:</p><p>{data.supplier.toUpperCase()}</p></div>
                                 <div><p className="label">TIPO DE INGRESO:</p><p>{data.income_state.toUpperCase()}</p></div>
-                                <div><p className="label">HORARIO:</p><p>{formatTime(data.createdAt)}</p></div>
+                                <div><p className="label">HORARIO Y FECHA:</p><p>{formatTime(data.createdAt)}  {formatDate(data.createdAt)}</p></div>
                                 <div><p className="label">N° COMPROBANTE ROMANEO:</p><p>{data.romaneo_number}</p></div>
                             </div>
                             <div className="mercaderia-info-row">
                                 <div><p className="label">PESO TOTAL DECLARADO EN ROMANEO:</p><p>{data.total_weight} KG</p></div>
                                 <div><p className="label">CANTIDAD CABEZAS:</p><p>{data.head_quantity}</p></div>
-                                <div><p className="label">Fecha:</p><p>{formatDate(data.createdAt)}</p></div>
+                                <div><p className="label">CANTIDAD ANIMALES:</p><p>{cantidad !== null ? cantidad : "..."}</p></div>
                                 <div><p className="label">COMPROBANTE INTERNO:</p><p>{data.id}</p></div>
                             </div>
                         </div>
@@ -218,12 +269,27 @@ const MeatManualIncome = () => {
                     <div className="form-group">
                         <div>
                             <label>TIPO</label>
-                            <select name="tipo" value={formData.tipo} onChange={handleChange} required>
-                                <option value="">Seleccionar</option>
-                                {cortes.map((corte) => (
-                                    <option key={corte.id} value={corte.nombre}>{corte.nombre}</option>
-                                ))}
-                            </select>
+
+                            <Select
+                                className="custom-select"
+                                classNamePrefix="mi-select"
+                                options={opcionesCortes}
+                                onChange={(selected) =>
+                                    setFormData((prev) => ({
+                                        ...prev,
+                                        tipo: selected?.value || "",
+                                    }))
+                                }
+                                value={opcionesCortes.find((o) => o.value === formData.tipo) || null}
+                                placeholder=""
+                                isClearable
+                                menuPortalTarget={document.body}
+                                styles={{
+                                    menuPortal: base => ({ ...base, zIndex: 9999 }),
+                                }}
+                            />
+
+
                         </div>
                         <div>
                             <label>GARRON</label>
@@ -314,7 +380,7 @@ const MeatManualIncome = () => {
                                     <p className="dato">{corte.pesoNeto.toFixed(2)} kg</p>
                                 </div>
                                 <div>
-                                    <button onClick={() => eliminarCorte(index)} className="btn-eliminar">Eliminar</button>
+                                    <button onClick={() => eliminarCorte(index)} className="btn-eliminar">X</button>
                                 </div>
                             </div>
                         ))}
@@ -330,44 +396,75 @@ const MeatManualIncome = () => {
                                 <thead>
                                     <tr>
                                         <th>TIPO</th>
-                                        <th>PESO NETO</th>
+                                        <th>CANTIDAD</th>
+                                        <th>CABEZAS</th>
+                                        <th>KG NETO</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {cortesAgregados.map((corte, index) => {
-                                        const diferencia = avergeDataDiference(corte.pesoProveedor, corte.pesoNeto);
-                                        const color = diferencia >= 0 ? "green" : "red";
-                                        return (
-                                            <tr key={index}>
-                                                <td>{corte.tipo}</td>
-                                                <td>
-                                                    {corte.pesoNeto.toFixed(2)} kg{" "}
-                                                    <span style={{ color }}>
-                                                        ({diferencia.toFixed(1)}%)
-                                                    </span>
-                                                </td>
-                                            </tr>
-                                        )
-                                    })}
+                                    {cortesAgregados.map((corte, index) => (
+                                        <tr key={index}>
+                                            <td>{corte.tipo}</td>
+                                            <td>{corte.cantidad}</td>
+                                            <td>{corte.cabeza}</td>
+                                            <td>{(corte.pesoNeto).toFixed(2)}</td>
+                                        </tr>
+                                    ))}
+                                    <tr>
+                                        <td><strong>Diferencia declarado en romaneo</strong></td>
+                                        <td style={{ color: cantidad > totalAnimalesCargados ? 'red' : 'green' }}>
+                                            {cantidad - totalAnimalesCargados}{' '}
+                                            <span>
+                                                (
+                                                {cantidad > 0 ? (((cantidad - totalAnimalesCargados) / cantidad) * 100).toFixed(0) : 0}
+                                                %)
+                                            </span>
+                                        </td>
+                                        <td style={{ color: data.head_quantity > totalCabezasCargadas ? 'red' : 'green' }}>
+                                            {data.head_quantity - totalCabezasCargadas}{' '}
+                                            <span>
+                                                (
+                                                {((
+                                                    ((data.head_quantity - totalCabezasCargadas) / data.head_quantity) *
+                                                    100
+                                                ).toFixed(0))}
+                                                %)
+                                            </span>
+                                        </td>
+                                        <td style={{ color: colorDiferencia }}>
+                                            {diferenciaPeso.toFixed(2)}{' '}
+                                            <span>
+                                                (
+                                                {porcentajeDiferencia > 0 ? '+' : ''}
+                                                {porcentajeDiferencia.toFixed(2)}%
+                                                )
+                                            </span>
+                                        </td>
+                                    </tr>
                                 </tbody>
+
                             </table>
                         </div>
 
-                        <textarea name="observaciones" id="" placeholder="Observaciones" value={formData.observaciones} onChange={handleChange}></textarea>
+                        <label htmlFor="observaciones" style={{ display: 'block', marginTop: '1rem' }}>OBSERVACIONES</label>
+                        <textarea
+                            name="observaciones"
+                            placeholder="Observaciones"
+                            value={formData.observaciones}
+                            onChange={handleChange}
+                            style={{ width: '100%', minHeight: '80px', marginBottom: '1rem' }}
+                        ></textarea>
 
-
-                        <button className="btn-agregar" onClick={handleGuardar}>
+                        <button
+                            className="btn-agregar"
+                            onClick={handleGuardar}
+                            style={{ backgroundColor: '#007bff', color: 'white', padding: '0.5rem 1rem', border: 'none', borderRadius: '4px' }}
+                        >
                             Guardar y terminar carga
                         </button>
-
-                    </div>
-                    <div>
-                        <div className="total-peso">
-                            <strong>Total Peso Neto:</strong> {cortesAgregados.reduce((acc, item) => acc + (item.pesoBruto - item.tara), 0).toFixed(2)} kg
-                        </div>
-
                     </div>
                 </div>
+
             </div>
 
         </div>
