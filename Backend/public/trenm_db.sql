@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 02-05-2025 a las 15:47:30
+-- Tiempo de generación: 15-05-2025 a las 00:24:58
 -- Versión del servidor: 10.4.28-MariaDB
 -- Versión de PHP: 8.2.4
 
@@ -37,6 +37,13 @@ CREATE TABLE `bill_details` (
   `updatedAt` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+--
+-- Volcado de datos para la tabla `bill_details`
+--
+
+INSERT INTO `bill_details` (`id`, `bill_supplier_id`, `type`, `quantity`, `heads`, `createdAt`, `updatedAt`) VALUES
+(6, 9, 'Media Res Capon', 40, 40, '2025-05-14 02:45:23', '2025-05-14 02:45:23');
+
 -- --------------------------------------------------------
 
 --
@@ -48,12 +55,20 @@ CREATE TABLE `bill_suppliers` (
   `supplier` varchar(255) NOT NULL,
   `total_weight` varchar(255) NOT NULL,
   `head_quantity` int(11) NOT NULL,
+  `quantity` int(11) NOT NULL,
   `romaneo_number` int(255) NOT NULL,
   `income_state` varchar(255) NOT NULL,
   `createdAt` timestamp NOT NULL DEFAULT current_timestamp(),
   `updatedAt` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `check_state` tinyint(1) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Volcado de datos para la tabla `bill_suppliers`
+--
+
+INSERT INTO `bill_suppliers` (`id`, `supplier`, `total_weight`, `head_quantity`, `quantity`, `romaneo_number`, `income_state`, `createdAt`, `updatedAt`, `check_state`) VALUES
+(9, 'TREMN SRL', '97.5', 40, 40, 1235, 'manual', '2025-05-13 19:12:07', '2025-05-14 02:45:23', 0);
 
 -- --------------------------------------------------------
 
@@ -95,6 +110,13 @@ CREATE TABLE `meat_manual_income` (
   `net_weight` float NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Volcado de datos para la tabla `meat_manual_income`
+--
+
+INSERT INTO `meat_manual_income` (`id`, `id_bill_suppliers`, `products_name`, `products_garron`, `products_quantity`, `product_head`, `provider_weight`, `gross_weight`, `tare`, `net_weight`) VALUES
+(120, 9, 'Matambre', 120, '1', 1, 100, 100, 2.5, 97.5);
+
 -- --------------------------------------------------------
 
 --
@@ -105,6 +127,14 @@ CREATE TABLE `observations_meatincome` (
   `id` int(11) NOT NULL,
   `observation` varchar(255) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Volcado de datos para la tabla `observations_meatincome`
+--
+
+INSERT INTO `observations_meatincome` (`id`, `observation`) VALUES
+(3, 'sin datos'),
+(9, 'NADA');
 
 -- --------------------------------------------------------
 
@@ -143,8 +173,7 @@ INSERT INTO `products_available` (`id`, `product_name`, `product_category`) VALU
 (2, 'Media Res Capon', 'primario'),
 (3, 'Media Res Chancha', 'primario'),
 (4, 'Media Res Padrillo', 'primario'),
-(5, 'Cabezas', 'primario'),
-(9, 'Matambre', 'subproducto');
+(5, 'Matambre', 'subproducto');
 
 -- --------------------------------------------------------
 
@@ -166,6 +195,13 @@ CREATE TABLE `providers` (
   `provider_location` varchar(255) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Volcado de datos para la tabla `providers`
+--
+
+INSERT INTO `providers` (`id`, `provider_name`, `provider_type_id`, `provider_id_number`, `provider_iva_condition`, `provider_email`, `provider_phone`, `provider_adress`, `provider_country`, `provider_province`, `provider_location`) VALUES
+(1, 'TREMN SRL', 'CUIT', 2147483647, 'IVA RESPONSABLE INSCRIPTO', 'tremn@tremn.com', '3364202020', 'AV PARQUE NORTE 111', 'ARGENTINA', 'BUENOS AIRES', 'SAN NICOLAS');
+
 -- --------------------------------------------------------
 
 --
@@ -177,6 +213,13 @@ CREATE TABLE `tares` (
   `tare_name` varchar(255) NOT NULL,
   `tare_weight` float NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Volcado de datos para la tabla `tares`
+--
+
+INSERT INTO `tares` (`id`, `tare_name`, `tare_weight`) VALUES
+(1, 'Cajon Plástico', 2.5);
 
 -- --------------------------------------------------------
 
@@ -274,13 +317,13 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT de la tabla `bill_details`
 --
 ALTER TABLE `bill_details`
-  MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT de la tabla `bill_suppliers`
 --
 ALTER TABLE `bill_suppliers`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
 
 --
 -- AUTO_INCREMENT de la tabla `clients`
@@ -298,19 +341,19 @@ ALTER TABLE `process_meats`
 -- AUTO_INCREMENT de la tabla `products_available`
 --
 ALTER TABLE `products_available`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT de la tabla `providers`
 --
 ALTER TABLE `providers`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT de la tabla `tares`
 --
 ALTER TABLE `tares`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT de la tabla `users`

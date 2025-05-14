@@ -46,7 +46,7 @@ const ClientList = ()=>{
    <div>
             <Navbar />
             <div className="container">
-            <h2>Clientes</h2>
+            <h1>Clientes</h1>
                 <div className="header">
                     
                     <div className="search-section">

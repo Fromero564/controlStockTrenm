@@ -83,7 +83,7 @@ const MeatLoad = () => {
         <div>
             <Navbar />
             <div className="container">
-            <h2>Mercaderías</h2>
+            <h1>Mercaderías</h1>
                 <div className="header">
                    
                     <div className="search-section">

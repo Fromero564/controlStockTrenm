@@ -46,7 +46,7 @@ const Alltares = () => {
         <>
             <Navbar />
             <div className="alltares-container">
-                <h2 className="title">Taras</h2>
+                <h1 className="title-taras">Taras</h1>
 
                 <div className="top-bar">
                     <div className="search-section">
