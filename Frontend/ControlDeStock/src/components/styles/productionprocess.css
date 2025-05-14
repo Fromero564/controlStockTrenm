@@ -1,0 +1,109 @@
+.pp-main-container {
+    padding: 2rem;
+}
+
+.pp-main-container h1 {
+    font-size: 2rem;
+    font-weight: bold;
+    text-align: left;
+    margin-bottom: 1.5rem;
+}
+
+.pp-formulario-corte {
+    background-color: #fff;
+    border-radius: 10px;
+    padding: 2rem;
+    max-width: 950px;
+    margin: 0 auto;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.pp-form-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.pp-form-group > div {
+    flex: 1;
+    min-width: 140px;
+}
+
+.pp-formulario-corte label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 0.3rem;
+}
+
+.pp-formulario-corte input,
+.pp-formulario-corte select {
+    width: 100%;
+    padding: 0.5rem;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+}
+
+.pp-btn-agregar,
+.pp-btn-guardar {
+    background-color: #007bff;
+    color: white;
+    padding: 0.7rem 1.5rem;
+    border: none;
+    border-radius: 5px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    margin-top: 1rem;
+}
+
+.pp-btn-agregar:hover,
+.pp-btn-guardar:hover {
+    background-color: #0056b3;
+}
+
+.pp-btn-eliminar {
+    background-color: #dc3545;
+    color: white;
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 5px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 5px;
+}
+
+.pp-btn-eliminar:hover {
+    background-color: #b02a37;
+}
+
+.pp-cortes-lista {
+    margin-top: 1rem;
+}
+
+.pp-corte-encabezado,
+.pp-corte-mostrado {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 0.5rem;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #ddd;
+}
+
+.pp-corte-encabezado {
+    background-color: #f0f0f0;
+    font-weight: bold;
+    padding: 0.75rem 0;
+}
+
+.pp-total-peso {
+    margin-top: 1rem;
+    font-size: 1.1rem;
+    font-weight: bold;
+}
+
+.pp-btn-guardar {
+    display: block;
+    margin: 2rem auto 0 auto;
+}
