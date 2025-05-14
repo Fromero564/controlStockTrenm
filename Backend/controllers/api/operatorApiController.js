@@ -147,6 +147,66 @@ const operatorApiController = {
             return res.status(500).json({ message: "Error interno del servidor", error: error.message });
         }
     },
+    updateProviderBill: async (req, res) => {
+        try {
+            const { id } = req.params;
+            const { proveedor, pesoTotal, romaneo, cabezas, cantidad, tipoIngreso, cortes } = req.body;
+
+            if (!id) return res.status(400).json({ message: "Falta el ID del registro a actualizar." });
+
+          
+            if (!proveedor || !pesoTotal || !romaneo || !cabezas) {
+                return res.status(400).json({ message: "Faltan campos obligatorios." });
+            }
+
+            await billSupplier.update(
+                {
+                    supplier: proveedor,
+                    total_weight: pesoTotal,
+                    romaneo_number: romaneo,
+                    head_quantity: cabezas,
+                    quantity: cantidad,
+                    income_state: tipoIngreso,
+                    check_state: tipoIngreso === "romaneo",
+                },
+                { where: { id } }
+            );
+
+         
+            if (Array.isArray(cortes)) {
+                for (const corte of cortes) {
+                    const { id: corteId, tipo, cantidad, cabezas } = corte;
+
+                    if (!tipo || cantidad == null || cabezas == null) {
+                        return res.status(400).json({ message: "Cada corte debe tener tipo, cantidad y cabezas." });
+                    }
+
+                    if (corteId) {
+                       
+                        await billDetail.update(
+                            { type: tipo, quantity: cantidad, heads: cabezas },
+                            { where: { id: corteId, bill_supplier_id: id } }
+                        );
+                    } else {
+                       
+                        await billDetail.create({
+                            bill_supplier_id: id,
+                            type: tipo,
+                            quantity: cantidad,
+                            heads: cabezas,
+                        });
+                    }
+                }
+            }
+
+            return res.status(200).json({ message: "Registro actualizado correctamente.", id });
+
+        } catch (error) {
+            console.error("Error al actualizar proveedor:", error);
+            return res.status(500).json({ message: "Error interno del servidor", error: error.message });
+        }
+    },
+
     updateBillSupplier: async (req, res) => {
         const { id } = req.params;
         const {
@@ -199,6 +259,34 @@ const operatorApiController = {
             console.error("Error al cargar datos:", error);
             return res.status(500).json({ message: "Error interno del servidor", error: error.message });
         }
+    },
+    chargeUpdateBillDetails: async (req, res) => {
+        const { id } = req.params;
+
+        try {
+            const billSupplierUpdate = await billSupplier.findOne({ where: { id } });
+            const billDetailsUpdate = await billDetail.findAll({ where: { bill_supplier_id: id } });
+
+            const formattedDetails = billDetailsUpdate.map(det => ({
+                id: det.id,
+                tipo: det.type,
+                cantidad: det.quantity,
+                cabezas: det.heads
+            }));
+
+            res.json({
+                proveedor: billSupplierUpdate.supplier,
+                peso_total: billSupplierUpdate.total_weight,
+                romaneo: billSupplierUpdate.romaneo_number,
+                internal_number: billSupplierUpdate.id,
+                tipo_ingreso: billSupplierUpdate.income_state,
+                detalles: formattedDetails
+            });
+        } catch (err) {
+            console.error(err);
+            res.status(500).json({ message: "Error al obtener datos del ingreso" });
+        }
+
     },
     allProducts: async (req, res) => {
         try {
@@ -362,6 +450,18 @@ const operatorApiController = {
         } catch (error) {
             console.error("Error al obtener productos:", error);
             return res.status(500).json({ message: "Error interno del servidor" });
+        }
+
+    },
+    deleteDetailProviderForm: async (req, res) => {
+        const { id } = req.params;
+
+        try {
+            await billDetail.destroy({ where: { id } });
+            res.json({ message: "Detalle eliminado correctamente" });
+        } catch (error) {
+            console.error(error);
+            res.status(500).json({ message: "Error al eliminar el detalle" });
         }
     },
 

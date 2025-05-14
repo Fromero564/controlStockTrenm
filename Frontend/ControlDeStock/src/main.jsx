@@ -18,7 +18,7 @@ import MeatManualIncome from './components/MeatManualIncome.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import Tareload from './components/TareLoad.jsx';
 import ProductionProcess from './components/ProductionProcess.jsx';;
-import GeneralStock from './components/GeneralStock.jsx'; 
+import GeneralStock from './components/GeneralStock.jsx';
 import Alltares from './components/Alltares.jsx';
 import LoadNewClient from './components/LoadNewClient.jsx';
 import ClientList from './components/ClientList.jsx';
@@ -117,7 +117,7 @@ const router = createBrowserRouter([
     path: "/tare-load",
     element: (
       <ProtectedRoute>
-        <Tareload/>
+        <Tareload />
       </ProtectedRoute>
     ),
   },
@@ -125,7 +125,7 @@ const router = createBrowserRouter([
     path: "/production-process",
     element: (
       <ProtectedRoute>
-        <ProductionProcess/>
+        <ProductionProcess />
       </ProtectedRoute>
     ),
   },
@@ -133,7 +133,7 @@ const router = createBrowserRouter([
     path: "/general-stock",
     element: (
       <ProtectedRoute>
-        <GeneralStock/>
+        <GeneralStock />
       </ProtectedRoute>
     ),
   },
@@ -141,15 +141,15 @@ const router = createBrowserRouter([
     path: "/all-tares",
     element: (
       <ProtectedRoute>
-        <Alltares/>
+        <Alltares />
       </ProtectedRoute>
     ),
-  }, 
+  },
   {
     path: "/client-load",
     element: (
       <ProtectedRoute>
-        <LoadNewClient/>
+        <LoadNewClient />
       </ProtectedRoute>
     ),
   },
@@ -157,7 +157,15 @@ const router = createBrowserRouter([
     path: "/client-list",
     element: (
       <ProtectedRoute>
-        <ClientList/>
+        <ClientList />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/provider-form/:id",
+    element: (
+      <ProtectedRoute>
+        <ProviderForm />
       </ProtectedRoute>
     ),
   },

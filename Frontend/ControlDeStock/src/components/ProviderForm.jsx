@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import Select from 'react-select';
 import Navbar from "./Navbar.jsx";
 import "./styles/providerForm.css";
@@ -10,6 +10,11 @@ const ProviderForm = () => {
     const [cortes, setCortes] = useState([]);
     const [cortesAgregados, setCortesAgregados] = useState([]);
     const [ultimoRegistroFactura, setUltimoRegistroFactura] = useState([]);
+    const [formState, setFormState] = useState({
+        proveedor: "",
+        pesoTotal: "",
+        romaneo: ""
+    });
     const [nuevoCorte, setNuevoCorte] = useState({
         tipo: "",
         cantidad: 0,
@@ -17,6 +22,67 @@ const ProviderForm = () => {
     });
 
     const navigate = useNavigate();
+
+    const { id } = useParams();
+
+    useEffect(() => {
+        if (id) {
+            const fetchData = async () => {
+                try {
+                    const response = await fetch(`http://localhost:3000/chargeUpdateBillDetails/${id}`);
+                    const data = await response.json();
+
+                    console.log(data)
+                    setTipoIngreso(data.tipo_ingreso);
+                    setUltimoRegistroFactura(data.internal_number);
+                    const cortesMapeados = data.detalles.map(corte => ({
+                        id: corte.id,
+                        tipo: corte.tipo || "",
+                        cantidad: Number(corte.cantidad) || 0,
+                        cabezas: Number(corte.cabezas) || 0
+                    }));
+                    setCortesAgregados(cortesMapeados);
+
+
+                    setFormState({
+                        proveedor: data.proveedor,
+                        pesoTotal: data.peso_total,
+                        romaneo: data.romaneo
+                    });
+
+                } catch (error) {
+                    console.error("Error al obtener datos para editar:", error);
+                }
+            };
+
+            fetchData();
+        }
+    }, [id]);
+
+    const eliminarCorte = async (index) => {
+        const corte = cortesAgregados[index];
+
+        // Si el corte tiene un id, eliminar en la base de datos
+        if (corte.id) {
+            try {
+                const response = await fetch(`http://localhost:3000/delete-bill-detail/${corte.id}`, {
+                    method: "DELETE"
+                });
+
+                if (!response.ok) {
+                    throw new Error("Error al eliminar el corte en el backend");
+                }
+            } catch (err) {
+                console.error("Error eliminando en backend:", err);
+                return; 
+            }
+        }
+
+        
+        const nuevosCortes = cortesAgregados.filter((_, i) => i !== index);
+        setCortesAgregados(nuevosCortes);
+    };
+
 
     useEffect(() => {
         fetch("http://localhost:3000/allProviders")
@@ -26,15 +92,16 @@ const ProviderForm = () => {
     }, []);
 
     useEffect(() => {
-        fetch("http://localhost:3000/last-provider-bill")
-            .then((response) => response.json())
-            .then((data) => {
-
-                const nuevoNumero = data?.id ? data.id + 1 : 1;
-                setUltimoRegistroFactura(nuevoNumero);
-            })
-            .catch((error) => console.error("Error al obtener ultima factura:", error));
-    }, []);
+        if (!id) {
+            fetch("http://localhost:3000/last-provider-bill")
+                .then((response) => response.json())
+                .then((data) => {
+                    const nuevoNumero = data?.id ? data.id + 1 : 1;
+                    setUltimoRegistroFactura(nuevoNumero);
+                })
+                .catch((error) => console.error("Error al obtener ultima factura:", error));
+        }
+    }, [id]);
     useEffect(() => {
         const fetchProductos = async () => {
             try {
@@ -83,9 +150,9 @@ const ProviderForm = () => {
         const totalCabezas = cortesAgregados.reduce((sum, corte) => sum + Number(corte.cabezas), 0);
 
         const formData = {
-            proveedor: e.target.proveedor.value,
-            pesoTotal: e.target.pesoTotal.value,
-            romaneo: e.target.romaneo.value,
+            proveedor: formState.proveedor,
+            pesoTotal: formState.pesoTotal,
+            romaneo: formState.romaneo,
             cantidad: totalCantidad,
             cabezas: totalCabezas,
             cortes: cortesAgregados,
@@ -93,8 +160,11 @@ const ProviderForm = () => {
         };
 
         try {
-            const response = await fetch("http://localhost:3000/uploadProduct", {
-                method: "POST",
+            const response = await fetch(  id 
+                ? `http://localhost:3000/update-provider-bill/${id}` 
+                : "http://localhost:3000/uploadProduct", {
+                
+               method: id ? "PUT" : "POST",
                 headers: {
                     "Content-Type": "application/json",
                 },
@@ -122,10 +192,10 @@ const ProviderForm = () => {
     const handleRadioChange = (e) => {
         setTipoIngreso(e.target.value);
     };
-    const eliminarCorte = (index) => {
-        const nuevosCortes = cortesAgregados.filter((_, i) => i !== index);
-        setCortesAgregados(nuevosCortes);
-    };
+    // const eliminarCorte = (index) => {
+    //     const nuevosCortes = cortesAgregados.filter((_, i) => i !== index);
+    //     setCortesAgregados(nuevosCortes);
+    // };
     return (
         <div>
             <Navbar />
@@ -165,7 +235,13 @@ const ProviderForm = () => {
                     <div className="provider-remit-romaneo">
                         <label className="label-provider-form">
                             PROVEEDOR:
-                            <select name="proveedor" className="input">
+                            <select
+                                name="proveedor"
+                                className="input"
+                                value={formState.proveedor}
+                                onChange={(e) => setFormState({ ...formState, proveedor: e.target.value })}
+                            >
+                                <option value="">Seleccionar proveedor</option>
                                 {providers.map((provider) => (
                                     <option key={provider.id} value={provider.provider_name}>
                                         {provider.provider_name}
@@ -176,7 +252,13 @@ const ProviderForm = () => {
 
                         <label className="label-provider-form">
                             Nº COMPROBANTE ROMANEO:
-                            <input type="number" name="romaneo" className="input" />
+                            <input
+                                type="number"
+                                name="romaneo"
+                                className="input"
+                                value={formState.romaneo}
+                                onChange={(e) => setFormState({ ...formState, romaneo: e.target.value })}
+                            />
                         </label>
                     </div>
                     {
@@ -252,7 +334,13 @@ const ProviderForm = () => {
 
                     <label className="label-provider-form">
                         PESO DECLARADO EN ROMANEO (KG):
-                        <input type="number" name="pesoTotal" className="input" />
+                        <input
+                            type="number"
+                            name="pesoTotal"
+                            className="input"
+                            value={formState.pesoTotal}
+                            onChange={(e) => setFormState({ ...formState, pesoTotal: e.target.value })}
+                        />
                     </label>
 
                     <label className="label-provider-form">

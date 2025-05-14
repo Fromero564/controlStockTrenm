@@ -20,8 +20,8 @@ const MeatLoad = () => {
             .catch((error) => console.error("Error al obtener productos:", error));
     }, []);
 
-    const handleEdit = (id, internalNumber) => {
-        navigate(`/meat-income/${id}/${internalNumber}`);
+    const handleEdit = (id) => {
+        navigate(`/provider-form/${id}`);
     };
 
     const handleDelete = (id, numeroRomaneo) => {
@@ -138,7 +138,7 @@ const MeatLoad = () => {
                                 <td>{product.head_quantity}</td>
                                 <td>{product.final_weight}</td>
                                 <td>
-                                    <button className="edit-button" onClick={() => handleEdit(product.id, product.internal_number)}>
+                                    <button className="edit-button" onClick={() => handleEdit(product.id)}>
                                         <FontAwesomeIcon icon={faPen} />
                                     </button>
                                     <button className="delete-button" onClick={() => handleDelete(product.id, product.romaneo_number)}>

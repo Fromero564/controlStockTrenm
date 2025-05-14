@@ -17,6 +17,8 @@ router.get("/product-primary-name",apiOperatorController.loadProductsPrimaryCate
 router.get("/stock-available",apiOperatorController.stockAvailable);
 //Api Cargar todos los productos 
 router.get("/product-name",apiOperatorController.loadAllProductsCategories);
+//Api para traer datos editar ingreso de boleta proveedor
+router.get("/chargeUpdateBillDetails/:id",apiOperatorController.chargeUpdateBillDetails);
 //Api Cargar ultimo boleta de venta del proveedor
 router.get("/last-provider-bill",apiOperatorController.loadLastBillSupplier);
 //Api para cargar productos
@@ -27,8 +29,12 @@ router.post("/uploadProcessMeat",apiOperatorController.uploadProductsProcess);
 router.post("/tareLoad",apiOperatorController.tareLoad);
 //Api para cargar cortes que vienen por remito
 router.post("/addProducts/:id",apiOperatorController.addIncomeMeat);
+//Api actualizar datos de la factura del proveedor 
+router.put("/update-provider-bill/:id",apiOperatorController.updateProviderBill);
 //Api para actualizar tabla
-router.put("/updateBillSupplier/:id",apiOperatorController.updateBillSupplier)
+router.put("/updateBillSupplier/:id",apiOperatorController.updateBillSupplier);
+//Api eliminar corte de la bd cuando se modifica detalle del proveedor
+router.delete("/delete-bill-detail/:id",apiOperatorController.deleteDetailProviderForm);
 //Api para eliminar un carga de producto proveniente del proveedor
 router.delete("/products/:id",apiOperatorController.deleteProduct);
 
