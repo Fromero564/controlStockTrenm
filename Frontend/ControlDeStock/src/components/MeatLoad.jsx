@@ -136,7 +136,7 @@ const MeatLoad = () => {
                                 <td>{product.check_state ? "Romaneo" : "Manual"}</td>
                                 <td>{product.total_weight}</td>
                                 <td>{product.head_quantity}</td>
-                                <td>{product.final_weight}</td>
+                                <td>{product.total_weight}</td>
                                 <td>
                                     <button className="edit-button" onClick={() => handleEdit(product.id)}>
                                         <FontAwesomeIcon icon={faPen} />
