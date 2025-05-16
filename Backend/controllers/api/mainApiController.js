@@ -48,11 +48,11 @@ const mainApiController = {
   login: async (req, res) => {
     try {
       const { username, password } = req.body;
-
+    
       // Buscar usuario en la BD
       const userData = await User.findOne({ where: { user: username } });
 
-      console.log(userData);
+  
       if (!userData) {
         return res.status(401).json({ message: "Credenciales inválidas" });
       }
@@ -69,8 +69,9 @@ const mainApiController = {
         rol: userData.dataValues.rol,
       }
 
-      const jwtGenerado = jwt.sign(userDataJson, process.env.JWT_ACCESS_SECRET, { expiresIn: '1h' });
-
+      // const jwtGenerado = jwt.sign(userDataJson, process.env.JWT_ACCESS_SECRET, { expiresIn: '1h' });
+      const jwtGenerado = jwt.sign(userDataJson, "Frigorifico", { expiresIn: '1h' });
+    
 
       res.json({ 
         token: jwtGenerado,

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "./Navbar";
 import './styles/loadNewProvider.css';
@@ -17,6 +17,8 @@ const LoadNewProvider = () => {
         provinciaProveedor: "",
         localidadProveedor: "",
     });
+
+    useEffect(()=>{},[])
 
     const handleChange = (e) => {
         setFormData({

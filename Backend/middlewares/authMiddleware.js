@@ -9,7 +9,8 @@ const authenticateJWT = (req, res, next) => {
     }
     console.log("Token recibido:", token);
 
-    jwt.verify(token, process.env.JWT_ACCESS_SECRET, (err, user) => {
+    // jwt.verify(token, process.env.JWT_ACCESS_SECRET, (err, user) => {
+    jwt.verify(token, "Frigorifico", (err, user) => {
 
         if (err) {
 

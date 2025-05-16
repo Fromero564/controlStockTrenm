@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPen, faTrash, faPlus } from "@fortawesome/free-solid-svg-icons";
+import { faPen, faXmark, faPlus } from "@fortawesome/free-solid-svg-icons";
 import './styles/alltares.css';
 import Navbar from "./Navbar";
 
@@ -89,7 +89,7 @@ const Alltares = () => {
                                         <FontAwesomeIcon icon={faPen} />
                                     </button>
                                     <button className="delete-button" onClick={() => console.log("Eliminar", tare.id)}>
-                                        <FontAwesomeIcon icon={faTrash} />
+                                        <FontAwesomeIcon icon={faXmark} />
                                     </button>
                                 </td>
                             </tr>

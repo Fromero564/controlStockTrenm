@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPen, faTrash} from "@fortawesome/free-solid-svg-icons";
+import { faPen, faXmark} from "@fortawesome/free-solid-svg-icons";
 import './styles/providerList.css'
 import Navbar from "./Navbar";
 
@@ -108,7 +108,7 @@ const ProviderList = () => {
                                         <FontAwesomeIcon icon={faPen} />
                                     </button>
                                     <button className="delete-button" onClick={() => console.log("Eliminar")}>
-                                        <FontAwesomeIcon icon={faTrash} />
+                                        <FontAwesomeIcon icon={faXmark} />
                                     </button>
                                 </td>
                             </tr>

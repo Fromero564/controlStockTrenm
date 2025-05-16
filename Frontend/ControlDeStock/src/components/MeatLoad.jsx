@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPen, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faPen, faXmark } from "@fortawesome/free-solid-svg-icons";
 import Navbar from "./Navbar.jsx";
 import Swal from "sweetalert2";
 import "./styles/meatLoad.css";
@@ -9,7 +9,7 @@ import "./styles/meatLoad.css";
 const MeatLoad = () => {
     const navigate = useNavigate();
     const [products, setProducts] = useState([]);
-    const [search, setSearch] = useState(""); // AGREGADO
+    const [search, setSearch] = useState(""); 
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
 
@@ -142,7 +142,7 @@ const MeatLoad = () => {
                                         <FontAwesomeIcon icon={faPen} />
                                     </button>
                                     <button className="delete-button" onClick={() => handleDelete(product.id, product.romaneo_number)}>
-                                        <FontAwesomeIcon icon={faTrash} />
+                                        {<FontAwesomeIcon icon={faXmark} />} 
                                     </button>
                                 </td>
                             </tr>
