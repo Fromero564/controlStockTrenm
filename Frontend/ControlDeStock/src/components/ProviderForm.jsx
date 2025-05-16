@@ -337,6 +337,7 @@ const ProviderForm = () => {
                         <input
                             type="number"
                             name="pesoTotal"
+                            step="0.01"
                             className="input"
                             min="0"
                             value={formState.pesoTotal}

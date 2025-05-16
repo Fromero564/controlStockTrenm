@@ -15,6 +15,7 @@ const MeatManualIncome = () => {
     const [cortesAgregados, setCortesAgregados] = useState([]);
     const [tares, setTares] = useState([]);
     const [taraSeleccionadaId, setTaraSeleccionadaId] = useState("");
+    const [isEditing, setIsEditing] = useState(false);
     const [formData, setFormData] = useState({
         tipo: "",
         cabeza: 0,
@@ -68,6 +69,11 @@ const MeatManualIncome = () => {
                 });
                 const cortesFormateados = result.cortes?.map(mapearCorteDesdeBackend) || [];
                 setCortesAgregados(cortesFormateados);
+
+                if (cortesFormateados.length > 0) {
+                setIsEditing(true);
+            }
+
 
                 if (result.observacion) {
                     setFormData((prev) => ({
@@ -182,6 +188,7 @@ const MeatManualIncome = () => {
 
     const actualizarObservacion = async (observacionId, nuevoTexto) => {
         try {
+
             const response = await fetch(`http://localhost:3000/observations-edit/${observacionId}`, {
                 method: 'PUT',
                 headers: {
@@ -214,11 +221,46 @@ const MeatManualIncome = () => {
         }
 
         try {
+
             const payload = {
                 cortes: cortesAgregados,
                 observacion: formData.observaciones?.trim() || null,
             };
+               if (isEditing) {
+                await handleGuardarObservacion()
+              const payloadMeat={
+                cortes:cortesAgregados,
+              }
+            // Lógica para edición
+            const response = await fetch(`http://localhost:3000/meat-income-edit/${data.id}`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(payloadMeat),
+            });
 
+            if (!response.ok) throw new Error("Error al editar los cortes");
+
+            const updatePayload = {
+                cantidad_animales_cargados: totalAnimalesCargados,
+                cantidad_cabezas_cargadas: totalCabezasCargadas,
+                peso_total_neto_cargado: totalKgNeto,
+            };
+
+            const updateResponse = await fetch(`http://localhost:3000/updateBillSupplier/${data.id}`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(updatePayload),
+            });
+
+            if (!updateResponse.ok) throw new Error("Error al actualizar el remito");
+
+            alert("Cortes editados correctamente.");
+
+        } else {
             const response = await fetch(`http://localhost:3000/addProducts/${data.id}`, {
                 method: "POST",
                 headers: {
@@ -243,13 +285,14 @@ const MeatManualIncome = () => {
                 },
                 body: JSON.stringify(updatePayload),
             });
-            await handleGuardarObservacion();
+
             if (!updateResponse.ok) throw new Error("Error al actualizar el remito");
 
             alert("Cortes y datos de resumen guardados correctamente.");
             setCortesAgregados([]);
             navigate("/operator-panel");
 
+        }
         } catch (err) {
             console.error("Error al guardar los datos:", err);
             alert("Ocurrió un error al guardar los datos.");
@@ -288,7 +331,8 @@ const MeatManualIncome = () => {
         };
         setCortesAgregados([...cortesAgregados, nuevoCorte]);
 
-        setFormData({
+        setFormData(prev => ({
+            ...prev,
             tipo: "",
             cabeza: 0,
             cantidad: 0,
@@ -296,7 +340,7 @@ const MeatManualIncome = () => {
             pesoBruto: 0,
             tara: 0,
             garron: "",
-        });
+        }));
     };
     const eliminarCorteBD = async (id) => {
         const response = await fetch(`http://localhost:3000/provider-item-delete/${id}`, {

@@ -207,22 +207,22 @@ const operatorApiController = {
         }
     },
 
-  updateObservationMeatIncome: async (req, res) => {
-    const { id } = req.params;
-    const { observation } = req.body;
+    updateObservationMeatIncome: async (req, res) => {
+        const { id } = req.params;
+        const { observation } = req.body;
 
-    try {
-        const resultado = await ObservationsMeatIncome.update(
-            { observation: observation },
-            { where: { id: id } }  
-        );
+        try {
+            const resultado = await ObservationsMeatIncome.update(
+                { observation: observation },
+                { where: { id: id } }
+            );
 
-        res.status(200).json({ mensaje: "Observación actualizada correctamente", resultado });
-    } catch (error) {
-        console.error("Error al actualizar observación:", error);
-        res.status(500).json({ mensaje: "Error al actualizar observación" });
-    }
-},
+            res.status(200).json({ mensaje: "Observación actualizada correctamente", resultado });
+        } catch (error) {
+            console.error("Error al actualizar observación:", error);
+            res.status(500).json({ mensaje: "Error al actualizar observación" });
+        }
+    },
 
     updateProductFromRemit: async (req, res) => {
         const { id } = req.params;
@@ -402,6 +402,62 @@ const operatorApiController = {
 
         } catch (error) {
             console.error("Error en la base de datos:", error);
+            return res.status(500).json({ mensaje: "Error en la base de datos", error: error.message });
+        }
+
+    },
+    editAddIncome: async (req, res) => {
+        try {
+            const Supplierid = req.params.id;
+            const { cortes } = req.body;
+
+            console.log("Cortes a actualizar:", cortes);
+
+            if (!Array.isArray(cortes) || cortes.length === 0) {
+                return res.status(400).json({ mensaje: "El cuerpo de la solicitud debe contener una lista de productos." });
+            }
+
+            // Eliminar los cortes existentes para ese remito
+            await meatIncome.destroy({
+                where: { id_bill_suppliers: Supplierid }
+            });
+
+            // Crear los nuevos cortes
+            for (const corte of cortes) {
+                const {
+                    tipo,
+                    garron,
+                    cabeza,
+                    cantidad,
+                    pesoBruto,
+                    tara,
+                    pesoNeto,
+                    pesoProveedor
+                } = corte;
+
+                // Validación
+                if (!tipo || !garron || cabeza == null || cantidad == null || pesoBruto == null || tara == null || pesoNeto == null) {
+                    return res.status(400).json({ mensaje: "Faltan campos obligatorios en al menos un producto." });
+                }
+
+                await meatIncome.create({
+                    id: garron,
+                    id_bill_suppliers: Supplierid,
+                    products_name: tipo,
+                    products_garron: garron,
+                    product_head: cabeza,
+                    products_quantity: cantidad,
+                    provider_weight: pesoProveedor,
+                    gross_weight: pesoBruto,
+                    tare: tara,
+                    net_weight: pesoNeto
+                });
+            }
+
+            return res.status(200).json({ mensaje: "Los productos fueron actualizados correctamente." });
+
+        } catch (error) {
+            console.error("Error al actualizar los cortes:", error);
             return res.status(500).json({ mensaje: "Error en la base de datos", error: error.message });
         }
 

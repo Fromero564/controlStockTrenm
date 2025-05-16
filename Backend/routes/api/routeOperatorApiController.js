@@ -35,8 +35,10 @@ router.post("/addProducts/:id",apiOperatorController.addIncomeMeat);
 router.put("/update-provider-bill/:id",apiOperatorController.updateProviderBill);
 //Api para actualizar tabla
 router.put("/updateBillSupplier/:id",apiOperatorController.updateBillSupplier);
-//Api para actualizar obsercaciones de carga de carne
+//Api para actualizar observaciones de carga de carne
 router.put("/observations-edit/:id",apiOperatorController.updateObservationMeatIncome);
+//Api para actualizar los cortes cargados en un remito
+router.put("/meat-income-edit/:id",apiOperatorController.editAddIncome);
 //Api eliminar corte de la bd cuando se modifica detalle del proveedor
 router.delete("/delete-bill-detail/:id",apiOperatorController.deleteDetailProviderForm);
 //Api para eliminar un carga de producto proveniente del proveedor
