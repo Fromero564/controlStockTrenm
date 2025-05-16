@@ -24,6 +24,7 @@ const MeatManualIncome = () => {
         tara: 0,
         garron: "",
         observaciones: "",
+        observacionId: null,
     });
     useEffect(() => {
         const fetchData = async () => {
@@ -43,7 +44,46 @@ const MeatManualIncome = () => {
         fetchData();
     }, [remitoId]);
 
+    useEffect(() => {
+        const fetchCortesYaCargados = async () => {
+            if (!data?.id) return;
 
+            try {
+                const response = await fetch(`http://localhost:3000/getProductsFromRemito/${data.id}`);
+                if (!response.ok) throw new Error("No se pudieron obtener los cortes ya cargados");
+
+                const result = await response.json();
+
+
+                const mapearCorteDesdeBackend = (item) => ({
+                    id: item.id,
+                    tipo: item.products_name || "",
+                    cabeza: item.product_head ?? 0,
+                    cantidad: parseFloat(item.products_quantity) || 0,
+                    pesoProveedor: parseFloat(item.provider_weight) || 0,
+                    pesoBruto: parseFloat(item.gross_weight) || 0,
+                    tara: parseFloat(item.tare) || 0,
+                    garron: item.products_garron || "",
+                    pesoNeto: (parseFloat(item.gross_weight) || 0) - (parseFloat(item.tare) || 0),
+                });
+                const cortesFormateados = result.cortes?.map(mapearCorteDesdeBackend) || [];
+                setCortesAgregados(cortesFormateados);
+
+                if (result.observacion) {
+                    setFormData((prev) => ({
+                        ...prev,
+                        observaciones: result.observacion.texto,
+                        observacionId: result.observacion.id,
+                    }));
+                }
+
+            } catch (err) {
+                console.error("Error al obtener cortes ya cargados:", err);
+            }
+        };
+
+        fetchCortesYaCargados();
+    }, [data]);
 
 
 
@@ -122,9 +162,46 @@ const MeatManualIncome = () => {
         fetchTares();
     }, []);
 
+    const handleGuardarObservacion = async () => {
+        if (!formData.observacionId) {
+            console.log('No hay ID de observación para actualizar');
+            return;
+        }
+
+        try {
+            const resultado = await actualizarObservacion(formData.observacionId, formData.observaciones);
+            console.log('Observación actualizada:', resultado);
+            alert('Observación guardada correctamente');
+        } catch (error) {
+            console.error('Error al guardar observación:', error);
+            alert('Error al guardar la observación. Por favor, intente nuevamente.');
+        }
+    };
 
 
 
+    const actualizarObservacion = async (observacionId, nuevoTexto) => {
+        try {
+            const response = await fetch(`http://localhost:3000/observations-edit/${observacionId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ observation: nuevoTexto }),
+            });
+
+            if (!response.ok) {
+                throw new Error('No se pudo actualizar la observación');
+            }
+
+            const data = await response.json();
+            return data;
+
+        } catch (error) {
+            console.error('Error al actualizar observación:', error);
+            throw error;
+        }
+    };
     const opcionesCortes = cortes.map((corte) => ({
         value: corte.nombre,
         label: corte.nombre,
@@ -142,7 +219,6 @@ const MeatManualIncome = () => {
                 observacion: formData.observaciones?.trim() || null,
             };
 
-            // 1. Enviar cortes
             const response = await fetch(`http://localhost:3000/addProducts/${data.id}`, {
                 method: "POST",
                 headers: {
@@ -153,7 +229,7 @@ const MeatManualIncome = () => {
 
             if (!response.ok) throw new Error("Error al guardar los cortes");
 
-          
+
             const updatePayload = {
                 cantidad_animales_cargados: totalAnimalesCargados,
                 cantidad_cabezas_cargadas: totalCabezasCargadas,
@@ -161,13 +237,13 @@ const MeatManualIncome = () => {
             };
 
             const updateResponse = await fetch(`http://localhost:3000/updateBillSupplier/${data.id}`, {
-                method: "PUT", 
+                method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify(updatePayload),
             });
-
+            await handleGuardarObservacion();
             if (!updateResponse.ok) throw new Error("Error al actualizar el remito");
 
             alert("Cortes y datos de resumen guardados correctamente.");
@@ -222,10 +298,30 @@ const MeatManualIncome = () => {
             garron: "",
         });
     };
+    const eliminarCorteBD = async (id) => {
+        const response = await fetch(`http://localhost:3000/provider-item-delete/${id}`, {
+            method: "DELETE",
+        });
 
-    const eliminarCorte = (index) => {
-        setCortesAgregados(cortesAgregados.filter((_, i) => i !== index));
+        if (!response.ok) {
+            throw new Error("No se pudo eliminar el corte");
+        }
     };
+
+    const eliminarCorte = async (index) => {
+        const corte = cortesAgregados[index];
+
+        if (corte.id) {
+            try {
+                await eliminarCorteBD(corte.id);
+            } catch (error) {
+                console.error("Error al eliminar de la base de datos:", error);
+                return;
+            }
+        }
+        setCortesAgregados(prev => prev.filter((_, i) => i !== index));
+    };
+
 
     const formatTime = (dateString) => {
         const date = new Date(dateString);

@@ -338,6 +338,7 @@ const ProviderForm = () => {
                             type="number"
                             name="pesoTotal"
                             className="input"
+                            min="0"
                             value={formState.pesoTotal}
                             onChange={(e) => setFormState({ ...formState, pesoTotal: e.target.value })}
                         />

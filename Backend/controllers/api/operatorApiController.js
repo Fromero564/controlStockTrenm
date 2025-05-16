@@ -154,7 +154,7 @@ const operatorApiController = {
 
             if (!id) return res.status(400).json({ message: "Falta el ID del registro a actualizar." });
 
-          
+
             if (!proveedor || !pesoTotal || !romaneo || !cabezas) {
                 return res.status(400).json({ message: "Faltan campos obligatorios." });
             }
@@ -172,7 +172,7 @@ const operatorApiController = {
                 { where: { id } }
             );
 
-         
+
             if (Array.isArray(cortes)) {
                 for (const corte of cortes) {
                     const { id: corteId, tipo, cantidad, cabezas } = corte;
@@ -182,13 +182,13 @@ const operatorApiController = {
                     }
 
                     if (corteId) {
-                       
+
                         await billDetail.update(
                             { type: tipo, quantity: cantidad, heads: cabezas },
                             { where: { id: corteId, bill_supplier_id: id } }
                         );
                     } else {
-                       
+
                         await billDetail.create({
                             bill_supplier_id: id,
                             type: tipo,
@@ -204,6 +204,45 @@ const operatorApiController = {
         } catch (error) {
             console.error("Error al actualizar proveedor:", error);
             return res.status(500).json({ message: "Error interno del servidor", error: error.message });
+        }
+    },
+
+  updateObservationMeatIncome: async (req, res) => {
+    const { id } = req.params;
+    const { observation } = req.body;
+
+    try {
+        const resultado = await ObservationsMeatIncome.update(
+            { observation: observation },
+            { where: { id: id } }  
+        );
+
+        res.status(200).json({ mensaje: "Observación actualizada correctamente", resultado });
+    } catch (error) {
+        console.error("Error al actualizar observación:", error);
+        res.status(500).json({ mensaje: "Error al actualizar observación" });
+    }
+},
+
+    updateProductFromRemit: async (req, res) => {
+        const { id } = req.params;
+
+        try {
+            const cortes = await meatIncome.findAll({ where: { id_bill_suppliers: id } });
+
+            const observacionData = await ObservationsMeatIncome.findOne({ where: { id: id } });
+
+            res.json({
+                cortes,
+                observacion: {
+                    id: observacionData?.id || null,
+                    texto: observacionData?.observation || "",
+                },
+            });
+
+        } catch (error) {
+            console.error("Error al obtener los datos del remito:", error);
+            res.status(500).json({ error: "Error al obtener los datos del remito" });
         }
     },
 
@@ -396,6 +435,32 @@ const operatorApiController = {
             console.error("Error al buscar el remito:", error);
             return res.status(500).json({ message: "Error interno del servidor" });
         }
+    },
+    deleteItemFromMeatManualIncome: async (req, res) => {
+        try {
+            let id = req.params.id;
+
+
+            const item = await meatIncome.findOne({
+                where: { id: id },
+            });
+
+            if (!item) {
+                return res.status(404).json({ mensaje: "El item no se encuentra" });
+            }
+
+
+            await meatIncome.destroy({
+                where: { id: id },
+            });
+
+            res.status(200).json({ mensaje: "Item eliminado con éxito" });
+
+        } catch (error) {
+            console.error("Error al eliminar el item:", error);
+            return res.status(500).json({ mensaje: "Error interno del servidor", error: error.message });
+        }
+
     },
     deleteProduct: async (req, res) => {
         try {

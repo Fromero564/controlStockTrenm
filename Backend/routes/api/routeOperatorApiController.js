@@ -21,6 +21,8 @@ router.get("/product-name",apiOperatorController.loadAllProductsCategories);
 router.get("/chargeUpdateBillDetails/:id",apiOperatorController.chargeUpdateBillDetails);
 //Api Cargar ultimo boleta de venta del proveedor
 router.get("/last-provider-bill",apiOperatorController.loadLastBillSupplier);
+//Api modificar ingreso por manual
+router.get("/getProductsFromRemito/:id",apiOperatorController.updateProductFromRemit);
 //Api para cargar productos
 router.post("/uploadProduct",apiOperatorController.uploadProducts);
 //Api para cargar productos de proceso
@@ -33,10 +35,14 @@ router.post("/addProducts/:id",apiOperatorController.addIncomeMeat);
 router.put("/update-provider-bill/:id",apiOperatorController.updateProviderBill);
 //Api para actualizar tabla
 router.put("/updateBillSupplier/:id",apiOperatorController.updateBillSupplier);
+//Api para actualizar obsercaciones de carga de carne
+router.put("/observations-edit/:id",apiOperatorController.updateObservationMeatIncome);
 //Api eliminar corte de la bd cuando se modifica detalle del proveedor
 router.delete("/delete-bill-detail/:id",apiOperatorController.deleteDetailProviderForm);
 //Api para eliminar un carga de producto proveniente del proveedor
 router.delete("/products/:id",apiOperatorController.deleteProduct);
+//Api para eliminar item que se agrega en carga manual
+router.delete("/provider-item-delete/:id",apiOperatorController.deleteItemFromMeatManualIncome);
 
 
 module.exports=router;
