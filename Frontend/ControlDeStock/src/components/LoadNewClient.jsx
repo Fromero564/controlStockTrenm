@@ -1,4 +1,4 @@
-import { useState,useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import './styles/LoadNewClient.css';
 import Navbar from "./Navbar";
@@ -6,6 +6,7 @@ import Navbar from "./Navbar";
 const LoadNewClient = () => {
     const navigate = useNavigate();
     const { id } = useParams();
+    const [countries, setCountries] = useState([]);
     const [formData, setFormData] = useState({
         id,
         nombreCliente: "",
@@ -56,6 +57,24 @@ const LoadNewClient = () => {
 
         fetchCliente();
     }, [id]);
+    useEffect(() => {
+        const fetchCountries = async () => {
+            try {
+                const res = await fetch("https://restcountries.com/v3.1/all?fields=name");
+                if (res.ok) {
+                    const data = await res.json();
+                    const countryNames = data
+                        .map(c => c.name.common)
+                        .sort((a, b) => a.localeCompare(b));
+                    setCountries(countryNames);
+                }
+            } catch (error) {
+                console.error("Error fetching countries:", error);
+            }
+        };
+
+        fetchCountries();
+    }, []);
 
 
     const handleChange = (e) => {
@@ -190,8 +209,22 @@ const LoadNewClient = () => {
                     </div>
 
                     <div className="form-group-client">
-                        <label htmlFor="paisCliente">País</label>
-                        <input type="text" name="paisCliente" id="paisCliente" value={formData.paisCliente} onChange={handleChange} />
+                        <div className="form-group-client">
+                            <label htmlFor="paisCliente">País</label>
+                            <select
+                                name="paisCliente"
+                                id="paisCliente"
+                                value={formData.paisCliente}
+                                onChange={handleChange}
+                            >
+                                <option value="">-- Seleccione un país --</option>
+                                {countries.map((country) => (
+                                    <option key={country} value={country}>
+                                        {country}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
                     </div>
 
                     <div className="form-group-client">
@@ -235,7 +268,7 @@ const LoadNewClient = () => {
                 </div>
 
                 <div className="buttons">
-                   <button type="submit">{id ? "Guardar Cambios" : "Agregar Cliente"}</button>
+                    <button type="submit">{id ? "Guardar Cambios" : "Agregar Cliente"}</button>
                     <button type="button" onClick={() => navigate("/dashboard")}>Cancelar</button>
                 </div>
             </form>

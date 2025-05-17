@@ -6,6 +6,7 @@ import './styles/loadNewProvider.css';
 const LoadNewProvider = () => {
     const navigate = useNavigate();
     const { id } = useParams();
+    const [countries, setCountries] = useState([]);
     const [formData, setFormData] = useState({
         id,
         nombreProveedor: "",
@@ -28,7 +29,7 @@ const LoadNewProvider = () => {
                     if (res.ok) {
                         const data = await res.json();
                         setFormData({
-                            id:data.id,
+                            id: data.id,
                             nombreProveedor: data.provider_name || "",
                             identidad: data.provider_type_id || "",
                             numeroIdentidad: data.provider_id_number || "",
@@ -51,6 +52,26 @@ const LoadNewProvider = () => {
 
         fetchProveedor();
     }, [id]);
+    useEffect(() => {
+        const fetchCountries = async () => {
+            try {
+                const res = await fetch("https://restcountries.com/v3.1/all?fields=name");
+                if (res.ok) {
+                    const data = await res.json();
+                    // Ordenamos alfabéticamente
+                    const countryNames = data
+                        .map(c => c.name.common)
+                        .sort((a, b) => a.localeCompare(b));
+                    setCountries(countryNames);
+                }
+            } catch (error) {
+                console.error("Error fetching countries:", error);
+            }
+        };
+
+        fetchCountries();
+    }, []);
+
 
     const handleChange = (e) => {
         setFormData({
@@ -95,7 +116,7 @@ const LoadNewProvider = () => {
     return (
         <div>
             <Navbar />
-           <h2 className="title-proveedor">{id ? "EDITAR PROVEEDOR" : "NUEVO PROVEEDOR"}</h2>
+            <h2 className="title-proveedor">{id ? "EDITAR PROVEEDOR" : "NUEVO PROVEEDOR"}</h2>
             <form className="provider-form-load" onSubmit={handleSubmit}>
 
 
@@ -154,7 +175,14 @@ const LoadNewProvider = () => {
 
                     <div className="form-group-provider">
                         <label htmlFor="paisProveedor">País</label>
-                        <input type="text" name="paisProveedor" id="paisProveedor" value={formData.paisProveedor} onChange={handleChange} />
+                        <select name="paisProveedor" id="paisProveedor" value={formData.paisProveedor} onChange={handleChange} >
+                            <option value="">Seleccione un país</option>
+                            {countries.map((country) => (
+                                <option key={country} value={country}>
+                                    {country}
+                                </option>
+                            ))}
+                        </select>
                     </div>
 
                     <div className="form-group-provider">
@@ -168,7 +196,7 @@ const LoadNewProvider = () => {
                     </div>
 
                     <div className="buttons">
-                       <button type="submit">{id ? "Guardar Cambios" : "Agregar Proveedor"}</button>
+                        <button type="submit">{id ? "Guardar Cambios" : "Agregar Proveedor"}</button>
                         <button type="button" onClick={() => navigate("/dashboard")}>Cancelar</button>
                     </div>
                 </div>
