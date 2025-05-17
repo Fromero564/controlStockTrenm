@@ -1,5 +1,6 @@
 import { useParams, useNavigate } from "react-router-dom";
 import Select from 'react-select';
+import Swal from 'sweetalert2';
 import { useState, useEffect } from "react";
 import Navbar from "./Navbar";
 import "./styles/meatmanualincome.css";
@@ -71,8 +72,8 @@ const MeatManualIncome = () => {
                 setCortesAgregados(cortesFormateados);
 
                 if (cortesFormateados.length > 0) {
-                setIsEditing(true);
-            }
+                    setIsEditing(true);
+                }
 
 
                 if (result.observacion) {
@@ -226,73 +227,75 @@ const MeatManualIncome = () => {
                 cortes: cortesAgregados,
                 observacion: formData.observaciones?.trim() || null,
             };
-               if (isEditing) {
+            if (isEditing) {
                 await handleGuardarObservacion()
-              const payloadMeat={
-                cortes:cortesAgregados,
-              }
-            // Lógica para edición
-            const response = await fetch(`http://localhost:3000/meat-income-edit/${data.id}`, {
-                method: "PUT",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify(payloadMeat),
-            });
+                const payloadMeat = {
+                    cortes: cortesAgregados,
+                }
+                // Lógica para edición
+                const response = await fetch(`http://localhost:3000/meat-income-edit/${data.id}`, {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify(payloadMeat),
+                });
 
-            if (!response.ok) throw new Error("Error al editar los cortes");
+                if (!response.ok) throw new Error("Error al editar los cortes");
 
-            const updatePayload = {
-                cantidad_animales_cargados: totalAnimalesCargados,
-                cantidad_cabezas_cargadas: totalCabezasCargadas,
-                peso_total_neto_cargado: totalKgNeto,
-            };
+                const updatePayload = {
+                    cantidad_animales_cargados: totalAnimalesCargados,
+                    cantidad_cabezas_cargadas: totalCabezasCargadas,
+                    peso_total_neto_cargado: totalKgNeto,
+                };
 
-            const updateResponse = await fetch(`http://localhost:3000/updateBillSupplier/${data.id}`, {
-                method: "PUT",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify(updatePayload),
-            });
+                const updateResponse = await fetch(`http://localhost:3000/updateBillSupplier/${data.id}`, {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify(updatePayload),
+                });
 
-            if (!updateResponse.ok) throw new Error("Error al actualizar el remito");
+                if (!updateResponse.ok) throw new Error("Error al actualizar el remito");
 
-            alert("Cortes editados correctamente.");
+                alert("Cortes editados correctamente.");
+                setCortesAgregados([]);
+                navigate("/operator-panel");
 
-        } else {
-            const response = await fetch(`http://localhost:3000/addProducts/${data.id}`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify(payload),
-            });
+            } else {
+                const response = await fetch(`http://localhost:3000/addProducts/${data.id}`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify(payload),
+                });
 
-            if (!response.ok) throw new Error("Error al guardar los cortes");
+                if (!response.ok) throw new Error("Error al guardar los cortes");
 
 
-            const updatePayload = {
-                cantidad_animales_cargados: totalAnimalesCargados,
-                cantidad_cabezas_cargadas: totalCabezasCargadas,
-                peso_total_neto_cargado: totalKgNeto,
-            };
+                const updatePayload = {
+                    cantidad_animales_cargados: totalAnimalesCargados,
+                    cantidad_cabezas_cargadas: totalCabezasCargadas,
+                    peso_total_neto_cargado: totalKgNeto,
+                };
 
-            const updateResponse = await fetch(`http://localhost:3000/updateBillSupplier/${data.id}`, {
-                method: "PUT",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify(updatePayload),
-            });
+                const updateResponse = await fetch(`http://localhost:3000/updateBillSupplier/${data.id}`, {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify(updatePayload),
+                });
 
-            if (!updateResponse.ok) throw new Error("Error al actualizar el remito");
+                if (!updateResponse.ok) throw new Error("Error al actualizar el remito");
 
-            alert("Cortes y datos de resumen guardados correctamente.");
-            setCortesAgregados([]);
-            navigate("/operator-panel");
+                alert("Cortes y datos de resumen guardados correctamente.");
+                setCortesAgregados([]);
+                navigate("/operator-panel");
 
-        }
+            }
         } catch (err) {
             console.error("Error al guardar los datos:", err);
             alert("Ocurrió un error al guardar los datos.");
@@ -353,19 +356,34 @@ const MeatManualIncome = () => {
     };
 
     const eliminarCorte = async (index) => {
-        const corte = cortesAgregados[index];
+        const result = await Swal.fire({
+            title: '¿Estás seguro?',
+            text: 'Esta acción eliminará el corte de la lista.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar',
+        });
 
-        if (corte.id) {
-            try {
-                await eliminarCorteBD(corte.id);
-            } catch (error) {
-                console.error("Error al eliminar de la base de datos:", error);
-                return;
+        if (result.isConfirmed) {
+            const corte = cortesAgregados[index];
+
+            if (corte.id) {
+                try {
+                    await eliminarCorteBD(corte.id);
+                } catch (error) {
+                    console.error("Error al eliminar de la base de datos:", error);
+                    return;
+                }
             }
-        }
-        setCortesAgregados(prev => prev.filter((_, i) => i !== index));
-    };
 
+            setCortesAgregados(prev => prev.filter((_, i) => i !== index));
+
+            Swal.fire('Eliminado', 'El corte ha sido eliminado.', 'success');
+        }
+    };
 
     const formatTime = (dateString) => {
         const date = new Date(dateString);

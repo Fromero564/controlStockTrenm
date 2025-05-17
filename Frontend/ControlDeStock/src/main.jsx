@@ -82,6 +82,14 @@ const router = createBrowserRouter([
     ),
   },
   {
+    path: "/provider-load/:id",
+    element: (
+      <ProtectedRoute>
+        <LoadNewProvider />
+      </ProtectedRoute>
+    ),
+  },
+  {
     path: "/meat-load",
     element: (
       <ProtectedRoute>
@@ -97,14 +105,15 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
-  {
-    path: "/meat-income/:id/:remitoId",
-    element: (
-      <ProtectedRoute>
-        <MeatIncome />
-      </ProtectedRoute>
-    ),
-  },
+   
+  // {
+  //   path: "/meat-income/:id/:remitoId",
+  //   element: (
+  //     <ProtectedRoute>
+  //       <MeatIncome />
+  //     </ProtectedRoute>
+  //   ),
+  // },
   {
     path: "/meat-manual-icome/:remitoId/",
     element: (
@@ -147,6 +156,14 @@ const router = createBrowserRouter([
   },
   {
     path: "/client-load",
+    element: (
+      <ProtectedRoute>
+        <LoadNewClient />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/client-load/:id",
     element: (
       <ProtectedRoute>
         <LoadNewClient />

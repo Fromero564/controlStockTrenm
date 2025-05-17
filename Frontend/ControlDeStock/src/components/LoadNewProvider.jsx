@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import Navbar from "./Navbar";
 import './styles/loadNewProvider.css';
 
 const LoadNewProvider = () => {
     const navigate = useNavigate();
+    const { id } = useParams();
     const [formData, setFormData] = useState({
+        id,
         nombreProveedor: "",
         identidad: "cuit",
         numeroIdentidad: "",
@@ -18,7 +20,37 @@ const LoadNewProvider = () => {
         localidadProveedor: "",
     });
 
-    useEffect(()=>{},[])
+    useEffect(() => {
+        const fetchProveedor = async () => {
+            if (id) {
+                try {
+                    const res = await fetch(`http://localhost:3000/provider/${id}`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        setFormData({
+                            id:data.id,
+                            nombreProveedor: data.provider_name || "",
+                            identidad: data.provider_type_id || "",
+                            numeroIdentidad: data.provider_id_number || "",
+                            ivaCondicion: data.provider_iva_condition || "",
+                            emailProveedor: data.provider_email || "",
+                            telefonoProveedor: data.provider_phone || "",
+                            domicilioProveedor: data.provider_adress || "",
+                            paisProveedor: data.provider_country || "",
+                            provinciaProveedor: data.provider_province || "",
+                            localidadProveedor: data.provider_location || "",
+                        });
+                    } else {
+                        console.error("No se pudo cargar el proveedor.");
+                    }
+                } catch (error) {
+                    console.error("Error al buscar proveedor:", error);
+                }
+            }
+        };
+
+        fetchProveedor();
+    }, [id]);
 
     const handleChange = (e) => {
         setFormData({
@@ -36,8 +68,14 @@ const LoadNewProvider = () => {
         }
 
         try {
-            const response = await fetch("http://localhost:3000/provider-load", {
-                method: "POST",
+            const url = id
+                ? `http://localhost:3000/provider-edit/${id}`
+                : "http://localhost:3000/provider-load";
+
+            const method = id ? "PUT" : "POST";
+
+            const response = await fetch(url, {
+                method,
                 headers: {
                     "Content-Type": "application/json",
                 },
@@ -45,19 +83,8 @@ const LoadNewProvider = () => {
             });
 
             if (response.ok) {
-                console.log("Datos enviados correctamente");
-                setFormData({
-                    nombreProveedor: "",
-                    identidad: "cuit",
-                    numeroIdentidad: "",
-                    ivaCondicion: "iva Responsable Inscripto",
-                    emailProveedor: "",
-                    telefonoProveedor: "",
-                    domicilioProveedor: "",
-                    paisProveedor: "",
-                    provinciaProveedor: "",
-                    localidadProveedor: "",
-                });
+                console.log(id ? "Proveedor actualizado" : "Proveedor creado");
+                navigate("/dashboard");
             } else {
                 console.error("Error al enviar los datos");
             }
@@ -65,13 +92,12 @@ const LoadNewProvider = () => {
             console.error("Error en la solicitud:", error);
         }
     };
-
     return (
         <div>
             <Navbar />
             <h2>NUEVO PROVEEDOR</h2>
             <form className="provider-form-load" onSubmit={handleSubmit}>
-              
+
 
                 <div className="form-grid">
                     <div className="form-group-provider">
@@ -109,7 +135,7 @@ const LoadNewProvider = () => {
                         <input type="number" name="numeroIdentidad" id="numeroIdentidad" value={formData.numeroIdentidad} onChange={handleChange} />
                     </div>
 
-                  
+
 
                     <div className="form-group-provider">
                         <label htmlFor="emailProveedor">Email</label>

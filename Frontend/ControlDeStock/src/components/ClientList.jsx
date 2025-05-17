@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPen, faXmark} from "@fortawesome/free-solid-svg-icons";
+import Swal from 'sweetalert2';
 import './styles/clientList.css'
 import Navbar from "./Navbar";
 
@@ -22,7 +23,34 @@ const ClientList = ()=>{
     const filteredClients = clients.filter((client) =>
         client.id.toString().toLowerCase().includes(search.toLowerCase())
     );
-
+const handleDelete = (Client) => {
+        Swal.fire({
+            title: `¿Eliminar cliente "${Client.client_name}"?`,
+            text: "Esta acción no se puede deshacer.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                fetch(`http://localhost:3000/deleteClient/${Client.id}`, {
+                    method: 'DELETE'
+                })
+                    .then((res) => {
+                        if (!res.ok) throw new Error("Error al eliminar");
+                        // Quitar del estado
+                        setClients(prev => prev.filter(c => c.id !== Client.id));
+                        Swal.fire('¡Eliminado!', 'El cliente fue eliminado.', 'success');
+                    })
+                    .catch((err) => {
+                        console.error(err);
+                        Swal.fire('Error', 'No se pudo eliminar el cliente.', 'error');
+                    });
+            }
+        });
+    };
     // Paginación
     const indexOfLastItem = currentPage * itemsPerPage;
     const indexOfFirstItem = indexOfLastItem - itemsPerPage;
@@ -105,10 +133,13 @@ const ClientList = ()=>{
                                 <td>{client.client_location}</td>
                                 <td>{client.client_state ? "ACTIVO" : "INACTIVO"}</td>
                                 <td>
-                                    <button className="edit-button" onClick={() => console.log("Editar")}>
+                                    <button className="edit-button" onClick={() => navigate(`/client-load/${client.id}`)}>
                                         <FontAwesomeIcon icon={faPen} />
                                     </button>
-                                    <button className="delete-button" onClick={() => console.log("Eliminar")}>
+                                       <button
+                                        className="delete-button"
+                                        onClick={() => handleDelete(client)}
+                                    >
                                         <FontAwesomeIcon icon={faXmark} />
                                     </button>
                                 </td>

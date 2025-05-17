@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPen, faXmark} from "@fortawesome/free-solid-svg-icons";
+import { faPen, faXmark } from "@fortawesome/free-solid-svg-icons";
+import Swal from 'sweetalert2';
 import './styles/providerList.css'
 import Navbar from "./Navbar";
 
@@ -18,6 +19,35 @@ const ProviderList = () => {
             .then((data) => setProviders(data))
             .catch((error) => console.error("Error al obtener productos:", error));
     }, []);
+
+    const handleDelete = (provider) => {
+        Swal.fire({
+            title: `¿Eliminar proveedor "${provider.provider_name}"?`,
+            text: "Esta acción no se puede deshacer.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                fetch(`http://localhost:3000/deleteProvider/${provider.id}`, {
+                    method: 'DELETE'
+                })
+                    .then((res) => {
+                        if (!res.ok) throw new Error("Error al eliminar");
+                        // Quitar del estado
+                        setProviders(prev => prev.filter(p => p.id !== provider.id));
+                        Swal.fire('¡Eliminado!', 'El proveedor fue eliminado.', 'success');
+                    })
+                    .catch((err) => {
+                        console.error(err);
+                        Swal.fire('Error', 'No se pudo eliminar el proveedor.', 'error');
+                    });
+            }
+        });
+    };
 
     const filteredProviders = providers.filter((provider) =>
         provider.id.toString().toLowerCase().includes(search.toLowerCase())
@@ -47,24 +77,24 @@ const ProviderList = () => {
         <div>
             <Navbar />
             <div className="container">
-            <h1>Proveedores</h1>
+                <h1>Proveedores</h1>
                 <div className="header">
-                    
+
                     <div className="search-section">
                         <label htmlFor="search">BUSCAR CÓDIGO PROVEEDOR</label>
                         <div className="search-input-label">
-                        <input
-                            type="text"
-                            id="search"
-                            placeholder="Buscar código proveedor"
-                            value={search}
-                            onChange={(e) => {
-                                setSearch(e.target.value);
-                                setCurrentPage(1); 
-                            }}
-                            className="search-input"
-                        />
-                        <button className="search-button">Buscar</button>
+                            <input
+                                type="text"
+                                id="search"
+                                placeholder="Buscar código proveedor"
+                                value={search}
+                                onChange={(e) => {
+                                    setSearch(e.target.value);
+                                    setCurrentPage(1);
+                                }}
+                                className="search-input"
+                            />
+                            <button className="search-button">Buscar</button>
                         </div>
                     </div>
 
@@ -75,8 +105,8 @@ const ProviderList = () => {
                 <table className="table">
                     <thead>
                         <tr>
-                        <th>Código del proveedor</th>
-                            <th>Nombre</th>             
+                            <th>Código del proveedor</th>
+                            <th>Nombre</th>
                             <th>Tipo de Identificación</th>
                             <th>Numero de Identificación</th>
                             <th>Condición IVA</th>
@@ -93,21 +123,24 @@ const ProviderList = () => {
                         {currentProviders.map((provider) => (
                             <tr key={provider.id}>
                                 <td>{provider.id}</td>
-                                <td>{provider.provider_name}</td>
-                                <td>{provider.provider_type_id}</td>
+                                <td>{provider.provider_name?.toUpperCase()}</td>
+                                <td>{provider.provider_type_id?.toUpperCase()}</td>
                                 <td>{provider.provider_id_number}</td>
-                                <td>{provider.provider_iva_condition}</td>
-                                <td>{provider.provider_email}</td>
+                                <td>{provider.provider_iva_condition?.toUpperCase()}</td>
+                                <td>{provider.provider_email?.toUpperCase()}</td>
                                 <td>{provider.provider_phone}</td>
-                                <td>{provider.provider_adress}</td>
-                                <td>{provider.provider_country}</td>
-                                <td>{provider.provider_province}</td>
-                                <td>{provider.provider_location}</td>
+                                <td>{provider.provider_adress?.toUpperCase()}</td>
+                                <td>{provider.provider_country?.toUpperCase()}</td>
+                                <td>{provider.provider_province?.toUpperCase()}</td>
+                                <td>{provider.provider_location?.toUpperCase()}</td>
                                 <td>
-                                    <button className="edit-button" onClick={() => console.log("Editar")}>
+                                    <button className="edit-button" onClick={() => navigate(`/provider-load/${provider.id}`)}>
                                         <FontAwesomeIcon icon={faPen} />
                                     </button>
-                                    <button className="delete-button" onClick={() => console.log("Eliminar")}>
+                                    <button
+                                        className="delete-button"
+                                        onClick={() => handleDelete(provider)}
+                                    >
                                         <FontAwesomeIcon icon={faXmark} />
                                     </button>
                                 </td>

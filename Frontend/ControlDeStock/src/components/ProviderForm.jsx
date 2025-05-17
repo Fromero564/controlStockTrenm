@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import Swal from 'sweetalert2';
 import Select from 'react-select';
 import Navbar from "./Navbar.jsx";
 import "./styles/providerForm.css";
 
 const ProviderForm = () => {
     const [tipoIngreso, setTipoIngreso] = useState("romaneo");
+    const [errorProductoDuplicado, setErrorProductoDuplicado] = useState(false);
     const [providers, setProviders] = useState([]);
     const [cortes, setCortes] = useState([]);
     const [cortesAgregados, setCortesAgregados] = useState([]);
@@ -62,26 +64,41 @@ const ProviderForm = () => {
     const eliminarCorte = async (index) => {
         const corte = cortesAgregados[index];
 
-        // Si el corte tiene un id, eliminar en la base de datos
-        if (corte.id) {
-            try {
-                const response = await fetch(`http://localhost:3000/delete-bill-detail/${corte.id}`, {
-                    method: "DELETE"
-                });
+        const confirmacion = await Swal.fire({
+            title: '¿Estás seguro?',
+            text: 'Esta acción eliminará el corte seleccionado.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar'
+        });
 
-                if (!response.ok) {
-                    throw new Error("Error al eliminar el corte en el backend");
+        if (confirmacion.isConfirmed) {
+            if (corte.id) {
+                try {
+                    const response = await fetch(`http://localhost:3000/delete-bill-detail/${corte.id}`, {
+                        method: "DELETE"
+                    });
+
+                    if (!response.ok) {
+                        throw new Error("Error al eliminar el corte en el backend");
+                    }
+                } catch (err) {
+                    console.error("Error eliminando en backend:", err);
+                    Swal.fire('Error', 'No se pudo eliminar el corte en el backend', 'error');
+                    return;
                 }
-            } catch (err) {
-                console.error("Error eliminando en backend:", err);
-                return; 
             }
-        }
 
-        
-        const nuevosCortes = cortesAgregados.filter((_, i) => i !== index);
-        setCortesAgregados(nuevosCortes);
+            const nuevosCortes = cortesAgregados.filter((_, i) => i !== index);
+            setCortesAgregados(nuevosCortes);
+
+            Swal.fire('Eliminado', 'El corte fue eliminado exitosamente.', 'success');
+        }
     };
+
 
 
     useEffect(() => {
@@ -138,10 +155,13 @@ const ProviderForm = () => {
         if (!nuevoCorte.tipo || nuevoCorte.cantidad <= 0) return;
 
         const existe = cortesAgregados.some(corte => corte.tipo === nuevoCorte.tipo);
-        if (existe) return;
-
+        if (existe) {
+            setErrorProductoDuplicado(true);
+            return;
+        }
         setCortesAgregados([...cortesAgregados, nuevoCorte]);
         setNuevoCorte({ tipo: "", cantidad: 0, cabezas: 0 });
+        setErrorProductoDuplicado(false);
     };
 
     const handleSubmit = async (e) => {
@@ -160,11 +180,11 @@ const ProviderForm = () => {
         };
 
         try {
-            const response = await fetch(  id 
-                ? `http://localhost:3000/update-provider-bill/${id}` 
+            const response = await fetch(id
+                ? `http://localhost:3000/update-provider-bill/${id}`
                 : "http://localhost:3000/uploadProduct", {
-                
-               method: id ? "PUT" : "POST",
+
+                method: id ? "PUT" : "POST",
                 headers: {
                     "Content-Type": "application/json",
                 },
@@ -268,6 +288,11 @@ const ProviderForm = () => {
                             <div className="corte-card">
                                 <div className="input-group">
                                     <label>TIPO</label>
+                                    {errorProductoDuplicado && (
+                                        <p style={{ color: "red", marginBottom: "5px" }}>
+                                            Este producto ya fue agregado.
+                                        </p>
+                                    )}
                                     <Select
                                         options={opciones}
                                         onChange={(selected) =>

@@ -1,11 +1,13 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState,useEffect } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import './styles/LoadNewClient.css';
 import Navbar from "./Navbar";
 
 const LoadNewClient = () => {
     const navigate = useNavigate();
+    const { id } = useParams();
     const [formData, setFormData] = useState({
+        id,
         nombreCliente: "",
         identidad: "cuit",
         numeroIdentidad: "",
@@ -19,6 +21,43 @@ const LoadNewClient = () => {
         estadoCliente: true,
     });
 
+    useEffect(() => {
+        const fetchCliente = async () => {
+            if (id) {
+                try {
+                    const res = await fetch(`http://localhost:3000/client/${id}`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        setFormData({
+
+                            id: data.id,
+                            nombreCliente: data.client_name || "",
+                            identidad: data.client_type_id || "",
+                            numeroIdentidad: data.client_id_number || "",
+                            ivaCondicion: data.client_iva_condition || "",
+                            emailCliente: data.client_email || "",
+                            telefonoCliente: data.client_phone || "",
+                            domicilioCliente: data.client_adress || "",
+                            paisCliente: data.client_country || "",
+                            provinciaCliente: data.client_province || "",
+                            localidadCliente: data.client_location || "",
+                            estadoCliente: data.client_state || "",
+
+
+                        });
+                    } else {
+                        console.error("No se pudo cargar el cliente.");
+                    }
+                } catch (error) {
+                    console.error("Error al buscar cliente:", error);
+                }
+            }
+        };
+
+        fetchCliente();
+    }, [id]);
+
+
     const handleChange = (e) => {
         setFormData({
             ...formData,
@@ -27,7 +66,7 @@ const LoadNewClient = () => {
     };
 
     const handleEstadoChange = (e) => {
-        
+
         setFormData((prev) => ({
             ...prev,
             estadoCliente: JSON.parse(e.target.value),
@@ -46,11 +85,18 @@ const LoadNewClient = () => {
             ...formData,
             client_state: formData.estadoCliente === true,
         };
+
         delete payload.estadoCliente;
 
         try {
-            const response = await fetch("http://localhost:3000/client-load", {
-                method: "POST",
+            const url = id
+                ? `http://localhost:3000/client-edit/${id}`
+                : "http://localhost:3000/client-load";
+
+            const method = id ? "PUT" : "POST";
+
+            const response = await fetch(url, {
+                method,
                 headers: {
                     "Content-Type": "application/json",
                 },
@@ -58,20 +104,25 @@ const LoadNewClient = () => {
             });
 
             if (response.ok) {
-                console.log("Datos enviados correctamente");
-                setFormData({
-                    nombreCliente: "",
-                    identidad: "cuit",
-                    numeroIdentidad: "",
-                    ivaCondicion: "iva Responsable Inscripto",
-                    emailCliente: "",
-                    telefonoCliente: "",
-                    domicilioCliente: "",
-                    paisCliente: "",
-                    provinciaCliente: "",
-                    localidadCliente: "",
-                    estadoCliente: true,
-                });
+                console.log(id ? "Cliente actualizado" : "Cliente creado");
+
+                if (!id) {
+                    setFormData({
+                        nombreCliente: "",
+                        identidad: "cuit",
+                        numeroIdentidad: "",
+                        ivaCondicion: "iva Responsable Inscripto",
+                        emailCliente: "",
+                        telefonoCliente: "",
+                        domicilioCliente: "",
+                        paisCliente: "",
+                        provinciaCliente: "",
+                        localidadCliente: "",
+                        estadoCliente: true,
+                    });
+                }
+
+                navigate("/client-list");
             } else {
                 console.error("Error al enviar los datos");
             }
@@ -79,6 +130,7 @@ const LoadNewClient = () => {
             console.error("Error en la solicitud:", error);
         }
     };
+
 
     return (
         <div>
