@@ -91,6 +91,68 @@ const operatorApiController = {
 
 
     },
+    tareLoadFind: async (req, res) => {
+        try {
+            const { id } = req.params;
+
+            const taraEncontrada = await tare.findOne({
+                where: { id: id },
+            });
+
+
+
+            if (!taraEncontrada) {
+                return res.status(404).json({ message: "Tara no encontrada" });
+            }
+
+            return res.status(200).json(taraEncontrada);
+        } catch (error) {
+            console.error("Error al buscar tara:", error);
+            return res.status(500).json({ message: "Error interno del servidor" });
+        }
+    },
+    editTare: async (req, res) => {
+        const { id } = req.params;
+        const { tareName, tareWeight } = req.body;
+
+        try {
+            const [updated] = await tare.update(
+                {
+                    tare_name: tareName,
+                    tare_weight: tareWeight,
+                },
+                {
+                    where: { id: id }
+                }
+            );
+
+            if (updated === 0) {
+                return res.status(404).json({ message: "Tara no encontrada o sin cambios." });
+            }
+
+            return res.json({ message: "Tara actualizada correctamente." });
+        } catch (error) {
+            console.error("Error al actualizar tara:", error);
+            return res.status(500).json({ message: "Error interno del servidor" });
+        }
+    }, deleteTare: async (req, res) => {
+        const { id } = req.params;
+
+        try {
+            const eliminado = await tare.destroy({
+                where: { id: id }
+            });
+
+            if (eliminado === 0) {
+                return res.status(404).json({ message: "Tara no encontrada." });
+            }
+
+            return res.json({ message: "Tara eliminada correctamente." });
+        } catch (error) {
+            console.error("Error al eliminar tara:", error);
+            return res.status(500).json({ message: "Error interno del servidor" });
+        }
+    },
     uploadProducts: async (req, res) => {
         try {
 

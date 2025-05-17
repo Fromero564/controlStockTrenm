@@ -95,7 +95,7 @@ const LoadNewProvider = () => {
     return (
         <div>
             <Navbar />
-            <h2>NUEVO PROVEEDOR</h2>
+           <h2 className="title-proveedor">{id ? "EDITAR PROVEEDOR" : "NUEVO PROVEEDOR"}</h2>
             <form className="provider-form-load" onSubmit={handleSubmit}>
 
 
@@ -168,7 +168,7 @@ const LoadNewProvider = () => {
                     </div>
 
                     <div className="buttons">
-                        <button type="submit">Agregar Proveedor</button>
+                       <button type="submit">{id ? "Guardar Cambios" : "Agregar Proveedor"}</button>
                         <button type="button" onClick={() => navigate("/dashboard")}>Cancelar</button>
                     </div>
                 </div>

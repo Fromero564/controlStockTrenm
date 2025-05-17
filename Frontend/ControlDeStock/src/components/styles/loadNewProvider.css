@@ -6,6 +6,10 @@
     margin: 50px auto;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
   }
+
+  .title-proveedor{
+    margin:20px;
+  }
   
   .provider-form-load h2 {
     margin-top: 0;

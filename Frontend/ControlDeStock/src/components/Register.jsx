@@ -1,5 +1,8 @@
 
 import { useState } from 'react';
+import Navbar from './Navbar.jsx';
+import { useNavigate } from 'react-router-dom';
+import './styles/register.css';
 
 const Register = () => {
   const [username, setUsername] = useState("");
@@ -7,7 +10,11 @@ const Register = () => {
   const [role, setRole] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
+  const navigate = useNavigate();
 
+  const handleCancel = () => {
+    navigate('/administrative-panel');
+  };
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -29,7 +36,7 @@ const Register = () => {
 
       if (res.ok) {
         alert("Registro exitoso");
-        
+
       } else {
         setError(data.message || "Error en el registro");
       }
@@ -39,53 +46,67 @@ const Register = () => {
   };
 
   return (
-    <form onSubmit={handleSubmit}>
-      <div>
-        <label>Usuario:</label>
-        <input
-          type="text"
-          placeholder="Ingrese su nombre de usuario"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          required
-        />
-      </div>
-      <div>
-        <label>Rol:</label>
-        <select value={role} onChange={(e) => setRole(e.target.value)} required>
-          <option value="">Seleccione un rol</option>
-          <option value="operario">Operario</option>
-          <option value="administrativo">Administrativo</option>
-        </select>
-      </div>
+    <div>
+      <Navbar />
+      <form onSubmit={handleSubmit} className="register-form">
+        <div className="form-group">
+          <label className="form-label">Usuario:</label>
+          <input
+            type="text"
+            placeholder="Ingrese su nombre de usuario"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            required
+            className="form-input"
+          />
+        </div>
 
+        <div className="form-group">
+          <label className="form-label">Rol:</label>
+          <select
+            value={role}
+            onChange={(e) => setRole(e.target.value)}
+            required
+            className="form-select"
+          >
+            <option value="">Seleccione un rol</option>
+            <option value="operario">Operario</option>
+            <option value="administrativo">Administrativo</option>
+          </select>
+        </div>
 
-      <div>
-        <label>Contraseña:</label>
-        <input
-          type="password"
-          placeholder="Ingrese su contraseña"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
-      </div>
+        <div className="form-group">
+          <label className="form-label">Contraseña:</label>
+          <input
+            type="password"
+            placeholder="Ingrese su contraseña"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            className="form-input"
+          />
+        </div>
 
-      <div>
-        <label>Confirmar Contraseña:</label>
-        <input
-          type="password"
-          placeholder="Confirme su contraseña"
-          value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
-          required
-        />
-      </div>
+        <div className="form-group">
+          <label className="form-label">Confirmar Contraseña:</label>
+          <input
+            type="password"
+            placeholder="Confirme su contraseña"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            required
+            className="form-input"
+          />
+        </div>
 
-      {error && <div style={{ color: 'red' }}>{error}</div>}
+        {error && <div className="error-message">{error}</div>}
 
-      <button type="submit">Registrarse</button>
-    </form>
+          <div className="button-group">
+    <button type="submit" className="submit-button">Registrarse</button>
+    <button type="button" className="cancel-button" onClick={handleCancel}>Cancelar</button>
+  </div>
+      </form>
+    </div>
   );
 };
 

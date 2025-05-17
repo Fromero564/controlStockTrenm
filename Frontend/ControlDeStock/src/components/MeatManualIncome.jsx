@@ -12,9 +12,11 @@ const MeatManualIncome = () => {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [saving, setSaving] = useState(false);
     const [cortes, setCortes] = useState([]);
     const [cortesAgregados, setCortesAgregados] = useState([]);
     const [tares, setTares] = useState([]);
+    const [paginaActual, setPaginaActual] = useState(1);
     const [taraSeleccionadaId, setTaraSeleccionadaId] = useState("");
     const [isEditing, setIsEditing] = useState(false);
     const [formData, setFormData] = useState({
@@ -216,6 +218,7 @@ const MeatManualIncome = () => {
     }));
 
     const handleGuardar = async () => {
+        setSaving(true);
         if (cortesAgregados.length === 0) {
             alert("No hay cortes agregados para guardar.");
             return;
@@ -300,6 +303,8 @@ const MeatManualIncome = () => {
             console.error("Error al guardar los datos:", err);
             alert("Ocurrió un error al guardar los datos.");
         }
+
+        setSaving(false);
     };
 
 
@@ -344,6 +349,7 @@ const MeatManualIncome = () => {
             tara: 0,
             garron: "",
         }));
+        setTaraSeleccionadaId("");
     };
     const eliminarCorteBD = async (id) => {
         const response = await fetch(`http://localhost:3000/provider-item-delete/${id}`, {
@@ -394,6 +400,11 @@ const MeatManualIncome = () => {
         return date.toLocaleDateString('es-AR');
     };
 
+    const sinFlecha = {
+        DropdownIndicator: () => null,
+        IndicatorSeparator: () => null
+    };
+
 
 
     const totalKgNeto = cortesAgregados.reduce((acc, item) => acc + item.pesoNeto, 0);
@@ -411,6 +422,13 @@ const MeatManualIncome = () => {
     // Suma total de cabezas cargadas
     const totalCabezasCargadas = cortesAgregados.reduce((acc, item) => acc + item.cabeza, 0);
 
+    const cortesPorPagina = 5;
+
+    const cortesInvertidos = [...cortesAgregados].reverse();
+
+    const indiceUltimoCorte = paginaActual * cortesPorPagina;
+    const indicePrimerCorte = indiceUltimoCorte - cortesPorPagina;
+    const cortesPaginados = cortesInvertidos.slice(indicePrimerCorte, indiceUltimoCorte);
 
 
     if (loading) return <p>Cargando...</p>;
@@ -420,9 +438,11 @@ const MeatManualIncome = () => {
     return (
         <div>
             <Navbar />
+            <h1 className="title-mercaderia">Detalle Mercadería</h1>
             <div className="main-container">
+
                 <div>
-                    <h2>Detalle Mercadería</h2>
+
                     <div>
                         <div className="mercaderia-container">
                             <div className="mercaderia-info-row">
@@ -449,6 +469,7 @@ const MeatManualIncome = () => {
 
                             <Select
                                 className="custom-select"
+                                components={sinFlecha}
                                 classNamePrefix="mi-select"
                                 options={opcionesCortes}
                                 onChange={(selected) =>
@@ -463,6 +484,11 @@ const MeatManualIncome = () => {
                                 menuPortalTarget={document.body}
                                 styles={{
                                     menuPortal: base => ({ ...base, zIndex: 9999 }),
+                                    menuList: (base) => ({
+                                        ...base,
+                                        maxHeight: 150, // aprox. 5 ítems visibles
+                                        overflowY: 'auto',
+                                    }),
                                 }}
                             />
 
@@ -519,48 +545,48 @@ const MeatManualIncome = () => {
 
                     <div className="cortes-lista">
                         {/* <div className="corte-encabezado">
-                            <div><strong>TIPO</strong></div>
-                            <div><strong>GARRON</strong></div>
-                            <div><strong>CABEZA</strong></div>
-                            <div><strong>CANTIDAD</strong></div>
-                            <div><strong>PESO DECLARADO PROVEEDOR</strong></div>
-                            <div><strong>PESO BRUTO BALANZA</strong></div>
-                            <div><strong>TARA</strong></div>
-                            <div><strong>PESO NETO</strong></div>
-                            <div><strong>ACCIONES</strong></div>
-                        </div> */}
+        <div><strong>TIPO</strong></div>
+        <div><strong>GARRON</strong></div>
+        <div><strong>CABEZA</strong></div>
+        <div><strong>CANTIDAD</strong></div>
+        <div><strong>PESO DECLARADO PROVEEDOR</strong></div>
+        <div><strong>PESO BRUTO BALANZA</strong></div>
+        <div><strong>TARA</strong></div>
+        <div><strong>PESO NETO</strong></div>
+        <div><strong>ACCIONES</strong></div>
+    </div> */}
 
-                        {cortesAgregados.map((corte, index) => (
-                            <div key={index} className="corte-mostrado">
+                        {cortesPaginados.map((corte, index) => (
+                            <div key={index + indicePrimerCorte} className="corte-mostrado">
+                                <div><p className="dato">{corte.tipo}</p></div>
+                                <div><p className="dato">{corte.garron}</p></div>
+                                <div><p className="dato">{corte.cabeza}</p></div>
+                                <div><p className="dato">{corte.cantidad}</p></div>
+                                <div><p className="dato">{corte.pesoProveedor}</p></div>
+                                <div><p className="dato">{corte.pesoBruto}</p></div>
+                                <div><p className="dato">{corte.tara}</p></div>
+                                <div><p className="dato">{corte.pesoNeto.toFixed(2)} kg</p></div>
                                 <div>
-                                    <p className="dato">{corte.tipo}</p>
-                                </div>
-                                <div>
-                                    <p className="dato">{corte.garron}</p>
-                                </div>
-                                <div>
-                                    <p className="dato">{corte.cabeza}</p>
-                                </div>
-                                <div>
-                                    <p className="dato">{corte.cantidad}</p>
-                                </div>
-                                <div>
-                                    <p className="dato">{corte.pesoProveedor}</p>
-                                </div>
-                                <div>
-                                    <p className="dato">{corte.pesoBruto}</p>
-                                </div>
-                                <div>
-                                    <p className="dato">{corte.tara}</p>
-                                </div>
-                                <div>
-                                    <p className="dato">{corte.pesoNeto.toFixed(2)} kg</p>
-                                </div>
-                                <div>
-                                    <button onClick={() => eliminarCorte(index)} className="btn-eliminar">X</button>
+                                    <button onClick={() => eliminarCorte(index + indicePrimerCorte)} className="btn-eliminar">X</button>
                                 </div>
                             </div>
                         ))}
+
+                        <div style={{ marginTop: '1rem', textAlign: 'center' }}>
+                            <button
+                                onClick={() => setPaginaActual(prev => Math.max(prev - 1, 1))}
+                                disabled={paginaActual === 1}
+                                style={{ marginRight: '1rem' }}
+                            >
+                                Anterior
+                            </button>
+                            <button
+                                onClick={() => setPaginaActual(prev => (prev * cortesPorPagina < cortesAgregados.length ? prev + 1 : prev))}
+                                disabled={paginaActual * cortesPorPagina >= cortesAgregados.length}
+                            >
+                                Siguiente
+                            </button>
+                        </div>
                     </div>
 
 
@@ -636,8 +662,9 @@ const MeatManualIncome = () => {
                             className="btn-agregar"
                             onClick={handleGuardar}
                             style={{ backgroundColor: '#007bff', color: 'white', padding: '0.5rem 1rem', border: 'none', borderRadius: '4px' }}
+                            disabled={saving}
                         >
-                            Guardar y terminar carga
+                            {saving ? "Guardando..." : "Guardar y terminar carga"}
                         </button>
                     </div>
                 </div>

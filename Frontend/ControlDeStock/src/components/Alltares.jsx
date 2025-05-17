@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import Swal from 'sweetalert2';
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPen, faXmark, faPlus } from "@fortawesome/free-solid-svg-icons";
 import './styles/alltares.css';
@@ -18,6 +19,41 @@ const Alltares = () => {
             .then((data) => setTares(data))
             .catch((error) => console.error("Error al obtener taras:", error));
     }, []);
+
+
+    const handleEliminar = async (id) => {
+        const result = await Swal.fire({
+            title: '¿Eliminar tara?',
+            text: "Esta acción no se puede deshacer.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar'
+        });
+
+        if (result.isConfirmed) {
+            try {
+                const response = await fetch(`http://localhost:3000/tare-delete/${id}`, {
+                    method: "DELETE",
+                });
+
+                if (response.ok) {
+                    // Filtrar la tara eliminada del array
+                    setTares(prevTares => prevTares.filter(tare => tare.id !== id));
+
+                    Swal.fire('Eliminada', 'La tara fue eliminada correctamente.', 'success');
+                } else {
+                    Swal.fire('Error', 'No se pudo eliminar la tara.', 'error');
+                }
+            } catch (error) {
+                console.error("Error al eliminar tara:", error);
+                Swal.fire('Error', 'Error de red al intentar eliminar.', 'error');
+            }
+        }
+    };
+
 
     // Filtrado por búsqueda
     const filteredTares = tares.filter((tare) =>
@@ -52,18 +88,18 @@ const Alltares = () => {
                     <div className="search-section">
                         <label htmlFor="search">BUSCAR</label>
                         <div className="search-input-label">
-                        <input
-                            type="text"
-                            id="search"
-                            placeholder="Buscar por nombre de tara"
-                            value={search}
-                            onChange={(e) => {
-                                setSearch(e.target.value);
-                                setCurrentPage(1); 
-                            }}
-                            className="search-input"
-                        />
-                        <button className="search-button">Buscar</button>
+                            <input
+                                type="text"
+                                id="search"
+                                placeholder="Buscar por nombre de tara"
+                                value={search}
+                                onChange={(e) => {
+                                    setSearch(e.target.value);
+                                    setCurrentPage(1);
+                                }}
+                                className="search-input"
+                            />
+                            <button className="search-button">Buscar</button>
                         </div>
                     </div>
                     <button className="new-button" onClick={() => navigate("/tare-load")}>
@@ -85,10 +121,13 @@ const Alltares = () => {
                                 <td>{tare.tare_name}</td>
                                 <td>{tare.tare_weight}KG</td>
                                 <td>
-                                    <button className="edit-button" onClick={() => console.log("Editar", tare.id)}>
+                                    <button className="edit-button" onClick={() => navigate(`/tare-load/${tare.id}`)}>
                                         <FontAwesomeIcon icon={faPen} />
                                     </button>
-                                    <button className="delete-button" onClick={() => console.log("Eliminar", tare.id)}>
+                                    <button
+                                        className="delete-button"
+                                        onClick={() => handleEliminar(tare.id)}
+                                    >
                                         <FontAwesomeIcon icon={faXmark} />
                                     </button>
                                 </td>
@@ -97,7 +136,7 @@ const Alltares = () => {
                     </tbody>
                 </table>
 
-               
+
                 <div className="pagination">
                     <button onClick={goToPrevPage} disabled={currentPage === 1}>
                         ← Anterior

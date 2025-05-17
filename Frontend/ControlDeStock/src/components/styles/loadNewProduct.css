@@ -1,0 +1,69 @@
+/* Contenedor principal */
+.product-form-container {
+  max-width: 500px;
+  margin: 2rem auto;
+  padding: 2rem;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  background-color: #fafafa;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
+}
+
+/* Etiquetas */
+.product-form-container label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: bold;
+  color: #333;
+}
+
+/* Inputs y selects */
+.product-form-container input[type="text"],
+.product-form-container select {
+  width: 100%;
+  padding: 0.6rem;
+  margin-bottom: 1.2rem;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 1rem;
+}
+
+/* Botones */
+.product-form-container button {
+  padding: 0.6rem 1.2rem;
+  font-size: 1rem;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-right: 1rem;
+  transition: background-color 0.3s ease;
+}
+
+/* Botón de submit */
+.product-form-container button[type="submit"] {
+  background-color: #007bff;
+  color: white;
+}
+
+.product-form-container button[type="submit"]:disabled {
+  background-color: #aaa;
+  cursor: not-allowed;
+}
+
+/* Botón cancelar */
+.product-form-container button[type="button"] {
+  background-color: #ccc;
+  color: #333;
+}
+
+.product-form-container button[type="button"]:hover {
+  background-color: #bbb;
+}
+
+/* Mensaje de éxito */
+.success-message {
+  color: green;
+  font-weight: bold;
+  margin-top: 1rem;
+  text-align: center;
+}

@@ -7,6 +7,10 @@
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
 }
 
+.title-cliente{
+  margin: 20px;
+}
+
 .client-form-load h2 {
   margin-top: 0;
   font-size: 24px;
@@ -153,6 +157,7 @@
     grid-column: span 1;
   }
 
+  
   .client-form-load button {
     width: 100%;
   }

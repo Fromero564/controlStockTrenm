@@ -135,7 +135,7 @@ const LoadNewClient = () => {
     return (
         <div>
             <Navbar />
-            <h2>NUEVO CLIENTE</h2>
+            <h1 className="title-cliente">{id ? "EDITAR CLIENTE" : "NUEVO CLIENTE"}</h1>
             <form className="client-form-load" onSubmit={handleSubmit}>
                 <div className="form-grid">
                     <div className="form-group-client">
@@ -235,7 +235,7 @@ const LoadNewClient = () => {
                 </div>
 
                 <div className="buttons">
-                    <button type="submit">Agregar Cliente</button>
+                   <button type="submit">{id ? "Guardar Cambios" : "Agregar Cliente"}</button>
                     <button type="button" onClick={() => navigate("/dashboard")}>Cancelar</button>
                 </div>
             </form>

@@ -1,15 +1,30 @@
-import {useNavigate} from "react-router-dom"
+import { useNavigate } from "react-router-dom";
+import { useState } from "react";
+import Navbar from './Navbar.jsx';
+import './styles/LoadNewProduct.css';
 
-
-const LoadNewProduct = ()=>{
+const LoadNewProduct = () => {
     const navigate = useNavigate();
-    const handleSubmit =async (e)=>{
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [successMessage, setSuccessMessage] = useState("");
+
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        
+
+        if (isSubmitting) return;
+        setIsSubmitting(true);
+
         const formData = {
-           nombre: e.target.productName.value,
-           categoria:e.target.selectCategory.value
+            nombre: e.target.productName.value.trim(),
+            categoria: e.target.selectCategory.value,
         };
+
+        if (!formData.nombre) {
+            alert("Por favor ingresá un nombre de producto.");
+            setIsSubmitting(false);
+            return;
+        }
+
         try {
             const response = await fetch("http://localhost:3000/product-load", {
                 method: "POST",
@@ -20,34 +35,52 @@ const LoadNewProduct = ()=>{
             });
 
             if (response.ok) {
-                console.log("Datos enviados correctamente");
+                setSuccessMessage("✅ Producto cargado correctamente.");
+                e.target.reset();
             } else {
                 console.error("Error al enviar los datos");
+                alert("❌ Error al cargar el producto.");
             }
         } catch (error) {
             console.error("Error en la solicitud:", error);
+            alert("❌ Error en la conexión.");
+        } finally {
+            setIsSubmitting(false);
         }
+    };
 
-    }
+    return (
 
-    
-  return (
-    <div>
-        <form onSubmit={handleSubmit}>
-            <label htmlFor="productName">Nombre del Producto</label>
-            <input type="text" name="productName" id="productName" />
-            <select name="selectCategory" id="selectCategory">
-                <option value="primario">Primario</option>
-                <option value="principal">Principal</option>
-                <option value="subproducto">Subproducto</option>
-            </select>
-          <button type="submit">Cargar</button>
-          <button onClick={()=>navigate("/administrative-panel")}>Cancelar</button>
-        </form>
+        <div>
+            <Navbar />
+            <div className="product-form-container">
 
-    </div>
-  )
-}
+                <form onSubmit={handleSubmit}>
+                    <label htmlFor="productName">Nombre del Producto</label>
+                    <input type="text" name="productName" id="productName" />
 
+                    <label htmlFor="selectCategory">Categoría</label>
+                    <select name="selectCategory" id="selectCategory">
+                        <option value="primario">Primario</option>
+                        <option value="principal">Principal</option>
+                        <option value="subproducto">Subproducto</option>
+                    </select>
+
+                    <button type="submit" disabled={isSubmitting}>
+                        {isSubmitting ? "Cargando..." : "Cargar"}
+                    </button>
+
+                    <button type="button" onClick={() => navigate("/administrative-panel")}>
+                        Cancelar
+                    </button>
+                </form>
+
+                {successMessage && (
+                    <p className="success-message">{successMessage}</p>
+                )}
+            </div>
+        </div>
+    );
+};
 
 export default LoadNewProduct;

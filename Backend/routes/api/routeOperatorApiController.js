@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const path = require("path");
 const apiOperatorController= require("../../controllers/api/operatorApiController.js");
+const operatorApiController = require("../../controllers/api/operatorApiController.js");
 
 //Api para ver productos cargados
 router.get("/allProducts",apiOperatorController.allProducts);
@@ -21,6 +22,10 @@ router.get("/product-name",apiOperatorController.loadAllProductsCategories);
 router.get("/chargeUpdateBillDetails/:id",apiOperatorController.chargeUpdateBillDetails);
 //Api Cargar ultimo boleta de venta del proveedor
 router.get("/last-provider-bill",apiOperatorController.loadLastBillSupplier);
+//Api encontrar tara edicion
+router.get("/tareLoadFind/:id",apiOperatorController.tareLoadFind);
+//Api para encontrar ultimo recibo de proveedor
+router.get("/last-provider-bill",apiOperatorController.loadLastBillSupplier);
 //Api modificar ingreso por manual
 router.get("/getProductsFromRemito/:id",apiOperatorController.updateProductFromRemit);
 //Api para cargar productos
@@ -33,6 +38,8 @@ router.post("/tareLoad",apiOperatorController.tareLoad);
 router.post("/addProducts/:id",apiOperatorController.addIncomeMeat);
 //Api actualizar datos de la factura del proveedor 
 router.put("/update-provider-bill/:id",apiOperatorController.updateProviderBill);
+//Api para editar taras
+router.put("/tare-edit/:id",operatorApiController.editTare);
 //Api para actualizar tabla
 router.put("/updateBillSupplier/:id",apiOperatorController.updateBillSupplier);
 //Api para actualizar observaciones de carga de carne
@@ -41,6 +48,8 @@ router.put("/observations-edit/:id",apiOperatorController.updateObservationMeatI
 router.put("/meat-income-edit/:id",apiOperatorController.editAddIncome);
 //Api eliminar corte de la bd cuando se modifica detalle del proveedor
 router.delete("/delete-bill-detail/:id",apiOperatorController.deleteDetailProviderForm);
+//Api apra eliminar una tara
+router.delete("/tare-delete/:id", apiOperatorController.deleteTare);
 //Api para eliminar un carga de producto proveniente del proveedor
 router.delete("/products/:id",apiOperatorController.deleteProduct);
 //Api para eliminar item que se agrega en carga manual

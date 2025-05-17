@@ -131,6 +131,14 @@ const router = createBrowserRouter([
     ),
   },
   {
+    path: "/tare-load/:id",
+    element: (
+      <ProtectedRoute>
+        <Tareload />
+      </ProtectedRoute>
+    ),
+  },
+  {
     path: "/production-process",
     element: (
       <ProtectedRoute>

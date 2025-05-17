@@ -4,6 +4,11 @@
   justify-content: flex-start;
   flex-direction: column;
   margin-top: 20px;
+  margin-bottom: 40px;
+}
+
+.title-mercaderia {
+  margin: 20px;
 }
 
 .mercaderia-container {
@@ -15,7 +20,7 @@
   font-family: Arial, sans-serif;
   width: 100%;
   box-sizing: border-box;
-  max-width: 920px;
+  max-width: 1280px;
   margin: 0 auto;
 }
 
@@ -33,6 +38,7 @@ h2 {
   display: flex;
   justify-content: space-between;
   flex-wrap: wrap;
+  width: 1280px;
 }
 
 .mercaderia-info-row div {
@@ -47,20 +53,22 @@ h2 {
   color: #333;
 }
 
+/* FORMULARIO CORTE CON CAMPOS EN FILA */
 .formulario-corte {
   background: #fff;
   padding: 20px;
   border-radius: 10px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   width: 100%;
-  max-width: 920px;
+  max-width: 1280px;
   margin: 20px auto;
+  box-sizing: border-box;
 }
 
 .formulario-corte label {
   display: block;
   font-size: 10px;
-  margin-top: 10px;
+  margin-bottom: 4px;
   color: #333;
 }
 
@@ -68,10 +76,9 @@ h2 {
 .formulario-corte input {
   width: 100%;
   padding: 10px;
-  margin-top: 5px;
   border: 1px solid #ccc;
   border-radius: 5px;
-  font-size: 16px;
+  font-size: 14px;
 }
 
 .formulario-corte input:focus,
@@ -84,20 +91,17 @@ h2 {
 .formulario-corte .form-group {
   display: flex;
   flex-wrap: nowrap;
-  gap: 10px;
+  gap: 12px;
   width: 100%;
   box-sizing: border-box;
-  overflow-x: auto;
+  align-items: flex-end;
+  margin-bottom: 15px;
 }
 
 .formulario-corte .form-group div {
   flex: 1;
   min-width: 100px;
   box-sizing: border-box;
-}
-
-.formulario-corte .form-group div:last-child {
-  margin-right: 0;
 }
 
 .btn-agregar {
@@ -111,13 +115,14 @@ h2 {
   transition: background-color 0.3s ease;
   display: block;
   width: 100%;
-  margin-top: 15px;
+  margin-top: 0;
 }
 
 .btn-agregar:hover {
   background-color: #0056b3;
 }
 
+/* LISTA DE CORTES */
 .cortes-lista {
   display: flex;
   flex-direction: column;
@@ -127,7 +132,6 @@ h2 {
   overflow-x: auto;
 }
 
-/* Estilo uniforme para filas de cortes */
 .corte-mostrado {
   display: grid;
   grid-template-columns: repeat(9, 1fr);
@@ -150,7 +154,6 @@ h2 {
 }
 
 .dato {
- .dato {
   width: 100%;
   background-color: #f9f9f9;
   border-radius: 6px;
@@ -159,10 +162,9 @@ h2 {
   font-size: 14px;
   text-align: center;
   box-sizing: border-box;
-  white-space: nowrap;      
-  overflow: hidden;        
-  text-overflow: ellipsis;   
-}
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .btn-eliminar {
@@ -179,7 +181,6 @@ h2 {
   background-color: #d9363e;
 }
 
-/* Encabezado visual (si se usa en algún lado) */
 .corte-encabezado {
   font-weight: bold;
   border-bottom: 2px solid #ccc;
@@ -310,4 +311,50 @@ textarea {
 .mi-select__single-value {
   font-size: 14px;
   line-height: 1;
+}
+@media (max-width: 768px) {
+  .formulario-corte .form-group {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .formulario-corte .form-group div {
+    width: 100%;
+  }
+   .mercaderia-info-row {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    width: 100%;
+    padding: 0 10px;
+  }
+
+  .mercaderia-info-row div {
+    margin: 0;
+    min-width: auto;
+  }
+
+  .corte-mostrado,
+  .corte-encabezado {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    font-size: 13px;
+  }
+
+  .dato {
+    font-size: 13px;
+    padding: 4px 6px;
+  }
+
+  .stock-table th,
+  .stock-table td {
+    font-size: 13px;
+    padding: 0.4rem;
+  }
+
+  .info-weight-observations {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
 }
