@@ -1,17 +1,20 @@
-import { useState, useContext,useEffect } from "react";
+import { useState, useContext, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthProvider";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
 import "./styles/login.css";
 
 const Login = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
 
   const { user, loading, login } = useContext(AuthContext);
   useEffect(() => {
     if (!loading && user) {
-      navigate("/dashboard"); 
+      navigate("/dashboard");
     }
   }, [loading, user, navigate]);
 
@@ -49,13 +52,20 @@ const Login = () => {
           className="input"
         />
         <label className="label">CONTRASEÑA</label>
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          className="input"
-        />
+        <div className="password-container">
+          <input
+            type={showPassword ? "text" : "password"}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            className="input"
+          />
+          <FontAwesomeIcon
+            icon={showPassword ? faEyeSlash : faEye}
+            className="toggle-password-icon"
+            onClick={() => setShowPassword((prev) => !prev)}
+          />
+        </div>
         <button type="submit" className="submit-button">INGRESAR</button>
       </form>
     </div>

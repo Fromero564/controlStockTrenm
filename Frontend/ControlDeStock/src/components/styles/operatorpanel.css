@@ -1,4 +1,3 @@
-
 * {
     margin: 0;
     padding: 0;
@@ -22,7 +21,7 @@ body {
 
 .grid-container {
     display: grid;
-    grid-template-columns: repeat(3, 1fr); 
+    grid-template-columns: repeat(3, 1fr);
     gap: 20px;
     margin: 50px;
 }
@@ -61,7 +60,7 @@ body {
     border-radius: 5px;
     cursor: pointer;
     font-size: 14px;
-    
+
     display: flex;
     align-items: center;
     gap: 5px;
@@ -86,24 +85,73 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 2px solid #0077b6 ;
+    border: 2px solid #0077b6;
     background-color: white;
     color: #0077b6;
 }
 
 .new-btn:hover {
     background-color: #0077b6;
-    color:white;
+    color: white;
 }
 
 @media (max-width: 1024px) {
     .grid-container {
-        grid-template-columns: repeat(2, 1fr); 
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .card {
+        padding: 18px;
+        border-radius: 8px;
+    }
+
+    .card h3 {
+        font-size: 16px;
+    }
+
+    .card p {
+        font-size: 13px;
+    }
+
+    .btn {
+        font-size: 13px;
+        padding: 7px 10px;
     }
 }
 
+
 @media (max-width: 600px) {
     .grid-container {
-        grid-template-columns: repeat(1, 1fr); 
+        grid-template-columns: 1fr;
+    }
+
+    .card {
+        padding: 15px;
+        border-radius: 6px;
+        margin: 0 10px;
+    }
+
+    .card h3 {
+        font-size: 14px;
+    }
+
+    .card p {
+        font-size: 12px;
+    }
+
+    .buttons {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .btn {
+        width: 100%;
+        font-size: 13px;
+        padding: 8px 0;
+    }
+
+    .view-btn,
+    .new-btn {
+        justify-content: center;
     }
 }

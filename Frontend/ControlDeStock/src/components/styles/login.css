@@ -61,4 +61,15 @@
   .submit-button:hover {
     background: #005f8a;
   }
-  
+.password-container {
+  position: relative;
+}
+
+.toggle-password-icon {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+  cursor: pointer;
+  color: #555;
+}

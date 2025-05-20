@@ -1,190 +1,338 @@
-
-.container {
-    width: 90%;
-    margin: auto;
-    font-family: Arial, sans-serif;
+.body-meat-load{
+  overflow-x: hidden;
 }
 
+.container {
+  width: 90%;
+  margin: auto;
+}
 
 .header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 10px;
-    margin-bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 10px 0;
 }
 
 .header h2 {
-    font-size: 24px;
-    font-weight: bold;
+  font-size: 24px;
+  font-weight: bold;
 }
 
+.search-input-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.search-input-label input {
+  flex: 1;
+  padding: 8px 12px;
+  font-size: 14px;
+}
+
+.search-input-label button {
+  padding: 8px 12px;
+  font-size: 14px;
+  cursor: pointer;
+  background-color: #0077b6;
+  color: white;
+  border: none;
+  border-radius: 5px;
+}
+
+.search-input-label button:hover {
+  background-color: #0056b3;
+}
 
 .new-button {
-    background-color: #007bff;
-    color: white;
-    border: none;
-    padding: 10px 15px;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 16px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 16px;
+  white-space: nowrap;
 }
 
 .new-button:hover {
-    background-color: #0056b3;
+  background-color: #0056b3;
 }
-
 
 .table {
-    width: 100%;
-    border-collapse: collapse;
-    background: white;
-    border: 2px solid lightblue; 
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border: 2px solid lightblue;
 }
-
 
 .table th {
-    background-color: #e3f2fd; 
-    font-weight: bold;
-    padding: 10px;
-    text-align: center;
-    border-bottom: 2px solid #000; 
+  background-color: #e3f2fd;
+  font-weight: bold;
+  padding: 10px;
+  text-align: center;
+  /* eliminada la línea negra bajo encabezados */
+  border-bottom: none;
 }
-
 
 .table td {
-    padding: 10px;
-    text-align: center;
-}
-
-
-.table td, .table th {
-    border: none;
+  padding: 10px;
+  text-align: center;
 }
 
 .table tbody tr {
-    border-bottom: 1px solid #ccc;
+  border-bottom: 1px solid #ccc;
 }
 
-
-.edit-button, .delete-button {
-    border: none;
-    cursor: pointer;
-    padding: 8px 12px;
-    margin: 6px;
-    font-size: 16px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 5px; 
-    width: 40px; 
-    height: 35px;
+.edit-button,
+.delete-button {
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 5px;
+  width: 40px;
+  height: 35px;
+  margin: 0 4px;
+  font-size: 16px;
+  white-space: nowrap;
 }
-
 
 .edit-button {
-    background-color: #5bc0de; 
-    color: white;
+  background-color: #5bc0de;
+  color: white;
 }
 
 .edit-button:hover {
-    background-color: #31b0d5;
+  background-color: #31b0d5;
 }
 
-
 .delete-button {
-    background-color: #d9534f; 
-    color: white;
+  background-color: #d9534f;
+  color: white;
 }
 
 .delete-button:hover {
-    background-color: #c9302c;
-}
-
-
-.edit-button svg, .delete-button svg {
-    font-size: 16px; 
+  background-color: #c9302c;
 }
 
 .red-row {
-    background-color: rgb(181, 180, 180);
-    color: black;
+  background-color: rgb(181, 180, 180);
+  color: black;
 }
 
-.search-input-label{
-    display: flex;
-  }
-/*Pop-up*/
 .custom-popup {
-    border-radius: 10px;
-    padding: 20px;
-    font-family: Arial, sans-serif;
+  border-radius: 10px;
+  padding: 20px;
 }
 
 .custom-confirm-button {
-    background-color: #a11212;
-    color: white;
-    padding: 10px 20px;
-    border-radius: 5px;
-    font-weight: bold;
-    font-size: 16px;
-    width: 100%;
-    border: none;
-    cursor: pointer;
-    margin:10px;
+  background-color: #a11212;
+  color: white;
+  padding: 10px 20px;
+  border-radius: 5px;
+  font-weight: bold;
+  font-size: 16px;
+  width: 100%;
+  border: none;
+  cursor: pointer;
+  margin: 10px 0;
 }
 
 .custom-confirm-button:hover {
-    background-color: #860f0f;
+  background-color: #860f0f;
 }
 
 .custom-cancel-button {
-    background-color: transparent;
-    color: #0056b3;
-    padding: 10px 20px;
-    border-radius: 5px;
-    font-weight: bold;
-    font-size: 16px;
-    width: 100%;
-    border: 2px solid #0056b3;
-    cursor: pointer;
-    margin:10px;
+  background-color: transparent;
+  color: #0056b3;
+  padding: 10px 20px;
+  border-radius: 5px;
+  font-weight: bold;
+  font-size: 16px;
+  width: 100%;
+  border: 2px solid #0056b3;
+  cursor: pointer;
+  margin: 10px 0;
 }
 
 .custom-cancel-button:hover {
-    background-color: #e6f0ff;
+  background-color: #e6f0ff;
 }
 
 .pagination {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin-top: 20px;
-    font-size: 16px;
-    font-weight: bold;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 20px;
+  font-size: 16px;
+  font-weight: bold;
+  gap: 10px;
 }
 
 .pagination button {
-    background-color: #007bff;
-    color: white;
-    border: none;
-    padding: 8px 15px;
-    margin: 0 5px;
-    cursor: pointer;
-    border-radius: 5px;
-    transition: background 0.3s ease;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 8px 15px;
+  cursor: pointer;
+  border-radius: 5px;
+  transition: background 0.3s ease;
+  white-space: nowrap;
 }
 
 .pagination button:disabled {
-    background-color: #ccc;
-    cursor: not-allowed;
+  background-color: #ccc;
+  cursor: not-allowed;
 }
 
 .pagination button:hover:not(:disabled) {
-    background-color: #0056b3;
+  background-color: #0056b3;
 }
 
 .pagination span {
-    margin: 0 10px;
-    color: #333;
+  color: #333;
+}
+
+
+/* ===== Responsive Media Queries ===== */
+
+/* Tablets (≤1024px) */
+@media (max-width: 1024px) {
+  .container {
+    width: 95%;
+  }
+
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .header h2 {
+    font-size: 20px;
+  }
+
+  .search-input-label {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+
+  .search-input-label input,
+  .search-input-label button,
+  .new-button,
+  .pagination button {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .new-button {
+    padding: 8px 12px;
+    font-size: 14px;
+  }
+
+  .table th,
+  .table td {
+    padding: 8px;
+    font-size: 14px;
+  }
+
+  .edit-button,
+  .delete-button {
+    width: auto;
+    height: auto;
+    padding: 4px 6px;
+    font-size: 12px;
+  }
+
+  .pagination button {
+    padding: 6px 12px;
+    font-size: 14px;
+  }
+
+  .pagination span {
+    font-size: 14px;
+  }
+}
+
+/* Móviles (≤600px) */
+@media (max-width: 600px) {
+  .container {
+    width: 100%;
+    margin: 0;
+    padding: 0 10px;
+  }
+
+  .header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+
+  .header h2 {
+    font-size: 18px;
+    text-align: center;
+  }
+
+  .search-input-label {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .search-input-label input,
+  .search-input-label button,
+  .new-button,
+  .pagination button {
+    width: 100% !important;
+    max-width: none;
+    box-sizing: border-box;
+  }
+
+  .search-input-label input {
+    padding: 8px;
+  }
+
+  .search-input-label button,
+  .new-button,
+  .pagination button {
+    padding: 10px;
+  }
+
+  .table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+  }
+
+  .table th,
+  .table td {
+    padding: 6px 8px;
+    font-size: 12px;
+  }
+
+  .edit-button,
+  .delete-button {
+    width: auto;
+    height: auto;
+    padding: 4px 6px;
+    font-size: 12px;
+  }
+
+  .pagination {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .pagination button {
+    width: 100%;
+    padding: 8px 0;
+  }
+
+  .pagination span {
+    margin: 5px 0;
+  }
 }

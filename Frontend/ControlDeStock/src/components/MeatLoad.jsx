@@ -80,7 +80,8 @@ const MeatLoad = () => {
     };
 
     return (
-        <div>
+
+        <body className="body-meat-load">
             <Navbar />
             <div className="container">
             <h1>Mercaderías</h1>
@@ -160,7 +161,7 @@ const MeatLoad = () => {
                     </button>
                 </div>
             </div>
-        </div>
+        </body>
     );
 };
 

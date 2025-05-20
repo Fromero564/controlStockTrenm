@@ -87,14 +87,14 @@ const mainApiController = {
   },
   profile: async (req, res) => {
     try {
-      console.log("req.user:", req.user);
+ 
 
       const userId = req.user?.id;
       if (!userId) {
         return res.status(400).json({ message: "ID de usuario no encontrado en la petición" });
       }
 
-      console.log("Buscando usuario con ID:", userId);
+    
 
       const user = await User.findByPk(userId, { attributes: { exclude: ["password"] } });
 
@@ -103,7 +103,7 @@ const mainApiController = {
         return res.status(404).json({ message: "Usuario no encontrado" });
       }
 
-      console.log("Usuario encontrado:", user.toJSON());
+    
       res.json({ user });
     } catch (error) {
       console.error("Error en profile:", error);

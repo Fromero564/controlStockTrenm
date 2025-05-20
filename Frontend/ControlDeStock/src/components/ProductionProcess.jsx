@@ -65,14 +65,7 @@ const ProductionProcess = () => {
                 const response = await fetch("http://localhost:3000/uploadProcessMeat", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        tipo: corte.tipo,
-                        promedio: corte.promedio,
-                        cantidad: corte.cantidad,
-                        pesoBruto: corte.pesoBruto,
-                        tara: corte.tara,
-                        pesoNeto: corte.pesoNeto,
-                    }),
+                    body: JSON.stringify(corte),
                 });
                 if (!response.ok) throw new Error("Error al guardar los cortes");
             }
@@ -138,122 +131,115 @@ const ProductionProcess = () => {
             <Navbar />
             <div className="pp-main-container">
                 <h1>Proceso Productivo</h1>
-                <div className="pp-formulario-corte">
-                    <div className="pp-form-group">
-                        <div>
-                            <label>TIPO</label>
-                            <select name="tipo" value={formData.tipo} onChange={handleChange} required>
-                                <option value="">Seleccionar</option>
-                                {cortes.map((corte) => (
-                                    <option key={corte.id} value={corte.nombre}>
-                                        {corte.nombre}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
-                        <div>
-                            <label>CANTIDAD</label>
-                            <input type="number" name="cantidad" value={formData.cantidad} onChange={handleChange} min="0" required />
-                        </div>
-
-                        <div>
-                            <label>PESO BRUTO</label>
-                            <input type="number" name="pesoBruto" value={formData.pesoBruto} onChange={handleChange} min="0" required />
-                        </div>
-
-                        <div>
-                            <label>TARA</label>
-                            <select
-                                name="tara"
-                                value={taraSeleccionadaId}
-                                onChange={(e) => {
-                                    const selected = tares.find((t) => t.id === parseInt(e.target.value));
-                                    setTaraSeleccionadaId(e.target.value);
-                                    setFormData((prev) => ({
-                                        ...prev,
-                                        tara: selected?.peso || 0,
-                                    }));
-                                }}
-                                required
-                            >
-                                <option value="">Seleccionar</option>
-                                {tares.map((t) => (
-                                    <option key={t.id} value={t.id}>
-                                        {t.nombre} ({t.peso} kg)
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
-                        <div>
-                            <label>PESO NETO</label>
-                            <input type="number" value={(formData.pesoBruto - formData.tara).toFixed(2)} disabled />
-                        </div>
-
-                        <div>
-                            <label>PROMEDIO</label>
-                            <input type="text" value={calcularPromedio()} disabled />
-                        </div>
-                    </div>
-
-                    <button className="pp-btn-agregar" onClick={agregarCorte}>
-                        Agregar pieza +
-                    </button>
-
-                    <div className="pp-cortes-lista">
-                        <div className="pp-corte-encabezado">
-                            <div><strong>TIPO</strong></div>
-                            <div><strong>CANTIDAD</strong></div>
-                            <div><strong>PESO BRUTO</strong></div>
-                            <div><strong>TARA</strong></div>
-                            <div><strong>PESO NETO</strong></div>
-                            <div><strong>PROMEDIO</strong></div>
-                            <div><strong>ACCIONES</strong></div>
-                        </div>
-
-                        {cortesAgregados.map((corte, index) => (
-                            <div key={index} className="pp-corte-mostrado">
-                                <div>
-                                    <select value={corte.tipo} disabled>
-                                        {cortes.map((opcion) => (
-                                            <option key={opcion.id} value={opcion.nombre}>
-                                                {opcion.nombre}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-
-                                <div><input type="number" value={corte.cantidad} disabled /></div>
-                                <div><input type="number" value={corte.pesoBruto} disabled /></div>
-
-                                <div>
-                                    <select disabled>
-                                        {tares.map((t) => (
-                                            <option key={t.id} value={t.id}>
-                                                {t.nombre} ({t.peso} kg)
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-
-                                <div><input type="number" value={(corte.pesoBruto - corte.tara).toFixed(2)} disabled /></div>
-                                <div><input type="text" value={corte.promedio.toFixed(2)} disabled /></div>
-
-                                <div><button className="pp-btn-eliminar" onClick={() => eliminarCorte(index)}>X</button></div>
+                <div className="pp-content-wrapper">
+                    <div className="pp-formulario-corte">
+                        <div className="pp-form-group">
+                            <div>
+                                <label>TIPO</label>
+                                <select name="tipo" value={formData.tipo} onChange={handleChange} required>
+                                    <option value="">Seleccionar</option>
+                                    {cortes.map((corte) => (
+                                        <option key={corte.id} value={corte.nombre}>
+                                            {corte.nombre}
+                                        </option>
+                                    ))}
+                                </select>
                             </div>
-                        ))}
+                            <div>
+                                <label>CANTIDAD</label>
+                                <input type="number" name="cantidad" value={formData.cantidad} onChange={handleChange} min="0" required />
+                            </div>
+                            <div>
+                                <label>PESO BRUTO</label>
+                                <input type="number" name="pesoBruto" value={formData.pesoBruto} onChange={handleChange} min="0" required />
+                            </div>
+                            <div>
+                                <label>TARA</label>
+                                <select
+                                    name="tara"
+                                    value={taraSeleccionadaId}
+                                    onChange={(e) => {
+                                        const selected = tares.find((t) => t.id === parseInt(e.target.value));
+                                        setTaraSeleccionadaId(e.target.value);
+                                        setFormData((prev) => ({
+                                            ...prev,
+                                            tara: selected?.peso || 0,
+                                        }));
+                                    }}
+                                    required
+                                >
+                                    <option value="">Seleccionar</option>
+                                    {tares.map((t) => (
+                                        <option key={t.id} value={t.id}>
+                                            {t.nombre} ({t.peso} kg)
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label>PESO NETO</label>
+                                <input type="number" value={(formData.pesoBruto - formData.tara).toFixed(2)} disabled />
+                            </div>
+                            <div>
+                                <label>PROMEDIO</label>
+                                <input type="text" value={calcularPromedio()} disabled />
+                            </div>
+                        </div>
+
+                        <button className="pp-btn-agregar" onClick={agregarCorte}>
+                            Agregar pieza +
+                        </button>
+
+                        {/* Tabla visible solo en pantallas grandes */}
+                        <div className="pp-cortes-tabla">
+                            <div className="pp-corte-encabezado">
+                                <div><strong>TIPO</strong></div>
+                                <div><strong>CANTIDAD</strong></div>
+                                <div><strong>PESO BRUTO</strong></div>
+                                <div><strong>TARA</strong></div>
+                                <div><strong>PESO NETO</strong></div>
+                                <div><strong>PROMEDIO</strong></div>
+                                <div><strong>ACCIONES</strong></div>
+                            </div>
+
+                            {cortesAgregados.map((corte, index) => (
+                                <div key={index} className="pp-corte-mostrado">
+                                    <div>{corte.tipo}</div>
+                                    <div>{corte.cantidad}</div>
+                                    <div>{corte.pesoBruto}</div>
+                                    <div>{corte.tara}</div>
+                                    <div>{(corte.pesoBruto - corte.tara).toFixed(2)}</div>
+                                    <div>{corte.promedio.toFixed(2)}</div>
+                                    <div><button className="pp-btn-eliminar" onClick={() => eliminarCorte(index)}>X</button></div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Tarjetas responsive para pantallas chicas */}
+                        <div className="pp-cortes-tarjetas">
+                            {cortesAgregados.map((corte, index) => (
+                                <div key={index} className="pp-corte-tarjeta">
+                                    <p><strong>Tipo:</strong> {corte.tipo}</p>
+                                    <p><strong>Cantidad:</strong> {corte.cantidad}</p>
+                                    <p><strong>Peso Bruto:</strong> {corte.pesoBruto}</p>
+                                    <p><strong>Tara:</strong> {corte.tara}</p>
+                                    <p><strong>Peso Neto:</strong> {(corte.pesoBruto - corte.tara).toFixed(2)}</p>
+                                    <p><strong>Promedio:</strong> {corte.promedio.toFixed(2)}</p>
+                                    <button className="pp-btn-eliminar" onClick={() => eliminarCorte(index)}>Eliminar</button>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="pp-total-peso">
+                            <strong>Total Peso Neto:</strong>{" "}
+                            {cortesAgregados.reduce((acc, item) => acc + (item.pesoBruto - item.tara), 0).toFixed(2)} kg
+                        </div>
                     </div>
 
-                    <div className="pp-total-peso">
-                        <strong>Total Peso Neto:</strong>{" "}
-                        {cortesAgregados.reduce((acc, item) => acc + (item.pesoBruto - item.tara), 0).toFixed(2)} kg
-                    </div>
+                    <button className="pp-btn-guardar" onClick={handleGuardar}>
+                        Guardar y terminar carga
+                    </button>
                 </div>
-
-                <button className="pp-btn-guardar" onClick={handleGuardar}>
-                    Guardar y terminar carga
-                </button>
             </div>
         </>
     );

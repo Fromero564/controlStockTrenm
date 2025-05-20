@@ -406,8 +406,6 @@ const operatorApiController = {
             const Supplierid = req.params.id;
             const { cortes, observacion } = req.body;
 
-            console.log("Cortes:", cortes);
-            console.log("Observación:", observacion);
 
             if (!Array.isArray(cortes) || cortes.length === 0) {
                 return res.status(400).json({ mensaje: "El cuerpo de la solicitud debe contener una lista de productos." });
@@ -473,7 +471,7 @@ const operatorApiController = {
             const Supplierid = req.params.id;
             const { cortes } = req.body;
 
-            console.log("Cortes a actualizar:", cortes);
+        
 
             if (!Array.isArray(cortes) || cortes.length === 0) {
                 return res.status(400).json({ mensaje: "El cuerpo de la solicitud debe contener una lista de productos." });
@@ -528,7 +526,7 @@ const operatorApiController = {
         try {
             const allproductsStock = await meatIncome.findAll();
 
-            console.log(allproductsStock)
+           
         } catch (error) {
             console.error("Error al obtener stock:", error);
             return res.status(500).json({ message: "Error interno del servidor" });

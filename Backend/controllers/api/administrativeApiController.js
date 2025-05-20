@@ -194,7 +194,7 @@ const administrativeApiController = {
 
 
     loadNewClient: async (req, res) => {
-        console.log("REQ BODY:", req.body);
+       
         const { nombreCliente, identidad, numeroIdentidad, ivaCondicion, emailCliente, telefonoCliente, domicilioCliente, paisCliente, provinciaCliente, localidadCliente, client_state } = req.body;
 
         const clienteExistente = await Client.findOne({

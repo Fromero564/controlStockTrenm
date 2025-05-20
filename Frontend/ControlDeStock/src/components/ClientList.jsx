@@ -71,7 +71,7 @@ const handleDelete = (Client) => {
     };
     return(<>
    
-   <div>
+   <body className="body-client-list">
             <Navbar />
             <div className="container">
             <h1>Clientes</h1>
@@ -163,7 +163,7 @@ const handleDelete = (Client) => {
                     </button>
                 </div>
             </div>
-        </div>
+        </body>
     </>)
 }
 
