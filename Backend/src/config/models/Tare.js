@@ -7,15 +7,13 @@ module.exports = (sequelize, dataTypes) => {
             autoIncrement: true,
         },
         tare_name: {
-           type: dataTypes.STRING(255),
-           allowNull: false
-       },
-       tare_weight: {
-        type: dataTypes.FLOAT,
-          allowNull: false
-      },  
-       
-      
+            type: dataTypes.STRING(255),
+            allowNull: false
+        },
+        tare_weight: {
+            type: dataTypes.FLOAT,
+            allowNull: false
+        },  
     };
 
     let config = {
@@ -23,9 +21,6 @@ module.exports = (sequelize, dataTypes) => {
         timestamps: false, 
     };
 
-    const ProductsAvailable = sequelize.define(alias, cols, config);
-
-
-
-    return ProductsAvailable ;
+    const Tare = sequelize.define(alias, cols, config);
+    return Tare;
 };

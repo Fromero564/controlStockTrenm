@@ -7,6 +7,7 @@ import "./styles/meatmanualincome.css";
 
 const MeatManualIncome = () => {
     const navigate = useNavigate();
+    const API_URL = import.meta.env.VITE_API_URL;
     const { remitoId } = useParams();
     const [cantidad, setCantidad] = useState(null);
     const [data, setData] = useState(null);
@@ -33,7 +34,7 @@ const MeatManualIncome = () => {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const response = await fetch(`http://localhost:3000/find-remit/${remitoId}`);
+                const response = await fetch(`${API_URL}/find-remit/${remitoId}`);
                 if (!response.ok) throw new Error("Error en la solicitud");
 
                 const result = await response.json();
@@ -53,7 +54,7 @@ const MeatManualIncome = () => {
             if (!data?.id) return;
 
             try {
-                const response = await fetch(`http://localhost:3000/getProductsFromRemito/${data.id}`);
+                const response = await fetch(`${API_URL}/getProductsFromRemito/${data.id}`);
                 if (!response.ok) throw new Error("No se pudieron obtener los cortes ya cargados");
 
                 const result = await response.json();
@@ -99,7 +100,8 @@ const MeatManualIncome = () => {
     useEffect(() => {
         const fetchProductos = async () => {
             try {
-                const response = await fetch("http://localhost:3000/product-name");
+                
+                const response = await  fetch(`${API_URL}/product-name`);
                 if (!response.ok) throw new Error("Error al cargar los productos");
 
                 const data = await response.json();
@@ -123,7 +125,8 @@ const MeatManualIncome = () => {
     useEffect(() => {
         const fetchCantidad = async () => {
             try {
-                const response = await fetch("http://localhost:3000/allProducts");
+                
+                const response = await  fetch(`${API_URL}/allProducts`);
                 const allData = await response.json();
 
                 console.log("Data del remito:", data);
@@ -150,7 +153,8 @@ const MeatManualIncome = () => {
     useEffect(() => {
         const fetchTares = async () => {
             try {
-                const response = await fetch("http://localhost:3000/allTares");
+               
+                const response = await  fetch(`${API_URL}/allTares`);
                 if (!response.ok) throw new Error("Error al cargar todas las taras");
 
                 const data = await response.json();
@@ -192,7 +196,7 @@ const MeatManualIncome = () => {
     const actualizarObservacion = async (observacionId, nuevoTexto) => {
         try {
 
-            const response = await fetch(`http://localhost:3000/observations-edit/${observacionId}`, {
+            const response = await fetch(`${API_URL}/observations-edit/${observacionId}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -236,7 +240,7 @@ const MeatManualIncome = () => {
                     cortes: cortesAgregados,
                 }
                 // Lógica para edición
-                const response = await fetch(`http://localhost:3000/meat-income-edit/${data.id}`, {
+                const response = await fetch(`${API_URL}/meat-income-edit/${data.id}`, {
                     method: "PUT",
                     headers: {
                         "Content-Type": "application/json",
@@ -252,7 +256,7 @@ const MeatManualIncome = () => {
                     peso_total_neto_cargado: totalKgNeto,
                 };
 
-                const updateResponse = await fetch(`http://localhost:3000/updateBillSupplier/${data.id}`, {
+                const updateResponse = await fetch(`${API_URL}/updateBillSupplier/${data.id}`, {
                     method: "PUT",
                     headers: {
                         "Content-Type": "application/json",
@@ -267,7 +271,7 @@ const MeatManualIncome = () => {
                 navigate("/operator-panel");
 
             } else {
-                const response = await fetch(`http://localhost:3000/addProducts/${data.id}`, {
+                const response = await fetch(`${API_URL}/addProducts/${data.id}`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
@@ -284,7 +288,7 @@ const MeatManualIncome = () => {
                     peso_total_neto_cargado: totalKgNeto,
                 };
 
-                const updateResponse = await fetch(`http://localhost:3000/updateBillSupplier/${data.id}`, {
+                const updateResponse = await fetch(`${API_URL}/updateBillSupplier/${data.id}`, {
                     method: "PUT",
                     headers: {
                         "Content-Type": "application/json",
@@ -352,7 +356,7 @@ const MeatManualIncome = () => {
         setTaraSeleccionadaId("");
     };
     const eliminarCorteBD = async (id) => {
-        const response = await fetch(`http://localhost:3000/provider-item-delete/${id}`, {
+        const response = await fetch(`${API_URL}/provider-item-delete/${id}`, {
             method: "DELETE",
         });
 

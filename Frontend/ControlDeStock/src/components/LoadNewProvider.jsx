@@ -7,6 +7,7 @@ const LoadNewProvider = () => {
     const navigate = useNavigate();
     const { id } = useParams();
     const [countries, setCountries] = useState([]);
+    const API_URL = import.meta.env.VITE_API_URL;
     const [formData, setFormData] = useState({
         id,
         nombreProveedor: "",
@@ -25,7 +26,7 @@ const LoadNewProvider = () => {
         const fetchProveedor = async () => {
             if (id) {
                 try {
-                    const res = await fetch(`http://localhost:3000/provider/${id}`);
+                    const res = await fetch(`${API_URL}/provider/${id}`);
                     if (res.ok) {
                         const data = await res.json();
                         setFormData({
@@ -90,8 +91,8 @@ const LoadNewProvider = () => {
 
         try {
             const url = id
-                ? `http://localhost:3000/provider-edit/${id}`
-                : "http://localhost:3000/provider-load";
+                ? `${API_URL}/provider-edit/${id}`
+                :  `${API_URL}/provider-load`;
 
             const method = id ? "PUT" : "POST";
 

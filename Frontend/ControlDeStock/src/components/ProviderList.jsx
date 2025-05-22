@@ -12,9 +12,10 @@ const ProviderList = () => {
     const [search, setSearch] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 5;
+    const API_URL = import.meta.env.VITE_API_URL;
 
     useEffect(() => {
-        fetch("http://localhost:3000/allProviders")
+       fetch(`${API_URL}/allProviders`)
             .then((response) => response.json())
             .then((data) => setProviders(data))
             .catch((error) => console.error("Error al obtener productos:", error));
@@ -32,7 +33,7 @@ const ProviderList = () => {
             cancelButtonText: 'Cancelar'
         }).then((result) => {
             if (result.isConfirmed) {
-                fetch(`http://localhost:3000/deleteProvider/${provider.id}`, {
+                fetch(`${API_URL}/deleteProvider/${provider.id}`, {
                     method: 'DELETE'
                 })
                     .then((res) => {

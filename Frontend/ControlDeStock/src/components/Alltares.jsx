@@ -12,9 +12,10 @@ const Alltares = () => {
     const [search, setSearch] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 5;
+    const API_URL = import.meta.env.VITE_API_URL;
 
     useEffect(() => {
-        fetch("http://localhost:3000/allTares")
+        fetch(`${API_URL}/allTares`)
             .then((response) => response.json())
             .then((data) => setTares(data))
             .catch((error) => console.error("Error al obtener taras:", error));
@@ -35,7 +36,7 @@ const Alltares = () => {
 
         if (result.isConfirmed) {
             try {
-                const response = await fetch(`http://localhost:3000/tare-delete/${id}`, {
+                const response = await fetch(`${API_URL}/tare-delete/${id}`, {
                     method: "DELETE",
                 });
 

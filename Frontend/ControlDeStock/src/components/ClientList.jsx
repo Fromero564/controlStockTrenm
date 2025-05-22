@@ -12,9 +12,10 @@ const ClientList = ()=>{
     const [search, setSearch] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 5;
+    const API_URL = import.meta.env.VITE_API_URL;
 
     useEffect(() => {
-        fetch("http://localhost:3000/allClients")
+        fetch(`${API_URL}/allClients`)
             .then((response) => response.json())
             .then((data) => setClients(data))
             .catch((error) => console.error("Error al obtener productos:", error));
@@ -35,7 +36,7 @@ const handleDelete = (Client) => {
             cancelButtonText: 'Cancelar'
         }).then((result) => {
             if (result.isConfirmed) {
-                fetch(`http://localhost:3000/deleteClient/${Client.id}`, {
+                fetch(`${API_URL}/deleteClient/${Client.id}`, {
                     method: 'DELETE'
                 })
                     .then((res) => {
@@ -71,7 +72,7 @@ const handleDelete = (Client) => {
     };
     return(<>
    
-   <body className="body-client-list">
+   <div className="body-client-list">
             <Navbar />
             <div className="container">
             <h1>Clientes</h1>
@@ -163,7 +164,7 @@ const handleDelete = (Client) => {
                     </button>
                 </div>
             </div>
-        </body>
+        </div>
     </>)
 }
 

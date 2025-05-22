@@ -7,6 +7,7 @@ import "./styles/providerForm.css";
 
 const ProviderForm = () => {
     const [tipoIngreso, setTipoIngreso] = useState("romaneo");
+    const API_URL = import.meta.env.VITE_API_URL;
     const [errorProductoDuplicado, setErrorProductoDuplicado] = useState(false);
     const [providers, setProviders] = useState([]);
     const [cortes, setCortes] = useState([]);
@@ -31,7 +32,7 @@ const ProviderForm = () => {
         if (id) {
             const fetchData = async () => {
                 try {
-                    const response = await fetch(`http://localhost:3000/chargeUpdateBillDetails/${id}`);
+                    const response = await fetch(`${API_URL}/chargeUpdateBillDetails/${id}`);
                     const data = await response.json();
 
                     console.log(data)
@@ -78,7 +79,7 @@ const ProviderForm = () => {
         if (confirmacion.isConfirmed) {
             if (corte.id) {
                 try {
-                    const response = await fetch(`http://localhost:3000/delete-bill-detail/${corte.id}`, {
+                    const response = await fetch(`${API_URL}/delete-bill-detail/${corte.id}`, {
                         method: "DELETE"
                     });
 
@@ -101,16 +102,16 @@ const ProviderForm = () => {
 
 
 
-    useEffect(() => {
-        fetch("http://localhost:3000/allProviders")
+    useEffect(() => {     
+        fetch(`${API_URL}/allProviders`)
             .then((response) => response.json())
             .then((data) => setProviders(data))
             .catch((error) => console.error("Error al obtener productos:", error));
     }, []);
 
     useEffect(() => {
-        if (!id) {
-            fetch("http://localhost:3000/last-provider-bill")
+        if (!id) {          
+          fetch(`${API_URL}/last-provider-all`)
                 .then((response) => response.json())
                 .then((data) => {
                     const nuevoNumero = data?.id ? data.id + 1 : 1;
@@ -121,8 +122,8 @@ const ProviderForm = () => {
     }, [id]);
     useEffect(() => {
         const fetchProductos = async () => {
-            try {
-                const response = await fetch("http://localhost:3000/product-primary-name");
+            try {               
+                const response = await fetch(`${API_URL}/product-primary-name`);
                 if (!response.ok) throw new Error("Error al cargar los productos");
 
                 const data = await response.json();
@@ -181,8 +182,8 @@ const ProviderForm = () => {
 
         try {
             const response = await fetch(id
-                ? `http://localhost:3000/update-provider-bill/${id}`
-                : "http://localhost:3000/uploadProduct", {
+                ? `${API_URL}/update-provider-bill/${id}`
+                :  `${API_URL}/uploadProduct`, {
 
                 method: id ? "PUT" : "POST",
                 headers: {

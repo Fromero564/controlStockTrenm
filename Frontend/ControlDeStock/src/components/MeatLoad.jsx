@@ -12,9 +12,10 @@ const MeatLoad = () => {
     const [search, setSearch] = useState(""); 
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
+    const API_URL = import.meta.env.VITE_API_URL;
 
-    useEffect(() => {
-        fetch("http://localhost:3000/allproducts")
+    useEffect(() => {     
+        fetch(`${API_URL}/allproducts`)
             .then((response) => response.json())
             .then((data) => setProducts(data))
             .catch((error) => console.error("Error al obtener productos:", error));
@@ -40,7 +41,7 @@ const MeatLoad = () => {
             buttonsStyling: false,
         }).then((result) => {
             if (result.isConfirmed) {
-                fetch(`http://localhost:3000/products/${id}`, {
+                fetch(`${API_URL}/products/${id}`, {
                     method: "DELETE",
                 })
                     .then((response) => {
@@ -81,7 +82,7 @@ const MeatLoad = () => {
 
     return (
 
-        <body className="body-meat-load">
+        <div className="body-meat-load">
             <Navbar />
             <div className="container">
             <h1>Mercaderías</h1>
@@ -161,7 +162,7 @@ const MeatLoad = () => {
                     </button>
                 </div>
             </div>
-        </body>
+        </div>
     );
 };
 

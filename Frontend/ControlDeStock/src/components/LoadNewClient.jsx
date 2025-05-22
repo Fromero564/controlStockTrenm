@@ -7,6 +7,7 @@ const LoadNewClient = () => {
     const navigate = useNavigate();
     const { id } = useParams();
     const [countries, setCountries] = useState([]);
+    const API_URL = import.meta.env.VITE_API_URL;
     const [formData, setFormData] = useState({
         id,
         nombreCliente: "",
@@ -26,7 +27,7 @@ const LoadNewClient = () => {
         const fetchCliente = async () => {
             if (id) {
                 try {
-                    const res = await fetch(`http://localhost:3000/client/${id}`);
+                    const res = await fetch(`${API_URL}/client/${id}`);
                     if (res.ok) {
                         const data = await res.json();
                         setFormData({
@@ -109,8 +110,8 @@ const LoadNewClient = () => {
 
         try {
             const url = id
-                ? `http://localhost:3000/client-edit/${id}`
-                : "http://localhost:3000/client-load";
+                ? `${API_URL}client-edit/${id}`
+                :  `${API_URL}/client-load`;
 
             const method = id ? "PUT" : "POST";
 

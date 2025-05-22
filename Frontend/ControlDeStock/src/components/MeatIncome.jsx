@@ -7,11 +7,13 @@ function MeatIncome() {
     const [cortes, setCortes] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const API_URL = import.meta.env.VITE_API_URL;
 
     useEffect(() => {
         const fetchProductos = async () => {
             try {
-                const response = await fetch("http://localhost:3000/product-primary-name");
+               
+                const response = await  fetch(`${API_URL}/product-primary-name`);
                 if (!response.ok) throw new Error("Error al cargar los productos");
 
                 const data = await response.json();
@@ -58,7 +60,7 @@ function MeatIncome() {
             };
 
 
-            const response = await fetch(`http://localhost:3000/addProducts/${id}`, {
+            const response = await fetch(`${API_URL}/addProducts/${id}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),

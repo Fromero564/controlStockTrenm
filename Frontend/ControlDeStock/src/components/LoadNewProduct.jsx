@@ -7,6 +7,7 @@ const LoadNewProduct = () => {
     const navigate = useNavigate();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [successMessage, setSuccessMessage] = useState("");
+    const API_URL = import.meta.env.VITE_API_URL;
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -26,7 +27,8 @@ const LoadNewProduct = () => {
         }
 
         try {
-            const response = await fetch("http://localhost:3000/product-load", {
+            
+            const response = await fetch(`${API_URL}/product-load`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

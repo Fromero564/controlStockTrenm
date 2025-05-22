@@ -5,6 +5,7 @@ import './styles/productionprocess.css';
 
 const ProductionProcess = () => {
     const navigate = useNavigate();
+    const API_URL = import.meta.env.VITE_API_URL;
     const [cortes, setCortes] = useState([]);
     const [tares, setTares] = useState([]);
     const [cortesAgregados, setCortesAgregados] = useState([]);
@@ -21,7 +22,7 @@ const ProductionProcess = () => {
     useEffect(() => {
         const fetchProductos = async () => {
             try {
-                const response = await fetch("http://localhost:3000/product-name");
+                const response = await fetch( `${API_URL}/product-name`);
                 const data = await response.json();
                 const productosConCantidad = data.map((nombre, index) => ({
                     id: index + 1,
@@ -38,8 +39,8 @@ const ProductionProcess = () => {
 
     useEffect(() => {
         const fetchTares = async () => {
-            try {
-                const response = await fetch("http://localhost:3000/allTares");
+            try {               
+                const response = await fetch(`${API_URL}/allTares`);
                 const data = await response.json();
                 const tarasConIndex = data.map((item) => ({
                     id: item.id,
@@ -61,8 +62,8 @@ const ProductionProcess = () => {
         }
 
         try {
-            for (const corte of cortesAgregados) {
-                const response = await fetch("http://localhost:3000/uploadProcessMeat", {
+            for (const corte of cortesAgregados) {              
+                const response = await fetch(`${API_URL}/uploadProcessMeat`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(corte),
