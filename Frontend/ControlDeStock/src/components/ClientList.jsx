@@ -21,9 +21,11 @@ const ClientList = ()=>{
             .catch((error) => console.error("Error al obtener productos:", error));
     }, []);
 
-    const filteredClients = clients.filter((client) =>
-        client.id.toString().toLowerCase().includes(search.toLowerCase())
-    );
+   const filteredClients = Array.isArray(clients)
+  ? clients.filter((client) =>
+      client.id.toString().toLowerCase().includes(search.toLowerCase())
+    )
+  : [];
 const handleDelete = (Client) => {
         Swal.fire({
             title: `¿Eliminar cliente "${Client.client_name}"?`,

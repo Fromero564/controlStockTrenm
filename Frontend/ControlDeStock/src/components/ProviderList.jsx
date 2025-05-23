@@ -50,10 +50,11 @@ const ProviderList = () => {
         });
     };
 
-    const filteredProviders = providers.filter((provider) =>
-        provider.id.toString().toLowerCase().includes(search.toLowerCase())
-    );
-
+  const filteredProviders = Array.isArray(providers)
+  ? providers.filter((provider) =>
+      provider.id.toString().toLowerCase().includes(search.toLowerCase())
+    )
+  : [];
     // Paginación
     const indexOfLastItem = currentPage * itemsPerPage;
     const indexOfFirstItem = indexOfLastItem - itemsPerPage;

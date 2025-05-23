@@ -102,16 +102,19 @@ const ProviderForm = () => {
 
 
 
-    useEffect(() => {     
+    useEffect(() => {
         fetch(`${API_URL}/allProviders`)
             .then((response) => response.json())
-            .then((data) => setProviders(data))
+            .then((data) => {
+                const lista = Array.isArray(data) ? data : data.providers || [];
+                setProviders(lista);
+            })
             .catch((error) => console.error("Error al obtener productos:", error));
     }, []);
 
     useEffect(() => {
-        if (!id) {          
-          fetch(`${API_URL}/last-provider-all`)
+        if (!id) {
+            fetch(`${API_URL}/last-provider-bill`)
                 .then((response) => response.json())
                 .then((data) => {
                     const nuevoNumero = data?.id ? data.id + 1 : 1;
@@ -122,7 +125,7 @@ const ProviderForm = () => {
     }, [id]);
     useEffect(() => {
         const fetchProductos = async () => {
-            try {               
+            try {
                 const response = await fetch(`${API_URL}/product-primary-name`);
                 if (!response.ok) throw new Error("Error al cargar los productos");
 
@@ -183,7 +186,7 @@ const ProviderForm = () => {
         try {
             const response = await fetch(id
                 ? `${API_URL}/update-provider-bill/${id}`
-                :  `${API_URL}/uploadProduct`, {
+                : `${API_URL}/uploadProduct`, {
 
                 method: id ? "PUT" : "POST",
                 headers: {
@@ -222,7 +225,7 @@ const ProviderForm = () => {
             <Navbar />
             <div className="new-register-container">
                 <form onSubmit={handleSubmit} className="form-container-provider">
-                   <h2 className="form-title">{id ? "Editar Registro" : "Nuevo Registro"}</h2>
+                    <h2 className="form-title">{id ? "Editar Registro" : "Nuevo Registro"}</h2>
 
                     <label className="label-provider-form">
                         TIPO DE INGRESO

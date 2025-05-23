@@ -3,7 +3,7 @@ const db = require("../../src/config/models");
 const sequelize = db.sequelize;
 const { Op, where } = require("sequelize");
 const moment = require("moment");
-const productsAvailable = require("../../src/config/models/productsAvailable");
+
 
 const ProductsAvailable = db.ProductsAvailable;
 const Provider = db.Provider;

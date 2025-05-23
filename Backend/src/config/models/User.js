@@ -19,6 +19,7 @@ module.exports = (sequelize, dataTypes) => {
         }
         };
     let config = {
+        tableName: 'user',
         createdAt: 'create_date',  
         updatedAt: 'updated_at'    
     }

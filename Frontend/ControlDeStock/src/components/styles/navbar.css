@@ -38,3 +38,24 @@
 .navbar-options p {
     margin-right: 10px;
 }
+
+@media (max-width: 768px) {
+  .navbar {
+    padding: 10px;
+  }
+
+  .navbar-inicio {
+    margin-left: 10px;
+    font-size: 24px;
+  }
+
+  .navbar-options {
+    margin-right: 10px;
+    gap: 20px;
+    font-size: 14px;
+  }
+
+  .navbar-options p {
+    display: none; 
+  }
+}

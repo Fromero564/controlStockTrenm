@@ -41,7 +41,7 @@
 
 .pp-form-group input:focus,
 .pp-form-group select:focus {
-    border-color: #007bff;
+    border-color: #0077b6;
     outline: none;
     box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
 }
@@ -58,7 +58,7 @@
 .pp-btn-agregar,
 .pp-btn-guardar {
     padding: 0.75rem 1.5rem;
-    background-color: #007bff;
+    background-color: #0077b6;
     color: white;
     font-weight: bold;
     border: none;
@@ -68,7 +68,7 @@
 
 .pp-btn-agregar:hover,
 .pp-btn-guardar:hover {
-    background-color: #0056b3;
+    background-color: #0077b6;
 }
 
 /* Tabla de cortes */
