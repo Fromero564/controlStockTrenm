@@ -3,8 +3,8 @@ import { useNavigate } from "react-router-dom"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPen, faXmark} from "@fortawesome/free-solid-svg-icons";
 import Swal from 'sweetalert2';
-import './styles/clientList.css'
-import Navbar from "./Navbar";
+import '../../assets/styles/clientList.css'
+import Navbar from "../../components/Navbar.jsx";
 
 const ClientList = ()=>{
     const navigate = useNavigate();

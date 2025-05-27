@@ -1,8 +1,8 @@
 
 import { useState } from 'react';
-import Navbar from './Navbar.jsx';
+import Navbar from "../components/Navbar.jsx";
 import { useNavigate } from 'react-router-dom';
-import './styles/register.css';
+import '../assets/styles/register.css';
 
 const Register = () => {
   const [username, setUsername] = useState("");

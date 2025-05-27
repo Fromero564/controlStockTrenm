@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import "./styles/meatIncome.css";
+import "../../assets/styles/meatIncome.css";
 
 function MeatIncome() {
     const { id, remitoId } = useParams();

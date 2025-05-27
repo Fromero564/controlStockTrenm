@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Swal from 'sweetalert2';
 import Select from 'react-select';
-import Navbar from "./Navbar.jsx";
-import "./styles/providerForm.css";
+import Navbar from "../../components/Navbar.jsx";
+import "../../assets/styles/providerForm.css";
 
 const ProviderForm = () => {
     const [tipoIngreso, setTipoIngreso] = useState("romaneo");

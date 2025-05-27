@@ -2,26 +2,26 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import './index.css';
-import Login from './components/Login.jsx';
-import Register from './components/Register.jsx';
-import Dashboard from './components/Dashboard.jsx';
-import MeatIncome from './components/MeatIncome.jsx';
-import ProviderForm from './components/ProviderForm.jsx';
-import OperatorPanel from './components/OperatorPanel.jsx';
-import AdministrativePanel from './components/AdministrativePanel.jsx';
-import LoadNewProduct from './components/LoadNewProduct.jsx';
-import LoadNewProvider from './components/LoadNewProvider.jsx'
-import ProviderList from './components/ProviderList.jsx'
-import MeatLoad from './components/MeatLoad.jsx';
+import Login from './pages/Login.jsx';
+import Register from './pages/Register.jsx';
+import Dashboard from './pages/Dashboard.jsx';
+import MeatIncome from './features/stock/MeatIncome.jsx';
+import ProviderForm from './features/providers/ProviderForm.jsx';
+import OperatorPanel from './pages/OperatorPanel.jsx';
+import AdministrativePanel from './pages/AdministrativePanel.jsx';
+import LoadNewProduct from './features/products/LoadNewProduct.jsx';
+import LoadNewProvider from './features/providers/LoadNewProvider.jsx'
+import ProviderList from './features/providers/ProviderList.jsx'
+import MeatLoad from './features/stock/MeatLoad.jsx';
 import { AuthProvider } from './context/AuthProvider.jsx';
-import MeatManualIncome from './components/MeatManualIncome.jsx';
+import MeatManualIncome from './features/stock/MeatManualIncome.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
-import Tareload from './components/TareLoad.jsx';
-import ProductionProcess from './components/ProductionProcess.jsx';;
-import GeneralStock from './components/GeneralStock.jsx';
-import Alltares from './components/Alltares.jsx';
-import LoadNewClient from './components/LoadNewClient.jsx';
-import ClientList from './components/ClientList.jsx';
+import Tareload from './features/stock/TareLoad.jsx';
+import ProductionProcess from './features/stock/ProductionProcess.jsx';;
+import GeneralStock from './features/stock/GeneralStock.jsx';
+import Alltares from './features/stock/Alltares.jsx';
+import LoadNewClient from './features/clients/LoadNewClient.jsx';
+import ClientList from './features/clients/ClientList.jsx';
 
 
 const router = createBrowserRouter([

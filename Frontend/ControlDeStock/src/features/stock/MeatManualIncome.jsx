@@ -2,8 +2,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import Select from 'react-select';
 import Swal from 'sweetalert2';
 import { useState, useEffect } from "react";
-import Navbar from "./Navbar";
-import "./styles/meatmanualincome.css";
+import Navbar from "../../components/Navbar.jsx";
+import "../../assets/styles/meatmanualincome.css";
 
 const MeatManualIncome = () => {
     const navigate = useNavigate();

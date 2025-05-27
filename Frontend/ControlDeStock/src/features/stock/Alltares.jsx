@@ -3,8 +3,8 @@ import { useNavigate } from "react-router-dom";
 import Swal from 'sweetalert2';
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPen, faXmark, faPlus } from "@fortawesome/free-solid-svg-icons";
-import './styles/alltares.css';
-import Navbar from "./Navbar";
+import '../../assets/styles/alltares.css';
+import Navbar from "../../components/Navbar.jsx";
 
 const Alltares = () => {
     const navigate = useNavigate();

@@ -2,8 +2,8 @@ import { useContext } from "react";
 import { AuthContext } from "../context/AuthProvider.jsx";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {  faChartBar, faCow, faDollarSign } from "@fortawesome/free-solid-svg-icons";
-import Navbar from "./Navbar.jsx";
-import "./styles/dashboard.css";
+import Navbar from "../components/Navbar.jsx";
+import "../assets/styles/dashboard.css";
 
 
 const Dashboard = () => {

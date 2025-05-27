@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import Navbar from "./Navbar";
-import "./styles/generalStock.css"; 
+import Navbar from "../../components/Navbar.jsx";
+import "../../assets/styles/generalStock.css"; 
 
 const GeneralStock = () => {
   const [stockData, setStockData] = useState([]);

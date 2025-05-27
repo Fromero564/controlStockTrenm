@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import Navbar from "./Navbar";
-import './styles/Tareload.css';
+import Navbar from "../../components/Navbar.jsx";
+import '../../assets/styles/Tareload.css';
 
 const Tareload = () => {
     const [tare, setTare] = useState({ tareName: "", tareWeight: "" });

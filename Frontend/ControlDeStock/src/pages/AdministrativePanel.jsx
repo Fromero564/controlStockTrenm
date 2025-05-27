@@ -1,21 +1,19 @@
 
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import Navbar from "./Navbar.jsx";
+import Navbar from "../components/Navbar.jsx";
 import { faEye, faPlus } from "@fortawesome/free-solid-svg-icons";
-import "./styles/operatorpanel.css";
+import "../assets/styles/administrativepanel.css";
 
-const OperatorPanel = () => {
+const AdministrativePanel = () => {
 
     const navigate = useNavigate();
 
     const sections = [
-        { title: "INGRESOS", desc: "Ingreso Mercaderia proveniente de proveedores", viewPath: "/meat-load", newPath: "/provider-form", newText: "Nuevo ingreso" },
-        { title: "PROCESO PRODUCTIVO", desc: "Realiza el desposte de piezas cargadas para obtener productos y subproductos", newPath: "/production-process", newText: "Nuevo Proceso" },
-        { title: "STOCK", desc: "Revisa el stock de piezas, productos y subproductos.", viewPath: "/general-stock", newText: "Consultar stock" },
-        { title: "PROVEEDORES", desc: "Administa a los agentes que proveen de mercadería al frigorífico.", viewPath: "/provider-list", newPath: "/provider-load", newText: "Cargar" },
-        { title: "CLIENTES", desc: "Administa a los clientes del frigorífico.", viewPath: "/client-list", newPath: "/client-load", newText: "Cargar" },
-        { title: "CONFIGURACION", desc: "Registra las taras para medir el peso de las mismas al momento del pesaje.", viewPath: "/all-tares", newPath: "/tare-load", newText: "Cargar" },
+        { title: "NUEVO USUARIO", desc: "Ingreso de nuevo usuario", viewPath: "/", newPath: "/Registro", newText: "Nuevo usuario" },
+        
+        { title: "PRODUCTOS", desc: "Aca se pueden agregar nuevos productos y categorias", viewPath: "/", newPath: "/product-load", newText: "Nuevo producto" },
+
 
     ];
 
@@ -23,7 +21,7 @@ const OperatorPanel = () => {
         <div className="">
             <Navbar />
 
-            <h2 className="title">Producción y stock</h2>
+            <h2 className="title">Administrativo</h2>
 
             <div className="grid-container">
                 {sections.map((section, index) => (
@@ -49,4 +47,4 @@ const OperatorPanel = () => {
     );
 };
 
-export default OperatorPanel;
+export default AdministrativePanel;

@@ -2,9 +2,9 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPen, faXmark } from "@fortawesome/free-solid-svg-icons";
-import Navbar from "./Navbar.jsx";
+import Navbar from "../../components/Navbar.jsx";
 import Swal from "sweetalert2";
-import "./styles/meatLoad.css";
+import "../../assets/styles/meatLoad.css";
 
 const MeatLoad = () => {
     const navigate = useNavigate();

@@ -2,7 +2,7 @@ import { useContext } from "react";
 import { AuthContext } from "../context/AuthProvider.jsx";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSignOutAlt, faHouse } from "@fortawesome/free-solid-svg-icons";
-import "./styles/navbar.css";
+import "../assets/styles/navbar.css";
 
 
 const Navbar = () => {

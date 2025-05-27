@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import Navbar from "./Navbar";
-import './styles/productionprocess.css';
+import Navbar from "../../components/Navbar.jsx";
+import '../../assets/styles/productionprocess.css';
 
 const ProductionProcess = () => {
     const navigate = useNavigate();
