@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import '../../assets/styles/LoadNewClient.css';
+import '../../assets/styles/loadNewClient.css';
 import Navbar from "../../components/Navbar.jsx";
 
 const LoadNewClient = () => {
