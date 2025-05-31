@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 15-05-2025 a las 00:24:58
+-- Tiempo de generación: 01-06-2025 a las 01:17:29
 -- Versión del servidor: 10.4.28-MariaDB
 -- Versión de PHP: 8.2.4
 
@@ -42,7 +42,11 @@ CREATE TABLE `bill_details` (
 --
 
 INSERT INTO `bill_details` (`id`, `bill_supplier_id`, `type`, `quantity`, `heads`, `createdAt`, `updatedAt`) VALUES
-(6, 9, 'Media Res Capon', 40, 40, '2025-05-14 02:45:23', '2025-05-14 02:45:23');
+(6, 9, 'Media Res Capon', 40, 40, '2025-05-14 02:45:23', '2025-05-17 12:54:18'),
+(7, 10, 'Media Res Capon', 1000, 10000, '2025-05-16 16:14:00', '2025-05-17 17:36:56'),
+(8, 9, 'Media Res Chancha', 10, 10, '2025-05-17 12:54:18', '2025-05-17 12:54:18'),
+(9, 11, 'Media Res Chancha', 10, 10, '2025-05-17 13:09:47', '2025-05-17 13:09:47'),
+(10, 11, 'Media Res Capon', 4, 4, '2025-05-17 13:09:47', '2025-05-17 13:09:47');
 
 -- --------------------------------------------------------
 
@@ -68,7 +72,9 @@ CREATE TABLE `bill_suppliers` (
 --
 
 INSERT INTO `bill_suppliers` (`id`, `supplier`, `total_weight`, `head_quantity`, `quantity`, `romaneo_number`, `income_state`, `createdAt`, `updatedAt`, `check_state`) VALUES
-(9, 'TREMN SRL', '97.5', 40, 40, 1235, 'manual', '2025-05-13 19:12:07', '2025-05-14 02:45:23', 0);
+(9, 'TREMN SRL', '3337', 1415, 2343, 1235, 'manual', '2025-05-13 19:12:07', '2025-05-17 12:57:02', 0),
+(10, 'TREMN SRL', '1240', 10000, 1000, 1250, 'manual', '2025-05-16 16:14:00', '2025-05-17 17:36:56', 0),
+(11, 'TREMN SRL', '124.8', 14, 14, 12345, 'romaneo', '2025-05-17 13:09:47', '2025-05-17 13:09:47', 1);
 
 -- --------------------------------------------------------
 
@@ -90,6 +96,13 @@ CREATE TABLE `clients` (
   `client_location` varchar(255) NOT NULL,
   `client_state` tinyint(1) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Volcado de datos para la tabla `clients`
+--
+
+INSERT INTO `clients` (`id`, `client_name`, `client_type_id`, `client_id_number`, `client_iva_condition`, `client_email`, `client_phone`, `client_adress`, `client_country`, `client_province`, `client_location`, `client_state`) VALUES
+(2, 'FERNAND', 'DNI', 2147483647, 'CONSUMIDOR FINAL', 'fernando@fernando', '23525325235', 'AV.SAVIO 540', 'ARGENTINA', 'BUENOS AIRES', 'SAN NICOLAS', 1);
 
 -- --------------------------------------------------------
 
@@ -115,7 +128,8 @@ CREATE TABLE `meat_manual_income` (
 --
 
 INSERT INTO `meat_manual_income` (`id`, `id_bill_suppliers`, `products_name`, `products_garron`, `products_quantity`, `product_head`, `provider_weight`, `gross_weight`, `tare`, `net_weight`) VALUES
-(120, 9, 'Matambre', 120, '1', 1, 100, 100, 2.5, 97.5);
+(462, 9, 'Media Res Chancha', 462, '2342', 1414, 2525, 3242, 2.5, 3239.5),
+(4454, 9, 'Media Res Capon', 4454, '1', 1, 11515, 100, 2.5, 97.5);
 
 -- --------------------------------------------------------
 
@@ -134,7 +148,7 @@ CREATE TABLE `observations_meatincome` (
 
 INSERT INTO `observations_meatincome` (`id`, `observation`) VALUES
 (3, 'sin datos'),
-(9, 'NADA');
+(9, 'Nada probando');
 
 -- --------------------------------------------------------
 
@@ -185,7 +199,7 @@ CREATE TABLE `providers` (
   `id` int(11) NOT NULL,
   `provider_name` varchar(255) NOT NULL,
   `provider_type_id` varchar(255) NOT NULL,
-  `provider_id_number` int(11) NOT NULL,
+  `provider_id_number` varchar(20) NOT NULL,
   `provider_iva_condition` varchar(255) NOT NULL,
   `provider_email` varchar(255) NOT NULL,
   `provider_phone` varchar(20) NOT NULL,
@@ -200,7 +214,11 @@ CREATE TABLE `providers` (
 --
 
 INSERT INTO `providers` (`id`, `provider_name`, `provider_type_id`, `provider_id_number`, `provider_iva_condition`, `provider_email`, `provider_phone`, `provider_adress`, `provider_country`, `provider_province`, `provider_location`) VALUES
-(1, 'TREMN SRL', 'CUIT', 2147483647, 'IVA RESPONSABLE INSCRIPTO', 'tremn@tremn.com', '3364202020', 'AV PARQUE NORTE 111', 'ARGENTINA', 'BUENOS AIRES', 'SAN NICOLAS');
+(2, 'TRENM', 'CUIT', '325252', 'IVA RESPONSABLE INSCRIPTO', 'tremn@tremn.com', '33642020202', 'AV. SAVIO 555', 'ARGENTINA', 'BUENOS AIRES', 'SAN NICOLAS'),
+(3, 'FERNADNO', 'CUIT', '2147483647', 'IVA SUJETO EXENTO', 'fer@fer', '32352525', 'BKMSNF', 'ARGENTINA', 'BUENOS AIRES', 'SAN NICOLAS'),
+(4, 'FERNADNO', 'CUIT', '2147483647', 'IVA SUJETO EXENTO', 'fer@fer', '32352525', 'BKMSNF', 'ARGENTINA', 'BUENOS AIRES', 'SAN NICOLAS'),
+(5, 'FERNADNO', 'CUIT', '2147483647', 'IVA SUJETO EXENTO', 'fer@fer', '32352525', 'BKMSNF', 'ARGENTINA', 'BUENOS AIRES', 'SAN NICOLAS'),
+(6, 'FERNADNO', 'CUIT', '2147483647', 'IVA SUJETO EXENTO', 'fer@fer', '32352525', 'BKMSNF', 'ARGENTINA', 'BUENOS AIRES', 'SAN NICOLAS');
 
 -- --------------------------------------------------------
 
@@ -219,7 +237,7 @@ CREATE TABLE `tares` (
 --
 
 INSERT INTO `tares` (`id`, `tare_name`, `tare_weight`) VALUES
-(1, 'Cajon Plástico', 2.5);
+(2, 'Cajon Plástico', 1.5);
 
 -- --------------------------------------------------------
 
@@ -317,19 +335,19 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT de la tabla `bill_details`
 --
 ALTER TABLE `bill_details`
-  MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- AUTO_INCREMENT de la tabla `bill_suppliers`
 --
 ALTER TABLE `bill_suppliers`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
 
 --
 -- AUTO_INCREMENT de la tabla `clients`
 --
 ALTER TABLE `clients`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT de la tabla `process_meats`
@@ -347,13 +365,13 @@ ALTER TABLE `products_available`
 -- AUTO_INCREMENT de la tabla `providers`
 --
 ALTER TABLE `providers`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT de la tabla `tares`
 --
 ALTER TABLE `tares`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT de la tabla `users`

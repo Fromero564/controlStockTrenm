@@ -226,10 +226,14 @@ const ProviderForm = () => {
             <div className="new-register-container">
                 <form onSubmit={handleSubmit} className="form-container-provider">
                     <h2 className="form-title">{id ? "Editar Registro" : "Nuevo Registro"}</h2>
-
-                    <label className="label-provider-form">
-                        TIPO DE INGRESO
-                    </label>
+                    <div className="title-remit-div">
+                        <label className="label-provider-form">
+                            TIPO DE INGRESO 
+                        </label>
+                         <label className="label-provider-form">
+                          N° COMPROBANTE:  {ultimoRegistroFactura}
+                         </label>
+                    </div>
                     <div className="radio-buttons">
                         <div className="radius-style">
                             <input
@@ -374,10 +378,7 @@ const ProviderForm = () => {
                         />
                     </label>
 
-                    <label className="label-provider-form">
-                        SU COMPRABANTE INTERNO ES:
-                        <input type="number" name="pesoFinal" className="input" value={ultimoRegistroFactura} disabled />
-                    </label>
+
 
                     <div className="button-container">
                         <button type="submit" className="button-primary">

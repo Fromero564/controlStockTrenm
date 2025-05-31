@@ -10,14 +10,14 @@ module.exports = (sequelize, dataTypes) => {
             type: dataTypes.STRING(255),
             allowNull: false
         },
-       
+
         provider_type_id: {
             type: dataTypes.STRING(255),
             allowNull: false
         },
-       
-        provider_id_number:{
-            type: dataTypes.BIGINT(10),
+
+        provider_id_number: {
+            type: dataTypes.STRING(20),
             allowNull: false
         },
         provider_iva_condition: {
@@ -29,7 +29,7 @@ module.exports = (sequelize, dataTypes) => {
             allowNull: false
         },
         provider_phone: {
-            type: dataTypes.STRING(20), 
+            type: dataTypes.STRING(20),
             allowNull: false
         },
         provider_adress: {
@@ -54,7 +54,7 @@ module.exports = (sequelize, dataTypes) => {
 
 
     let config = {
-           tableName: "providers",
+        tableName: "providers",
         timestamps: false,
     };
     const Provider = sequelize.define(alias, cols, config);

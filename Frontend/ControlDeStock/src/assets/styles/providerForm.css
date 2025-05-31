@@ -35,7 +35,11 @@
     /* margin-bottom: 1px; */
     color: #666;
   }
-  
+  .title-remit-div{
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+  }
   .input {
     width: 98%;
     padding: 10px;

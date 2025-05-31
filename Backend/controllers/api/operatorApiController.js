@@ -135,7 +135,8 @@ const operatorApiController = {
             console.error("Error al actualizar tara:", error);
             return res.status(500).json({ message: "Error interno del servidor" });
         }
-    }, deleteTare: async (req, res) => {
+    },
+    deleteTare: async (req, res) => {
         const { id } = req.params;
 
         try {
@@ -471,7 +472,7 @@ const operatorApiController = {
             const Supplierid = req.params.id;
             const { cortes } = req.body;
 
-        
+
 
             if (!Array.isArray(cortes) || cortes.length === 0) {
                 return res.status(400).json({ mensaje: "El cuerpo de la solicitud debe contener una lista de productos." });
@@ -526,7 +527,7 @@ const operatorApiController = {
         try {
             const allproductsStock = await meatIncome.findAll();
 
-           
+
         } catch (error) {
             console.error("Error al obtener stock:", error);
             return res.status(500).json({ message: "Error interno del servidor" });
@@ -590,6 +591,9 @@ const operatorApiController = {
             if (!product) {
                 return res.status(404).json({ mensaje: "El producto no existe" });
             }
+            await meatIncome.destroy({
+                where: { id_bill_suppliers: id },
+            });
 
 
             await billSupplier.destroy({

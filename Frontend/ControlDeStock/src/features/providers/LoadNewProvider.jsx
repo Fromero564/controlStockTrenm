@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import Swal from "sweetalert2";
 import Navbar from "../../components/Navbar.jsx";
 import '../../assets/styles/loadNewProvider.css';
 
@@ -92,7 +93,7 @@ const LoadNewProvider = () => {
         try {
             const url = id
                 ? `${API_URL}/provider-edit/${id}`
-                :  `${API_URL}/provider-load`;
+                : `${API_URL}/provider-load`;
 
             const method = id ? "PUT" : "POST";
 
@@ -105,8 +106,14 @@ const LoadNewProvider = () => {
             });
 
             if (response.ok) {
-                console.log(id ? "Proveedor actualizado" : "Proveedor creado");
-                navigate("/dashboard");
+                Swal.fire({
+                    icon: 'success',
+                    title: id ? 'Proveedor actualizado' : 'Proveedor creado',
+                    text: 'Los datos se guardaron correctamente',
+                    confirmButtonText: 'Aceptar'
+                }).then(() => {
+                    navigate("/operator-panel");
+                });
             } else {
                 console.error("Error al enviar los datos");
             }
@@ -154,7 +161,7 @@ const LoadNewProvider = () => {
 
                     <div className="form-group-provider">
                         <label htmlFor="numeroIdentidad">Número de Identificación</label>
-                        <input type="number" name="numeroIdentidad" id="numeroIdentidad" value={formData.numeroIdentidad} onChange={handleChange} />
+                        <input type="text" name="numeroIdentidad" id="numeroIdentidad" value={formData.numeroIdentidad} onChange={handleChange} />
                     </div>
 
 
@@ -198,7 +205,7 @@ const LoadNewProvider = () => {
 
                     <div className="buttons">
                         <button type="submit">{id ? "Guardar Cambios" : "Agregar Proveedor"}</button>
-                        <button type="button" onClick={() => navigate("/dashboard")}>Cancelar</button>
+                        <button type="button" onClick={() => navigate("/operator-panel")}>Cancelar</button>
                     </div>
                 </div>
             </form>
