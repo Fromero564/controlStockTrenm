@@ -169,7 +169,7 @@ const LoadNewClient = () => {
                             <option value="cuit">CUIT</option>
                             <option value="cuil">CUIL</option>
                             <option value="dni">DNI</option>
-                            <option value="otro">OTRO</option>
+           
                         </select>
                     </div>
 
