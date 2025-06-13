@@ -3,6 +3,9 @@ import Select from "react-select";
 import Swal from "sweetalert2";
 import { useState, useEffect } from "react";
 import Navbar from "../../components/Navbar.jsx";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faPen } from "@fortawesome/free-solid-svg-icons";
+import EditMeatBillModal from "../../components/EditMeatBillContent.jsx";
 import "../../assets/styles/meatmanualincome.css";
 
 const MeatManualIncome = () => {
@@ -18,11 +21,14 @@ const MeatManualIncome = () => {
   const [cortes, setCortes] = useState([]);
   const [cortesAgregados, setCortesAgregados] = useState([]);
   const [tares, setTares] = useState([]);
+  const [tabActiva, setTabActiva] = useState("detallado");
   const [paginaActual, setPaginaActual] = useState(1);
   const [taraSeleccionadaId, setTaraSeleccionadaId] = useState("");
   const [isEditing, setIsEditing] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
   const [formData, setFormData] = useState({
     tipo: "",
+
     cabeza: 0,
     cantidad: 0,
     pesoProveedor: 0,
@@ -31,6 +37,7 @@ const MeatManualIncome = () => {
     garron: "",
     observaciones: "",
     observacionId: null,
+    mermaPorcentaje: 0,
   });
   useEffect(() => {
     const fetchData = async () => {
@@ -99,6 +106,19 @@ const MeatManualIncome = () => {
   }, [data]);
 
   useEffect(() => {
+    const pesoNeto = formData.pesoBruto - formData.tara;
+    const mermaPorcentaje =
+      formData.pesoProveedor > 0
+        ? ((pesoNeto - formData.pesoProveedor) / formData.pesoProveedor) * 100
+        : 0;
+
+    setFormData((prev) => ({
+      ...prev,
+      mermaPorcentaje: Number(mermaPorcentaje.toFixed(2)),
+    }));
+  }, [formData.pesoProveedor, formData.pesoBruto, formData.tara]);
+
+  useEffect(() => {
     const fetchProductos = async () => {
       try {
         const response = await fetch(`${API_URL}/product-name`);
@@ -150,6 +170,30 @@ const MeatManualIncome = () => {
       fetchCantidad();
     }
   }, [data]);
+  useEffect(() => {
+    const cortesGuardadosRaw = localStorage.getItem("cortes_en_edicion");
+    if (cortesGuardadosRaw) {
+      const cortesGuardados = JSON.parse(cortesGuardadosRaw);
+
+      const cortesDelRemito = cortesGuardados.filter(
+        (corte) => corte.remitoId === remitoId
+      );
+
+      if (cortesDelRemito.length > 0) {
+        setCortesAgregados(cortesDelRemito);
+      } else {
+        setCortesAgregados([]);
+      }
+    }
+  }, [remitoId]);
+  useEffect(() => {
+    localStorage.setItem("cortes_en_edicion", JSON.stringify(cortesAgregados));
+  }, [cortesAgregados]);
+
+  const handleModalClose = () => {
+    localStorage.removeItem("cortes_en_edicion");
+    setModalOpen(false);
+  };
 
   useEffect(() => {
     const fetchTares = async () => {
@@ -174,6 +218,10 @@ const MeatManualIncome = () => {
 
     fetchTares();
   }, []);
+
+  const abrirModalEdicion = () => {
+    setModalOpen(true);
+  };
 
   const handleGuardarObservacion = async () => {
     if (!formData.observacionId) {
@@ -351,8 +399,13 @@ const MeatManualIncome = () => {
     const nuevoCorte = {
       ...formData,
       pesoNeto: formData.pesoBruto - formData.tara,
+      remitoId,
     };
-    setCortesAgregados([...cortesAgregados, nuevoCorte]);
+    const nuevosCortes = [...cortesAgregados, nuevoCorte];
+
+    setCortesAgregados(nuevosCortes);
+
+    localStorage.setItem("cortes_en_edicion", JSON.stringify(nuevosCortes));
 
     setFormData((prev) => ({
       ...prev,
@@ -424,6 +477,7 @@ const MeatManualIncome = () => {
     (acc, item) => acc + item.pesoNeto,
     0
   );
+
   const pesoTotalRomaneo = data?.total_weight ?? 0;
   const diferenciaPeso = totalKgNeto - pesoTotalRomaneo;
   const porcentajeDiferencia =
@@ -456,12 +510,12 @@ const MeatManualIncome = () => {
         pesoProveedor: 0,
       };
     }
-  
+
     acc[key].cantidad += corte.cantidad;
     acc[key].cabezas += corte.cabeza;
     acc[key].pesoNeto += corte.pesoNeto;
     acc[key].pesoProveedor += corte.pesoProveedor || 0;
-  
+
     return acc;
   }, {});
 
@@ -488,6 +542,14 @@ const MeatManualIncome = () => {
         <div>
           <div>
             <div className="mercaderia-container">
+              <div className="edit-icon-container">
+                <FontAwesomeIcon
+                  icon={faPen}
+                  onClick={abrirModalEdicion}
+                  className="edit-icon"
+                  title="Editar"
+                />
+              </div>
               <div className="mercaderia-info-row">
                 <div>
                   <p className="label">PROVEEDOR:</p>
@@ -528,7 +590,24 @@ const MeatManualIncome = () => {
               </div>
             </div>
           </div>
+          <EditMeatBillModal
+            isOpen={modalOpen}
+            onClose={handleModalClose}
+            id={data.id}
+            onUpdate={(updatedData, cortesActualizados) => {
+              setData((prevData) => ({
+                ...prevData,
+                supplier: updatedData.proveedor,
+                total_weight: updatedData.pesoTotal,
+                romaneo_number: updatedData.romaneo,
+                head_quantity: updatedData.cabezas,
+                cantidad: updatedData.cantidad,
+                income_state: updatedData.tipoIngreso,
+              }));
+            }}
+          />
         </div>
+
         <div className="formulario-corte">
           <div className="form-group">
             <div>
@@ -731,9 +810,9 @@ const MeatManualIncome = () => {
                 <div>
                   <p className="dato">{corte.tara}</p>
                 </div>
-                <div>
-                  <p className="dato">{corte.pesoNeto.toFixed(2)} kg</p>
-                </div>
+                <p className="dato">
+                  {`${(Number(corte.pesoNeto) || 0).toFixed(2)} kg`}
+                </p>
                 <div>
                   <button
                     onClick={() => eliminarCorte(index + indicePrimerCorte)}
@@ -771,158 +850,204 @@ const MeatManualIncome = () => {
           </div>
         </div>
         <div className="info-weight-observations">
-          <div>
-            <h3>RESUMEN</h3>
-            <div className="table-wrapper">
-              <table className="stock-table">
-                <thead>
-                  <tr>
-                    <th>TIPO</th>
-                    <th>CANTIDAD</th>
-                    <th>CABEZAS</th>
-                    <th>KG NETO</th>
-                    <th>MERMA (%)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {cortesAgregados.map((corte, index) => {
-                    const merma =
-                      corte.pesoProveedor && corte.pesoNeto
-                        ? ((corte.pesoProveedor - corte.pesoNeto) /
-                            corte.pesoProveedor) *
-                          100
-                        : 0;
-
-                    return (
-                      <tr key={index}>
-                        <td>{corte.tipo}</td>
-                        <td>{corte.cantidad}</td>
-                        <td>{corte.cabeza}</td>
-                        <td>{corte.pesoNeto.toFixed(2)}</td>
-                        <td style={{ color: merma > 0 ? "orange" : "green" }}>
-                          {merma.toFixed(2)}%
-                        </td>
-                      </tr>
-                    );
-                  })}
-                  <tr>
-                    <td>
-                      <strong>Diferencia declarado en romaneo</strong>
-                    </td>
-                    <td
-                      style={{
-                        color:
-                          cantidad > totalAnimalesCargados ? "red" : "green",
-                      }}
-                    >
-                      {cantidad - totalAnimalesCargados}{" "}
-                      <span>
-                        (
-                        {cantidad > 0
-                          ? (
-                              ((cantidad - totalAnimalesCargados) / cantidad) *
-                              100
-                            ).toFixed(0)
-                          : 0}
-                        %)
-                      </span>
-                    </td>
-                    <td
-                      style={{
-                        color:
-                          data.head_quantity > totalCabezasCargadas
-                            ? "red"
-                            : "green",
-                      }}
-                    >
-                      {data.head_quantity - totalCabezasCargadas}{" "}
-                      <span>
-                        (
-                        {(
-                          ((data.head_quantity - totalCabezasCargadas) /
-                            data.head_quantity) *
-                          100
-                        ).toFixed(0)}
-                        %)
-                      </span>
-                    </td>
-                    <td style={{ color: colorDiferencia }}>
-                      {diferenciaPeso.toFixed(2)}{" "}
-                      <span>
-                        ({porcentajeDiferencia > 0 ? "+" : ""}
-                        {porcentajeDiferencia.toFixed(2)}% )
-                      </span>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <h4 style={{ marginTop: "2rem" }}>RESUMEN AGRUPADO POR PIEZA</h4>
-            <div className="table-wrapper">
-              <table className="stock-table">
-                <thead>
-                  <tr>
-                    <th>TIPO</th>
-                    <th>CANTIDAD</th>
-                    <th>CABEZAS</th>
-                    <th>KG NETO</th>
-                    <th>MERMA (%)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {Object.values(cortesAgrupados).map((corte, index) => {
-                    const merma =
-                      corte.pesoProveedor > 0
-                        ? ((corte.pesoProveedor - corte.pesoNeto) /
-                            corte.pesoProveedor) *
-                          100
-                        : 0;
-
-                    return (
-                      <tr key={index}>
-                        <td>{corte.tipo}</td>
-                        <td>{corte.cantidad}</td>
-                        <td>{corte.cabezas}</td>
-                        <td>{corte.pesoNeto.toFixed(2)}</td>
-                        <td style={{ color: merma > 0 ? "orange" : "green" }}>
-                          {merma.toFixed(2)}%
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            <label
-              htmlFor="observaciones"
-              style={{ display: "block", marginTop: "1rem" }}
-            >
-              OBSERVACIONES
-            </label>
-            <textarea
-              name="observaciones"
-              placeholder="Observaciones"
-              value={formData.observaciones}
-              onChange={handleChange}
-              style={{ width: "100%", minHeight: "80px", marginBottom: "1rem" }}
-            ></textarea>
-
+          <div style={{ display: "flex", gap: "1rem", marginBottom: "1rem" }}>
             <button
-              className="btn-agregar"
-              onClick={handleGuardar}
+              onClick={() => setTabActiva("detallado")}
               style={{
-                backgroundColor: "#0077b6",
-                color: "white",
+                backgroundColor:
+                  tabActiva === "detallado" ? "#007bff" : "#e0e0e0",
+                color: tabActiva === "detallado" ? "white" : "black",
                 padding: "0.5rem 1rem",
                 border: "none",
                 borderRadius: "4px",
+                cursor: "pointer",
               }}
-              disabled={saving}
             >
-              {saving ? "Guardando..." : "Guardar y terminar carga"}
+              Resumen detallado por pieza
+            </button>
+            <button
+              onClick={() => setTabActiva("agrupado")}
+              style={{
+                backgroundColor:
+                  tabActiva === "agrupado" ? "#007bff" : "#e0e0e0",
+                color: tabActiva === "agrupado" ? "white" : "black",
+                padding: "0.5rem 1rem",
+                border: "none",
+                borderRadius: "4px",
+                cursor: "pointer",
+              }}
+            >
+              Resumen agrupado por piezas
             </button>
           </div>
+          {tabActiva === "detallado" && (
+            <div>
+              <h3>RESUMEN</h3>
+              <div className="table-wrapper">
+                <table className="stock-table">
+                  <thead>
+                    <tr>
+                      <th>TIPO</th>
+                      <th>CANTIDAD</th>
+                      <th>CABEZAS</th>
+                      <th>KG NETO</th>
+                      <th>MERMA (%)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {cortesAgregados.map((corte, index) => {
+                      const merma =
+                        corte.pesoProveedor && corte.pesoNeto
+                          ? ((corte.pesoProveedor - corte.pesoNeto) /
+                              corte.pesoProveedor) *
+                            100
+                          : 0;
+
+                      return (
+                        <tr key={index}>
+                          <td>{corte.tipo}</td>
+                          <td>{corte.cantidad}</td>
+                          <td>{corte.cabeza}</td>
+                          <td>{Number(corte.pesoNeto || 0).toFixed(2)}</td>
+                          <td
+                            style={{
+                              color: Number(merma) > 0 ? "orange" : "green",
+                            }}
+                          >
+                            {Number(merma || 0).toFixed(2)}%
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    <tr>
+                      <td>
+                        <strong>Diferencia declarado en romaneo</strong>
+                      </td>
+                      <td
+                        style={{
+                          color:
+                            cantidad > totalAnimalesCargados ? "red" : "green",
+                        }}
+                      >
+                        {cantidad - totalAnimalesCargados}{" "}
+                        <span>
+                          (
+                          {cantidad > 0
+                            ? (
+                                ((cantidad - totalAnimalesCargados) /
+                                  cantidad) *
+                                100
+                              ).toFixed(0)
+                            : 0}
+                          %)
+                        </span>
+                      </td>
+                      <td
+                        style={{
+                          color:
+                            data.head_quantity > totalCabezasCargadas
+                              ? "red"
+                              : "green",
+                        }}
+                      >
+                        {data.head_quantity - totalCabezasCargadas}{" "}
+                        <span>
+                          (
+                          {(
+                            ((data.head_quantity - totalCabezasCargadas) /
+                              data.head_quantity) *
+                            100
+                          ).toFixed(0)}
+                          %)
+                        </span>
+                      </td>
+                      <td style={{ color: colorDiferencia }}>
+                        {diferenciaPeso.toFixed(2)}{" "}
+                        <span>
+                          ({porcentajeDiferencia > 0 ? "+" : ""}
+                          {porcentajeDiferencia.toFixed(2)}% )
+                        </span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+          <div>
+            {tabActiva === "agrupado" && (
+              <div>
+                <h3 style={{ marginTop: "2rem" }}>
+                  RESUMEN AGRUPADO POR PIEZA
+                </h3>
+                <div className="table-wrapper">
+                  <table className="stock-table">
+                    <thead>
+                      <tr>
+                        <th>TIPO</th>
+                        <th>CANTIDAD</th>
+                        <th>CABEZAS</th>
+                        <th>KG NETO</th>
+                        <th>MERMA (%)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Object.values(cortesAgrupados).map((corte, index) => {
+                        const merma =
+                          corte.pesoProveedor > 0
+                            ? ((corte.pesoProveedor - corte.pesoNeto) /
+                                corte.pesoProveedor) *
+                              100
+                            : 0;
+
+                        return (
+                          <tr key={index}>
+                            <td>{corte.tipo}</td>
+                            <td>{corte.cantidad}</td>
+                            <td>{corte.cabezas}</td>
+                            <td>{corte.pesoNeto.toFixed(2)}</td>
+                            <td
+                              style={{ color: merma > 0 ? "orange" : "green" }}
+                            >
+                              {merma.toFixed(2)}%
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+          <label
+            htmlFor="observaciones"
+            style={{ display: "block", marginTop: "1rem" }}
+          >
+            OBSERVACIONES
+          </label>
+          <textarea
+            name="observaciones"
+            placeholder="Observaciones"
+            value={formData.observaciones}
+            onChange={handleChange}
+            style={{ width: "100%", minHeight: "80px", marginBottom: "1rem" }}
+          ></textarea>
+
+          <button
+            className="btn-agregar"
+            onClick={handleGuardar}
+            style={{
+              backgroundColor: "#0077b6",
+              color: "white",
+              padding: "0.5rem 1rem",
+              border: "none",
+              borderRadius: "4px",
+            }}
+            disabled={saving}
+          >
+            {saving ? "Guardando..." : "Guardar y terminar carga"}
+          </button>
         </div>
       </div>
     </div>

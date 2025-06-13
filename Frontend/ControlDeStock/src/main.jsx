@@ -22,6 +22,7 @@ import GeneralStock from './features/stock/GeneralStock.jsx';
 import Alltares from './features/stock/Alltares.jsx';
 import LoadNewClient from './features/clients/LoadNewClient.jsx';
 import ClientList from './features/clients/ClientList.jsx';
+import Modal from 'react-modal';
 
 
 const router = createBrowserRouter([
@@ -195,6 +196,8 @@ const router = createBrowserRouter([
     ),
   },
 ]);
+
+Modal.setAppElement('#root');
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

@@ -423,6 +423,7 @@ const operatorApiController = {
                     tara,
                     pesoNeto,
                     pesoProveedor,
+                    mermaPorcentaje,
 
                 } = corte;
 
@@ -447,7 +448,8 @@ const operatorApiController = {
                     provider_weight: pesoProveedor,
                     gross_weight: pesoBruto,
                     tare: tara,
-                    net_weight: pesoNeto
+                    net_weight: pesoNeto,
+                    decrease:mermaPorcentaje,
                 });
 
 
