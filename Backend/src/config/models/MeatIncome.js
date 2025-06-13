@@ -46,7 +46,11 @@ module.exports = (sequelize, DataTypes) => {
         net_weight: {
             type: DataTypes.DECIMAL(8, 2),
             allowNull: false,
-        }
+        },
+        decrease:{
+            type: DataTypes.INTEGER,
+            allowNull: true,
+        },
     };
 
     let config = {

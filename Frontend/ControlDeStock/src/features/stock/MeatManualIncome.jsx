@@ -445,6 +445,26 @@ const MeatManualIncome = () => {
     0
   );
 
+  const cortesAgrupados = cortesAgregados.reduce((acc, corte) => {
+    const key = corte.tipo;
+    if (!acc[key]) {
+      acc[key] = {
+        tipo: key,
+        cantidad: 0,
+        cabezas: 0,
+        pesoNeto: 0,
+        pesoProveedor: 0,
+      };
+    }
+  
+    acc[key].cantidad += corte.cantidad;
+    acc[key].cabezas += corte.cabeza;
+    acc[key].pesoNeto += corte.pesoNeto;
+    acc[key].pesoProveedor += corte.pesoProveedor || 0;
+  
+    return acc;
+  }, {});
+
   const cortesPorPagina = 5;
 
   const cortesInvertidos = [...cortesAgregados].reverse();
@@ -513,10 +533,9 @@ const MeatManualIncome = () => {
           <div className="form-group">
             <div>
               <label>TIPO</label>
-        
+
               <Select
                 className="custom-select"
-             
                 classNamePrefix="mi-select"
                 options={opcionesCortes}
                 onChange={(selected) =>
@@ -532,60 +551,60 @@ const MeatManualIncome = () => {
                 isClearable
                 components={{
                   ...sinFlecha,
-                  ClearIndicator: SinClearIndicator
+                  ClearIndicator: SinClearIndicator,
                 }}
                 menuPortalTarget={document.body}
                 styles={{
-                    control: (base, state) => ({
-                      ...base,
-                      height: '38px',
-                      minHeight: '38px',
-                      borderColor: state.isFocused ? '#2684FF' : '#ccc',
-                      boxShadow: 'none',
-                      '&:hover': {
-                        borderColor: '#2684FF',
-                      },
-                    }),
-                    input: (base) => ({
-                        ...base,
-                        margin: '0px',
-                        padding: 0,
-                        lineHeight: 'normal',
-                        height: 'auto',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                      }),
-                    valueContainer: (base) => ({
-                      ...base,
-                      height: '38px',
-                      padding: '8px 0 8px 0',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-around',
-                    }),
-                    singleValue: (base) => ({
-                      ...base,
-                      width: '100%',
-                      textAlign: 'center',
-                      margin: 0,
-                    }),
-                    placeholder: (base) => ({
-                      ...base,
-                      width: '100%',
-                      textAlign: 'center',
-                    }),
-                    indicatorsContainer: (base) => ({
-                      ...base,
-                      height: '38px',
-                    }),
-                    menuPortal: (base) => ({ ...base, zIndex: 9999 }),
-                    menuList: (base) => ({
-                      ...base,
-                      maxHeight: 150,
-                      overflowY: 'auto',
-                    }),
-                  }}
+                  control: (base, state) => ({
+                    ...base,
+                    height: "38px",
+                    minHeight: "38px",
+                    borderColor: state.isFocused ? "#2684FF" : "#ccc",
+                    boxShadow: "none",
+                    "&:hover": {
+                      borderColor: "#2684FF",
+                    },
+                  }),
+                  input: (base) => ({
+                    ...base,
+                    margin: "0px",
+                    padding: 0,
+                    lineHeight: "normal",
+                    height: "auto",
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }),
+                  valueContainer: (base) => ({
+                    ...base,
+                    height: "38px",
+                    padding: "8px 0 8px 0",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-around",
+                  }),
+                  singleValue: (base) => ({
+                    ...base,
+                    width: "100%",
+                    textAlign: "center",
+                    margin: 0,
+                  }),
+                  placeholder: (base) => ({
+                    ...base,
+                    width: "100%",
+                    textAlign: "center",
+                  }),
+                  indicatorsContainer: (base) => ({
+                    ...base,
+                    height: "38px",
+                  }),
+                  menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+                  menuList: (base) => ({
+                    ...base,
+                    maxHeight: 150,
+                    overflowY: "auto",
+                  }),
+                }}
               />
             </div>
             <div>
@@ -766,24 +785,26 @@ const MeatManualIncome = () => {
                   </tr>
                 </thead>
                 <tbody>
-                {cortesAgregados.map((corte, index) => {
-                        const merma =
-                            corte.pesoProveedor && corte.pesoNeto
-                                ? ((corte.pesoProveedor - corte.pesoNeto) / corte.pesoProveedor) * 100
-                                : 0;
+                  {cortesAgregados.map((corte, index) => {
+                    const merma =
+                      corte.pesoProveedor && corte.pesoNeto
+                        ? ((corte.pesoProveedor - corte.pesoNeto) /
+                            corte.pesoProveedor) *
+                          100
+                        : 0;
 
-                        return (
-                            <tr key={index}>
-                                <td>{corte.tipo}</td>
-                                <td>{corte.cantidad}</td>
-                                <td>{corte.cabeza}</td>
-                                <td>{corte.pesoNeto.toFixed(2)}</td>
-                                <td style={{ color: merma > 0 ? 'orange' : 'green' }}>
-                                    {merma.toFixed(2)}%
-                                </td>
-                            </tr>
-                        );
-                    })}
+                    return (
+                      <tr key={index}>
+                        <td>{corte.tipo}</td>
+                        <td>{corte.cantidad}</td>
+                        <td>{corte.cabeza}</td>
+                        <td>{corte.pesoNeto.toFixed(2)}</td>
+                        <td style={{ color: merma > 0 ? "orange" : "green" }}>
+                          {merma.toFixed(2)}%
+                        </td>
+                      </tr>
+                    );
+                  })}
                   <tr>
                     <td>
                       <strong>Diferencia declarado en romaneo</strong>
@@ -833,6 +854,42 @@ const MeatManualIncome = () => {
                       </span>
                     </td>
                   </tr>
+                </tbody>
+              </table>
+            </div>
+            <h4 style={{ marginTop: "2rem" }}>RESUMEN AGRUPADO POR PIEZA</h4>
+            <div className="table-wrapper">
+              <table className="stock-table">
+                <thead>
+                  <tr>
+                    <th>TIPO</th>
+                    <th>CANTIDAD</th>
+                    <th>CABEZAS</th>
+                    <th>KG NETO</th>
+                    <th>MERMA (%)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.values(cortesAgrupados).map((corte, index) => {
+                    const merma =
+                      corte.pesoProveedor > 0
+                        ? ((corte.pesoProveedor - corte.pesoNeto) /
+                            corte.pesoProveedor) *
+                          100
+                        : 0;
+
+                    return (
+                      <tr key={index}>
+                        <td>{corte.tipo}</td>
+                        <td>{corte.cantidad}</td>
+                        <td>{corte.cabezas}</td>
+                        <td>{corte.pesoNeto.toFixed(2)}</td>
+                        <td style={{ color: merma > 0 ? "orange" : "green" }}>
+                          {merma.toFixed(2)}%
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
