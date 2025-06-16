@@ -54,13 +54,13 @@ const LoadNewProvider = () => {
 
         fetchProveedor();
     }, [id]);
+
     useEffect(() => {
         const fetchCountries = async () => {
             try {
                 const res = await fetch("https://restcountries.com/v3.1/all?fields=name");
                 if (res.ok) {
                     const data = await res.json();
-                    // Ordenamos alfabéticamente
                     const countryNames = data
                         .map(c => c.name.common)
                         .sort((a, b) => a.localeCompare(b));
@@ -74,7 +74,6 @@ const LoadNewProvider = () => {
         fetchCountries();
     }, []);
 
-
     const handleChange = (e) => {
         setFormData({
             ...formData,
@@ -85,8 +84,14 @@ const LoadNewProvider = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        if (!formData.nombreProveedor) {
-            alert("Por favor completa los campos obligatorios.");
+        // Validación: todos los campos son obligatorios
+        const values = Object.values(formData);
+      if (values.some(value => typeof value === "string" && value.trim() === "")) {
+            Swal.fire({
+                icon: "warning",
+                title: "Campos incompletos",
+                text: "Por favor completá todos los campos obligatorios.",
+            });
             return;
         }
 
@@ -94,7 +99,6 @@ const LoadNewProvider = () => {
             const url = id
                 ? `${API_URL}/provider-edit/${id}`
                 : `${API_URL}/provider-load`;
-
             const method = id ? "PUT" : "POST";
 
             const response = await fetch(url, {
@@ -115,27 +119,31 @@ const LoadNewProvider = () => {
                     navigate("/operator-panel");
                 });
             } else {
-                console.error("Error al enviar los datos");
+                Swal.fire({
+                    icon: "error",
+                    title: "Error al guardar",
+                    text: "No se pudieron guardar los datos.",
+                });
             }
         } catch (error) {
             console.error("Error en la solicitud:", error);
         }
     };
+
     return (
         <div>
             <Navbar />
             <h2 className="title-proveedor">{id ? "EDITAR PROVEEDOR" : "NUEVO PROVEEDOR"}</h2>
             <form className="provider-form-load" onSubmit={handleSubmit}>
-
-
                 <div className="form-grid">
                     <div className="form-group-provider">
                         <label htmlFor="nombreProveedor">Nombre</label>
-                        <input type="text" name="nombreProveedor" id="nombreProveedor" value={formData.nombreProveedor} onChange={handleChange} />
+                        <input type="text" name="nombreProveedor" id="nombreProveedor" value={formData.nombreProveedor} onChange={handleChange} required />
                     </div>
+
                     <div className="form-group-provider">
                         <label htmlFor="ivaCondicion">Condición IVA</label>
-                        <select name="ivaCondicion" id="ivaCondicion" value={formData.ivaCondicion} onChange={handleChange}>
+                        <select name="ivaCondicion" id="ivaCondicion" value={formData.ivaCondicion} onChange={handleChange} required>
                             <option value="iva Responsable Inscripto">IVA Responsable Inscripto</option>
                             <option value="iva Sujeto Exento">IVA Sujeto Exento</option>
                             <option value="consumidor Final">Consumidor Final</option>
@@ -151,7 +159,7 @@ const LoadNewProvider = () => {
 
                     <div className="form-group-provider">
                         <label htmlFor="identidad">Tipo de identificación</label>
-                        <select name="identidad" id="identidad" value={formData.identidad} onChange={handleChange}>
+                        <select name="identidad" id="identidad" value={formData.identidad} onChange={handleChange} required>
                             <option value="cuit">CUIT</option>
                             <option value="cuil">CUIL</option>
                             <option value="dni">DNI</option>
@@ -161,29 +169,27 @@ const LoadNewProvider = () => {
 
                     <div className="form-group-provider">
                         <label htmlFor="numeroIdentidad">Número de Identificación</label>
-                        <input type="text" name="numeroIdentidad" id="numeroIdentidad" value={formData.numeroIdentidad} onChange={handleChange} />
+                        <input type="text" name="numeroIdentidad" id="numeroIdentidad" value={formData.numeroIdentidad} onChange={handleChange} required />
                     </div>
-
-
 
                     <div className="form-group-provider">
                         <label htmlFor="emailProveedor">Email</label>
-                        <input type="email" name="emailProveedor" id="emailProveedor" value={formData.emailProveedor} onChange={handleChange} />
+                        <input type="email" name="emailProveedor" id="emailProveedor" value={formData.emailProveedor} onChange={handleChange} required />
                     </div>
 
                     <div className="form-group-provider">
                         <label htmlFor="telefonoProveedor">Teléfono</label>
-                        <input type="text" name="telefonoProveedor" id="telefonoProveedor" value={formData.telefonoProveedor} onChange={handleChange} />
+                        <input type="text" name="telefonoProveedor" id="telefonoProveedor" value={formData.telefonoProveedor} onChange={handleChange} required />
                     </div>
 
                     <div className="form-group-provider">
                         <label htmlFor="domicilioProveedor">Domicilio</label>
-                        <input type="text" name="domicilioProveedor" id="domicilioProveedor" value={formData.domicilioProveedor} onChange={handleChange} />
+                        <input type="text" name="domicilioProveedor" id="domicilioProveedor" value={formData.domicilioProveedor} onChange={handleChange} required />
                     </div>
 
                     <div className="form-group-provider">
                         <label htmlFor="paisProveedor">País</label>
-                        <select name="paisProveedor" id="paisProveedor" value={formData.paisProveedor} onChange={handleChange} >
+                        <select name="paisProveedor" id="paisProveedor" value={formData.paisProveedor} onChange={handleChange} required>
                             <option value="">Seleccione un país</option>
                             {countries.map((country) => (
                                 <option key={country} value={country}>
@@ -195,21 +201,20 @@ const LoadNewProvider = () => {
 
                     <div className="form-group-provider">
                         <label htmlFor="provinciaProveedor">Provincia</label>
-                        <input type="text" name="provinciaProveedor" id="provinciaProveedor" value={formData.provinciaProveedor} onChange={handleChange} />
+                        <input type="text" name="provinciaProveedor" id="provinciaProveedor" value={formData.provinciaProveedor} onChange={handleChange} required />
                     </div>
 
                     <div className="form-group-provider">
                         <label htmlFor="localidadProveedor">Localidad</label>
-                        <input type="text" name="localidadProveedor" id="localidadProveedor" value={formData.localidadProveedor} onChange={handleChange} />
+                        <input type="text" name="localidadProveedor" id="localidadProveedor" value={formData.localidadProveedor} onChange={handleChange} required />
                     </div>
 
                     <div className="buttons">
                         <button type="submit">{id ? "Guardar Cambios" : "Agregar Proveedor"}</button>
-                        <button type="button" onClick={() => navigate("/operator-panel")}>Cancelar</button>
+                        <button type="button" onClick={() => navigate("/provider-list")}>Cancelar</button>
                     </div>
                 </div>
             </form>
-
         </div>
     );
 };

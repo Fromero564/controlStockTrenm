@@ -22,6 +22,8 @@ import GeneralStock from './features/stock/GeneralStock.jsx';
 import Alltares from './features/stock/Alltares.jsx';
 import LoadNewClient from './features/clients/LoadNewClient.jsx';
 import ClientList from './features/clients/ClientList.jsx';
+import ConfigurationProduct from './features/products/configurationProduct.jsx';
+import SalesPanel from './pages/SalesPanel.jsx';
 import Modal from 'react-modal';
 
 
@@ -67,10 +69,26 @@ const router = createBrowserRouter([
     ),
   },
   {
+    path: "/sales-panel",
+    element: (
+      <ProtectedRoute>
+        <SalesPanel />
+      </ProtectedRoute>
+    ),
+  },
+  {
     path: "/product-load",
     element: (
       <ProtectedRoute>
         <LoadNewProduct />
+      </ProtectedRoute>
+    ),
+  },
+   {
+    path: "/product-configuration",
+    element: (
+      <ProtectedRoute>
+        <ConfigurationProduct />
       </ProtectedRoute>
     ),
   },

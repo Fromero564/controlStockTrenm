@@ -106,7 +106,7 @@ const Tareload = () => {
                         <button type="submit" className="tara-btn-primary">
                             {esEdicion ? "Guardar cambios" : "Agregar tara"}
                         </button>
-                        <button type="button" className="tara-btn-secondary" onClick={() => navigate("/operator-panel")}>
+                        <button type="button" className="tara-btn-secondary" onClick={() => navigate("/all-tares")}>
                             Cancelar
                         </button>
                     </div>

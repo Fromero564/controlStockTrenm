@@ -10,9 +10,8 @@ const AdministrativePanel = () => {
     const navigate = useNavigate();
 
     const sections = [
-        { title: "NUEVO USUARIO", desc: "Ingreso de nuevo usuario", viewPath: "/", newPath: "/Registro", newText: "Nuevo usuario" },
-        
-        { title: "PRODUCTOS", desc: "Aca se pueden agregar nuevos productos y categorias", viewPath: "/", newPath: "/product-load", newText: "Nuevo producto" },
+     
+      
 
 
     ];

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPen, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { faEye } from "@fortawesome/free-solid-svg-icons";
 import Navbar from "../../components/Navbar.jsx";
 import Swal from "sweetalert2";
 import "../../assets/styles/meatLoad.css";
@@ -9,12 +10,12 @@ import "../../assets/styles/meatLoad.css";
 const MeatLoad = () => {
     const navigate = useNavigate();
     const [products, setProducts] = useState([]);
-    const [search, setSearch] = useState(""); 
+    const [search, setSearch] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
     const API_URL = import.meta.env.VITE_API_URL;
 
-    useEffect(() => {     
+    useEffect(() => {
         fetch(`${API_URL}/allproducts`)
             .then((response) => response.json())
             .then((data) => setProducts(data))
@@ -85,28 +86,28 @@ const MeatLoad = () => {
         <div className="body-meat-load">
             <Navbar />
             <div className="container">
-            <h1>Mercaderías</h1>
+                <h1>Mercaderías</h1>
                 <div className="header">
-                   
+
                     <div className="search-section">
                         <label htmlFor="search">N°Comprobante</label>
                         <div className="search-input-label">
-                        <input
-                            type="text"
-                            id="search"
-                            placeholder="Buscar por N°Comprobante"
-                            value={search}
-                            onChange={(e) => {
-                                setSearch(e.target.value);
-                                setCurrentPage(1);
-                            }}
-                            className="search-input"
-                        />
-                        <button className="search-button" onClick={() => setCurrentPage(1)}>Buscar</button>
+                            <input
+                                type="text"
+                                id="search"
+                                placeholder="Buscar por N°Comprobante"
+                                value={search}
+                                onChange={(e) => {
+                                    setSearch(e.target.value);
+                                    setCurrentPage(1);
+                                }}
+                                className="search-input"
+                            />
+                            <button className="search-button" onClick={() => setCurrentPage(1)}>Buscar</button>
                         </div>
                     </div>
 
-                    
+
                     <button className="new-button" onClick={() => navigate("/provider-form")}>
                         Nueva Ingreso +
                     </button>
@@ -140,11 +141,14 @@ const MeatLoad = () => {
                                 <td>{product.head_quantity}</td>
                                 <td>{product.total_weight}</td>
                                 <td>
+                                    <button className="view-button" onClick={() => handleView(product.id)}>
+                                        <FontAwesomeIcon icon={faEye} />
+                                    </button>
                                     <button className="edit-button" onClick={() => handleEdit(product.id)}>
                                         <FontAwesomeIcon icon={faPen} />
                                     </button>
                                     <button className="delete-button" onClick={() => handleDelete(product.id, product.romaneo_number)}>
-                                        {<FontAwesomeIcon icon={faXmark} />} 
+                                        {<FontAwesomeIcon icon={faXmark} />}
                                     </button>
                                 </td>
                             </tr>

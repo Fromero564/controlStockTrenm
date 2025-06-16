@@ -24,7 +24,7 @@ const Dashboard = () => {
                     <span>Producción y stock</span>
                 </a>
 
-                <a href="" className="dashboard-card">
+                <a href="/sales-panel" className="dashboard-card">
                     <FontAwesomeIcon icon={faDollarSign} size="2x" />
                     <span>Ventas y pedidos</span>
                 </a>

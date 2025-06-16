@@ -13,7 +13,9 @@ const Navbar = () => {
             <a href="/dashboard" className="navbar-inicio">
                 <FontAwesomeIcon icon={faHouse} />
             </a>
+
             <div className="navbar-options">
+                <a href="/registro">Nuevo Usuario</a>
                 <a href="#">Configuración</a>
                 <a href="#" onClick={logout}>
                     <p>{user?.name || "Usuario"}</p>

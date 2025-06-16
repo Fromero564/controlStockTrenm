@@ -170,30 +170,8 @@ const MeatManualIncome = () => {
       fetchCantidad();
     }
   }, [data]);
-  useEffect(() => {
-    const cortesGuardadosRaw = localStorage.getItem("cortes_en_edicion");
-    if (cortesGuardadosRaw) {
-      const cortesGuardados = JSON.parse(cortesGuardadosRaw);
 
-      const cortesDelRemito = cortesGuardados.filter(
-        (corte) => corte.remitoId === remitoId
-      );
 
-      if (cortesDelRemito.length > 0) {
-        setCortesAgregados(cortesDelRemito);
-      } else {
-        setCortesAgregados([]);
-      }
-    }
-  }, [remitoId]);
-  useEffect(() => {
-    localStorage.setItem("cortes_en_edicion", JSON.stringify(cortesAgregados));
-  }, [cortesAgregados]);
-
-  const handleModalClose = () => {
-    localStorage.removeItem("cortes_en_edicion");
-    setModalOpen(false);
-  };
 
   useEffect(() => {
     const fetchTares = async () => {
@@ -323,6 +301,7 @@ const MeatManualIncome = () => {
         setCortesAgregados([]);
         navigate("/operator-panel");
       } else {
+        console.log("Payload que se envía:", payload);
         const response = await fetch(`${API_URL}/addProducts/${data.id}`, {
           method: "POST",
           headers: {
@@ -332,13 +311,14 @@ const MeatManualIncome = () => {
         });
 
         if (!response.ok) throw new Error("Error al guardar los cortes");
-
+        console.log("Llegó después de addProducts, por construir updatePayload");
         const updatePayload = {
           cantidad_animales_cargados: totalAnimalesCargados,
           cantidad_cabezas_cargadas: totalCabezasCargadas,
           peso_total_neto_cargado: totalKgNeto,
         };
 
+        console.log("Payload que se envía:", updatePayload);
         const updateResponse = await fetch(
           `${API_URL}/updateBillSupplier/${data.id}`,
           {
@@ -350,8 +330,11 @@ const MeatManualIncome = () => {
           }
         );
 
-        if (!updateResponse.ok)
+        if (!updateResponse.ok) {
+          const errorText = await updateResponse.text();
+          console.error("Error en updateBillSupplier:", errorText);
           throw new Error("Error al actualizar el remito");
+        }
 
         alert("Cortes y datos de resumen guardados correctamente.");
         setCortesAgregados([]);
@@ -364,6 +347,7 @@ const MeatManualIncome = () => {
 
     setSaving(false);
   };
+
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -405,7 +389,7 @@ const MeatManualIncome = () => {
 
     setCortesAgregados(nuevosCortes);
 
-    localStorage.setItem("cortes_en_edicion", JSON.stringify(nuevosCortes));
+
 
     setFormData((prev) => ({
       ...prev,
@@ -530,6 +514,59 @@ const MeatManualIncome = () => {
     indiceUltimoCorte
   );
 
+  const handleModalClose = () => {
+    setModalOpen(false)
+     handleActualizarDesdeMemoria();
+  };
+
+useEffect(() => {
+  const saved = localStorage.getItem("cortes_en_edicion");
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved);
+      setCortesAgregados(parsed);
+      console.log("Datos cargados desde memoria:", parsed);
+    } catch (error) {
+      console.error("Error parseando cortes_en_edicion:", error);
+    }
+  } else {
+    console.log("No hay datos guardados en memoria");
+  }
+}, []);
+
+useEffect(() => {
+  console.log("cortesAgregados actualizado:", cortesAgregados);
+}, [cortesAgregados]);
+
+
+useEffect(() => {
+  if (cortesAgregados.length > 0) {
+    localStorage.setItem("cortes_en_edicion", JSON.stringify(cortesAgregados));
+  }
+ 
+}, [cortesAgregados]);
+useEffect(() => {
+  const saved = localStorage.getItem("cortes_en_edicion");
+  if (saved) {
+      const mapearCorteDesdeBackend = (item) => ({
+          id: item.id,
+          tipo: item.products_name || "",
+          cabeza: item.product_head ?? 0,
+          cantidad: parseFloat(item.products_quantity) || 0,
+          pesoProveedor: parseFloat(item.provider_weight) || 0,
+          pesoBruto: parseFloat(item.gross_weight) || 0,
+          tara: parseFloat(item.tare) || 0,
+          garron: item.products_garron || "",
+          pesoNeto:
+            (parseFloat(item.gross_weight) || 0) - (parseFloat(item.tare) || 0),
+        });
+    const cortesGuardados = JSON.parse(saved);
+    const cortesFormateados = cortesGuardados.map(mapearCorteDesdeBackend);
+    setCortesAgregados(cortesFormateados);
+  }
+}, []);
+
+
   if (loading) return <p>Cargando...</p>;
   if (error) return <p>Error: {error}</p>;
   if (!data) return <p>No se encontró el remito</p>;
@@ -594,7 +631,7 @@ const MeatManualIncome = () => {
             isOpen={modalOpen}
             onClose={handleModalClose}
             id={data.id}
-            onUpdate={(updatedData, cortesActualizados) => {
+            onUpdate={(updatedData) => {
               setData((prevData) => ({
                 ...prevData,
                 supplier: updatedData.proveedor,
@@ -606,6 +643,7 @@ const MeatManualIncome = () => {
               }));
             }}
           />
+
         </div>
 
         <div className="formulario-corte">
@@ -899,8 +937,8 @@ const MeatManualIncome = () => {
                       const merma =
                         corte.pesoProveedor && corte.pesoNeto
                           ? ((corte.pesoProveedor - corte.pesoNeto) /
-                              corte.pesoProveedor) *
-                            100
+                            corte.pesoProveedor) *
+                          100
                           : 0;
 
                       return (
@@ -934,10 +972,10 @@ const MeatManualIncome = () => {
                           (
                           {cantidad > 0
                             ? (
-                                ((cantidad - totalAnimalesCargados) /
-                                  cantidad) *
-                                100
-                              ).toFixed(0)
+                              ((cantidad - totalAnimalesCargados) /
+                                cantidad) *
+                              100
+                            ).toFixed(0)
                             : 0}
                           %)
                         </span>
@@ -996,8 +1034,8 @@ const MeatManualIncome = () => {
                         const merma =
                           corte.pesoProveedor > 0
                             ? ((corte.pesoProveedor - corte.pesoNeto) /
-                                corte.pesoProveedor) *
-                              100
+                              corte.pesoProveedor) *
+                            100
                             : 0;
 
                         return (

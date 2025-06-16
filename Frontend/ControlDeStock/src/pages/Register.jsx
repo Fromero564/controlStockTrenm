@@ -13,7 +13,7 @@ const Register = () => {
   const navigate = useNavigate();
 
   const handleCancel = () => {
-    navigate('/administrative-panel');
+    navigate('/dashboard');
   };
   const handleSubmit = async (e) => {
     e.preventDefault();
