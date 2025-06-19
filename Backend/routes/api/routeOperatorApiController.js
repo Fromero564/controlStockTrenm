@@ -14,6 +14,8 @@ router.get("/find-remit/:remitoId",apiOperatorController.findRemit);
 router.get("/allTares",apiOperatorController.alltares);
 //Api Cargar productos en seccion primaria
 router.get("/product-primary-name",apiOperatorController.loadProductsPrimaryCategory);
+//Api para ver todas las obsercaciones disponibles
+router.get("/allObservations",apiOperatorController.viewAllObservationMeatIncome)
 //Api Cargar stock disponible
 router.get("/stock-available",apiOperatorController.stockAvailable);
 //Api Cargar todos los productos 
@@ -36,6 +38,8 @@ router.post("/uploadProcessMeat",apiOperatorController.uploadProductsProcess);
 router.post("/tareLoad",apiOperatorController.tareLoad);
 //Api para cargar cortes que vienen por remito
 router.post("/addProducts/:id",apiOperatorController.addIncomeMeat);
+//Api para crear nueva observacion de corte
+router.post("/observations-create",apiOperatorController.createObservation);
 //Api actualizar datos de la factura del proveedor 
 router.put("/update-provider-bill/:id",apiOperatorController.updateProviderBill);
 //Api para editar taras

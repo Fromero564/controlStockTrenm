@@ -201,24 +201,30 @@ const MeatManualIncome = () => {
     setModalOpen(true);
   };
 
-  const handleGuardarObservacion = async () => {
-    if (!formData.observacionId) {
-      console.log("No hay ID de observación para actualizar");
-      return;
-    }
-
+  const crearObservacionNueva = async (remitoId, texto) => {
     try {
-      const resultado = await actualizarObservacion(
-        formData.observacionId,
-        formData.observaciones
-      );
-      console.log("Observación actualizada:", resultado);
-      alert("Observación guardada correctamente");
+      const response = await fetch(`${API_URL}/observations-create`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          remitoId,
+          observation: texto,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("No se pudo crear la observación");
+      }
+
+      const data = await response.json();
+      return data;
     } catch (error) {
-      console.error("Error al guardar observación:", error);
-      alert("Error al guardar la observación. Por favor, intente nuevamente.");
+      console.error("Error al crear observación:", error);
+      throw error;
     }
-  };
+  }
 
   const actualizarObservacion = async (observacionId, nuevoTexto) => {
     try {
@@ -249,76 +255,76 @@ const MeatManualIncome = () => {
     label: corte.nombre,
   }));
 
+  const handleGuardarObservacion = async () => {
+    const texto = formData.observaciones?.trim() ?? "";
+
+    try {
+      if (formData.observacionId) {
+        // Siempre actualizar, incluso si el texto está vacío
+        const resultado = await actualizarObservacion(formData.observacionId, texto);
+        console.log("Observación actualizada:", resultado);
+      } else {
+        // Crear nueva observación aunque el texto esté vacío
+        const resultado = await crearObservacionNueva(data.id, texto);
+        console.log("Observación creada:", resultado);
+
+        setFormData((prev) => ({
+          ...prev,
+          observacionId: resultado.id,
+        }));
+      }
+
+      alert("Observación guardada correctamente");
+    } catch (error) {
+      console.error("Error al guardar la observación:", error);
+      alert("Error al guardar la observación. Por favor, intente nuevamente.");
+    }
+  };
+
+
+
   const handleGuardar = async () => {
     setSaving(true);
+
     if (cortesAgregados.length === 0) {
       alert("No hay cortes agregados para guardar.");
+      setSaving(false);
       return;
     }
 
     try {
-      const payload = {
+      console.log("Guardando observación...");
+      await handleGuardarObservacion();
+      console.log("Observación guardada correctamente.");
+
+      const payloadCortes = {
         cortes: cortesAgregados,
-        observacion: formData.observaciones?.trim() || null,
       };
+
+      const updatePayload = {
+        cantidad_animales_cargados: totalAnimalesCargados,
+        cantidad_cabezas_cargadas: totalCabezasCargadas,
+        peso_total_neto_cargado: totalKgNeto,
+      };
+
       if (isEditing) {
-        await handleGuardarObservacion();
-        const payloadMeat = {
-          cortes: cortesAgregados,
-        };
-        // Lógica para edición
+        console.log("Editando cortes...");
         const response = await fetch(`${API_URL}/meat-income-edit/${data.id}`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(payloadMeat),
+          body: JSON.stringify(payloadCortes),
         });
 
-        if (!response.ok) throw new Error("Error al editar los cortes");
+        if (!response.ok) {
+          const err = await response.text();
+          console.error("Error al editar los cortes:", err);
+          throw new Error("Error al editar los cortes");
+        }
+        console.log("Cortes editados correctamente.");
 
-        const updatePayload = {
-          cantidad_animales_cargados: totalAnimalesCargados,
-          cantidad_cabezas_cargadas: totalCabezasCargadas,
-          peso_total_neto_cargado: totalKgNeto,
-        };
-
-        const updateResponse = await fetch(
-          `${API_URL}/updateBillSupplier/${data.id}`,
-          {
-            method: "PUT",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(updatePayload),
-          }
-        );
-
-        if (!updateResponse.ok)
-          throw new Error("Error al actualizar el remito");
-
-        alert("Cortes editados correctamente.");
-        setCortesAgregados([]);
-        navigate("/operator-panel");
-      } else {
-        console.log("Payload que se envía:", payload);
-        const response = await fetch(`${API_URL}/addProducts/${data.id}`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(payload),
-        });
-
-        if (!response.ok) throw new Error("Error al guardar los cortes");
-        console.log("Llegó después de addProducts, por construir updatePayload");
-        const updatePayload = {
-          cantidad_animales_cargados: totalAnimalesCargados,
-          cantidad_cabezas_cargadas: totalCabezasCargadas,
-          peso_total_neto_cargado: totalKgNeto,
-        };
-
-        console.log("Payload que se envía:", updatePayload);
+        console.log("Actualizando resumen...");
         const updateResponse = await fetch(
           `${API_URL}/updateBillSupplier/${data.id}`,
           {
@@ -331,21 +337,66 @@ const MeatManualIncome = () => {
         );
 
         if (!updateResponse.ok) {
-          const errorText = await updateResponse.text();
-          console.error("Error en updateBillSupplier:", errorText);
+          const err = await updateResponse.text();
+          console.error("Error al actualizar el resumen:", err);
           throw new Error("Error al actualizar el remito");
         }
+        console.log("Resumen actualizado correctamente.");
+
+        alert("Cortes editados correctamente.");
+      } else {
+       
+        const payload = {
+          cortes: cortesAgregados,
+        };
+ console.log("Payload enviado a /addProducts:", payload); 
+        console.log("Guardando cortes nuevos...");
+        const response = await fetch(`${API_URL}/addProducts/${data.id}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+          const err = await response.text();
+          console.error("Error al guardar cortes nuevos:", err);
+          throw new Error("Error al guardar los cortes");
+        }
+        console.log("Cortes nuevos guardados correctamente.");
+
+        console.log("Actualizando resumen...");
+        const updateResponse = await fetch(
+          `${API_URL}/updateBillSupplier/${data.id}`,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(updatePayload),
+          }
+        );
+
+        if (!updateResponse.ok) {
+          const err = await updateResponse.text();
+          console.error("Error al actualizar resumen:", err);
+          throw new Error("Error al actualizar el remito");
+        }
+        console.log("Resumen actualizado correctamente.");
 
         alert("Cortes y datos de resumen guardados correctamente.");
-        setCortesAgregados([]);
-        navigate("/operator-panel");
       }
+
+      setCortesAgregados([]);
+      navigate("/operator-panel");
+
     } catch (err) {
       console.error("Error al guardar los datos:", err);
       alert("Ocurrió un error al guardar los datos.");
+    } finally {
+      setSaving(false);
     }
-
-    setSaving(false);
   };
 
 
@@ -516,55 +567,55 @@ const MeatManualIncome = () => {
 
   const handleModalClose = () => {
     setModalOpen(false)
-     handleActualizarDesdeMemoria();
+    handleActualizarDesdeMemoria();
   };
 
-useEffect(() => {
-  const saved = localStorage.getItem("cortes_en_edicion");
-  if (saved) {
-    try {
-      const parsed = JSON.parse(saved);
-      setCortesAgregados(parsed);
-      console.log("Datos cargados desde memoria:", parsed);
-    } catch (error) {
-      console.error("Error parseando cortes_en_edicion:", error);
+  useEffect(() => {
+    const saved = localStorage.getItem("cortes_en_edicion");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setCortesAgregados(parsed);
+        console.log("Datos cargados desde memoria:", parsed);
+      } catch (error) {
+        console.error("Error parseando cortes_en_edicion:", error);
+      }
+    } else {
+      console.log("No hay datos guardados en memoria");
     }
-  } else {
-    console.log("No hay datos guardados en memoria");
-  }
-}, []);
+  }, []);
 
-useEffect(() => {
-  console.log("cortesAgregados actualizado:", cortesAgregados);
-}, [cortesAgregados]);
+  useEffect(() => {
+    console.log("cortesAgregados actualizado:", cortesAgregados);
+  }, [cortesAgregados]);
 
 
-useEffect(() => {
-  if (cortesAgregados.length > 0) {
-    localStorage.setItem("cortes_en_edicion", JSON.stringify(cortesAgregados));
-  }
- 
-}, [cortesAgregados]);
-useEffect(() => {
-  const saved = localStorage.getItem("cortes_en_edicion");
-  if (saved) {
+  useEffect(() => {
+    if (cortesAgregados.length > 0) {
+      localStorage.setItem("cortes_en_edicion", JSON.stringify(cortesAgregados));
+    }
+
+  }, [cortesAgregados]);
+  useEffect(() => {
+    const saved = localStorage.getItem("cortes_en_edicion");
+    if (saved) {
       const mapearCorteDesdeBackend = (item) => ({
-          id: item.id,
-          tipo: item.products_name || "",
-          cabeza: item.product_head ?? 0,
-          cantidad: parseFloat(item.products_quantity) || 0,
-          pesoProveedor: parseFloat(item.provider_weight) || 0,
-          pesoBruto: parseFloat(item.gross_weight) || 0,
-          tara: parseFloat(item.tare) || 0,
-          garron: item.products_garron || "",
-          pesoNeto:
-            (parseFloat(item.gross_weight) || 0) - (parseFloat(item.tare) || 0),
-        });
-    const cortesGuardados = JSON.parse(saved);
-    const cortesFormateados = cortesGuardados.map(mapearCorteDesdeBackend);
-    setCortesAgregados(cortesFormateados);
-  }
-}, []);
+        id: item.id,
+        tipo: item.products_name || "",
+        cabeza: item.product_head ?? 0,
+        cantidad: parseFloat(item.products_quantity) || 0,
+        pesoProveedor: parseFloat(item.provider_weight) || 0,
+        pesoBruto: parseFloat(item.gross_weight) || 0,
+        tara: parseFloat(item.tare) || 0,
+        garron: item.products_garron || "",
+        pesoNeto:
+          (parseFloat(item.gross_weight) || 0) - (parseFloat(item.tare) || 0),
+      });
+      const cortesGuardados = JSON.parse(saved);
+      const cortesFormateados = cortesGuardados.map(mapearCorteDesdeBackend);
+      setCortesAgregados(cortesFormateados);
+    }
+  }, []);
 
 
   if (loading) return <p>Cargando...</p>;

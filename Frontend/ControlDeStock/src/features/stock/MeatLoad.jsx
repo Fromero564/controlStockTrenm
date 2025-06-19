@@ -4,12 +4,16 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPen, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { faEye } from "@fortawesome/free-solid-svg-icons";
 import Navbar from "../../components/Navbar.jsx";
+import Modal from "react-modal";
+import ViewMeatBillQuantity from "../../components/ViewMeatBillQuantity.jsx";
 import Swal from "sweetalert2";
 import "../../assets/styles/meatLoad.css";
 
 const MeatLoad = () => {
     const navigate = useNavigate();
     const [products, setProducts] = useState([]);
+    const [modalIsOpen, setModalIsOpen] = useState(false);
+    const [idParaVisualizar, setIdParaVisualizar] = useState(null);
     const [search, setSearch] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
@@ -24,6 +28,10 @@ const MeatLoad = () => {
 
     const handleEdit = (id) => {
         navigate(`/provider-form/${id}`);
+    };
+    const handleView = (id) => {
+        setIdParaVisualizar(id);
+        setModalIsOpen(true);
     };
 
     const handleDelete = (id, numeroRomaneo) => {
@@ -58,7 +66,7 @@ const MeatLoad = () => {
         });
     };
 
-    // FILTRO POR N° INGRESO (id)
+
     const filteredProducts = products.filter((product) =>
         product.id.toString().includes(search)
     );
@@ -109,7 +117,7 @@ const MeatLoad = () => {
 
 
                     <button className="new-button" onClick={() => navigate("/provider-form")}>
-                        Nueva Ingreso +
+                        Nuevo Ingreso +
                     </button>
                 </div>
 
@@ -141,16 +149,19 @@ const MeatLoad = () => {
                                 <td>{product.head_quantity}</td>
                                 <td>{product.total_weight}</td>
                                 <td>
-                                    <button className="view-button" onClick={() => handleView(product.id)}>
-                                        <FontAwesomeIcon icon={faEye} />
-                                    </button>
-                                    <button className="edit-button" onClick={() => handleEdit(product.id)}>
-                                        <FontAwesomeIcon icon={faPen} />
-                                    </button>
-                                    <button className="delete-button" onClick={() => handleDelete(product.id, product.romaneo_number)}>
-                                        {<FontAwesomeIcon icon={faXmark} />}
-                                    </button>
+                                    <div className="action-buttons">
+                                        <button className="view-button" onClick={() => handleView(product.id)}>
+                                            <FontAwesomeIcon icon={faEye} />
+                                        </button>
+                                        <button className="edit-button" onClick={() => handleEdit(product.id)}>
+                                            <FontAwesomeIcon icon={faPen} />
+                                        </button>
+                                        <button className="delete-button" onClick={() => handleDelete(product.id, product.romaneo_number)}>
+                                            <FontAwesomeIcon icon={faXmark} />
+                                        </button>
+                                    </div>
                                 </td>
+
                             </tr>
                         ))}
                     </tbody>
@@ -166,6 +177,22 @@ const MeatLoad = () => {
                     </button>
                 </div>
             </div>
+            <Modal
+                isOpen={modalIsOpen}
+                onRequestClose={() => setModalIsOpen(false)}
+                contentLabel="Detalle del Ingreso"
+                className="modal"
+                overlayClassName="modal-overlay"
+            >
+
+
+                {idParaVisualizar && (
+                    <ViewMeatBillQuantity
+                        id={idParaVisualizar}
+                        onClose={() => setModalIsOpen(false)}
+                    />
+                )}
+            </Modal>
         </div>
     );
 };

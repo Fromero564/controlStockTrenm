@@ -154,62 +154,112 @@ const operatorApiController = {
             return res.status(500).json({ message: "Error interno del servidor" });
         }
     },
-    uploadProducts: async (req, res) => {
-        try {
+uploadProducts: async (req, res) => {
+    try {
+        console.log("Datos recibidos en backend:", req.body);
 
-            const { proveedor, pesoTotal, cabezas, romaneo, tipoIngreso, cantidad, cortes } = req.body;
+        const {
+            proveedor,
+            pesoTotal,
+            cabezas,
+            romaneo,
+            tipoIngreso,
+            cantidad,
+            cortes,
+            congelados = []
+        } = req.body;
 
-            if (!proveedor || !pesoTotal || !cabezas || !romaneo) {
-                return res.status(400).json({ message: "Faltan campos obligatorios." });
-            }
-
-            if (tipoIngreso === "romaneo" && (!cantidad || !Array.isArray(cortes) || cortes.length === 0)) {
-                return res.status(400).json({ message: "Debe proporcionar cantidad y al menos un corte para ingreso con romaneo." });
-            }
-
-            if (tipoIngreso !== "romaneo" && tipoIngreso !== "manual") {
-                return res.status(400).json({ message: "Tipo de ingreso inválido." });
-            }
-
-            // Crear el registro principal
-            const nuevoRegistro = await billSupplier.create({
-                supplier: proveedor,
-                total_weight: pesoTotal,
-                head_quantity: cabezas,
-                quantity: cantidad,
-                romaneo_number: romaneo,
-                income_state: tipoIngreso,
-                check_state: tipoIngreso === "romaneo",
-            });
-
-            // Guardar los detalles si hay cortes
-            if (Array.isArray(cortes) && cortes.length > 0) {
-                for (const corte of cortes) {
-                    const { tipo, cantidad, cabezas } = corte;
-
-                    if (!tipo || cantidad == null || cabezas == null) {
-                        return res.status(400).json({ message: "Cada corte debe tener tipo, cantidad y cabezas." });
-                    }
-
-                    await billDetail.create({
-                        bill_supplier_id: nuevoRegistro.id,
-                        type: tipo,
-                        quantity: cantidad,
-                        heads: cabezas,
-                    });
-                }
-            }
-
-            return res.status(201).json({
-                id: nuevoRegistro.id,
-                romaneo: nuevoRegistro.romaneo_number,
-            });
-
-        } catch (error) {
-            console.error("Error al cargar datos:", error);
-            return res.status(500).json({ message: "Error interno del servidor", error: error.message });
+        if (!proveedor || !pesoTotal || !cabezas || !romaneo) {
+            return res.status(400).json({ message: "Faltan campos obligatorios." });
         }
-    },
+
+        if (tipoIngreso === "romaneo" && (!cantidad || !Array.isArray(cortes) || cortes.length === 0)) {
+            return res.status(400).json({ message: "Debe proporcionar cantidad y al menos un corte para ingreso con romaneo." });
+        }
+
+        if (tipoIngreso !== "romaneo" && tipoIngreso !== "manual") {
+            return res.status(400).json({ message: "Tipo de ingreso inválido." });
+        }
+
+        // Calcular totales de productos congelados
+        let fresh_quantity = 0;
+        let fresh_weight = 0;
+
+        if (Array.isArray(congelados) && congelados.length > 0) {
+            for (const prod of congelados) {
+                if (!prod.tipo || prod.cantidad == null || prod.unidades == null) {
+                    return res.status(400).json({ message: "Cada producto congelado debe tener tipo, cantidad y unidades." });
+                }
+
+                fresh_quantity += Number(prod.cantidad);
+                fresh_weight += Number(prod.unidades);
+            }
+        }
+
+        // Insertar registro principal
+        const nuevoRegistro = await billSupplier.create({
+            supplier: proveedor,
+            total_weight: pesoTotal,
+            head_quantity: cabezas,
+            quantity: cantidad,
+            romaneo_number: romaneo,
+            income_state: tipoIngreso,
+            check_state: tipoIngreso === "romaneo",
+            fresh_quantity,
+            fresh_weight,
+        });
+
+        // Guardar cortes frescos
+        if (Array.isArray(cortes) && cortes.length > 0) {
+            for (const corte of cortes) {
+                const { tipo, cantidad, cabezas } = corte;
+
+                if (!tipo || cantidad == null || cabezas == null) {
+                    return res.status(400).json({ message: "Cada corte debe tener tipo, cantidad y cabezas." });
+                }
+
+                await billDetail.create({
+                    bill_supplier_id: nuevoRegistro.id,
+                    type: tipo,
+                    quantity: cantidad,
+                    heads: cabezas,
+                    weight: 0 // <- obligatorio si es not null
+                });
+            }
+        }
+
+        // Guardar cortes congelados (como detalles también)
+        if (Array.isArray(congelados) && congelados.length > 0) {
+            for (const congelado of congelados) {
+                const { tipo, cantidad, unidades } = congelado;
+
+                if (!tipo || cantidad == null || unidades == null) {
+                    return res.status(400).json({ message: "Cada producto congelado debe tener tipo, cantidad y unidades." });
+                }
+
+                await billDetail.create({
+                    bill_supplier_id: nuevoRegistro.id,
+                    type: tipo,
+                    quantity: cantidad,
+                    heads: 0, // <- obligatorio si es not null
+                    weight: unidades
+                });
+            }
+        }
+
+        return res.status(201).json({
+            id: nuevoRegistro.id,
+            romaneo: nuevoRegistro.romaneo_number,
+        });
+
+    } catch (error) {
+        console.error("❌ Error al cargar datos:", error);
+        return res.status(500).json({ message: "Error interno del servidor", error: error.message });
+    }
+},
+
+
+
     updateProviderBill: async (req, res) => {
         try {
             const { id } = req.params;
@@ -269,6 +319,15 @@ const operatorApiController = {
             return res.status(500).json({ message: "Error interno del servidor", error: error.message });
         }
     },
+    viewAllObservationMeatIncome:async(req,res)=>{
+        try{
+        let ObservacionesMeatIncome= await ObservationsMeatIncome.findAll({})
+        res.json(ObservacionesMeatIncome)
+        }  catch (error) {
+            console.error(error);
+            res.status(500).json({ message: 'Error al obtener observaciones disponibles' });
+        }
+    },
 
     updateObservationMeatIncome: async (req, res) => {
         const { id } = req.params;
@@ -286,6 +345,28 @@ const operatorApiController = {
             res.status(500).json({ mensaje: "Error al actualizar observación" });
         }
     },
+
+createObservation: async (req, res) => {
+  try {
+    const { remitoId, observation } = req.body;
+
+    // Validación mínima
+    if (!remitoId) {
+      return res.status(400).json({ error: "remitoId es obligatorio" });
+    }
+
+    // Crear la observación
+    const nuevaObservacion = await ObservationsMeatIncome.create({
+      id: remitoId, 
+      observation: observation ?? "", 
+    });
+
+    return res.status(201).json(nuevaObservacion);
+  } catch (error) {
+    console.error("Error al crear observación:", error);
+    return res.status(500).json({ error: "Error interno al crear la observación" });
+  }
+},
 
     updateProductFromRemit: async (req, res) => {
         const { id } = req.params;
@@ -528,8 +609,8 @@ const operatorApiController = {
     productStock: async (req, res) => {
         try {
             const allproductsStock = await meatIncome.findAll();
-
-
+            
+            res.json(allproductsStock)
         } catch (error) {
             console.error("Error al obtener stock:", error);
             return res.status(500).json({ message: "Error interno del servidor" });

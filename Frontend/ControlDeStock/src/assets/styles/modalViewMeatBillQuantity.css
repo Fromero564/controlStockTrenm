@@ -1,0 +1,81 @@
+/* Fondo oscuro que cubre toda la pantalla */
+.view-remito-modal-wrapper {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+/* Ventana blanca centrada */
+.view-remito-modal-content {
+  background-color: white;
+  padding: 1.5rem 2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  width: 500px; 
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Botón para cerrar */
+.modal-close-button {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.8rem;
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #333;
+  cursor: pointer;
+}
+
+/* Títulos y contenido del modal */
+.view-remito-modal-content h2,
+.view-remito-modal-content h3 {
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  color: #333;
+}
+
+.view-remito-modal-content p {
+  margin: 0.3rem 0;
+  color: #444;
+}
+
+/* Tabla de detalle de cortes */
+.view-remito-modal-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+  font-size: 0.95rem;
+}
+
+.view-remito-modal-content th,
+.view-remito-modal-content td {
+  border: 1px solid #ddd;
+  padding: 0.5rem;
+  text-align: left;
+}
+
+.view-remito-modal-content th {
+  background-color: #f0f2f5;
+  font-weight: 600;
+}
+.observacion-remito {
+  margin-top: 20px;
+  padding: 15px;
+  background-color: rgb(218, 215, 215);
+  border: 2px solid #f0ad4e;
+  font-weight: bold;
+  font-size: 1rem;
+}

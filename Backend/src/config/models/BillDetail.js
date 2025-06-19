@@ -18,6 +18,13 @@ module.exports = (sequelize, dataTypes) => {
         type: dataTypes.STRING(255),
         quantity: dataTypes.INTEGER,
         heads: dataTypes.INTEGER,
+
+        // ✅ Nuevo campo agregado
+        weight: {
+            type: dataTypes.INTEGER,
+            allowNull: false
+        },
+
         createdAt: dataTypes.DATE,
         updatedAt: dataTypes.DATE
     };

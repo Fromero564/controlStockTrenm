@@ -1,4 +1,4 @@
-.body-meat-load{
+.body-meat-load {
   overflow-x: hidden;
 }
 
@@ -13,13 +13,6 @@
   align-items: center;
   margin: 10px 0;
 }
-.view-button {
-    background-color: #28a745; 
-   color:#fff;
-}
-
-
-
 
 .header h2 {
   font-size: 24px;
@@ -79,7 +72,6 @@
   font-weight: bold;
   padding: 10px;
   text-align: center;
-  /* eliminada la línea negra bajo encabezados */
   border-bottom: none;
 }
 
@@ -90,40 +82,6 @@
 
 .table tbody tr {
   border-bottom: 1px solid #ccc;
-}
-
-.view-button,
-.edit-button,
-.delete-button {
-  border: none;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 5px;
-  width: 40px;
-  height: 35px;
-  margin: 0 4px;
-  font-size: 16px;
-  white-space: nowrap;
-}
-
-.edit-button {
-  background-color: #5bc0de;
-  color: white;
-}
-
-.edit-button:hover {
-  background-color: #31b0d5;
-}
-
-.delete-button {
-  background-color: #d9534f;
-  color: white;
-}
-
-.delete-button:hover {
-  background-color: #c9302c;
 }
 
 .red-row {
@@ -204,8 +162,55 @@
   color: #333;
 }
 
+/* ACCION BOTONES (AÑADIDO) */
+.action-buttons {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+}
 
-/* ===== Responsive Media Queries ===== */
+.action-buttons .view-button,
+.action-buttons .edit-button,
+.action-buttons .delete-button {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  font-size: 16px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 5px;
+  border: none;
+  cursor: pointer;
+}
+
+.action-buttons .view-button {
+  background-color: #28a745;
+  color: #fff;
+}
+
+.action-buttons .view-button:hover {
+  background-color: #218838;
+}
+
+.action-buttons .edit-button {
+  background-color: #5bc0de;
+  color: white;
+}
+
+.action-buttons .edit-button:hover {
+  background-color: #31b0d5;
+}
+
+.action-buttons .delete-button {
+  background-color: #d9534f;
+  color: white;
+}
+
+.action-buttons .delete-button:hover {
+  background-color: #c9302c;
+}
 
 /* Tablets (≤1024px) */
 @media (max-width: 1024px) {
@@ -246,14 +251,6 @@
   .table td {
     padding: 8px;
     font-size: 14px;
-  }
-
-  .edit-button,
-  .delete-button {
-    width: auto;
-    height: auto;
-    padding: 4px 6px;
-    font-size: 12px;
   }
 
   .pagination button {
@@ -322,12 +319,18 @@
     font-size: 12px;
   }
 
-  .edit-button,
-  .delete-button {
-    width: auto;
-    height: auto;
-    padding: 4px 6px;
-    font-size: 12px;
+  .action-buttons {
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .action-buttons .view-button,
+  .action-buttons .edit-button,
+  .action-buttons .delete-button {
+    width: 100%;
+    padding: 8px;
+    font-size: 14px;
   }
 
   .pagination {

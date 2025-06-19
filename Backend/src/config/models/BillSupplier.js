@@ -17,14 +17,11 @@ module.exports = (sequelize, dataTypes) => {
         head_quantity: {
             type: dataTypes.STRING(255),
             allowNull: false
-        },  
-         quantity: {
+        },
+        quantity: {
             type: dataTypes.BIGINT(10),
             allowNull: false
         },
-
-
-
         romaneo_number: {
             type: dataTypes.BIGINT(10),
             allowNull: false
@@ -35,7 +32,15 @@ module.exports = (sequelize, dataTypes) => {
         },
         check_state: {
             type: dataTypes.BOOLEAN,
-            allowNull: false,
+            allowNull: false
+        },
+        fresh_quantity: {
+            type: dataTypes.INTEGER,
+            allowNull: false
+        },
+        fresh_weight: {
+            type: dataTypes.INTEGER,
+            allowNull: false
         }
     };
     let config = {
@@ -43,11 +48,11 @@ module.exports = (sequelize, dataTypes) => {
         timestamps: true,
     };
     const BillSupplier = sequelize.define(alias, cols, config);
+    
     BillSupplier.hasMany(sequelize.models.BillDetail, {
         foreignKey: 'bill_supplier_id',
         as: 'billDetails'
     });
 
-    return BillSupplier
-
+    return BillSupplier;
 };
