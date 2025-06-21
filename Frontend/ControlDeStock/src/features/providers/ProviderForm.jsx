@@ -1,4 +1,3 @@
-// ...imports
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Swal from 'sweetalert2';
@@ -9,7 +8,7 @@ import "../../assets/styles/providerForm.css";
 const ProviderForm = () => {
     const [tipoIngreso, setTipoIngreso] = useState("romaneo");
     const API_URL = import.meta.env.VITE_API_URL;
-    const [errorProductoDuplicado, setErrorProductoDuplicado] = useState(false);
+    const [errorCorteDuplicado, setErrorCorteDuplicado] = useState(false);
     const [errorCongeladoDuplicado, setErrorCongeladoDuplicado] = useState(false);
     const [providers, setProviders] = useState([]);
     const [cortes, setCortes] = useState([]);
@@ -34,15 +33,15 @@ const ProviderForm = () => {
 
                     setTipoIngreso(data.tipo_ingreso);
                     setUltimoRegistroFactura(data.internal_number);
+
                     const cortesMapeados = data.detalles.map(corte => ({
                         id: corte.id,
-                        tipo: corte.tipo || "",
+                        tipo: corte.cod,
                         cantidad: Number(corte.cantidad) || 0,
                         cabezas: Number(corte.cabezas) || 0
                     }));
                     setCortesAgregados(cortesMapeados);
 
-                    // Si hay congelados en la respuesta:
                     if (data?.congelados) {
                         setCongeladosAgregados(data.congelados);
                         setMostrarCongelados(true);
@@ -79,18 +78,22 @@ const ProviderForm = () => {
                 .catch(err => console.error("Error al obtener última factura:", err));
         }
     }, [id]);
-
     useEffect(() => {
         const fetchProductos = async () => {
             try {
                 const response = await fetch(`${API_URL}/product-name`);
                 const data = await response.json();
-                const productosConCantidad = data.map((nombre, index) => ({
-                    id: index + 1,
-                    nombre,
-                    cantidad: 0,
-                }));
-                setCortes(productosConCantidad);
+
+                const productos = Array.isArray(data)
+                    ? data.map(producto => ({
+                        id: producto.id,
+                        nombre: producto.product_name,
+                        categoria: producto.product_category,
+                        cantidad: 0,
+                    }))
+                    : [];
+
+                setCortes(productos);
             } catch (err) {
                 console.error("Error al obtener productos:", err);
             }
@@ -98,7 +101,10 @@ const ProviderForm = () => {
         fetchProductos();
     }, []);
 
-    const opciones = cortes.map(corte => ({ value: corte.nombre, label: corte.nombre }));
+    const opciones = cortes.map(corte => ({
+        value: corte.id,
+        label: corte.nombre
+    }));
 
     const handleCorteChange = (e) => {
         const { name, value } = e.target;
@@ -111,27 +117,59 @@ const ProviderForm = () => {
     };
 
     const agregarCorte = () => {
-        if (!nuevoCorte.tipo || nuevoCorte.cantidad <= 0) return;
+        const seleccion = opciones.find(o => o.value === nuevoCorte.tipo);
+        if (!seleccion || !nuevoCorte.cantidad || !nuevoCorte.cabezas) return;
 
-        const existe = cortesAgregados.some(corte => corte.tipo === nuevoCorte.tipo);
-        if (existe) {
-            setErrorProductoDuplicado(true);
+        const productoSeleccionado = cortes.find(c => c.id === seleccion.value);
+        if (!productoSeleccionado) {
+            console.error("Producto seleccionado no encontrado en cortes.");
             return;
         }
-        setCortesAgregados([...cortesAgregados, nuevoCorte]);
-        setNuevoCorte({ tipo: "", cantidad: 0, cabezas: 0 });
-        setErrorProductoDuplicado(false);
+
+        const nuevo = {
+            tipo: seleccion.value, // ID para el backend
+            nombre: seleccion.label, // Nombre legible para mostrar
+            cantidad: nuevoCorte.cantidad,
+            cabezas: nuevoCorte.cabezas,
+            cod: seleccion.value,
+            categoria: productoSeleccionado.categoria
+        };
+
+        if (cortesAgregados.some(c => c.tipo === nuevo.tipo)) {
+            setErrorCorteDuplicado(true);
+            return;
+        }
+
+        setCortesAgregados([...cortesAgregados, nuevo]);
+        setNuevoCorte({ tipo: "", cantidad: "", cabezas: "" });
+        setErrorCorteDuplicado(false);
     };
+
 
     const agregarCongelado = () => {
         if (!nuevoCongelado.tipo || nuevoCongelado.cantidad <= 0) return;
 
-        const existe = congeladosAgregados.some(item => item.tipo === nuevoCongelado.tipo);
+        const existe = congeladosAgregados.some(item => item.cod === nuevoCongelado.tipo);
         if (existe) {
             setErrorCongeladoDuplicado(true);
             return;
         }
-        setCongeladosAgregados([...congeladosAgregados, nuevoCongelado]);
+
+        const producto = cortes.find(p => p.id === nuevoCongelado.tipo);
+        if (!producto) {
+            console.error("Producto no encontrado.");
+            return;
+        }
+
+        const nuevoCongeladoCompleto = {
+            tipo: producto.nombre,
+            cantidad: Number(nuevoCongelado.cantidad),
+            unidades: Number(nuevoCongelado.unidades),
+            cod: producto.id,
+            categoria: producto.categoria
+        };
+
+        setCongeladosAgregados([...congeladosAgregados, nuevoCongeladoCompleto]);
         setNuevoCongelado({ tipo: "", cantidad: 0, unidades: 0 });
         setErrorCongeladoDuplicado(false);
     };
@@ -172,18 +210,56 @@ const ProviderForm = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        const totalCantidad = cortesAgregados.length > 0
-            ? cortesAgregados.reduce((sum, corte) => sum + Number(corte.cantidad), 0)
-            : congeladosAgregados.reduce((sum, item) => sum + Number(item.cantidad), 0);
+        if (
+            cortesAgregados.length === 0 &&
+            (!mostrarCongelados || congeladosAgregados.length === 0)
+        ) {
+            Swal.fire('Error', 'Debe agregar al menos cortes comunes o productos congelados', 'error');
+            return;
+        }
 
-        const totalCabezas = cortesAgregados.length > 0
-            ? cortesAgregados.reduce((sum, corte) => sum + Number(corte.cabezas), 0)
-            : 0;
+        if (!formState.proveedor || formState.proveedor.trim() === "") {
+            Swal.fire('Error', 'Debe seleccionar un proveedor', 'error');
+            return;
+        }
+
+        const pesoTotalNumber = Number(formState.pesoTotal);
+        if (isNaN(pesoTotalNumber) || pesoTotalNumber <= 0) {
+            Swal.fire('Error', 'Debe ingresar un peso total válido', 'error');
+            return;
+        }
+
+        const romaneoNumber = Number(formState.romaneo);
+        if (isNaN(romaneoNumber) || romaneoNumber <= 0) {
+            Swal.fire('Error', 'Debe ingresar un número de romaneo válido', 'error');
+            return;
+        }
+
+        // Validar cortes y congelados completos:
+        for (const [i, corte] of cortesAgregados.entries()) {
+            if (!corte.tipo || !corte.cod || !corte.cantidad || !corte.categoria) {
+                Swal.fire('Error', `Faltan datos en corte número ${i + 1}`, 'error');
+                return;
+            }
+        }
+
+        for (const [i, congelado] of congeladosAgregados.entries()) {
+            if (!congelado.tipo || !congelado.cod || !congelado.cantidad || !congelado.categoria) {
+                Swal.fire('Error', `Faltan datos en producto congelado número ${i + 1}`, 'error');
+                return;
+            }
+        }
+
+        const totalCantidadCortes = cortesAgregados.reduce((sum, corte) => sum + Number(corte.cantidad), 0);
+        const totalCantidadCongelados = congeladosAgregados.reduce((sum, item) => sum + Number(item.cantidad), 0);
+        const totalCantidad = totalCantidadCortes + totalCantidadCongelados;
+
+        const totalCabezas = cortesAgregados.reduce((sum, corte) => sum + Number(corte.cabezas), 0);
 
         const formData = {
-            proveedor: formState.proveedor,
-            pesoTotal: formState.pesoTotal,
-            romaneo: formState.romaneo,
+            proveedor: formState.proveedor.trim(),
+            pesoTotal: pesoTotalNumber,
+            romaneo: romaneoNumber,
             cantidad: totalCantidad,
             cabezas: totalCabezas,
             cortes: cortesAgregados,
@@ -191,7 +267,7 @@ const ProviderForm = () => {
             congelados: mostrarCongelados ? congeladosAgregados : [],
         };
 
-        console.log("Enviando datos al backend:", formData);
+        console.log("Datos a enviar:", formData);
 
         try {
             const response = await fetch(id
@@ -207,14 +283,19 @@ const ProviderForm = () => {
                 const productoId = data.id;
                 tipoIngreso === "romaneo"
                     ? navigate("/meat-load")
-                    : navigate(`/meat-manual-icome/${productoId}`);
+                    : navigate(`/meat-manual-income/${productoId}`);
             } else {
-                console.error("Error al enviar los datos");
+                const errorText = await response.text();
+                console.error("Error al enviar los datos. Status:", response.status);
+                console.error("Respuesta del servidor:", errorText);
+                Swal.fire('Error', `No se pudo enviar: ${errorText}`, 'error');
             }
         } catch (error) {
             console.error("Error en la solicitud:", error);
+            Swal.fire('Error', 'Error en la solicitud al servidor', 'error');
         }
     };
+
 
     return (
         <div>
@@ -233,13 +314,12 @@ const ProviderForm = () => {
                             <div className="radius-style" key={val}>
                                 <input
                                     type="radio"
-                                    id={`${val}_check`}
                                     name="tipoIngreso"
                                     value={val}
                                     checked={tipoIngreso === val}
                                     onChange={() => setTipoIngreso(val)}
                                 />
-                                <label htmlFor={`${val}_check`}>{val.charAt(0).toUpperCase() + val.slice(1)}</label>
+                                <label>{val.toLocaleUpperCase()}</label>
                             </div>
                         ))}
                     </div>
@@ -248,13 +328,12 @@ const ProviderForm = () => {
                         <label className="label-provider-form">
                             PROVEEDOR:
                             <select
-                                name="proveedor"
                                 className="input"
                                 value={formState.proveedor}
                                 onChange={(e) => setFormState({ ...formState, proveedor: e.target.value })}
                             >
                                 <option value="">Seleccionar proveedor</option>
-                                {providers.map((provider) => (
+                                {providers.map(provider => (
                                     <option key={provider.id} value={provider.provider_name}>
                                         {provider.provider_name}
                                     </option>
@@ -266,7 +345,6 @@ const ProviderForm = () => {
                             Nº COMPROBANTE ROMANEO:
                             <input
                                 type="number"
-                                name="romaneo"
                                 className="input"
                                 value={formState.romaneo}
                                 onChange={(e) => setFormState({ ...formState, romaneo: e.target.value })}
@@ -281,41 +359,41 @@ const ProviderForm = () => {
                                 checked={mostrarCongelados}
                                 onChange={(e) => setMostrarCongelados(e.target.checked)}
                             />
-                            Productos congelados
+                            Otros productos
                         </label>
                     </div>
 
-                    {/* CORTES FRESCOS */}
+                    {/* CORTES */}
                     <div className="cortes-section">
                         <div className="corte-card">
+                            {errorCorteDuplicado && <p style={{ color: "red" }}>Ya existe.</p>}
                             <div className="input-group">
                                 <label>TIPO</label>
-                                {errorProductoDuplicado && <p style={{ color: "red" }}>Este producto ya fue agregado.</p>}
                                 <Select
                                     options={opciones}
-                                    onChange={(selected) => setNuevoCorte({ ...nuevoCorte, tipo: selected?.value || "" })}
                                     value={opciones.find(o => o.value === nuevoCorte.tipo) || null}
-                                    placeholder={"Producto"}
+                                    onChange={(selected) => setNuevoCorte({ ...nuevoCorte, tipo: selected?.value || "" })}
+                                    placeholder="Producto"
                                     isClearable
                                 />
                             </div>
                             <div className="input-group">
                                 <label>CANTIDAD</label>
-                                <input type="number" name="cantidad" value={nuevoCorte.cantidad} onChange={handleCorteChange} min="0" />
+                                <input type="number" name="cantidad" value={nuevoCorte.cantidad} onChange={handleCorteChange} />
                             </div>
                             <div className="input-group">
                                 <label>CABEZAS</label>
-                                <input type="number" name="cabezas" value={nuevoCorte.cabezas} onChange={handleCorteChange} min="0" />
+                                <input type="number" name="cabezas" value={nuevoCorte.cabezas} onChange={handleCorteChange} />
                             </div>
                             <button type="button" onClick={agregarCorte} className="btn-add">+</button>
                         </div>
 
-                        {cortesAgregados.map((corte, index) => (
-                            <div key={index} className="corte-card">
-                                <div className="input-group"><label>TIPO</label><input type="text" value={corte.tipo} readOnly /></div>
-                                <div className="input-group"><label>CANTIDAD</label><input type="number" value={corte.cantidad} readOnly /></div>
-                                <div className="input-group"><label>CABEZAS</label><input type="number" value={corte.cabezas} readOnly /></div>
-                                <button type="button" className="btn-delete" onClick={() => eliminarCorte(index)}>×</button>
+                        {cortesAgregados.map((corte, i) => (
+                            <div key={i} className="corte-card">
+                                <div className="input-group"><label>TIPO</label><input readOnly value={cortes.find(c => c.id === corte.tipo)?.nombre || ""} /></div>
+                                <div className="input-group"><label>CANTIDAD</label><input readOnly value={corte.cantidad} /></div>
+                                <div className="input-group"><label>CABEZAS</label><input readOnly value={corte.cabezas} /></div>
+                                <button type="button" onClick={() => eliminarCorte(i)} className="btn-delete">×</button>
                             </div>
                         ))}
                     </div>
@@ -323,36 +401,36 @@ const ProviderForm = () => {
                     {/* CONGELADOS */}
                     {mostrarCongelados && (
                         <div className="cortes-section">
-                            <h4>Congelados</h4>
+                            <h4>OTROS PRODUCTOS</h4>
                             <div className="corte-card">
-                                {errorCongeladoDuplicado && <p style={{ color: "red" }}>Este producto ya fue agregado.</p>}
+                                {errorCongeladoDuplicado && <p style={{ color: "red" }}>Ya existe.</p>}
                                 <div className="input-group">
                                     <label>TIPO</label>
                                     <Select
                                         options={opciones}
-                                        onChange={(selected) => setNuevoCongelado({ ...nuevoCongelado, tipo: selected?.value || "" })}
                                         value={opciones.find(o => o.value === nuevoCongelado.tipo) || null}
-                                        placeholder={"Producto"}
+                                        onChange={(selected) => setNuevoCongelado({ ...nuevoCongelado, tipo: selected?.value || "" })}
+                                        placeholder="Producto"
                                         isClearable
                                     />
                                 </div>
                                 <div className="input-group">
                                     <label>CANTIDAD</label>
-                                    <input type="number" name="cantidad" value={nuevoCongelado.cantidad} onChange={handleCongeladoChange} min="0" />
+                                    <input type="number" name="cantidad" value={nuevoCongelado.cantidad} onChange={handleCongeladoChange} />
                                 </div>
                                 <div className="input-group">
                                     <label>PESO</label>
-                                    <input type="number" name="unidades" value={nuevoCongelado.unidades} onChange={handleCongeladoChange} min="0" />
+                                    <input type="number" name="unidades" value={nuevoCongelado.unidades} onChange={handleCongeladoChange} />
                                 </div>
                                 <button type="button" onClick={agregarCongelado} className="btn-add">+</button>
                             </div>
 
-                            {congeladosAgregados.map((item, index) => (
-                                <div key={index} className="corte-card">
-                                    <div className="input-group"><label>TIPO</label><input type="text" value={item.tipo} readOnly /></div>
-                                    <div className="input-group"><label>KG</label><input type="number" value={item.cantidad} readOnly /></div>
-                                    <div className="input-group"><label>UNIDADES</label><input type="number" value={item.unidades} readOnly /></div>
-                                    <button type="button" className="btn-delete" onClick={() => eliminarCongelado(index)}>×</button>
+                            {congeladosAgregados.map((item, i) => (
+                                <div key={i} className="corte-card">
+                                    <div className="input-group"><label>TIPO</label><input readOnly value={item.tipo} /></div>
+                                    <div className="input-group"><label>KG</label><input readOnly value={item.cantidad} /></div>
+                                    <div className="input-group"><label>UNIDADES</label><input readOnly value={item.unidades} /></div>
+                                    <button type="button" className="btn-delete" onClick={() => eliminarCongelado(i)}>×</button>
                                 </div>
                             ))}
                         </div>

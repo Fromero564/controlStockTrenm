@@ -19,7 +19,7 @@ module.exports = (sequelize, dataTypes) => {
         quantity: dataTypes.INTEGER,
         heads: dataTypes.INTEGER,
 
-        // ✅ Nuevo campo agregado
+       
         weight: {
             type: dataTypes.INTEGER,
             allowNull: false
