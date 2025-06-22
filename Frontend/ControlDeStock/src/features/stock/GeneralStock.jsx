@@ -10,7 +10,7 @@ const GeneralStock = () => {
   useEffect(() => {
     const fetchStock = async () => {
       try {
-        const response = await fetch(`${API_URL}/stock-available`);
+        const response = await fetch(`${API_URL}/all-products-stock`);
         const data = await response.json();
         setStockData(data);
       } catch (error) {
@@ -35,15 +35,19 @@ const GeneralStock = () => {
             <table className="stock-table">
               <thead>
                 <tr>
-                  <th>CANTIDAD</th>
-                  <th>PRODUCTO</th>
+                  <th>CODIGO</th>
+                   <th>PRODUCTO</th>
+                  <th>CANTIDAD</th> 
+                   <th>CATEGORIA</th>
                 </tr>
               </thead>
               <tbody>
                 {stockData.map((item, index) => (
                   <tr key={index}>
-                    <td>{item.quantity}</td>
-                    <td>{item.type.toUpperCase()}</td>
+                     <td>{item.product_cod}</td>
+                      <td>{item.product_name}</td>
+                    <td>{item.product_quantity}</td>
+                    <td>{item.product_category}</td>
                   </tr>
                 ))}
               </tbody>

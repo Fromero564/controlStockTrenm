@@ -30,6 +30,8 @@ router.get("/tareLoadFind/:id",apiOperatorController.tareLoadFind);
 router.get("/last-provider-bill",apiOperatorController.loadLastBillSupplier);
 //Api modificar ingreso por manual
 router.get("/getProductsFromRemito/:id",apiOperatorController.updateProductFromRemit);
+//Api para ver stock disponible
+router.get("/all-products-stock",apiOperatorController.getProductStock)
 //Api para cargar productos
 router.post("/uploadProduct",apiOperatorController.uploadProducts);
 //Api para cargar productos de proceso
@@ -55,7 +57,7 @@ router.delete("/delete-bill-detail/:id",apiOperatorController.deleteDetailProvid
 //Api apra eliminar una tara
 router.delete("/tare-delete/:id", apiOperatorController.deleteTare);
 //Api para eliminar un carga de producto proveniente del proveedor
-router.delete("/products/:id",apiOperatorController.deleteProduct);
+router.delete("/products-bill/:id",apiOperatorController.deleteProduct);
 //Api para eliminar item que se agrega en carga manual
 router.delete("/provider-item-delete/:id",apiOperatorController.deleteItemFromMeatManualIncome);
 

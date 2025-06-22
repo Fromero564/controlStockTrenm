@@ -24,41 +24,66 @@ const ProviderForm = () => {
     const navigate = useNavigate();
     const { id } = useParams();
 
-    useEffect(() => {
-        if (id) {
-            const fetchData = async () => {
-                try {
-                    const response = await fetch(`${API_URL}/chargeUpdateBillDetails/${id}`);
-                    const data = await response.json();
+   useEffect(() => {
+    if (id && cortes.length > 0) {
+        const fetchData = async () => {
+            try {
+                const response = await fetch(`${API_URL}/chargeUpdateBillDetails/${id}`);
+                const data = await response.json();
+                console.log("📦 Datos recibidos al editar:", data);
 
-                    setTipoIngreso(data.tipo_ingreso);
-                    setUltimoRegistroFactura(data.internal_number);
+                setTipoIngreso(data.tipo_ingreso);
+                setUltimoRegistroFactura(data.internal_number);
 
-                    const cortesMapeados = data.detalles.map(corte => ({
-                        id: corte.id,
-                        tipo: corte.cod,
-                        cantidad: Number(corte.cantidad) || 0,
-                        cabezas: Number(corte.cabezas) || 0
-                    }));
-                    setCortesAgregados(cortesMapeados);
-
-                    if (data?.congelados) {
-                        setCongeladosAgregados(data.congelados);
-                        setMostrarCongelados(true);
-                    }
-
-                    setFormState({
-                        proveedor: data.proveedor,
-                        pesoTotal: data.peso_total,
-                        romaneo: data.romaneo
+           
+                if (Array.isArray(data.detalles)) {
+                    const cortesMapeados = data.detalles.map(corte => {
+                        const producto = cortes.find(p => p.nombre === corte.tipo || p.id === corte.tipo);
+                        return {
+                            id: corte.id,
+                            tipo: corte.tipo,
+                            nombre: producto?.nombre || corte.tipo,
+                            cantidad: Number(corte.cantidad) || 0,
+                            cabezas: Number(corte.cabezas) || 0,
+                            cod: producto?.id || "",
+                            categoria: producto?.categoria || ""
+                        };
                     });
-                } catch (error) {
-                    console.error("Error al obtener datos para editar:", error);
+                    setCortesAgregados(cortesMapeados);
+                    console.log("Cortes cargados:", cortesMapeados);
                 }
-            };
-            fetchData();
-        }
-    }, [id]);
+
+                
+                if (Array.isArray(data.congelados)) {
+                    const congeladosMapeados = data.congelados.map(cong => {
+                        const producto = cortes.find(p => p.nombre === cong.tipo || p.id === cong.tipo);
+                        return {
+                            id: cong.id,
+                            tipo: cong.tipo,
+                            nombre: producto?.nombre || cong.tipo,
+                            cantidad: Number(cong.cantidad) || 0,
+                            unidades: Number(cong.peso) || 0,
+                            cod: producto?.id || "",
+                            categoria: producto?.categoria || ""
+                        };
+                    });
+                    setCongeladosAgregados(congeladosMapeados);
+                    setMostrarCongelados(true);
+                }
+
+                setFormState({
+                    proveedor: data.proveedor,
+                    pesoTotal: data.peso_total,
+                    romaneo: data.romaneo
+                });
+            } catch (error) {
+                console.error("Error al obtener datos para editar:", error);
+            }
+        };
+        fetchData();
+    }
+}, [id, cortes]);
+
 
     useEffect(() => {
         fetch(`${API_URL}/allProviders`)
@@ -203,9 +228,40 @@ const ProviderForm = () => {
         }
     };
 
-    const eliminarCongelado = (index) => {
+    const eliminarCongelado = async (index) => {
+        const congelado = congeladosAgregados[index];
+
+        const confirmacion = await Swal.fire({
+            title: '¿Estás seguro?',
+            text: 'Esta acción eliminará el producto congelado.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar'
+        });
+
+        if (!confirmacion.isConfirmed) return;
+
+        if (congelado.id) {
+            try {
+                const response = await fetch(`${API_URL}/delete-bill-detail/${congelado.id}`, {
+                    method: "DELETE"
+                });
+
+                if (!response.ok) throw new Error("Error al eliminar en backend");
+            } catch (err) {
+                console.error("Error eliminando congelado en backend:", err);
+                Swal.fire('Error', 'No se pudo eliminar en el backend', 'error');
+                return;
+            }
+        }
+
         setCongeladosAgregados(congeladosAgregados.filter((_, i) => i !== index));
+        Swal.fire('Eliminado', 'El producto fue eliminado exitosamente.', 'success');
     };
+
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -252,9 +308,14 @@ const ProviderForm = () => {
 
         const totalCantidadCortes = cortesAgregados.reduce((sum, corte) => sum + Number(corte.cantidad), 0);
         const totalCantidadCongelados = congeladosAgregados.reduce((sum, item) => sum + Number(item.cantidad), 0);
-        const totalCantidad = totalCantidadCortes + totalCantidadCongelados;
+        const totalCantidad = totalCantidadCortes;
 
         const totalCabezas = cortesAgregados.reduce((sum, corte) => sum + Number(corte.cabezas), 0);
+
+        const totalPesoCongelado = congeladosAgregados.reduce(
+            (sum, item) => sum + Number(item.unidades || 0),
+            0
+        );
 
         const formData = {
             proveedor: formState.proveedor.trim(),
@@ -265,6 +326,8 @@ const ProviderForm = () => {
             cortes: cortesAgregados,
             tipoIngreso: tipoIngreso,
             congelados: mostrarCongelados ? congeladosAgregados : [],
+            fresh_quantity: totalCantidadCongelados,
+            fresh_weight: totalPesoCongelado
         };
 
         console.log("Datos a enviar:", formData);
@@ -390,7 +453,8 @@ const ProviderForm = () => {
 
                         {cortesAgregados.map((corte, i) => (
                             <div key={i} className="corte-card">
-                                <div className="input-group"><label>TIPO</label><input readOnly value={cortes.find(c => c.id === corte.tipo)?.nombre || ""} /></div>
+                                <div className="input-group"><label>TIPO</label><input readOnly value={corte.nombre
+                                } /></div>
                                 <div className="input-group"><label>CANTIDAD</label><input readOnly value={corte.cantidad} /></div>
                                 <div className="input-group"><label>CABEZAS</label><input readOnly value={corte.cabezas} /></div>
                                 <button type="button" onClick={() => eliminarCorte(i)} className="btn-delete">×</button>
@@ -428,8 +492,8 @@ const ProviderForm = () => {
                             {congeladosAgregados.map((item, i) => (
                                 <div key={i} className="corte-card">
                                     <div className="input-group"><label>TIPO</label><input readOnly value={item.tipo} /></div>
-                                    <div className="input-group"><label>KG</label><input readOnly value={item.cantidad} /></div>
-                                    <div className="input-group"><label>UNIDADES</label><input readOnly value={item.unidades} /></div>
+                                    <div className="input-group"><label>CANTIDAD</label><input readOnly value={item.cantidad} /></div>
+                                    <div className="input-group"><label>PESO</label><input readOnly value={item.unidades} /></div>
                                     <button type="button" className="btn-delete" onClick={() => eliminarCongelado(i)}>×</button>
                                 </div>
                             ))}

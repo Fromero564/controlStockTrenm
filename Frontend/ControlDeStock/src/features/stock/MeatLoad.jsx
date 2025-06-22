@@ -50,7 +50,7 @@ const MeatLoad = () => {
             buttonsStyling: false,
         }).then((result) => {
             if (result.isConfirmed) {
-                fetch(`${API_URL}/products/${id}`, {
+                fetch(`${API_URL}/products-bill/${id}`, {
                     method: "DELETE",
                 })
                     .then((response) => {

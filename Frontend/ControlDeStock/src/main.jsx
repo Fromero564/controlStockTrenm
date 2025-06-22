@@ -17,7 +17,7 @@ import { AuthProvider } from './context/AuthProvider.jsx';
 import MeatManualIncome from './features/stock/MeatManualIncome.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import Tareload from './features/stock/TareLoad.jsx';
-import ProductionProcess from './features/stock/ProductionProcess.jsx';;
+import ProductionProcess from './features/stock/ProductionProcess.jsx';
 import GeneralStock from './features/stock/GeneralStock.jsx';
 import Alltares from './features/stock/Alltares.jsx';
 import LoadNewClient from './features/clients/LoadNewClient.jsx';
@@ -134,7 +134,7 @@ const router = createBrowserRouter([
   //   ),
   // },
   {
-    path: "/meat-manual-icome/:remitoId/",
+    path: "/meat-manual-income/:remitoId/",
     element: (
       <ProtectedRoute>
         <MeatManualIncome />
