@@ -1356,10 +1356,10 @@ const MeatManualIncome = () => {
                           <td>{Number(corte.pesoNeto || 0).toFixed(2)}</td>
                           <td
                             style={{
-                              color: Number(merma) > 0 ? "orange" : "green",
+                              color: Number(merma) > 0 ? "red" : "green",
                             }}
                           >
-                            {Number(merma || 0).toFixed(2)}%
+                            {Number(merma || 0) > 0 ? '+' : ''}{Number(merma || 0).toFixed(2)}%
                           </td>
                         </tr>
                       );
@@ -1368,49 +1368,29 @@ const MeatManualIncome = () => {
                       <td>
                         <strong>Diferencia declarado en romaneo</strong>
                       </td>
-                      <td
-                        style={{
-                          color:
-                            cantidad > totalAnimalesCargados ? "red" : "green",
-                        }}
-                      >
+                      <td style={{ color: cantidad > totalAnimalesCargados ? "red" : "green" }}>
                         {cantidad - totalAnimalesCargados}{" "}
                         <span>
-                          (
-                          {cantidad > 0
+                          ({cantidad > 0
                             ? (
-                              ((cantidad - totalAnimalesCargados) /
-                                cantidad) *
-                              100
+                              ((cantidad - totalAnimalesCargados) / cantidad) * 100
                             ).toFixed(0)
-                            : 0}
-                          %)
+                            : 0}%)
                         </span>
                       </td>
-                      <td
-                        style={{
-                          color:
-                            data.head_quantity > totalCabezasCargadas
-                              ? "red"
-                              : "green",
-                        }}
-                      >
+                      <td style={{ color: data.head_quantity > totalCabezasCargadas ? "red" : "green" }}>
                         {data.head_quantity - totalCabezasCargadas}{" "}
                         <span>
-                          (
-                          {(
-                            ((data.head_quantity - totalCabezasCargadas) /
-                              data.head_quantity) *
-                            100
-                          ).toFixed(0)}
-                          %)
+                          ({(
+                            ((data.head_quantity - totalCabezasCargadas) / data.head_quantity
+                            ) * 100).toFixed(0)}%)
                         </span>
                       </td>
-                      <td style={{ color: colorDiferencia }}>
+                      <td style={{ color: diferenciaPeso < 0 ? "red" : "green" }}>
                         {diferenciaPeso.toFixed(2)}{" "}
                         <span>
                           ({porcentajeDiferencia > 0 ? "+" : ""}
-                          {porcentajeDiferencia.toFixed(2)}% )
+                          {porcentajeDiferencia.toFixed(2)}%)
                         </span>
                       </td>
                     </tr>
@@ -1452,9 +1432,9 @@ const MeatManualIncome = () => {
                             <td>{corte.cabezas}</td>
                             <td>{corte.pesoNeto.toFixed(2)}</td>
                             <td
-                              style={{ color: merma > 0 ? "orange" : "green" }}
+                              style={{ color: merma > 0 ? "red" : "green" }}
                             >
-                              {merma.toFixed(2)}%
+                              {merma > 0 ? '+' : ''}{merma.toFixed(2)}%
                             </td>
                           </tr>
                         );
@@ -1495,12 +1475,13 @@ const MeatManualIncome = () => {
                       <td>{item.lote}</td>
                       <td>{item.cantidad}</td>
                       <td>{item.pesoNeto?.toFixed(2)}</td>
-                      <td style={{ color: mermaCantidadItem > 0 ? "orange" : "green" }}>
-                        {mermaCantidadItem.toFixed(2)}%
+                      <td style={{ color: mermaCantidadItem > 0 ? "red" : "green" }}>
+                        {mermaCantidadItem > 0 ? '+' : ''}{mermaCantidadItem.toFixed(2)}%
                       </td>
-                      <td style={{ color: mermaPesoItem > 0 ? "orange" : "green" }}>
-                        {mermaPesoItem.toFixed(2)}%
+                      <td style={{ color: mermaPesoItem > 0 ? "red" : "green" }}>
+                        {mermaPesoItem > 0 ? '+' : ''}{mermaPesoItem.toFixed(2)}%
                       </td>
+
                     </tr>
                   );
                 })}
@@ -1510,11 +1491,11 @@ const MeatManualIncome = () => {
                   <td><strong>TOTALES</strong></td>
                   <td>{totalQuantityCongelados}</td>
                   <td>{totalWeightCongelados.toFixed(2)}</td>
-                  <td style={{ color: mermaCantidadCongelados > 0 ? "orange" : "green" }}>
-                    {mermaCantidadCongelados.toFixed(2)}%
+                  <td style={{ color: mermaCantidadCongelados > 0 ? "red" : "green" }}>
+                    {mermaCantidadCongelados > 0 ? '+' : ''}{mermaCantidadCongelados.toFixed(2)}%
                   </td>
-                  <td style={{ color: mermaPesoCongelados > 0 ? "orange" : "green" }}>
-                    {mermaPesoCongelados.toFixed(2)}%
+                  <td style={{ color: mermaPesoCongelados > 0 ? "red" : "green" }}>
+                    {mermaPesoCongelados > 0 ? '+' : ''}{mermaPesoCongelados.toFixed(2)}%
                   </td>
                 </tr>
               </tbody>

@@ -12,35 +12,24 @@ const ViewMeatBillQuantity = ({ id, onClose }) => {
         if (id) {
             const fetchData = async () => {
                 try {
-                    
-
                     const response = await fetch(`${API_URL}/chargeUpdateBillDetails/${id}`);
                     const data = await response.json();
                     setRemito(data);
 
-                
-
                     if (data.tipo_ingreso === 'manual') {
                         const stockResponse = await fetch(`${API_URL}/allProductsStock`);
                         const stockData = await stockResponse.json();
-                       
-
                         const cortesDelRemito = stockData.filter(
                             item => parseInt(item.id_bill_suppliers) === parseInt(data.internal_number)
                         );
-                       
                         setCortesStock(cortesDelRemito);
                     }
 
                     const obsResponse = await fetch(`${API_URL}/allObservations`);
                     const obsData = await obsResponse.json();
-                  
-
                     const observacionDelRemito = obsData.find(
                         obs => parseInt(obs.id) === parseInt(data.internal_number)
                     );
-
-                   
                     setObservacion(observacionDelRemito?.observation || null);
                 } catch (error) {
                     console.error("Error al obtener datos para visualizar remito:", error);
@@ -71,6 +60,7 @@ const ViewMeatBillQuantity = ({ id, onClose }) => {
                             <th>Tipo</th>
                             <th>Cantidad</th>
                             <th>Cabezas</th>
+                           
                         </tr>
                     </thead>
                     <tbody>
@@ -79,10 +69,36 @@ const ViewMeatBillQuantity = ({ id, onClose }) => {
                                 <td>{corte.tipo}</td>
                                 <td>{corte.cantidad}</td>
                                 <td>{corte.cabezas}</td>
+                           
                             </tr>
                         ))}
                     </tbody>
                 </table>
+
+                {/* Nueva tabla para congelados */}
+                {remito.congelados && remito.congelados.length > 0 && (
+                    <>
+                        <h3>Productos Congelados</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Tipo</th>
+                                    <th>Cantidad</th>
+                                    <th>Peso</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {remito.congelados.map((congelado) => (
+                                    <tr key={congelado.id}>
+                                        <td>{congelado.tipo}</td>
+                                        <td>{congelado.cantidad}</td>
+                                        <td>{congelado.peso}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </>
+                )}
 
                 {remito.tipo_ingreso === 'manual' && cortesStock.length > 0 && (
                     <>
@@ -119,11 +135,10 @@ const ViewMeatBillQuantity = ({ id, onClose }) => {
                         </table>
                     </>
                 )}
-  <h3>Observación</h3>
-                {/* Observación (si existe) */}
+
+                <h3>Observación</h3>
                 {observacion && (
                     <div className="observacion-remito">
-                      
                         <p>{observacion}</p>
                     </div>
                 )}

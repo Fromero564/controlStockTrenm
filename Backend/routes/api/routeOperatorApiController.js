@@ -30,6 +30,8 @@ router.get("/tareLoadFind/:id",apiOperatorController.tareLoadFind);
 router.get("/last-provider-bill",apiOperatorController.loadLastBillSupplier);
 //Api modificar ingreso por manual
 router.get("/getProductsFromRemito/:id",apiOperatorController.updateProductFromRemit);
+//Api para ver todos los productos congelados/otros productos que tengo cargue por manual
+router.get("/getOtherProductsFromRemito/:id",apiOperatorController.getOtherProductsFromRemito)
 //Api para ver stock disponible
 router.get("/all-products-stock",apiOperatorController.getProductStock)
 //Api para cargar productos
@@ -42,6 +44,11 @@ router.post("/tareLoad",apiOperatorController.tareLoad);
 router.post("/addProducts/:id",apiOperatorController.addIncomeMeat);
 //Api para crear nueva observacion de corte
 router.post("/observations-create",apiOperatorController.createObservation);
+//Agregar productos congelados o otro productos no cortes por manual
+router.post("/addOtherProductsManual",apiOperatorController.addOtherProductsManual)
+
+//Api para actualizar las piezas que se despostaron
+router.put("/update-product-stock",apiOperatorController.updateProductStockQuantity)
 //Api actualizar datos de la factura del proveedor 
 router.put("/update-provider-bill/:id",apiOperatorController.updateProviderBill);
 //Api para editar taras
@@ -60,6 +67,7 @@ router.delete("/tare-delete/:id", apiOperatorController.deleteTare);
 router.delete("/products-bill/:id",apiOperatorController.deleteProduct);
 //Api para eliminar item que se agrega en carga manual
 router.delete("/provider-item-delete/:id",apiOperatorController.deleteItemFromMeatManualIncome);
-
+//Api para eliminar items que se cargan por manual que sean congelados/otros productos
+router.delete("/other-product-delete/:id",apiOperatorController.deleteOtherProduct);
 
 module.exports=router;

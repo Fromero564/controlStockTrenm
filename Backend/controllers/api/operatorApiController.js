@@ -13,6 +13,8 @@ const ProductsAvailable = db.ProductsAvailable;
 const ProcessMeat = db.ProcessMeat;
 const ObservationsMeatIncome = db.ObservationsMeatIncome;
 const ProductStock = db.ProductStock;
+const OtherProductManual = db.OtherProductManual;
+
 
 const operatorApiController = {
 
@@ -329,7 +331,12 @@ const operatorApiController = {
 
             if (!id) return res.status(400).json({ message: "Falta el ID del registro a actualizar." });
 
-            if (!proveedor || !pesoTotal || !romaneo || !cabezas) {
+            if (
+                proveedor === undefined || proveedor === "" ||
+                pesoTotal === undefined || pesoTotal === "" ||
+                romaneo === undefined || romaneo === "" ||
+                cabezas === undefined || cabezas === null
+            ) {
                 return res.status(400).json({ message: "Faltan campos obligatorios." });
             }
 
@@ -846,68 +853,170 @@ const operatorApiController = {
     },
 
     deleteDetailProviderForm: async (req, res) => {
-    const { id } = req.params;
+        const { id } = req.params;
 
-    try {
-        const detalle = await billDetail.findOne({ where: { id } });
+        try {
+            const detalle = await billDetail.findOne({ where: { id } });
 
-        if (!detalle) {
-            return res.status(404).json({ message: "Detalle no encontrado" });
+            if (!detalle) {
+                return res.status(404).json({ message: "Detalle no encontrado" });
+            }
+
+            const billId = detalle.bill_supplier_id;
+
+
+            const producto = await ProductStock.findOne({
+                where: { product_name: detalle.type }
+            });
+
+            if (producto) {
+                const nuevaCantidad = producto.product_quantity - Number(detalle.quantity);
+                await producto.update({
+                    product_quantity: nuevaCantidad < 0 ? 0 : nuevaCantidad
+                });
+            }
+
+            await billDetail.destroy({ where: { id } });
+
+            const detallesRestantes = await billDetail.findAll({ where: { bill_supplier_id: billId } });
+
+            const nuevosTotales = detallesRestantes.reduce(
+                (totales, d) => {
+                    const cantidad = Number(d.quantity) || 0;
+                    const peso = Number(d.weight) || 0;
+
+                    if (Number(d.heads) > 0 || peso === 0) {
+
+                        totales.quantity += cantidad;
+                    } else {
+
+                        totales.fresh_quantity += cantidad;
+                        totales.fresh_weight += peso;
+                    }
+
+                    return totales;
+                },
+                { quantity: 0, fresh_quantity: 0, fresh_weight: 0 }
+            );
+
+            await billSupplier.update(
+                {
+                    quantity: nuevosTotales.quantity,
+                    fresh_quantity: nuevosTotales.fresh_quantity,
+                    fresh_weight: nuevosTotales.fresh_weight
+                },
+                { where: { id: billId } }
+            );
+
+            res.json({ message: "Detalle eliminado y totales actualizados." });
+
+        } catch (error) {
+            console.error("Error al eliminar el detalle:", error);
+            res.status(500).json({ message: "Error al eliminar el detalle", error: error.message });
         }
+    },
+    addOtherProductsManual: async (req, res) => {
+        try {
+            const { congelados } = req.body;
 
-        const billId = detalle.bill_supplier_id;
+            if (!Array.isArray(congelados) || congelados.length === 0) {
+                return res.status(400).json({ message: "No se recibieron productos válidos." });
+            }
 
-       
-        const producto = await ProductStock.findOne({
-            where: { product_name: detalle.type }
-        });
+            // Mapeo para asegurar que vengan todos los campos nuevos
+            const productosAInsertar = congelados.map((item) => ({
+                product_portion: item.product_portion,
+                product_name: item.product_name,
+                product_quantity: item.product_quantity,
+                product_gross_weight: item.product_gross_weight,
+                product_net_weight: item.product_net_weight,
+                decrease: item.decrease,
+                id_bill_suppliers: item.id_bill_suppliers,
+            }));
 
-        if (producto) {
-            const nuevaCantidad = producto.product_quantity - Number(detalle.quantity);
-            await producto.update({
-                product_quantity: nuevaCantidad < 0 ? 0 : nuevaCantidad
+            const result = await OtherProductManual.bulkCreate(productosAInsertar);
+
+            return res.status(201).json({
+                message: "Productos guardados correctamente.",
+                data: result,
+            });
+        } catch (error) {
+            console.error("Error al guardar productos congelados:", error);
+            return res.status(500).json({
+                message: "Error al guardar productos congelados.",
+                error: error.message,
             });
         }
+    },
+    getOtherProductsFromRemito: async (req, res) => {
+        try {
+            const { id } = req.params;
 
-        await billDetail.destroy({ where: { id } });
+            const productos = await OtherProductManual.findAll({
+                where: { id_bill_suppliers: id },
+                order: [["id", "ASC"]],
+            });
 
-        const detallesRestantes = await billDetail.findAll({ where: { bill_supplier_id: billId } });
+            return res.status(200).json({ productos });
+        } catch (error) {
+            console.error("Error al obtener otros productos:", error);
+            return res.status(500).json({
+                message: "Error al obtener otros productos.",
+                error: error.message,
+            });
+        }
+    },
 
-        const nuevosTotales = detallesRestantes.reduce(
-            (totales, d) => {
-                const cantidad = Number(d.quantity) || 0;
-                const peso = Number(d.weight) || 0;
+    // Eliminar congelado por ID
+    deleteOtherProduct: async (req, res) => {
+        try {
+            const { id } = req.params;
 
-                if (Number(d.heads) > 0 || peso === 0) {
-                   
-                    totales.quantity += cantidad;
-                } else {
-                   
-                    totales.fresh_quantity += cantidad;
-                    totales.fresh_weight += peso;
-                }
+            const deleted = await OtherProductManual.destroy({
+                where: { id },
+            });
 
-                return totales;
-            },
-            { quantity: 0, fresh_quantity: 0, fresh_weight: 0 }
-        );
+            if (deleted === 0) {
+                return res.status(404).json({ message: "Producto no encontrado." });
+            }
 
-        await billSupplier.update(
-            {
-                quantity: nuevosTotales.quantity,
-                fresh_quantity: nuevosTotales.fresh_quantity,
-                fresh_weight: nuevosTotales.fresh_weight
-            },
-            { where: { id: billId } }
-        );
+            return res.status(200).json({ message: "Producto eliminado correctamente." });
+        } catch (error) {
+            console.error("Error al eliminar producto:", error);
+            return res.status(500).json({
+                message: "Error al eliminar producto.",
+                error: error.message,
+            });
+        }
+    },
+updateProductStockQuantity: async (req, res) => {
+    try {
+        const { product_name, subtract_quantity } = req.body;
 
-        res.json({ message: "Detalle eliminado y totales actualizados." });
+        if (!product_name || typeof subtract_quantity !== 'number') {
+            return res.status(400).json({ message: "Datos inválidos. Se requiere product_name y subtract_quantity como número." });
+        }
+
+        const existingProduct = await ProductStock.findOne({ where: { product_name } });
+
+        if (!existingProduct) {
+            return res.status(404).json({ message: "Producto no encontrado" });
+        }
+
+        if (existingProduct.product_quantity < subtract_quantity) {
+            return res.status(400).json({ message: "Cantidad insuficiente en stock para restar." });
+        }
+
+        await existingProduct.decrement('product_quantity', { by: subtract_quantity });
+
+        return res.json({ message: "Cantidad descontada correctamente", product_name, subtracted_quantity: subtract_quantity });
 
     } catch (error) {
-        console.error("Error al eliminar el detalle:", error);
-        res.status(500).json({ message: "Error al eliminar el detalle", error: error.message });
+        console.error("Error al descontar la cantidad del producto:", error);
+        return res.status(500).json({ message: "Error interno del servidor" });
     }
 }
+
 
 
 

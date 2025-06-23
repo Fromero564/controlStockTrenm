@@ -1,5 +1,9 @@
 /* Contenedor general */
 .pp-main-container {
+  display:flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
     padding: 1rem;
     font-family: Arial, sans-serif;
 }
@@ -11,6 +15,7 @@
 /*Formulario piezas desposte*/
 /* --- Contenedor principal del formulario piezas a despostar adaptado --- */
 .pp-despostar-section {
+  max-width: 1000px;
   background-color: #ffffff;  /* Blanco */
   border-radius: 16px;
   padding: 2rem;
@@ -81,7 +86,7 @@
   align-items: center;
   transition: background-color 0.3s ease;
   height: 38px;
-  margin-top: 20px;
+  margin-top: 25px;
 }
 
 .pp-despostar-section .pp-btn-agregar:hover {
