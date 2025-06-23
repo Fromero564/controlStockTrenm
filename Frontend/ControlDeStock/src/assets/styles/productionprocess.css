@@ -8,6 +8,163 @@
     max-width: 1000px;
     margin: 0 auto;
 }
+/*Formulario piezas desposte*/
+/* --- Contenedor principal del formulario piezas a despostar adaptado --- */
+.pp-despostar-section {
+  background-color: #ffffff;  /* Blanco */
+  border-radius: 16px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+/* Título */
+.pp-despostar-section h2 {
+  margin-bottom: 1.5rem;
+  font-size: 1.5rem;
+  color: #333;
+  font-weight: 600;
+}
+
+/* Grupo inputs: inputs y selects en grid igual al otro formulario */
+.pp-despostar-section .pp-form-group {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+/* Cada input o select y label en columna */
+.pp-despostar-section .pp-form-group > div {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Labels */
+.pp-despostar-section label {
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+  color: #333;
+  font-size: 1rem;
+}
+
+/* Inputs y selects */
+.pp-despostar-section input[type="number"],
+.pp-despostar-section select {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 12px;
+  background-color: #f8f9fa;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.pp-despostar-section input[type="number"]:focus,
+.pp-despostar-section select:focus {
+  outline: none;
+  border-color: #0077b6;  /* azul */
+  box-shadow: 0 0 0 2px rgba(0, 119, 182, 0.25);
+}
+
+/* Botón agregar */
+.pp-despostar-section .pp-btn-agregar {
+  /* padding: 0.75rem 1.5rem; */
+  background-color: #0077b6;
+  color: white;
+  border: none;
+  font-weight: bold;
+  font-size: 25px;
+  border-radius: 5px;
+  cursor: pointer;
+  justify-self: center;
+  align-items: center;
+  transition: background-color 0.3s ease;
+  height: 38px;
+  margin-top: 20px;
+}
+
+.pp-despostar-section .pp-btn-agregar:hover {
+  background-color: #005f8a;
+}
+
+/* Lista de piezas */
+.pp-piezas-despostar-lista {
+  margin-bottom: 1.5rem;
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1px solid #ccc;
+  border-radius: 12px;
+  background: #fafafa;
+  padding: 0.75rem 1rem;
+}
+
+/* Cada pieza listada */
+.pp-pieza-despostar-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  border-bottom: 1px solid #ddd;
+  padding: 0.6rem 0;
+  font-size: 1rem;
+  color: #222;
+}
+
+.pp-pieza-despostar-item:last-child {
+  border-bottom: none;
+}
+
+/* Botón eliminar */
+.pp-pieza-despostar-item .pp-btn-eliminar {
+  background-color: #dc3545;
+  border: none;
+  color: white;
+  border-radius: 5px;
+  padding: 0 0.6rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  margin-left: 1rem;
+  height: 28px;
+  width: 28px;
+  line-height: 28px;
+  text-align: center;
+}
+
+.pp-pieza-despostar-item .pp-btn-eliminar:hover {
+  background-color: #a71d2a;
+}
+
+/* Botón enviar piezas */
+.pp-despostar-section .pp-btn-guardar {
+  background-color: #0077b6;
+  border: none;
+  color: white;
+  padding: 0.75rem 1.5rem;
+  font-weight: bold;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  display: block;
+  margin: 0 auto;
+  font-size: 1rem;
+  max-width: 240px;
+}
+
+.pp-despostar-section .pp-btn-guardar:hover {
+  background-color: #005f8a;
+}
+
+/* Responsive: en móviles la fila de inputs queda en columna */
+@media (max-width: 600px) {
+  .pp-despostar-section .pp-form-group {
+    grid-template-columns: 1fr;
+  }
+
+  .pp-despostar-section .pp-btn-agregar {
+    justify-self: stretch;
+  }
+}
 
 /* Formulario */
 .pp-formulario-corte {

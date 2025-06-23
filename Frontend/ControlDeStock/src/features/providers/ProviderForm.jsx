@@ -24,65 +24,67 @@ const ProviderForm = () => {
     const navigate = useNavigate();
     const { id } = useParams();
 
-   useEffect(() => {
-    if (id && cortes.length > 0) {
-        const fetchData = async () => {
-            try {
-                const response = await fetch(`${API_URL}/chargeUpdateBillDetails/${id}`);
-                const data = await response.json();
-                console.log("📦 Datos recibidos al editar:", data);
+    useEffect(() => {
+        if (id && cortes.length > 0) {
+            const fetchData = async () => {
+                try {
+                    const response = await fetch(`${API_URL}/chargeUpdateBillDetails/${id}`);
+                    const data = await response.json();
+                    console.log("📦 Datos recibidos al editar:", data);
 
-                setTipoIngreso(data.tipo_ingreso);
-                setUltimoRegistroFactura(data.internal_number);
+                    setTipoIngreso(data.tipo_ingreso);
+                    setUltimoRegistroFactura(data.internal_number);
 
-           
-                if (Array.isArray(data.detalles)) {
-                    const cortesMapeados = data.detalles.map(corte => {
-                        const producto = cortes.find(p => p.nombre === corte.tipo || p.id === corte.tipo);
-                        return {
-                            id: corte.id,
-                            tipo: corte.tipo,
-                            nombre: producto?.nombre || corte.tipo,
-                            cantidad: Number(corte.cantidad) || 0,
-                            cabezas: Number(corte.cabezas) || 0,
-                            cod: producto?.id || "",
-                            categoria: producto?.categoria || ""
-                        };
+
+                    if (Array.isArray(data.detalles)) {
+                        const cortesMapeados = data.detalles.map(corte => {
+                            const producto = cortes.find(p => p.nombre === corte.tipo || p.id === corte.tipo);
+                            return {
+                                id: corte.id,
+                                tipo: corte.tipo,
+                                nombre: producto?.nombre || corte.tipo,
+                                cantidad: Number(corte.cantidad) || 0,
+                                cabezas: Number(corte.cabezas) || 0,
+                                cod: producto?.id || "",
+                                categoria: producto?.categoria || ""
+                            };
+                        });
+                        setCortesAgregados(cortesMapeados);
+                        console.log("Cortes cargados:", cortesMapeados);
+                    }
+
+
+                    if (Array.isArray(data.congelados)) {
+                        const congeladosMapeados = data.congelados.map(cong => {
+                            const producto = cortes.find(p => p.nombre === cong.tipo || p.id === cong.tipo);
+                            return {
+                                id: cong.id,
+                                tipo: cong.tipo,
+                                nombre: producto?.nombre || cong.tipo,
+                                cantidad: Number(cong.cantidad) || 0,
+                              unidades: Number(cong.peso || cong.weight) || 0,
+
+
+                                cod: producto?.id || "",
+                                categoria: producto?.categoria || ""
+                            };
+                        });
+                        setCongeladosAgregados(congeladosMapeados);
+                        setMostrarCongelados(true);
+                    }
+
+                    setFormState({
+                        proveedor: data.proveedor,
+                        pesoTotal: data.peso_total,
+                        romaneo: data.romaneo
                     });
-                    setCortesAgregados(cortesMapeados);
-                    console.log("Cortes cargados:", cortesMapeados);
+                } catch (error) {
+                    console.error("Error al obtener datos para editar:", error);
                 }
-
-                
-                if (Array.isArray(data.congelados)) {
-                    const congeladosMapeados = data.congelados.map(cong => {
-                        const producto = cortes.find(p => p.nombre === cong.tipo || p.id === cong.tipo);
-                        return {
-                            id: cong.id,
-                            tipo: cong.tipo,
-                            nombre: producto?.nombre || cong.tipo,
-                            cantidad: Number(cong.cantidad) || 0,
-                            unidades: Number(cong.peso) || 0,
-                            cod: producto?.id || "",
-                            categoria: producto?.categoria || ""
-                        };
-                    });
-                    setCongeladosAgregados(congeladosMapeados);
-                    setMostrarCongelados(true);
-                }
-
-                setFormState({
-                    proveedor: data.proveedor,
-                    pesoTotal: data.peso_total,
-                    romaneo: data.romaneo
-                });
-            } catch (error) {
-                console.error("Error al obtener datos para editar:", error);
-            }
-        };
-        fetchData();
-    }
-}, [id, cortes]);
+            };
+            fetchData();
+        }
+    }, [id, cortes]);
 
 
     useEffect(() => {
@@ -103,6 +105,15 @@ const ProviderForm = () => {
                 .catch(err => console.error("Error al obtener última factura:", err));
         }
     }, [id]);
+    useEffect(() => {
+        const sinCortes = cortesAgregados.length === 0;
+        const hayCongelados = congeladosAgregados.length > 0;
+
+        if (sinCortes && hayCongelados) {
+            setFormState(prev => ({ ...prev, pesoTotal: "0" }));
+        }
+    }, [cortesAgregados, congeladosAgregados]);
+
     useEffect(() => {
         const fetchProductos = async () => {
             try {
@@ -280,10 +291,17 @@ const ProviderForm = () => {
         }
 
         const pesoTotalNumber = Number(formState.pesoTotal);
-        if (isNaN(pesoTotalNumber) || pesoTotalNumber <= 0) {
+        const sinCortes = cortesAgregados.length === 0;
+        const hayCongelados = congeladosAgregados.length > 0;
+
+        if (
+            isNaN(pesoTotalNumber) ||
+            (pesoTotalNumber <= 0 && !(sinCortes && hayCongelados))
+        ) {
             Swal.fire('Error', 'Debe ingresar un peso total válido', 'error');
             return;
         }
+
 
         const romaneoNumber = Number(formState.romaneo);
         if (isNaN(romaneoNumber) || romaneoNumber <= 0) {
@@ -299,12 +317,13 @@ const ProviderForm = () => {
             }
         }
 
-        for (const [i, congelado] of congeladosAgregados.entries()) {
-            if (!congelado.tipo || !congelado.cod || !congelado.cantidad || !congelado.categoria) {
-                Swal.fire('Error', `Faltan datos en producto congelado número ${i + 1}`, 'error');
-                return;
-            }
-        }
+       for (const [i, congelado] of congeladosAgregados.entries()) {
+  if (!congelado.tipo || congelado.cantidad == null || congelado.unidades == null) {
+    Swal.fire('Error', `Faltan datos en producto congelado número ${i + 1}`, 'error');
+    return;
+  }
+}
+
 
         const totalCantidadCortes = cortesAgregados.reduce((sum, corte) => sum + Number(corte.cantidad), 0);
         const totalCantidadCongelados = congeladosAgregados.reduce((sum, item) => sum + Number(item.cantidad), 0);
