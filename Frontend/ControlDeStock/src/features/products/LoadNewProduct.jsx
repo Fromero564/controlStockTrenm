@@ -72,7 +72,7 @@ const LoadNewProduct = () => {
                         {isSubmitting ? "Cargando..." : "Cargar"}
                     </button>
 
-                    <button type="button" onClick={() => navigate("/administrative-panel")}>
+                    <button type="button" onClick={() => navigate("/all-products-availables")}>
                         Cancelar
                     </button>
                 </form>

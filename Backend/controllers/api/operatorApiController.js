@@ -229,7 +229,7 @@ const operatorApiController = {
                 fresh_weight,
             });
 
-            // Guardar cortes frescos y actualizar stock
+            // Guardar cortes frescos
             if (Array.isArray(cortes) && cortes.length > 0) {
                 for (const corte of cortes) {
                     const { tipo, nombre, cantidad, cabezas, cod, categoria } = corte;
@@ -246,32 +246,34 @@ const operatorApiController = {
                         weight: 0
                     });
 
-                    const existingProduct = await ProductStock.findOne({
-                        where: { product_name: nombre }
-                    });
-
-                    if (existingProduct) {
-                        await existingProduct.increment('product_quantity', { by: cantidad });
-                    } else {
-                        await ProductStock.create({
-                            product_name: nombre,
-                            product_quantity: cantidad,
-                            product_cod: cod,
-                            product_category: categoria
+                    // Solo actualizar stock si es romaneo
+                    if (tipoIngreso === 'romaneo') {
+                        const existingProduct = await ProductStock.findOne({
+                            where: { product_name: nombre }
                         });
+
+                        if (existingProduct) {
+                            await existingProduct.increment('product_quantity', { by: cantidad });
+                        } else {
+                            await ProductStock.create({
+                                product_name: nombre,
+                                product_quantity: cantidad,
+                                product_cod: cod,
+                                product_category: categoria
+                            });
+                        }
                     }
                 }
             }
 
-            // Guardar congelados y actualizar stock
+            // Guardar congelados
             if (Array.isArray(congelados) && congelados.length > 0) {
                 for (const congelado of congelados) {
-                    // Si no viene nombre, usamos tipo como nombre
                     const nombreFinal = congelado.nombre || congelado.tipo;
 
                     if (!nombreFinal || congelado.cantidad == null || congelado.unidades == null) {
                         console.log("Producto congelado inválido:", congelado);
-                        continue; // ignoramos este congelado inválido
+                        continue;
                     }
 
                     const { cantidad, unidades, cod, categoria } = congelado;
@@ -284,19 +286,22 @@ const operatorApiController = {
                         weight: unidades
                     });
 
-                    const existingFrozen = await ProductStock.findOne({
-                        where: { product_name: nombreFinal }
-                    });
-
-                    if (existingFrozen) {
-                        await existingFrozen.increment('product_quantity', { by: cantidad });
-                    } else {
-                        await ProductStock.create({
-                            product_name: nombreFinal,
-                            product_quantity: cantidad,
-                            product_cod: cod,
-                            product_category: categoria
+                    // Solo actualizar stock si es romaneo
+                    if (tipoIngreso === 'romaneo') {
+                        const existingFrozen = await ProductStock.findOne({
+                            where: { product_name: nombreFinal }
                         });
+
+                        if (existingFrozen) {
+                            await existingFrozen.increment('product_quantity', { by: cantidad });
+                        } else {
+                            await ProductStock.create({
+                                product_name: nombreFinal,
+                                product_quantity: cantidad,
+                                product_cod: cod,
+                                product_category: categoria
+                            });
+                        }
                     }
                 }
             }
@@ -311,6 +316,7 @@ const operatorApiController = {
             return res.status(500).json({ message: "Error interno del servidor", error: error.message });
         }
     },
+
 
 
     updateProviderBill: async (req, res) => {
@@ -493,31 +499,89 @@ const operatorApiController = {
         const {
             cantidad_animales_cargados,
             cantidad_cabezas_cargadas,
-            peso_total_neto_cargado
+            peso_total_neto_cargado,
+            fresh_quantity,
+            fresh_weight,
         } = req.body;
 
         try {
-            const result = await billSupplier.update(
-                {
-                    total_weight: peso_total_neto_cargado,
-                    head_quantity: cantidad_cabezas_cargadas,
-                    quantity: cantidad_animales_cargados,
-                },
-                {
-                    where: { id: id },
-                }
-            );
+            // 1. Actualizar billSupplier
+            const updateData = {
+                total_weight: peso_total_neto_cargado,
+                head_quantity: cantidad_cabezas_cargadas,
+                quantity: cantidad_animales_cargados,
+            };
+
+            if (fresh_quantity !== undefined) {
+                updateData.fresh_quantity = fresh_quantity;
+            }
+
+            if (fresh_weight !== undefined) {
+                updateData.fresh_weight = fresh_weight;
+            }
+
+            const result = await billSupplier.update(updateData, {
+                where: { id },
+            });
 
             if (result[0] === 0) {
                 return res.status(404).json({ message: "No se encontró el registro para actualizar" });
             }
 
-            res.status(200).json({ message: "Registro actualizado correctamente" });
+            // 2. Obtener detalles del remito
+            const detalles = await billDetail.findAll({ where: { bill_supplier_id: id } });
+
+            const cantidadesPorProducto = {};
+
+            for (const item of detalles) {
+                const nombre = item.type;
+                const cantidad = Number(item.quantity || 0);
+
+                if (!cantidadesPorProducto[nombre]) {
+                    cantidadesPorProducto[nombre] = 0;
+                }
+
+                cantidadesPorProducto[nombre] += cantidad;
+            }
+
+            // 3. Actualizar stock
+            for (const nombre in cantidadesPorProducto) {
+                const cantidadTotal = cantidadesPorProducto[nombre];
+
+                const producto = await ProductStock.findOne({ where: { product_name: nombre } });
+
+                if (producto) {
+                    await producto.update({ product_quantity: cantidadTotal });
+                } else {
+                    // Buscar cod y categoria en ProductsAvailable
+                    const productoBase = await ProductsAvailable.findOne({ where: { product_name: nombre } });
+
+                    if (productoBase) {
+                        await ProductStock.create({
+                            product_name: nombre,
+                            product_quantity: cantidadTotal,
+                           product_cod: productoBase.id,
+                            product_category: productoBase.product_category,
+                        });
+                    } else {
+                        console.log(`❌ Producto "${nombre}" no encontrado en ProductsAvailable.`);
+                        return res.status(400).json({ message: `No se puede crear stock para "${nombre}" porque falta cod o categoría.` });
+                    }
+                }
+            }
+
+            return res.status(200).json({ message: "Registro y stock actualizados correctamente." });
+
         } catch (error) {
-            console.error("Error al actualizar:", error);
-            res.status(500).json({ message: "Error al actualizar el registro", error });
+            console.error("💥 Error real en updateBillSupplier:", error);
+            res.status(500).json({
+                message: "Error al actualizar el registro",
+                error: error.message || error.toString(),
+            });
         }
     },
+
+
     uploadProductsProcess: async (req, res) => {
         try {
 
@@ -592,13 +656,11 @@ const operatorApiController = {
             const Supplierid = req.params.id;
             const { cortes, observacion } = req.body;
 
-
             if (!Array.isArray(cortes) || cortes.length === 0) {
                 return res.status(400).json({ mensaje: "El cuerpo de la solicitud debe contener una lista de productos." });
             }
 
             for (const corte of cortes) {
-                console.log("Datos del corte recibido:", corte);
                 const {
                     tipo,
                     garron,
@@ -609,14 +671,13 @@ const operatorApiController = {
                     pesoNeto,
                     pesoProveedor,
                     mermaPorcentaje,
-
+                    cod,
+                    categoria,
                 } = corte;
 
-                // Validación
                 if (!tipo || !garron || cabeza == null || cantidad == null || pesoBruto == null || tara == null || pesoNeto == null) {
                     return res.status(400).json({ mensaje: "Faltan campos obligatorios en al menos un producto." });
                 }
-
 
                 const existente = await meatIncome.findByPk(garron);
                 if (existente) {
@@ -637,8 +698,21 @@ const operatorApiController = {
                     decrease: mermaPorcentaje,
                 });
 
+                // ACTUALIZAR STOCK
+                const stock = await ProductStock.findOne({ where: { product_name: tipo } });
 
+                if (stock) {
+                    await stock.increment("product_quantity", { by: cantidad });
+                } else {
+                    await ProductStock.create({
+                        product_name: tipo,
+                        product_quantity: cantidad,
+                        product_cod: cod || null,
+                        product_category: categoria || null,
+                    });
+                }
             }
+
             if (observacion) {
                 await ObservationsMeatIncome.create({
                     id: Supplierid,
@@ -652,25 +726,30 @@ const operatorApiController = {
             console.error("Error en la base de datos:", error);
             return res.status(500).json({ mensaje: "Error en la base de datos", error: error.message });
         }
-
     },
+
     editAddIncome: async (req, res) => {
         try {
             const Supplierid = req.params.id;
             const { cortes } = req.body;
 
-
-
             if (!Array.isArray(cortes) || cortes.length === 0) {
                 return res.status(400).json({ mensaje: "El cuerpo de la solicitud debe contener una lista de productos." });
             }
 
-            // Eliminar los cortes existentes para ese remito
-            await meatIncome.destroy({
-                where: { id_bill_suppliers: Supplierid }
-            });
 
-            // Crear los nuevos cortes
+            const anteriores = await meatIncome.findAll({ where: { id_bill_suppliers: Supplierid } });
+
+            for (const item of anteriores) {
+                const stock = await ProductStock.findOne({ where: { product_name: item.products_name } });
+                if (stock) {
+                    await stock.decrement("product_quantity", { by: Number(item.products_quantity) || 0 });
+                }
+            }
+
+            await meatIncome.destroy({ where: { id_bill_suppliers: Supplierid } });
+
+         
             for (const corte of cortes) {
                 const {
                     tipo,
@@ -680,10 +759,11 @@ const operatorApiController = {
                     pesoBruto,
                     tara,
                     pesoNeto,
-                    pesoProveedor
+                    pesoProveedor,
+                    cod,
+                    categoria,
                 } = corte;
 
-                // Validación
                 if (!tipo || !garron || cabeza == null || cantidad == null || pesoBruto == null || tara == null || pesoNeto == null) {
                     return res.status(400).json({ mensaje: "Faltan campos obligatorios en al menos un producto." });
                 }
@@ -698,18 +778,54 @@ const operatorApiController = {
                     provider_weight: pesoProveedor,
                     gross_weight: pesoBruto,
                     tare: tara,
-                    net_weight: pesoNeto
+                    net_weight: pesoNeto,
+                    decrease: corte.mermaPorcentaje || 0,
                 });
+            }
+
+          
+            const productosActuales = await meatIncome.findAll({ where: { id_bill_suppliers: Supplierid } });
+
+            const cantidadesPorProducto = {};
+
+            for (const item of productosActuales) {
+                const nombre = item.products_name;
+                const cantidad = Number(item.products_quantity || 0);
+
+                if (!cantidadesPorProducto[nombre]) {
+                    cantidadesPorProducto[nombre] = 0;
+                }
+
+                cantidadesPorProducto[nombre] += cantidad;
+            }
+
+            for (const nombre in cantidadesPorProducto) {
+                const cantidadTotal = cantidadesPorProducto[nombre];
+
+                const producto = await ProductStock.findOne({ where: { product_name: nombre } });
+
+                if (producto) {
+                    await producto.update({ product_quantity: cantidadTotal });
+                } else {
+                    await ProductStock.create({
+                        product_name: nombre,
+                        product_quantity: cantidadTotal,
+                        product_cod: null,
+                        product_category: null,
+                    });
+                }
             }
 
             return res.status(200).json({ mensaje: "Los productos fueron actualizados correctamente." });
 
         } catch (error) {
             console.error("Error al actualizar los cortes:", error);
-            return res.status(500).json({ mensaje: "Error en la base de datos", error: error.message });
+            return res.status(500).json({ mensaje: "Error al actualizar los cortes", error: error.message });
         }
-
     },
+
+
+
     productStock: async (req, res) => {
         try {
             const allproductsStock = await meatIncome.findAll();
@@ -740,39 +856,62 @@ const operatorApiController = {
             return res.status(500).json({ message: "Error interno del servidor" });
         }
     },
-    deleteItemFromMeatManualIncome: async (req, res) => {
-        try {
-            const id = req.params.id;
+deleteItemFromMeatManualIncome: async (req, res) => {
+  try {
+    const id = req.params.id;
 
-            // Buscar el ítem que se va a eliminar
-            const item = await meatIncome.findOne({ where: { id } });
+    // 1. Buscar el item en meatIncome
+    const item = await meatIncome.findOne({ where: { id } });
 
-            if (!item) {
-                return res.status(404).json({ mensaje: "El item no se encuentra" });
-            }
+    if (!item) {
+      return res.status(404).json({ mensaje: "El item no se encuentra" });
+    }
 
-            // Buscar el producto en el stock
-            const productoStock = await ProductStock.findOne({
-                where: { product_name: item.products_name }
-            });
+    const nombreProducto = item.products_name;
 
-            if (productoStock) {
-                const nuevaCantidad = productoStock.product_quantity - Number(item.products_quantity);
-                await productoStock.update({
-                    product_quantity: nuevaCantidad < 0 ? 0 : nuevaCantidad
-                });
-            }
+    // 2. Buscar el producto exacto en ProductStock (coincidencia exacta)
+    const productoStock = await ProductStock.findOne({
+      where: { product_name: nombreProducto },
+    });
 
-            // Eliminar el ítem
-            await meatIncome.destroy({ where: { id } });
+    if (productoStock) {
+      // 3. Restar la cantidad del stock
+      const cantidadActual = Number(productoStock.product_quantity || 0);
+      const cantidadARestar = Number(item.products_quantity || 0);
+      const nuevaCantidad = cantidadActual - cantidadARestar;
 
-            res.status(200).json({ mensaje: "Item eliminado con éxito y stock actualizado." });
+      await productoStock.update({
+        product_quantity: nuevaCantidad < 0 ? 0 : nuevaCantidad,
+      });
 
-        } catch (error) {
-            console.error("Error al eliminar el item:", error);
-            return res.status(500).json({ mensaje: "Error interno del servidor", error: error.message });
-        }
-    },
+      console.log(`🟢 Stock actualizado: ${nombreProducto} → ${nuevaCantidad}`);
+    } else {
+      console.warn(`⚠️ Producto "${nombreProducto}" no encontrado en ProductStock.`);
+    }
+
+    // 4. Eliminar el item
+    await meatIncome.destroy({ where: { id } });
+
+    // 5. Devolver resultado
+    return res.status(200).json({
+      mensaje: "Item eliminado con éxito y stock actualizado.",
+      itemEliminado: {
+        id: item.id,
+        producto: item.products_name,
+        cantidad: item.products_quantity,
+        garron: item.products_garron,
+        peso: item.net_weight,
+      },
+    });
+  } catch (error) {
+    console.error("❌ Error al eliminar item de meatIncome:", error);
+    return res.status(500).json({
+      mensaje: "Error al eliminar item de meatIncome",
+      error: error.message || error.toString(),
+    });
+  }
+},
+
 
     deleteProduct: async (req, res) => {
         try {
@@ -920,34 +1059,59 @@ const operatorApiController = {
             const { congelados } = req.body;
 
             if (!Array.isArray(congelados) || congelados.length === 0) {
-                return res.status(400).json({ message: "No se recibieron productos válidos." });
+                return res.status(400).json({ mensaje: "No se enviaron productos." });
             }
 
-            // Mapeo para asegurar que vengan todos los campos nuevos
-            const productosAInsertar = congelados.map((item) => ({
-                product_portion: item.product_portion,
-                product_name: item.product_name,
-                product_quantity: item.product_quantity,
-                product_gross_weight: item.product_gross_weight,
-                product_net_weight: item.product_net_weight,
-                decrease: item.decrease,
-                id_bill_suppliers: item.id_bill_suppliers,
-            }));
+            for (const item of congelados) {
+                const {
+                    product_name,
+                    product_portion,
+                    product_quantity,
+                    product_net_weight,
+                    product_gross_weight,
+                    decrease,
+                    id_bill_suppliers,
+                    product_cod,
+                    product_category
+                } = item;
 
-            const result = await OtherProductManual.bulkCreate(productosAInsertar);
+                if (!product_name || product_quantity == null || product_net_weight == null) {
+                    return res.status(400).json({ mensaje: "Datos incompletos en al menos un producto." });
+                }
 
-            return res.status(201).json({
-                message: "Productos guardados correctamente.",
-                data: result,
-            });
+                await OtherProductManual.create({
+                    product_name,
+                    product_portion,
+                    product_quantity,
+                    product_net_weight,
+                    product_gross_weight,
+                    decrease,
+                    id_bill_suppliers,
+                });
+
+                // ACTUALIZAR STOCK
+                const stock = await ProductStock.findOne({ where: { product_name } });
+
+                if (stock) {
+                    await stock.increment("product_quantity", { by: product_quantity });
+                } else {
+                    await ProductStock.create({
+                        product_name,
+                        product_quantity,
+                        product_cod: product_cod || null,
+                        product_category: product_category || null,
+                    });
+                }
+            }
+
+            return res.status(201).json({ mensaje: "Congelados cargados correctamente." });
+
         } catch (error) {
-            console.error("Error al guardar productos congelados:", error);
-            return res.status(500).json({
-                message: "Error al guardar productos congelados.",
-                error: error.message,
-            });
+            console.error("Error al cargar congelados:", error);
+            return res.status(500).json({ mensaje: "Error interno", error: error.message });
         }
     },
+
     getOtherProductsFromRemito: async (req, res) => {
         try {
             const { id } = req.params;
@@ -966,56 +1130,211 @@ const operatorApiController = {
             });
         }
     },
+ editOtherProductsManual: async (req, res) => {
+  const { id } = req.params;
+  const { congelados = [] } = req.body;
+
+  try {
+    if (!Array.isArray(congelados)) {
+      return res.status(400).json({ mensaje: "El cuerpo debe contener un arreglo de productos." });
+    }
+
+    // 1. Eliminar congelados anteriores
+    await OtherProductManual.destroy({ where: { id_bill_suppliers: id } });
+
+    // 2. Insertar nuevos congelados
+    for (const prod of congelados) {
+      const {
+        product_name,
+        product_quantity,
+        product_net_weight,
+        product_gross_weight,
+        product_portion,
+        decrease = 0,
+      } = prod;
+
+      if (!product_name || product_quantity == null || product_net_weight == null) {
+        return res.status(400).json({ mensaje: "Faltan campos obligatorios en al menos un producto congelado." });
+      }
+
+      const productoBase = await ProductsAvailable.findOne({ where: { product_name } });
+
+      if (!productoBase || !productoBase.id || !productoBase.product_category) {
+        console.log(`❌ Producto "${product_name}" no válido en ProductsAvailable.`);
+        return res.status(400).json({
+          mensaje: `No se puede crear stock para "${product_name}" porque falta ID o categoría.`,
+        });
+      }
+
+      await OtherProductManual.create({
+        product_name,
+        product_quantity,
+        product_net_weight,
+        product_gross_weight,
+        product_portion,
+        decrease,
+        id_bill_suppliers: id,
+        product_cod: productoBase.id, // ✔ este es el cod
+        product_category: productoBase.product_category,
+      });
+    }
+
+    // 3. Recalcular stock
+    const actuales = await OtherProductManual.findAll({ where: { id_bill_suppliers: id } });
+
+    const cantidadesPorProducto = {};
+
+    for (const item of actuales) {
+      const nombre = item.product_name;
+      const cantidad = Number(item.product_quantity || 0);
+
+      if (!cantidadesPorProducto[nombre]) {
+        cantidadesPorProducto[nombre] = 0;
+      }
+
+      cantidadesPorProducto[nombre] += cantidad;
+    }
+
+    for (const nombre in cantidadesPorProducto) {
+      const cantidadTotal = cantidadesPorProducto[nombre];
+
+      const stock = await ProductStock.findOne({ where: { product_name: nombre } });
+
+      if (stock) {
+        await stock.update({ product_quantity: cantidadTotal });
+      } else {
+        const productoBase = await ProductsAvailable.findOne({ where: { product_name: nombre } });
+
+        if (!productoBase || !productoBase.id || !productoBase.product_category) {
+          console.log(` Producto "${nombre}" no válido para crear stock.`);
+          return res.status(400).json({
+            mensaje: `No se puede crear stock para "${nombre}" porque falta ID o categoría.`,
+          });
+        }
+
+        await ProductStock.create({
+          product_name: nombre,
+          product_quantity: cantidadTotal,
+          product_cod: productoBase.id, // ✔ este es el cod
+          product_category: productoBase.product_category,
+        });
+      }
+    }
+
+    return res.status(200).json({ mensaje: "Congelados actualizados correctamente." });
+
+  } catch (error) {
+    console.error(" Error en editOtherProductsManual:", error);
+    return res.status(500).json({
+      mensaje: "Error al actualizar productos congelados",
+      error: error.message || error.toString(),
+    });
+  }
+},
+
 
     // Eliminar congelado por ID
-    deleteOtherProduct: async (req, res) => {
+   deleteOtherProduct: async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // 1. Buscar el producto congelado en OtherProductManual
+    const item = await OtherProductManual.findOne({ where: { id } });
+
+    if (!item) {
+      return res.status(404).json({ message: "Producto no encontrado." });
+    }
+
+    const nombreProducto = item.product_name;
+
+    // 2. Buscar el producto en stock exacto (sin trim ni iLike)
+    const productoStock = await ProductStock.findOne({
+      where: { product_name: nombreProducto },
+    });
+
+    if (productoStock) {
+      const cantidadActual = Number(productoStock.product_quantity || 0);
+      const cantidadARestar = Number(item.product_quantity || 0);
+      const nuevaCantidad = cantidadActual - cantidadARestar;
+
+      await productoStock.update({
+        product_quantity: nuevaCantidad < 0 ? 0 : nuevaCantidad,
+      });
+
+      console.log(` Stock actualizado: ${nombreProducto} → ${nuevaCantidad}`);
+    } else {
+      console.warn(`Producto congelado "${nombreProducto}" no encontrado en ProductStock.`);
+    }
+
+    // 3. Eliminar el producto congelado
+    await OtherProductManual.destroy({ where: { id } });
+
+    return res.status(200).json({
+      message: "Producto congelado eliminado correctamente.",
+      itemEliminado: {
+        id: item.id,
+        producto: item.product_name,
+        cantidad: item.product_quantity,
+        peso: item.product_net_weight,
+      },
+    });
+  } catch (error) {
+    console.error(" Error al eliminar producto congelado:", error);
+    return res.status(500).json({
+      message: "Error al eliminar producto congelado.",
+      error: error.message || error.toString(),
+    });
+  }
+},
+
+    updateProductStockQuantity: async (req, res) => {
         try {
-            const { id } = req.params;
+            const { product_name, subtract_quantity } = req.body;
 
-            const deleted = await OtherProductManual.destroy({
-                where: { id },
-            });
-
-            if (deleted === 0) {
-                return res.status(404).json({ message: "Producto no encontrado." });
+            if (!product_name || typeof subtract_quantity !== 'number') {
+                return res.status(400).json({ message: "Datos inválidos. Se requiere product_name y subtract_quantity como número." });
             }
 
-            return res.status(200).json({ message: "Producto eliminado correctamente." });
+            const existingProduct = await ProductStock.findOne({ where: { product_name } });
+
+            if (!existingProduct) {
+                return res.status(404).json({ message: "Producto no encontrado" });
+            }
+
+            if (existingProduct.product_quantity < subtract_quantity) {
+                return res.status(400).json({ message: "Cantidad insuficiente en stock para restar." });
+            }
+
+            await existingProduct.decrement('product_quantity', { by: subtract_quantity });
+
+            return res.json({ message: "Cantidad descontada correctamente", product_name, subtracted_quantity: subtract_quantity });
+
         } catch (error) {
-            console.error("Error al eliminar producto:", error);
-            return res.status(500).json({
-                message: "Error al eliminar producto.",
-                error: error.message,
-            });
+            console.error("Error al descontar la cantidad del producto:", error);
+            return res.status(500).json({ message: "Error interno del servidor" });
         }
     },
-updateProductStockQuantity: async (req, res) => {
-    try {
-        const { product_name, subtract_quantity } = req.body;
+    deleteProductAvailable: async (req, res) => {
+  try {
+    const { id } = req.params;
 
-        if (!product_name || typeof subtract_quantity !== 'number') {
-            return res.status(400).json({ message: "Datos inválidos. Se requiere product_name y subtract_quantity como número." });
-        }
+    const producto = await ProductsAvailable.findOne({ where: { id } });
 
-        const existingProduct = await ProductStock.findOne({ where: { product_name } });
-
-        if (!existingProduct) {
-            return res.status(404).json({ message: "Producto no encontrado" });
-        }
-
-        if (existingProduct.product_quantity < subtract_quantity) {
-            return res.status(400).json({ message: "Cantidad insuficiente en stock para restar." });
-        }
-
-        await existingProduct.decrement('product_quantity', { by: subtract_quantity });
-
-        return res.json({ message: "Cantidad descontada correctamente", product_name, subtracted_quantity: subtract_quantity });
-
-    } catch (error) {
-        console.error("Error al descontar la cantidad del producto:", error);
-        return res.status(500).json({ message: "Error interno del servidor" });
+    if (!producto) {
+      return res.status(404).json({ message: "Producto no encontrado." });
     }
-}
+
+    await ProductsAvailable.destroy({ where: { id } });
+
+    return res.status(200).json({ message: "Producto eliminado correctamente." });
+  } catch (error) {
+    console.error(" Error al eliminar producto:", error);
+    return res.status(500).json({
+      message: "Error al eliminar producto.",
+      error: error.message || error.toString(),
+    });
+  }
+},
 
 
 

@@ -46,7 +46,8 @@ router.post("/addProducts/:id",apiOperatorController.addIncomeMeat);
 router.post("/observations-create",apiOperatorController.createObservation);
 //Agregar productos congelados o otro productos no cortes por manual
 router.post("/addOtherProductsManual",apiOperatorController.addOtherProductsManual)
-
+//Api para actualizar las piezas congeladas/otros productos
+router.put("/editOtherProductsManual/:id",apiOperatorController.editOtherProductsManual);
 //Api para actualizar las piezas que se despostaron
 router.put("/update-product-stock",apiOperatorController.updateProductStockQuantity)
 //Api actualizar datos de la factura del proveedor 
@@ -69,5 +70,7 @@ router.delete("/products-bill/:id",apiOperatorController.deleteProduct);
 router.delete("/provider-item-delete/:id",apiOperatorController.deleteItemFromMeatManualIncome);
 //Api para eliminar items que se cargan por manual que sean congelados/otros productos
 router.delete("/other-product-delete/:id",apiOperatorController.deleteOtherProduct);
+//Api para eliminar un producto disponible
+router.delete("/delete-product-available/:id", apiOperatorController.deleteProductAvailable);
 
 module.exports=router;

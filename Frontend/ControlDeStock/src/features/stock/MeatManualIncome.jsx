@@ -26,6 +26,8 @@ const MeatManualIncome = () => {
   const [paginaActual, setPaginaActual] = useState(1);
   const [taraSeleccionadaId, setTaraSeleccionadaId] = useState("");
   const [isEditing, setIsEditing] = useState(false);
+  const [taraSeleccionadaIdCongelado, setTaraSeleccionadaIdCongelado] = useState("");
+
   const [modalOpen, setModalOpen] = useState(false);
   const [congeladosAgregados, setCongeladosAgregados] = useState([]);
   const [paginaActualCongelados, setPaginaActualCongelados] = useState(1);
@@ -68,6 +70,7 @@ const MeatManualIncome = () => {
   };
   const agregarCongelado = () => {
     const { tipo, lote, cantidad, pesoBruto, tara } = formCongelado;
+
     if (!tipo || !lote || cantidad === "" || pesoBruto === "" || tara === "") {
       alert("Complete todos los campos del congelado.");
       return;
@@ -78,14 +81,18 @@ const MeatManualIncome = () => {
       pesoNeto: formCongelado.pesoBruto - formCongelado.tara,
       remitoId,
       product_portion: formCongelado.lote,
+      product_cod: formCongelado.product_cod || "",
+      product_category: formCongelado.product_category || "",
+      cod: formCongelado.product_cod || "",
+      categoria: formCongelado.product_category || "",
       decrease:
         formCongelado.pesoProveedor > 0
           ? ((formCongelado.pesoProveedor - (formCongelado.pesoBruto - formCongelado.tara)) / formCongelado.pesoProveedor) * 100
           : 0,
     };
 
-
     setCongeladosAgregados((prev) => [...prev, nuevo]);
+
     setFormCongelado({
       tipo: "",
       lote: "",
@@ -95,6 +102,7 @@ const MeatManualIncome = () => {
       tara: 0,
     });
   };
+
   useEffect(() => {
     const fetchCongelados = async () => {
       if (!data?.id) return;
@@ -129,6 +137,82 @@ const MeatManualIncome = () => {
 
     fetchCongelados();
   }, [data]);
+
+  //   useEffect(() => {
+  //   const fetchYComparar = async () => {
+  //     if (!data?.id) return;
+
+  //     try {
+  //       const response = await fetch(`${API_URL}/chargeUpdateBillDetails/${data.id}`);
+  //       if (!response.ok) throw new Error("Error al obtener datos de proveedor");
+
+  //       const result = await response.json();
+
+  //       // Comparar cortes
+  //       const cortesProvider = result.detalles.map(d => ({
+  //         tipo: d.tipo,
+  //         cantidad: Number(d.cantidad),
+  //         cabezas: Number(d.cabezas || 0),
+  //       }));
+
+  //       const cortesManuales = cortesAgregados.map(c => ({
+  //         tipo: c.tipo,
+  //         cantidad: Number(c.cantidad),
+  //         cabezas: Number(c.cabeza || 0),
+  //       }));
+
+  //       const congeladosProvider = result.congelados.map(c => ({
+  //         tipo: c.tipo,
+  //         cantidad: Number(c.cantidad),
+  //       }));
+
+  //       const congeladosLocales = congeladosAgregados.map(c => ({
+  //         tipo: c.tipo || c.product_name,
+  //         cantidad: Number(c.cantidad || c.product_quantity),
+  //       }));
+
+  //       const cortesIguales = JSON.stringify(cortesProvider) === JSON.stringify(cortesManuales);
+  //       const congeladosIguales = JSON.stringify(congeladosProvider) === JSON.stringify(congeladosLocales);
+
+  //       if (!cortesIguales || !congeladosIguales) {
+  //         Swal.fire({
+  //           title: "Atención",
+  //           icon: "warning",
+  //           text: "Los productos cargados manualmente no coinciden con los registrados en el proveedor.",
+  //           confirmButtonText: "Ok",
+  //         });
+  //       }
+
+  //     } catch (err) {
+  //       console.error("Error en la comparación de cortes:", err);
+  //     }
+  //   };
+
+  //   fetchYComparar();
+  // }, [data, cortesAgregados, congeladosAgregados]);
+
+  //   useEffect(() => {
+  //   const savedCortes = localStorage.getItem(`cortes_${remitoId}`);
+  //   if (savedCortes) {
+  //     try {
+  //       const parsed = JSON.parse(savedCortes);
+  //       setCortesAgregados(parsed);
+  //     } catch (err) {
+  //       console.error("Error parseando cortes:", err);
+  //     }
+  //   }
+
+  //   const savedCongelados = localStorage.getItem(`congelados_${remitoId}`);
+  //   if (savedCongelados) {
+  //     try {
+  //       const parsed = JSON.parse(savedCongelados);
+  //       setCongeladosAgregados(parsed);
+  //     } catch (err) {
+  //       console.error("Error parseando congelados:", err);
+  //     }
+  //   }
+  // }, [remitoId]);
+
 
   useEffect(() => {
     const fetchData = async () => {
@@ -391,7 +475,10 @@ const MeatManualIncome = () => {
         cantidad_animales_cargados: totalAnimalesCargados,
         cantidad_cabezas_cargadas: totalCabezasCargadas,
         peso_total_neto_cargado: totalKgNeto,
+        fresh_quantity: totalQuantityCongelados,
+        fresh_weight: totalWeightCongelados,
       };
+
 
       if (cortesAgregados.length > 0) {
         const payloadCortes = {
@@ -445,13 +532,18 @@ const MeatManualIncome = () => {
           product_gross_weight: item.pesoBruto,
           decrease: item.decrease || 0,
           id_bill_suppliers: data.id,
+          product_cod: item.cod || null,
+          product_category: item.categoria || null,
         }));
 
+        const endpoint = isEditing
+          ? `${API_URL}/editOtherProductsManual/${data.id}`
+          : `${API_URL}/addOtherProductsManual`;
 
-        console.log("Guardando congelados:", payloadCongelados);
+        const method = isEditing ? "PUT" : "POST";
 
-        const response = await fetch(`${API_URL}/addOtherProductsManual`, {
-          method: "POST",
+        const response = await fetch(endpoint, {
+          method,
           headers: {
             "Content-Type": "application/json",
           },
@@ -465,7 +557,8 @@ const MeatManualIncome = () => {
         }
 
         console.log("Congelados guardados correctamente.");
-      } else {
+      }
+      else {
         console.log("No hay congelados para guardar.");
       }
 
@@ -535,16 +628,18 @@ const MeatManualIncome = () => {
       alert("Por favor, complete todos los campos antes de agregar.");
       return;
     }
+
     const nuevoCorte = {
       ...formData,
       pesoNeto: formData.pesoBruto - formData.tara,
       remitoId,
+      cod: formData.product_cod || "",
+      categoria: formData.product_category || "",
     };
+
     const nuevosCortes = [...cortesAgregados, nuevoCorte];
 
     setCortesAgregados(nuevosCortes);
-
-
 
     setFormData((prev) => ({
       ...prev,
@@ -555,48 +650,49 @@ const MeatManualIncome = () => {
       pesoBruto: 0,
       tara: 0,
       garron: "",
+      product_cod: "",
+      product_category: "",
     }));
+
     setTaraSeleccionadaId("");
   };
-  const eliminarCorteBD = async (id) => {
-    const response = await fetch(`${API_URL}/provider-item-delete/${id}`, {
-      method: "DELETE",
-    });
+const eliminarCorte = async (index) => {
+  const corte = cortesAgregados[index];
 
-    if (!response.ok) {
-      throw new Error("No se pudo eliminar el corte");
-    }
-  };
+  const confirm = await Swal.fire({
+    title: "¿Eliminar corte?",
+    text: "Esta acción eliminará el corte y actualizará el stock.",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonText: "Sí, eliminar",
+    cancelButtonText: "Cancelar",
+  });
 
-  const eliminarCorte = async (index) => {
-    const result = await Swal.fire({
-      title: "¿Estás seguro?",
-      text: "Esta acción eliminará el corte de la lista.",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonColor: "#d33",
-      cancelButtonColor: "#3085d6",
-      confirmButtonText: "Sí, eliminar",
-      cancelButtonText: "Cancelar",
-    });
+  if (!confirm.isConfirmed) return;
 
-    if (result.isConfirmed) {
-      const corte = cortesAgregados[index];
+  try {
+    // Si el corte existe en la base de datos (tiene ID), eliminá en backend
+    if (corte.id) {
+      const res = await fetch(`${API_URL}/provider-item-delete/${corte.id}`, {
+        method: "DELETE",
+      });
 
-      if (corte.id) {
-        try {
-          await eliminarCorteBD(corte.id);
-        } catch (error) {
-          console.error("Error al eliminar de la base de datos:", error);
-          return;
-        }
+      if (!res.ok) {
+        throw new Error("No se pudo eliminar el corte de la base de datos.");
       }
-
-      setCortesAgregados((prev) => prev.filter((_, i) => i !== index));
-
-      Swal.fire("Eliminado", "El corte ha sido eliminado.", "success");
     }
-  };
+
+    // Siempre lo eliminamos del estado del frontend
+    setCortesAgregados((prev) => prev.filter((_, i) => i !== index));
+
+    Swal.fire("Eliminado", "Corte eliminado con éxito.", "success");
+  } catch (err) {
+    console.error("Error al eliminar de la base de datos:", err);
+    Swal.fire("Error", err.message, "error");
+  }
+};
+
+
 
   const formatTime = (dateString) => {
     const date = new Date(dateString);
@@ -674,24 +770,8 @@ const MeatManualIncome = () => {
     handleActualizarDesdeMemoria();
   };
 
-  useEffect(() => {
-    const saved = localStorage.getItem("cortes_en_edicion");
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        setCortesAgregados(parsed);
-        console.log("Datos cargados desde memoria:", parsed);
-      } catch (error) {
-        console.error("Error parseando cortes_en_edicion:", error);
-      }
-    } else {
-      console.log("No hay datos guardados en memoria");
-    }
-  }, []);
 
-  useEffect(() => {
-    console.log("cortesAgregados actualizado:", cortesAgregados);
-  }, [cortesAgregados]);
+
 
 
   useEffect(() => {
@@ -868,8 +948,11 @@ const MeatManualIncome = () => {
                   setFormData((prev) => ({
                     ...prev,
                     tipo: selected?.value || "",
+                    product_cod: selected?.id || "",
+                    product_category: selected?.categoria || "",
                   }));
                 }}
+
                 value={
                   opcionesProductos.find((o) => o.value === formData.tipo) || null
                 }
@@ -1216,9 +1299,12 @@ const MeatManualIncome = () => {
               <label>TARA</label>
               <select
                 name="tara"
-                value={formCongelado.tara || ""}
+                value={taraSeleccionadaIdCongelado}
                 onChange={(e) => {
-                  const selected = tares.find((t) => t.id === parseInt(e.target.value));
+                  const selected = tares.find(
+                    (t) => t.id === parseInt(e.target.value)
+                  );
+                  setTaraSeleccionadaIdCongelado(e.target.value);
                   setFormCongelado((prev) => ({
                     ...prev,
                     tara: selected?.peso || 0,
@@ -1233,6 +1319,7 @@ const MeatManualIncome = () => {
                   </option>
                 ))}
               </select>
+
             </div>
           </div>
 
@@ -1243,8 +1330,9 @@ const MeatManualIncome = () => {
           <div className="cortes-lista">
             {congeladosPaginados.map((item, index) => (
               <div key={index} className="corte-mostrado">
-                <div><p className="dato">{item.product_portion || item.lote}</p></div>
                 <div><p className="dato">{item.product_name || item.tipo}</p></div>
+                <div><p className="dato">{item.product_portion || item.lote}</p></div>
+
                 <div><p className="dato">{item.product_quantity || item.cantidad}</p></div>
                 <div><p className="dato">{item.product_gross_weight || item.pesoBruto}</p></div>
                 <div><p className="dato">{item.product_net_weight || item.pesoNeto}</p></div>

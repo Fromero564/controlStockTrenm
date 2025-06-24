@@ -25,6 +25,7 @@ import ClientList from './features/clients/ClientList.jsx';
 import ConfigurationProduct from './features/products/configurationProduct.jsx';
 import SalesPanel from './pages/SalesPanel.jsx';
 import Modal from 'react-modal';
+import AllproductsAvailables from './features/products/AllProductsAvailables.jsx';
 
 
 const router = createBrowserRouter([
@@ -146,6 +147,14 @@ const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <Tareload />
+      </ProtectedRoute>
+    ),
+  },
+   {
+    path: "/all-products-availables",
+    element: (
+      <ProtectedRoute>
+        <AllproductsAvailables />
       </ProtectedRoute>
     ),
   },

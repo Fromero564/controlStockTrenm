@@ -30,7 +30,7 @@ const ProviderForm = () => {
                 try {
                     const response = await fetch(`${API_URL}/chargeUpdateBillDetails/${id}`);
                     const data = await response.json();
-                    console.log("📦 Datos recibidos al editar:", data);
+                   
 
                     setTipoIngreso(data.tipo_ingreso);
                     setUltimoRegistroFactura(data.internal_number);
