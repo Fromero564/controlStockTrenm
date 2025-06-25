@@ -85,6 +85,14 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
+  {
+    path: "/product-load/:id",
+    element: (
+      <ProtectedRoute>
+        <LoadNewProduct />
+      </ProtectedRoute>
+    ),
+  },
    {
     path: "/product-configuration",
     element: (
@@ -93,6 +101,7 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
+  
   {
     path: "/provider-load",
     element: (
@@ -101,6 +110,7 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
+  
   {
     path: "/provider-load/:id",
     element: (

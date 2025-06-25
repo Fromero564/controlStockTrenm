@@ -1,85 +1,143 @@
-import { useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { useEffect, useState } from "react";
 import Navbar from "../../components/Navbar.jsx";
+import Swal from "sweetalert2";
 import '../../assets/styles/loadNewProduct.css';
 
 const LoadNewProduct = () => {
     const navigate = useNavigate();
+    const { id } = useParams(); 
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [successMessage, setSuccessMessage] = useState("");
+    const [productData, setProductData] = useState({ nombre: "", categoria: "primario" });
     const API_URL = import.meta.env.VITE_API_URL;
+
+    useEffect(() => {
+        if (id) {
+            const fetchProduct = async () => {
+                try {
+                    const response = await fetch(`${API_URL}/product/${id}`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        setProductData({
+                            nombre: data.product_name || "",
+                            categoria: data.product_category || "primario"
+                        });
+                    } else {
+                        Swal.fire("Error", "No se pudo cargar el producto.", "error");
+                        navigate("/all-products-availables");
+                    }
+                } catch (error) {
+                    console.error("Error al traer el producto:", error);
+                    Swal.fire("Error de conexión", "", "error");
+                    navigate("/all-products-availables");
+                }
+            };
+            fetchProduct();
+        }
+    }, [id, API_URL, navigate]);
+
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setProductData(prev => ({ ...prev, [name]: value }));
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-
         if (isSubmitting) return;
         setIsSubmitting(true);
 
-        const formData = {
-            nombre: e.target.productName.value.trim(),
-            categoria: e.target.selectCategory.value,
-        };
+        if (!productData.nombre.trim()) {
+            Swal.fire("Atención", "Por favor ingresá un nombre de producto.", "warning");
+            setIsSubmitting(false);
+            return;
+        }
 
-        if (!formData.nombre) {
-            alert("Por favor ingresá un nombre de producto.");
+        const confirmResult = await Swal.fire({
+            title: id ? "¿Actualizar producto?" : "¿Cargar nuevo producto?",
+            text: id ? "Vas a actualizar este producto." : "Vas a guardar un nuevo producto.",
+            icon: "question",
+            showCancelButton: true,
+            confirmButtonText: id ? "Actualizar" : "Cargar",
+            cancelButtonText: "Cancelar"
+        });
+
+        if (!confirmResult.isConfirmed) {
             setIsSubmitting(false);
             return;
         }
 
         try {
-            
-            const response = await fetch(`${API_URL}/product-load`, {
-                method: "POST",
+            const method = id ? "PUT" : "POST";
+            const url = id ? `${API_URL}/product-update/${id}` : `${API_URL}/product-load`;
+
+            const payload = {
+                product_name: productData.nombre,
+                product_category: productData.categoria
+            };
+
+            const response = await fetch(url, {
+                method,
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify(formData),
+                body: JSON.stringify(payload),
             });
 
             if (response.ok) {
-                setSuccessMessage("✅ Producto cargado correctamente.");
-                e.target.reset();
+                await Swal.fire({
+                    icon: "success",
+                    title: id ? "Producto actualizado" : "Producto cargado",
+                    text: id ? "Se actualizó correctamente." : "Se guardó correctamente.",
+                    confirmButtonText: "Aceptar"
+                });
+                navigate("/all-products-availables");
             } else {
-                console.error("Error al enviar los datos");
-                alert("❌ Error al cargar el producto.");
+                Swal.fire("Error", "Error al guardar el producto.", "error");
             }
         } catch (error) {
             console.error("Error en la solicitud:", error);
-            alert("❌ Error en la conexión.");
+            Swal.fire("Error en la conexión", "", "error");
         } finally {
             setIsSubmitting(false);
         }
     };
 
     return (
-
         <div>
             <Navbar />
             <div className="product-form-container">
+                <h2>{id ? "Editar Producto" : "Cargar Nuevo Producto"}</h2>
 
                 <form onSubmit={handleSubmit}>
-                    <label htmlFor="productName">Nombre del Producto</label>
-                    <input type="text" name="productName" id="productName" />
+                    <label htmlFor="nombre">Nombre del Producto</label>
+                    <input
+                        type="text"
+                        name="nombre"
+                        id="nombre"
+                        value={productData.nombre}
+                        onChange={handleChange}
+                    />
 
-                    <label htmlFor="selectCategory">Categoría</label>
-                    <select name="selectCategory" id="selectCategory">
+                    <label htmlFor="categoria">Categoría</label>
+                    <select
+                        name="categoria"
+                        id="categoria"
+                        value={productData.categoria}
+                        onChange={handleChange}
+                    >
                         <option value="primario">Primario</option>
                         <option value="principal">Principal</option>
                         <option value="subproducto">Subproducto</option>
                     </select>
 
                     <button type="submit" disabled={isSubmitting}>
-                        {isSubmitting ? "Cargando..." : "Cargar"}
+                        {isSubmitting ? "Guardando..." : id ? "Actualizar" : "Cargar"}
                     </button>
 
                     <button type="button" onClick={() => navigate("/all-products-availables")}>
                         Cancelar
                     </button>
                 </form>
-
-                {successMessage && (
-                    <p className="success-message">{successMessage}</p>
-                )}
             </div>
         </div>
     );

@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 01-06-2025 a las 01:17:29
+-- Tiempo de generación: 25-06-2025 a las 04:02:20
 -- Versión del servidor: 10.4.28-MariaDB
 -- Versión de PHP: 8.2.4
 
@@ -34,19 +34,9 @@ CREATE TABLE `bill_details` (
   `quantity` int(11) DEFAULT NULL,
   `heads` int(11) DEFAULT NULL,
   `createdAt` datetime DEFAULT NULL,
-  `updatedAt` datetime DEFAULT NULL
+  `updatedAt` datetime DEFAULT NULL,
+  `weight` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Volcado de datos para la tabla `bill_details`
---
-
-INSERT INTO `bill_details` (`id`, `bill_supplier_id`, `type`, `quantity`, `heads`, `createdAt`, `updatedAt`) VALUES
-(6, 9, 'Media Res Capon', 40, 40, '2025-05-14 02:45:23', '2025-05-17 12:54:18'),
-(7, 10, 'Media Res Capon', 1000, 10000, '2025-05-16 16:14:00', '2025-05-17 17:36:56'),
-(8, 9, 'Media Res Chancha', 10, 10, '2025-05-17 12:54:18', '2025-05-17 12:54:18'),
-(9, 11, 'Media Res Chancha', 10, 10, '2025-05-17 13:09:47', '2025-05-17 13:09:47'),
-(10, 11, 'Media Res Capon', 4, 4, '2025-05-17 13:09:47', '2025-05-17 13:09:47');
 
 -- --------------------------------------------------------
 
@@ -64,17 +54,10 @@ CREATE TABLE `bill_suppliers` (
   `income_state` varchar(255) NOT NULL,
   `createdAt` timestamp NOT NULL DEFAULT current_timestamp(),
   `updatedAt` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  `check_state` tinyint(1) NOT NULL
+  `check_state` tinyint(1) NOT NULL,
+  `fresh_quantity` int(11) NOT NULL,
+  `fresh_weight` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Volcado de datos para la tabla `bill_suppliers`
---
-
-INSERT INTO `bill_suppliers` (`id`, `supplier`, `total_weight`, `head_quantity`, `quantity`, `romaneo_number`, `income_state`, `createdAt`, `updatedAt`, `check_state`) VALUES
-(9, 'TREMN SRL', '3337', 1415, 2343, 1235, 'manual', '2025-05-13 19:12:07', '2025-05-17 12:57:02', 0),
-(10, 'TREMN SRL', '1240', 10000, 1000, 1250, 'manual', '2025-05-16 16:14:00', '2025-05-17 17:36:56', 0),
-(11, 'TREMN SRL', '124.8', 14, 14, 12345, 'romaneo', '2025-05-17 13:09:47', '2025-05-17 13:09:47', 1);
 
 -- --------------------------------------------------------
 
@@ -97,13 +80,6 @@ CREATE TABLE `clients` (
   `client_state` tinyint(1) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Volcado de datos para la tabla `clients`
---
-
-INSERT INTO `clients` (`id`, `client_name`, `client_type_id`, `client_id_number`, `client_iva_condition`, `client_email`, `client_phone`, `client_adress`, `client_country`, `client_province`, `client_location`, `client_state`) VALUES
-(2, 'FERNAND', 'DNI', 2147483647, 'CONSUMIDOR FINAL', 'fernando@fernando', '23525325235', 'AV.SAVIO 540', 'ARGENTINA', 'BUENOS AIRES', 'SAN NICOLAS', 1);
-
 -- --------------------------------------------------------
 
 --
@@ -120,16 +96,9 @@ CREATE TABLE `meat_manual_income` (
   `provider_weight` float NOT NULL,
   `gross_weight` float NOT NULL,
   `tare` float NOT NULL,
-  `net_weight` float NOT NULL
+  `net_weight` float NOT NULL,
+  `decrease` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Volcado de datos para la tabla `meat_manual_income`
---
-
-INSERT INTO `meat_manual_income` (`id`, `id_bill_suppliers`, `products_name`, `products_garron`, `products_quantity`, `product_head`, `provider_weight`, `gross_weight`, `tare`, `net_weight`) VALUES
-(462, 9, 'Media Res Chancha', 462, '2342', 1414, 2525, 3242, 2.5, 3239.5),
-(4454, 9, 'Media Res Capon', 4454, '1', 1, 11515, 100, 2.5, 97.5);
 
 -- --------------------------------------------------------
 
@@ -142,13 +111,24 @@ CREATE TABLE `observations_meatincome` (
   `observation` varchar(255) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+-- --------------------------------------------------------
+
 --
--- Volcado de datos para la tabla `observations_meatincome`
+-- Estructura de tabla para la tabla `other_product_manual`
 --
 
-INSERT INTO `observations_meatincome` (`id`, `observation`) VALUES
-(3, 'sin datos'),
-(9, 'Nada probando');
+CREATE TABLE `other_product_manual` (
+  `id` int(11) NOT NULL,
+  `product_portion` int(11) NOT NULL,
+  `product_name` varchar(100) NOT NULL,
+  `product_quantity` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `product_gross_weight` float NOT NULL,
+  `product_net_weight` float NOT NULL,
+  `decrease` float NOT NULL,
+  `id_bill_suppliers` int(11) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -178,16 +158,19 @@ CREATE TABLE `products_available` (
   `product_category` varchar(255) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+-- --------------------------------------------------------
+
 --
--- Volcado de datos para la tabla `products_available`
+-- Estructura de tabla para la tabla `product_stock`
 --
 
-INSERT INTO `products_available` (`id`, `product_name`, `product_category`) VALUES
-(1, 'Capon', 'primario'),
-(2, 'Media Res Capon', 'primario'),
-(3, 'Media Res Chancha', 'primario'),
-(4, 'Media Res Padrillo', 'primario'),
-(5, 'Matambre', 'subproducto');
+CREATE TABLE `product_stock` (
+  `id` int(11) NOT NULL,
+  `product_name` varchar(160) NOT NULL,
+  `product_quantity` int(11) NOT NULL,
+  `product_cod` int(11) NOT NULL,
+  `product_category` varchar(255) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -209,17 +192,6 @@ CREATE TABLE `providers` (
   `provider_location` varchar(255) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Volcado de datos para la tabla `providers`
---
-
-INSERT INTO `providers` (`id`, `provider_name`, `provider_type_id`, `provider_id_number`, `provider_iva_condition`, `provider_email`, `provider_phone`, `provider_adress`, `provider_country`, `provider_province`, `provider_location`) VALUES
-(2, 'TRENM', 'CUIT', '325252', 'IVA RESPONSABLE INSCRIPTO', 'tremn@tremn.com', '33642020202', 'AV. SAVIO 555', 'ARGENTINA', 'BUENOS AIRES', 'SAN NICOLAS'),
-(3, 'FERNADNO', 'CUIT', '2147483647', 'IVA SUJETO EXENTO', 'fer@fer', '32352525', 'BKMSNF', 'ARGENTINA', 'BUENOS AIRES', 'SAN NICOLAS'),
-(4, 'FERNADNO', 'CUIT', '2147483647', 'IVA SUJETO EXENTO', 'fer@fer', '32352525', 'BKMSNF', 'ARGENTINA', 'BUENOS AIRES', 'SAN NICOLAS'),
-(5, 'FERNADNO', 'CUIT', '2147483647', 'IVA SUJETO EXENTO', 'fer@fer', '32352525', 'BKMSNF', 'ARGENTINA', 'BUENOS AIRES', 'SAN NICOLAS'),
-(6, 'FERNADNO', 'CUIT', '2147483647', 'IVA SUJETO EXENTO', 'fer@fer', '32352525', 'BKMSNF', 'ARGENTINA', 'BUENOS AIRES', 'SAN NICOLAS');
-
 -- --------------------------------------------------------
 
 --
@@ -231,13 +203,6 @@ CREATE TABLE `tares` (
   `tare_name` varchar(255) NOT NULL,
   `tare_weight` float NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Volcado de datos para la tabla `tares`
---
-
-INSERT INTO `tares` (`id`, `tare_name`, `tare_weight`) VALUES
-(2, 'Cajon Plástico', 1.5);
 
 -- --------------------------------------------------------
 
@@ -298,6 +263,13 @@ ALTER TABLE `observations_meatincome`
   ADD PRIMARY KEY (`id`);
 
 --
+-- Indices de la tabla `other_product_manual`
+--
+ALTER TABLE `other_product_manual`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `fk_bill_suppliers` (`id_bill_suppliers`);
+
+--
 -- Indices de la tabla `process_meats`
 --
 ALTER TABLE `process_meats`
@@ -307,6 +279,12 @@ ALTER TABLE `process_meats`
 -- Indices de la tabla `products_available`
 --
 ALTER TABLE `products_available`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indices de la tabla `product_stock`
+--
+ALTER TABLE `product_stock`
   ADD PRIMARY KEY (`id`);
 
 --
@@ -335,19 +313,25 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT de la tabla `bill_details`
 --
 ALTER TABLE `bill_details`
-  MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+  MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT de la tabla `bill_suppliers`
 --
 ALTER TABLE `bill_suppliers`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT de la tabla `clients`
 --
 ALTER TABLE `clients`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT de la tabla `other_product_manual`
+--
+ALTER TABLE `other_product_manual`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT de la tabla `process_meats`
@@ -359,19 +343,25 @@ ALTER TABLE `process_meats`
 -- AUTO_INCREMENT de la tabla `products_available`
 --
 ALTER TABLE `products_available`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT de la tabla `product_stock`
+--
+ALTER TABLE `product_stock`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT de la tabla `providers`
 --
 ALTER TABLE `providers`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT de la tabla `tares`
 --
 ALTER TABLE `tares`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT de la tabla `users`
@@ -394,6 +384,12 @@ ALTER TABLE `bill_details`
 --
 ALTER TABLE `meat_manual_income`
   ADD CONSTRAINT `fk_meat_income_received_suppliers` FOREIGN KEY (`id_bill_suppliers`) REFERENCES `bill_suppliers` (`id`);
+
+--
+-- Filtros para la tabla `other_product_manual`
+--
+ALTER TABLE `other_product_manual`
+  ADD CONSTRAINT `fk_bill_suppliers` FOREIGN KEY (`id_bill_suppliers`) REFERENCES `bill_suppliers` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

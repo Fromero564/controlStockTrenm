@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Navbar from "../../components/Navbar.jsx";
 import "../../assets/styles/allProductsAvailables.css";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -9,6 +10,7 @@ const AllProductsAvailables = () => {
   const [productos, setProductos] = useState([]);
   const [loading, setLoading] = useState(true);
   const API_URL = import.meta.env.VITE_API_URL;
+  const navigate = useNavigate(); 
 
   useEffect(() => {
     const fetchProductos = async () => {
@@ -26,36 +28,35 @@ const AllProductsAvailables = () => {
     fetchProductos();
   }, []);
 
-const eliminarProducto = async (id) => {
-  const resultado = await Swal.fire({
-    title: "¿Eliminar producto?",
-    text: "Esta acción no se puede deshacer.",
-    icon: "warning",
-    showCancelButton: true,
-    confirmButtonColor: "#d33",
-    cancelButtonColor: "#3085d6",
-    confirmButtonText: "Sí, eliminar",
-    cancelButtonText: "Cancelar",
-  });
-
-  if (!resultado.isConfirmed) return;
-
-  try {
-    const res = await fetch(`${API_URL}/delete-product-available/${id}`, {
-      method: "DELETE",
+  const eliminarProducto = async (id) => {
+    const resultado = await Swal.fire({
+      title: "¿Eliminar producto?",
+      text: "Esta acción no se puede deshacer.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#3085d6",
+      confirmButtonText: "Sí, eliminar",
+      cancelButtonText: "Cancelar",
     });
 
-    if (!res.ok) throw new Error("No se pudo eliminar el producto");
+    if (!resultado.isConfirmed) return;
 
-    setProductos((prev) => prev.filter((prod) => prod.id !== id));
+    try {
+      const res = await fetch(`${API_URL}/delete-product-available/${id}`, {
+        method: "DELETE",
+      });
 
-    await Swal.fire("Eliminado", "Producto eliminado correctamente.", "success");
-  } catch (err) {
-    console.error("Error al eliminar:", err);
-    Swal.fire("Error", "Ocurrió un error al eliminar el producto.", "error");
-  }
-};
+      if (!res.ok) throw new Error("No se pudo eliminar el producto");
 
+      setProductos((prev) => prev.filter((prod) => prod.id !== id));
+
+      await Swal.fire("Eliminado", "Producto eliminado correctamente.", "success");
+    } catch (err) {
+      console.error("Error al eliminar:", err);
+      Swal.fire("Error", "Ocurrió un error al eliminar el producto.", "error");
+    }
+  };
 
   return (
     <>
@@ -85,7 +86,7 @@ const eliminarProducto = async (id) => {
                     <div className="products-actions">
                       <button
                         className="products-btn-icon products-btn-edit"
-                        onClick={() => alert(`Editar producto ID ${prod.id}`)}
+                       onClick={() => navigate(`/product-load/${prod.id}`)}  
                       >
                         <FontAwesomeIcon icon={faPen} />
                       </button>

@@ -494,92 +494,75 @@ const operatorApiController = {
         }
     },
 
-    updateBillSupplier: async (req, res) => {
-        const { id } = req.params;
-        const {
-            cantidad_animales_cargados,
-            cantidad_cabezas_cargadas,
-            peso_total_neto_cargado,
-            fresh_quantity,
-            fresh_weight,
-        } = req.body;
+  updateBillSupplier: async (req, res) => {
+  const { id } = req.params;
+  const {
+    cantidad_animales_cargados,
+    cantidad_cabezas_cargadas,
+    peso_total_neto_cargado,
+    fresh_quantity,
+    fresh_weight,
+  } = req.body;
 
-        try {
-            // 1. Actualizar billSupplier
-            const updateData = {
-                total_weight: peso_total_neto_cargado,
-                head_quantity: cantidad_cabezas_cargadas,
-                quantity: cantidad_animales_cargados,
-            };
+  try {
+    const remito = await billSupplier.findOne({ where: { id } });
 
-            if (fresh_quantity !== undefined) {
-                updateData.fresh_quantity = fresh_quantity;
-            }
+    if (!remito) {
+      return res.status(404).json({ message: "Remito no encontrado" });
+    }
 
-            if (fresh_weight !== undefined) {
-                updateData.fresh_weight = fresh_weight;
-            }
+    // Actualizar datos generales
+    const updateData = {
+      total_weight: peso_total_neto_cargado,
+      head_quantity: cantidad_cabezas_cargadas,
+      quantity: cantidad_animales_cargados,
+    };
+    if (fresh_quantity !== undefined) updateData.fresh_quantity = fresh_quantity;
+    if (fresh_weight !== undefined) updateData.fresh_weight = fresh_weight;
 
-            const result = await billSupplier.update(updateData, {
-                where: { id },
-            });
+    await billSupplier.update(updateData, { where: { id } });
 
-            if (result[0] === 0) {
-                return res.status(404).json({ message: "No se encontró el registro para actualizar" });
-            }
+    if (remito.income_state === "romaneo") {
+      // Actualizar stock basado en billDetail
+      const detalles = await billDetail.findAll({ where: { bill_supplier_id: id } });
+      const cantidadesPorProducto = {};
 
-            // 2. Obtener detalles del remito
-            const detalles = await billDetail.findAll({ where: { bill_supplier_id: id } });
+      for (const item of detalles) {
+        const nombre = item.type;
+        const cantidad = Number(item.quantity || 0);
+        cantidadesPorProducto[nombre] = (cantidadesPorProducto[nombre] || 0) + cantidad;
+      }
 
-            const cantidadesPorProducto = {};
+      for (const nombre in cantidadesPorProducto) {
+        const cantidadTotal = cantidadesPorProducto[nombre];
+        const producto = await ProductStock.findOne({ where: { product_name: nombre } });
 
-            for (const item of detalles) {
-                const nombre = item.type;
-                const cantidad = Number(item.quantity || 0);
-
-                if (!cantidadesPorProducto[nombre]) {
-                    cantidadesPorProducto[nombre] = 0;
-                }
-
-                cantidadesPorProducto[nombre] += cantidad;
-            }
-
-            // 3. Actualizar stock
-            for (const nombre in cantidadesPorProducto) {
-                const cantidadTotal = cantidadesPorProducto[nombre];
-
-                const producto = await ProductStock.findOne({ where: { product_name: nombre } });
-
-                if (producto) {
-                    await producto.update({ product_quantity: cantidadTotal });
-                } else {
-                    // Buscar cod y categoria en ProductsAvailable
-                    const productoBase = await ProductsAvailable.findOne({ where: { product_name: nombre } });
-
-                    if (productoBase) {
-                        await ProductStock.create({
-                            product_name: nombre,
-                            product_quantity: cantidadTotal,
-                           product_cod: productoBase.id,
-                            product_category: productoBase.product_category,
-                        });
-                    } else {
-                        console.log(`❌ Producto "${nombre}" no encontrado en ProductsAvailable.`);
-                        return res.status(400).json({ message: `No se puede crear stock para "${nombre}" porque falta cod o categoría.` });
-                    }
-                }
-            }
-
-            return res.status(200).json({ message: "Registro y stock actualizados correctamente." });
-
-        } catch (error) {
-            console.error("💥 Error real en updateBillSupplier:", error);
-            res.status(500).json({
-                message: "Error al actualizar el registro",
-                error: error.message || error.toString(),
-            });
+        if (producto) {
+          await producto.update({ product_quantity: cantidadTotal });
+        } else {
+          const productoBase = await ProductsAvailable.findOne({ where: { product_name: nombre } });
+          if (!productoBase) continue;
+          await ProductStock.create({
+            product_name: nombre,
+            product_quantity: cantidadTotal,
+            product_cod: productoBase.id,
+            product_category: productoBase.product_category,
+          });
         }
-    },
+      }
+    } else if (remito.income_state === "manual") {
+      // NO actualizar stock aquí, se actualiza desde MeatManualIncome y otros
+      console.log("Ingreso manual, stock actualizado desde tablas manuales");
+    }
+
+    return res.status(200).json({ message: "Registro actualizado correctamente." });
+
+  } catch (error) {
+    console.error("Error en updateBillSupplier:", error);
+    return res.status(500).json({ message: "Error interno", error: error.message || error.toString() });
+  }
+},
+
 
 
     uploadProductsProcess: async (req, res) => {
@@ -651,178 +634,187 @@ const operatorApiController = {
         }
 
     },
-    addIncomeMeat: async (req, res) => {
-        try {
-            const Supplierid = req.params.id;
-            const { cortes, observacion } = req.body;
+  addIncomeMeat: async (req, res) => {
+    try {
+        const Supplierid = req.params.id;
+        const { cortes, observacion } = req.body;
 
-            if (!Array.isArray(cortes) || cortes.length === 0) {
-                return res.status(400).json({ mensaje: "El cuerpo de la solicitud debe contener una lista de productos." });
-            }
-
-            for (const corte of cortes) {
-                const {
-                    tipo,
-                    garron,
-                    cabeza,
-                    cantidad,
-                    pesoBruto,
-                    tara,
-                    pesoNeto,
-                    pesoProveedor,
-                    mermaPorcentaje,
-                    cod,
-                    categoria,
-                } = corte;
-
-                if (!tipo || !garron || cabeza == null || cantidad == null || pesoBruto == null || tara == null || pesoNeto == null) {
-                    return res.status(400).json({ mensaje: "Faltan campos obligatorios en al menos un producto." });
-                }
-
-                const existente = await meatIncome.findByPk(garron);
-                if (existente) {
-                    return res.status(400).json({ mensaje: `El garrón ${garron} ya existe.` });
-                }
-
-                await meatIncome.create({
-                    id: garron,
-                    id_bill_suppliers: Supplierid,
-                    products_name: tipo,
-                    products_garron: garron,
-                    product_head: cabeza,
-                    products_quantity: cantidad,
-                    provider_weight: pesoProveedor,
-                    gross_weight: pesoBruto,
-                    tare: tara,
-                    net_weight: pesoNeto,
-                    decrease: mermaPorcentaje,
-                });
-
-                // ACTUALIZAR STOCK
-                const stock = await ProductStock.findOne({ where: { product_name: tipo } });
-
-                if (stock) {
-                    await stock.increment("product_quantity", { by: cantidad });
-                } else {
-                    await ProductStock.create({
-                        product_name: tipo,
-                        product_quantity: cantidad,
-                        product_cod: cod || null,
-                        product_category: categoria || null,
-                    });
-                }
-            }
-
-            if (observacion) {
-                await ObservationsMeatIncome.create({
-                    id: Supplierid,
-                    observation: observacion,
-                });
-            }
-
-            return res.status(201).json({ mensaje: "Todos los productos fueron cargados correctamente." });
-
-        } catch (error) {
-            console.error("Error en la base de datos:", error);
-            return res.status(500).json({ mensaje: "Error en la base de datos", error: error.message });
+        if (!Array.isArray(cortes) || cortes.length === 0) {
+            return res.status(400).json({ mensaje: "El cuerpo de la solicitud debe contener una lista de productos." });
         }
-    },
 
-    editAddIncome: async (req, res) => {
-        try {
-            const Supplierid = req.params.id;
-            const { cortes } = req.body;
+        for (const corte of cortes) {
+            const {
+                tipo,
+                garron,
+                cabeza,
+                cantidad,
+                pesoBruto,
+                tara,
+                pesoNeto,
+                pesoProveedor,
+                mermaPorcentaje,
+                cod,
+                categoria,
+            } = corte;
 
-            if (!Array.isArray(cortes) || cortes.length === 0) {
-                return res.status(400).json({ mensaje: "El cuerpo de la solicitud debe contener una lista de productos." });
+            if (!tipo || !garron || cabeza == null || cantidad == null || pesoBruto == null || tara == null || pesoNeto == null) {
+                return res.status(400).json({ mensaje: "Faltan campos obligatorios en al menos un producto." });
             }
 
-
-            const anteriores = await meatIncome.findAll({ where: { id_bill_suppliers: Supplierid } });
-
-            for (const item of anteriores) {
-                const stock = await ProductStock.findOne({ where: { product_name: item.products_name } });
-                if (stock) {
-                    await stock.decrement("product_quantity", { by: Number(item.products_quantity) || 0 });
-                }
+            const existente = await meatIncome.findByPk(garron);
+            if (existente) {
+                return res.status(400).json({ mensaje: `El garrón ${garron} ya existe.` });
             }
 
-            await meatIncome.destroy({ where: { id_bill_suppliers: Supplierid } });
+            await meatIncome.create({
+                id: garron,
+                id_bill_suppliers: Supplierid,
+                products_name: tipo,
+                products_garron: garron,
+                product_head: cabeza,
+                products_quantity: cantidad,
+                provider_weight: pesoProveedor,
+                gross_weight: pesoBruto,
+                tare: tara,
+                net_weight: pesoNeto,
+                decrease: mermaPorcentaje,
+            });
 
-         
-            for (const corte of cortes) {
-                const {
-                    tipo,
-                    garron,
-                    cabeza,
-                    cantidad,
-                    pesoBruto,
-                    tara,
-                    pesoNeto,
-                    pesoProveedor,
-                    cod,
-                    categoria,
-                } = corte;
+            const stock = await ProductStock.findOne({ where: { product_name: tipo } });
 
-                if (!tipo || !garron || cabeza == null || cantidad == null || pesoBruto == null || tara == null || pesoNeto == null) {
-                    return res.status(400).json({ mensaje: "Faltan campos obligatorios en al menos un producto." });
+            if (stock) {
+                await stock.increment("product_quantity", { by: cantidad });
+            } else {
+                if (!cod || !categoria) {
+                    return res.status(400).json({ mensaje: `Faltan cod o categoría para crear el producto "${tipo}" en stock.` });
                 }
 
-                await meatIncome.create({
-                    id: garron,
-                    id_bill_suppliers: Supplierid,
-                    products_name: tipo,
-                    products_garron: garron,
-                    product_head: cabeza,
-                    products_quantity: cantidad,
-                    provider_weight: pesoProveedor,
-                    gross_weight: pesoBruto,
-                    tare: tara,
-                    net_weight: pesoNeto,
-                    decrease: corte.mermaPorcentaje || 0,
+                await ProductStock.create({
+                    product_name: tipo,
+                    product_quantity: cantidad,
+                    product_cod: cod,
+                    product_category: categoria,
                 });
             }
-
-          
-            const productosActuales = await meatIncome.findAll({ where: { id_bill_suppliers: Supplierid } });
-
-            const cantidadesPorProducto = {};
-
-            for (const item of productosActuales) {
-                const nombre = item.products_name;
-                const cantidad = Number(item.products_quantity || 0);
-
-                if (!cantidadesPorProducto[nombre]) {
-                    cantidadesPorProducto[nombre] = 0;
-                }
-
-                cantidadesPorProducto[nombre] += cantidad;
-            }
-
-            for (const nombre in cantidadesPorProducto) {
-                const cantidadTotal = cantidadesPorProducto[nombre];
-
-                const producto = await ProductStock.findOne({ where: { product_name: nombre } });
-
-                if (producto) {
-                    await producto.update({ product_quantity: cantidadTotal });
-                } else {
-                    await ProductStock.create({
-                        product_name: nombre,
-                        product_quantity: cantidadTotal,
-                        product_cod: null,
-                        product_category: null,
-                    });
-                }
-            }
-
-            return res.status(200).json({ mensaje: "Los productos fueron actualizados correctamente." });
-
-        } catch (error) {
-            console.error("Error al actualizar los cortes:", error);
-            return res.status(500).json({ mensaje: "Error al actualizar los cortes", error: error.message });
         }
-    },
+
+        if (observacion) {
+            await ObservationsMeatIncome.create({
+                id: Supplierid,
+                observation: observacion,
+            });
+        }
+
+        return res.status(201).json({ mensaje: "Todos los productos fueron cargados correctamente." });
+
+    } catch (error) {
+        console.error("Error en la base de datos:", error);
+        return res.status(500).json({ mensaje: "Error en la base de datos", error: error.message });
+    }
+},
+
+editAddIncome: async (req, res) => {
+  try {
+    const Supplierid = req.params.id;
+    const { cortes } = req.body;
+
+    if (!Array.isArray(cortes) || cortes.length === 0) {
+      return res.status(400).json({ mensaje: "El cuerpo de la solicitud debe contener una lista de productos." });
+    }
+
+    // 1. Buscar productos actuales del remito y restar del stock
+    const anteriores = await meatIncome.findAll({ where: { id_bill_suppliers: Supplierid } });
+
+    for (const item of anteriores) {
+      const stock = await ProductStock.findOne({ where: { product_name: item.products_name } });
+      if (stock) {
+        await stock.decrement("product_quantity", { by: Number(item.products_quantity) || 0 });
+      }
+    }
+
+    // 2. Eliminar los cortes anteriores
+    await meatIncome.destroy({ where: { id_bill_suppliers: Supplierid } });
+
+    // 3. Insertar nuevos cortes
+    for (const corte of cortes) {
+      const {
+        tipo,
+        garron,
+        cabeza,
+        cantidad,
+        pesoBruto,
+        tara,
+        pesoNeto,
+        pesoProveedor,
+        cod,
+        categoria,
+      } = corte;
+
+      if (!tipo || !garron || cabeza == null || cantidad == null || pesoBruto == null || tara == null || pesoNeto == null) {
+        return res.status(400).json({ mensaje: "Faltan campos obligatorios en al menos un producto." });
+      }
+
+      await meatIncome.create({
+        id: garron,
+        id_bill_suppliers: Supplierid,
+        products_name: tipo,
+        products_garron: garron,
+        product_head: cabeza,
+        products_quantity: cantidad,
+        provider_weight: pesoProveedor,
+        gross_weight: pesoBruto,
+        tare: tara,
+        net_weight: pesoNeto,
+        decrease: corte.mermaPorcentaje || 0,
+      });
+    }
+
+    // 4. Recalcular stock exacto desde TODAS las líneas en meatIncome
+    const todosLosIngresos = await meatIncome.findAll();
+
+    const cantidadesTotales = {};
+
+    for (const ingreso of todosLosIngresos) {
+      const nombre = ingreso.products_name;
+      const cantidad = Number(ingreso.products_quantity || 0);
+      if (!cantidadesTotales[nombre]) {
+        cantidadesTotales[nombre] = 0;
+      }
+      cantidadesTotales[nombre] += cantidad;
+    }
+
+    for (const nombre in cantidadesTotales) {
+      const total = cantidadesTotales[nombre];
+
+      const producto = await ProductStock.findOne({ where: { product_name: nombre } });
+
+      if (producto) {
+        await producto.update({ product_quantity: total });
+      } else {
+        const productoBase = await ProductsAvailable.findOne({ where: { product_name: nombre } });
+        if (productoBase) {
+          await ProductStock.create({
+            product_name: nombre,
+            product_quantity: total,
+            product_cod: productoBase.id,
+            product_category: productoBase.product_category,
+          });
+        } else {
+          console.warn(`⚠️ No se pudo crear stock para "${nombre}" porque no existe en ProductsAvailable.`);
+        }
+      }
+    }
+
+    return res.status(200).json({ mensaje: "Los productos fueron actualizados correctamente." });
+
+  } catch (error) {
+    console.error("❌ Error al actualizar los cortes:", error);
+    return res.status(500).json({ mensaje: "Error al actualizar los cortes", error: error.message });
+  }
+},
+
+
 
 
 
@@ -1333,6 +1325,54 @@ deleteItemFromMeatManualIncome: async (req, res) => {
       message: "Error al eliminar producto.",
       error: error.message || error.toString(),
     });
+  }
+},
+editProductAvailable: async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { product_name, product_category } = req.body;
+
+    if (!product_name || !product_category) {
+      return res.status(400).json({ message: "Faltan campos obligatorios." });
+    }
+
+    const producto = await ProductsAvailable.findOne({ where: { id } });
+
+    if (!producto) {
+      return res.status(404).json({ message: "Producto no encontrado." });
+    }
+
+    await producto.update({
+      product_name,
+      product_category
+    });
+
+    return res.status(200).json({ message: "Producto actualizado correctamente." });
+  } catch (error) {
+    console.error("Error al actualizar producto:", error);
+    return res.status(500).json({
+      message: "Error al actualizar producto.",
+      error: error.message || error.toString(),
+    });
+  }
+},
+
+getProductById: async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const product = await ProductsAvailable.findOne({
+      where: { id }
+    });
+
+    if (!product) {
+      return res.status(404).json({ message: "Producto no encontrado." });
+    }
+
+    return res.json(product);
+  } catch (error) {
+    console.error("Error al obtener producto por ID:", error);
+    return res.status(500).json({ message: "Error interno del servidor." });
   }
 },
 

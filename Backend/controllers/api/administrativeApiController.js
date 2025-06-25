@@ -13,22 +13,20 @@ const Client = db.Client;
 const administrativeApiController = {
     loadNewProduct: async (req, res) => {
         try {
+            const { product_name, product_category } = req.body;
 
-            const { nombre, categoria } = req.body;
-
-            // Crear el registro de ingreso en la BD
             await ProductsAvailable.create({
-                product_name: nombre,
-                product_category: categoria,
+                product_name,
+                product_category,
             });
 
-            res.status(201).json({ mensaje: 'Ingreso registrado con éxito' });
-
-
+            res.status(201).json({ mensaje: 'Producto registrado con éxito' });
         } catch (error) {
-            res.status(500).json({ mensaje: 'Error al registrar el ingreso', error });
+            console.error("Error al registrar producto:", error);
+            res.status(500).json({ mensaje: 'Error al registrar el producto', error });
         }
     },
+
     loadNewProvider: async (req, res) => {
 
         const { nombreProveedor, identidad, numeroIdentidad, ivaCondicion, emailProveedor, telefonoProveedor, domicilioProveedor, paisProveedor, provinciaProveedor, localidadProveedor } = req.body;
@@ -77,7 +75,7 @@ const administrativeApiController = {
             return res.status(500).json({ mensaje: "Error del servidor" });
         }
     },
-      filterClient: async (req, res) => {
+    filterClient: async (req, res) => {
         const { id } = req.params;
 
         try {
@@ -181,7 +179,7 @@ const administrativeApiController = {
             return res.status(500).json({ mensaje: "Error del servidor" });
         }
     },
-     deleteClient: async (req, res) => {
+    deleteClient: async (req, res) => {
         const { id } = req.params;
         try {
             await Client.destroy({ where: { id } });
@@ -194,7 +192,7 @@ const administrativeApiController = {
 
 
     loadNewClient: async (req, res) => {
-       
+
         const { nombreCliente, identidad, numeroIdentidad, ivaCondicion, emailCliente, telefonoCliente, domicilioCliente, paisCliente, provinciaCliente, localidadCliente, client_state } = req.body;
 
         const clienteExistente = await Client.findOne({

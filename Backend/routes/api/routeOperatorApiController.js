@@ -34,6 +34,9 @@ router.get("/getProductsFromRemito/:id",apiOperatorController.updateProductFromR
 router.get("/getOtherProductsFromRemito/:id",apiOperatorController.getOtherProductsFromRemito)
 //Api para ver stock disponible
 router.get("/all-products-stock",apiOperatorController.getProductStock)
+//Api para traer producto disponible por ID
+router.get("/product/:id", operatorApiController.getProductById);
+
 //Api para cargar productos
 router.post("/uploadProduct",apiOperatorController.uploadProducts);
 //Api para cargar productos de proceso
@@ -46,6 +49,8 @@ router.post("/addProducts/:id",apiOperatorController.addIncomeMeat);
 router.post("/observations-create",apiOperatorController.createObservation);
 //Agregar productos congelados o otro productos no cortes por manual
 router.post("/addOtherProductsManual",apiOperatorController.addOtherProductsManual)
+//Api para actualizar los productos disponibles 
+router.put('/product-update/:id', operatorApiController.editProductAvailable);
 //Api para actualizar las piezas congeladas/otros productos
 router.put("/editOtherProductsManual/:id",apiOperatorController.editOtherProductsManual);
 //Api para actualizar las piezas que se despostaron
