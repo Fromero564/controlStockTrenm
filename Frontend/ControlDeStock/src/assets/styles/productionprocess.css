@@ -1,29 +1,28 @@
 /* Contenedor general */
 .pp-main-container {
-  display:flex;
+  display: flex;
   align-items: center;
   justify-content: center;
   flex-direction: column;
-    padding: 1rem;
-    font-family: Arial, sans-serif;
+  padding: 1rem;
+  font-family: Arial, sans-serif;
 }
 
 .pp-content-wrapper {
-    max-width: 1000px;
-    margin: 0 auto;
+  max-width: 1000px;
+  margin: 0 auto;
 }
-/*Formulario piezas desposte*/
-/* --- Contenedor principal del formulario piezas a despostar adaptado --- */
+
+/* Sección de piezas a despostar */
 .pp-despostar-section {
   max-width: 1000px;
-  background-color: #ffffff;  /* Blanco */
+  background-color: #ffffff;
   border-radius: 16px;
   padding: 2rem;
   margin-bottom: 2rem;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
-/* Título */
 .pp-despostar-section h2 {
   margin-bottom: 1.5rem;
   font-size: 1.5rem;
@@ -31,7 +30,6 @@
   font-weight: 600;
 }
 
-/* Grupo inputs: inputs y selects en grid igual al otro formulario */
 .pp-despostar-section .pp-form-group {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
@@ -39,13 +37,11 @@
   margin-bottom: 1.5rem;
 }
 
-/* Cada input o select y label en columna */
 .pp-despostar-section .pp-form-group > div {
   display: flex;
   flex-direction: column;
 }
 
-/* Labels */
 .pp-despostar-section label {
   font-weight: 600;
   margin-bottom: 0.25rem;
@@ -53,7 +49,6 @@
   font-size: 1rem;
 }
 
-/* Inputs y selects */
 .pp-despostar-section input[type="number"],
 .pp-despostar-section select {
   width: 100%;
@@ -68,13 +63,11 @@
 .pp-despostar-section input[type="number"]:focus,
 .pp-despostar-section select:focus {
   outline: none;
-  border-color: #0077b6;  /* azul */
+  border-color: #0077b6;
   box-shadow: 0 0 0 2px rgba(0, 119, 182, 0.25);
 }
 
-/* Botón agregar */
 .pp-despostar-section .pp-btn-agregar {
-  /* padding: 0.75rem 1.5rem; */
   background-color: #0077b6;
   color: white;
   border: none;
@@ -85,15 +78,13 @@
   justify-self: center;
   align-items: center;
   transition: background-color 0.3s ease;
-  height: 38px;
-  margin-top: 25px;
+  margin-top: 20px;
 }
 
 .pp-despostar-section .pp-btn-agregar:hover {
   background-color: #005f8a;
 }
 
-/* Lista de piezas */
 .pp-piezas-despostar-lista {
   margin-bottom: 1.5rem;
   max-height: 220px;
@@ -104,22 +95,19 @@
   padding: 0.75rem 1rem;
 }
 
-/* Cada pieza listada */
 .pp-pieza-despostar-item {
-  display: grid;
-  grid-template-columns: 1fr auto;
+  display: flex;
+  justify-content: space-between;
   align-items: center;
   border-bottom: 1px solid #ddd;
   padding: 0.6rem 0;
+}
+
+.pp-pieza-despostar-item div {
   font-size: 1rem;
   color: #222;
 }
 
-.pp-pieza-despostar-item:last-child {
-  border-bottom: none;
-}
-
-/* Botón eliminar */
 .pp-pieza-despostar-item .pp-btn-eliminar {
   background-color: #dc3545;
   border: none;
@@ -140,168 +128,112 @@
   background-color: #a71d2a;
 }
 
-/* Botón enviar piezas */
-.pp-despostar-section .pp-btn-guardar {
-  background-color: #0077b6;
-  border: none;
-  color: white;
-  padding: 0.75rem 1.5rem;
-  font-weight: bold;
-  border-radius: 5px;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-  display: block;
-  margin: 0 auto;
-  font-size: 1rem;
-  max-width: 240px;
-}
-
-.pp-despostar-section .pp-btn-guardar:hover {
-  background-color: #005f8a;
-}
-
-/* Responsive: en móviles la fila de inputs queda en columna */
-@media (max-width: 600px) {
-  .pp-despostar-section .pp-form-group {
-    grid-template-columns: 1fr;
-  }
-
-  .pp-despostar-section .pp-btn-agregar {
-    justify-self: stretch;
-  }
-}
-
-/* Formulario */
+/* Formulario cortes */
 .pp-formulario-corte {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    background-color: #ffffff;
-    padding: 2rem;
-    border-radius: 16px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  background-color: #ffffff;
+  padding: 2rem;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
-/* Grupo de campos */
 .pp-form-group {
-    display: grid;
-    grid-template-columns: repeat(6,1fr);
-    gap: 1rem;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 1rem;
 }
 
-/* Inputs y selects estilizados */
 .pp-form-group input,
 .pp-form-group select {
-    width: 100%;
-    padding: 0.75rem 1rem;
-    font-size: 1rem;
-    border: 1px solid #ccc;
-    border-radius: 12px;
-    background-color: #f8f9fa;
-    transition: border-color 0.3s, box-shadow 0.3s;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 12px;
+  background-color: #f8f9fa;
+  transition: border-color 0.3s, box-shadow 0.3s;
 }
 
 .pp-form-group input:focus,
 .pp-form-group select:focus {
-    border-color: #0077b6;
-    outline: none;
-    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+  border-color: #0077b6;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
 }
 
-/* Etiquetas */
 .pp-form-group label {
-    display: block;
-    font-weight: 600;
-    margin-bottom: 0.25rem;
-    color: #333;
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+  color: #333;
 }
 
-/* Botones */
 .pp-btn-agregar,
 .pp-btn-guardar {
-    padding: 0.75rem 1.5rem;
-    background-color: #0077b6;
-    color: white;
-    font-weight: bold;
-    border: none;
-    cursor: pointer;
-    border-radius: 5px;
+  padding: 0.75rem 1.5rem;
+  background-color: #0077b6;
+  color: white;
+  font-weight: bold;
+  border: none;
+  cursor: pointer;
+  border-radius: 5px;
 }
 
 .pp-btn-agregar:hover,
 .pp-btn-guardar:hover {
-    background-color: #0077b6;
+  background-color: #005f8a;
 }
 
-/* Tabla de cortes */
 .pp-cortes-tabla {
-    display: block;
+  display: block;
 }
 
 .pp-corte-encabezado,
 .pp-corte-mostrado {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 0.5rem;
-    padding: 0.5rem;
-    border-bottom: 1px solid #ccc;
-    text-align: center;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.5rem;
+  padding: 0.5rem;
+  border-bottom: 1px solid #ccc;
+  text-align: center;
 }
 
 .pp-corte-encabezado {
-    background-color: #f0f0f0;
-    font-weight: bold;
+  background-color: #f0f0f0;
+  font-weight: bold;
 }
 
 .pp-btn-eliminar {
-    padding: 0.25rem 0.5rem;
-    background-color: #dc3545;
-    color: white;
-    border: none;
-    border-radius: 3px;
-    cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
 }
 
 .pp-btn-eliminar:hover {
-    background-color: #a71d2a;
+  background-color: #a71d2a;
 }
 
-/* Tarjetas de cortes (ocultas por defecto en desktop) */
-.pp-cortes-tarjetas {
-    display: none;
-    flex-direction: column;
-    gap: 1rem;
-}
-
-.pp-corte-tarjeta {
-    border: 1px solid #ccc;
-    border-radius: 12px;
-    padding: 1rem;
-    background-color: #fafafa;
-}
-
-/* Total */
 .pp-total-peso {
-    margin-top: 1rem;
-    font-size: 1.2rem;
-    background-color: #f0f3f6;
-    padding: 0.75rem 1rem;
-    border-radius: 12px;
-    display: inline-block;
+  margin-top: 1rem;
+  font-size: 1.2rem;
+  background-color: #f0f3f6;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  display: inline-block;
 }
 
-/* Media query: en pantallas menores a 768px */
 @media (max-width: 768px) {
-    /* Ocultar tabla, mostrar tarjetas */
-    .pp-cortes-tabla {
-        display: none;
-    }
+  .pp-despostar-section .pp-form-group,
+  .pp-form-group {
+    grid-template-columns: 1fr;
+  }
 
-    .pp-cortes-tarjetas {
-        display: flex;
-    }
-
-    .pp-corte-tarjeta p {
-        margin: 0.25rem 0;
-    }
+  .pp-cortes-tabla {
+    display: none;
+  }
 }
