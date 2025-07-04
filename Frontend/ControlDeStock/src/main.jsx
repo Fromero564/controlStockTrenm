@@ -26,6 +26,7 @@ import ConfigurationProduct from './features/products/configurationProduct.jsx';
 import SalesPanel from './pages/SalesPanel.jsx';
 import Modal from 'react-modal';
 import AllproductsAvailables from './features/products/AllProductsAvailables.jsx';
+import LoadNewCategory from './features/products/LoadNewCategory.jsx';
 
 
 const router = createBrowserRouter([
@@ -136,14 +137,6 @@ const router = createBrowserRouter([
     ),
   },
    
-  // {
-  //   path: "/meat-income/:id/:remitoId",
-  //   element: (
-  //     <ProtectedRoute>
-  //       <MeatIncome />
-  //     </ProtectedRoute>
-  //   ),
-  // },
   {
     path: "/meat-manual-income/:remitoId/",
     element: (
@@ -165,6 +158,14 @@ const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <AllproductsAvailables />
+      </ProtectedRoute>
+    ),
+  },
+     {
+    path: "/category-load",
+    element: (
+      <ProtectedRoute>
+        <LoadNewCategory />
       </ProtectedRoute>
     ),
   },

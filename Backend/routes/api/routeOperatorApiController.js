@@ -31,12 +31,15 @@ router.get("/last-provider-bill",apiOperatorController.loadLastBillSupplier);
 //Api modificar ingreso por manual
 router.get("/getProductsFromRemito/:id",apiOperatorController.updateProductFromRemit);
 //Api para ver todos los productos congelados/otros productos que tengo cargue por manual
-router.get("/getOtherProductsFromRemito/:id",apiOperatorController.getOtherProductsFromRemito)
+router.get("/getOtherProductsFromRemito/:id",apiOperatorController.getOtherProductsFromRemito);
 //Api para ver stock disponible
-router.get("/all-products-stock",apiOperatorController.getProductStock)
+router.get("/all-products-stock",apiOperatorController.getProductStock);
 //Api para traer producto disponible por ID
 router.get("/product/:id", operatorApiController.getProductById);
-
+//Api para traer todas las categorias
+router.get("/all-product-categories",operatorApiController.getAllProductCatagories);
+//Api para crear nuevas categorias
+router.post("/uploadCategory",operatorApiController.loadNewCategory);
 //Api para cargar productos
 router.post("/uploadProduct",apiOperatorController.uploadProducts);
 //Api para cargar productos de proceso
@@ -48,7 +51,7 @@ router.post("/addProducts/:id",apiOperatorController.addIncomeMeat);
 //Api para crear nueva observacion de corte
 router.post("/observations-create",apiOperatorController.createObservation);
 //Agregar productos congelados o otro productos no cortes por manual
-router.post("/addOtherProductsManual",apiOperatorController.addOtherProductsManual)
+router.post("/addOtherProductsManual",apiOperatorController.addOtherProductsManual);
 //Api para actualizar los productos disponibles 
 router.put('/product-update/:id', operatorApiController.editProductAvailable);
 //Api para actualizar las piezas congeladas/otros productos

@@ -6,9 +6,15 @@ import '../../assets/styles/loadNewProduct.css';
 
 const LoadNewProduct = () => {
     const navigate = useNavigate();
-    const { id } = useParams(); 
+    const { id } = useParams();
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [productData, setProductData] = useState({ nombre: "", categoria: "primario" });
+    const [categoriasDisponibles, setCategoriasDisponibles] = useState([]);
+    const [productData, setProductData] = useState({
+        nombre: "",
+        categoria: "",
+        tipo: "externo"
+    });
+
     const API_URL = import.meta.env.VITE_API_URL;
 
     useEffect(() => {
@@ -20,7 +26,8 @@ const LoadNewProduct = () => {
                         const data = await response.json();
                         setProductData({
                             nombre: data.product_name || "",
-                            categoria: data.product_category || "primario"
+                            categoria: data.product_category || "",
+                            tipo: data.product_type || "externo"
                         });
                     } else {
                         Swal.fire("Error", "No se pudo cargar el producto.", "error");
@@ -36,6 +43,32 @@ const LoadNewProduct = () => {
         }
     }, [id, API_URL, navigate]);
 
+    useEffect(() => {
+        const fetchCategorias = async () => {
+            try {
+                const response = await fetch(`${API_URL}/all-product-categories`);
+                if (response.ok) {
+                    const data = await response.json();
+                    setCategoriasDisponibles(data);
+
+                    // Setear la primera categoría automáticamente si está vacío
+                    if (data.length > 0 && !productData.categoria) {
+                        setProductData(prev => ({
+                            ...prev,
+                            categoria: data[0].category_name
+                        }));
+                    }
+                } else {
+                    console.error("No se pudieron cargar las categorías.");
+                }
+            } catch (error) {
+                console.error("Error al traer categorías:", error);
+            }
+        };
+
+        fetchCategorias();
+    }, [API_URL, productData.categoria]);
+
     const handleChange = (e) => {
         const { name, value } = e.target;
         setProductData(prev => ({ ...prev, [name]: value }));
@@ -46,8 +79,9 @@ const LoadNewProduct = () => {
         if (isSubmitting) return;
         setIsSubmitting(true);
 
-        if (!productData.nombre.trim()) {
-            Swal.fire("Atención", "Por favor ingresá un nombre de producto.", "warning");
+        // Validación de campos obligatorios
+        if (!productData.nombre.trim() || !productData.categoria.trim() || !productData.tipo.trim()) {
+            Swal.fire("Atención", "Todos los campos son obligatorios.", "warning");
             setIsSubmitting(false);
             return;
         }
@@ -72,8 +106,11 @@ const LoadNewProduct = () => {
 
             const payload = {
                 product_name: productData.nombre,
-                product_category: productData.categoria
+                product_category: productData.categoria,
+                product_general_category: productData.tipo
             };
+
+            console.log("Payload enviado:", payload);
 
             const response = await fetch(url, {
                 method,
@@ -92,7 +129,8 @@ const LoadNewProduct = () => {
                 });
                 navigate("/all-products-availables");
             } else {
-                Swal.fire("Error", "Error al guardar el producto.", "error");
+                const err = await response.json();
+                Swal.fire("Error", err.mensaje || "Error al guardar el producto.", "error");
             }
         } catch (error) {
             console.error("Error en la solicitud:", error);
@@ -125,10 +163,47 @@ const LoadNewProduct = () => {
                         value={productData.categoria}
                         onChange={handleChange}
                     >
-                        <option value="primario">Primario</option>
-                        <option value="principal">Principal</option>
-                        <option value="subproducto">Subproducto</option>
+                        <option value="" disabled>Seleccionar categoría</option>
+                        {categoriasDisponibles.map((cat) => (
+                            <option key={cat.id} value={cat.category_name}>
+                                {cat.category_name}
+                            </option>
+                        ))}
                     </select>
+
+                    <fieldset className="radio-group">
+                        <legend>Tipo de Producto</legend>
+                        <label>
+                            <input
+                                type="radio"
+                                name="tipo"
+                                value="externo"
+                                checked={productData.tipo === "externo"}
+                                onChange={handleChange}
+                            />
+                            Externo
+                        </label>
+                        <label>
+                            <input
+                                type="radio"
+                                name="tipo"
+                                value="propio"
+                                checked={productData.tipo === "propio"}
+                                onChange={handleChange}
+                            />
+                            Propio
+                        </label>
+                        <label>
+                            <input
+                                type="radio"
+                                name="tipo"
+                                value="ambos"
+                                checked={productData.tipo === "ambos"}
+                                onChange={handleChange}
+                            />
+                            Ambos
+                        </label>
+                    </fieldset>
 
                     <button type="submit" disabled={isSubmitting}>
                         {isSubmitting ? "Guardando..." : id ? "Actualizar" : "Cargar"}

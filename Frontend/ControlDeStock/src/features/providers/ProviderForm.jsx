@@ -30,7 +30,7 @@ const ProviderForm = () => {
                 try {
                     const response = await fetch(`${API_URL}/chargeUpdateBillDetails/${id}`);
                     const data = await response.json();
-                   
+
 
                     setTipoIngreso(data.tipo_ingreso);
                     setUltimoRegistroFactura(data.internal_number);
@@ -62,7 +62,7 @@ const ProviderForm = () => {
                                 tipo: cong.tipo,
                                 nombre: producto?.nombre || cong.tipo,
                                 cantidad: Number(cong.cantidad) || 0,
-                              unidades: Number(cong.peso || cong.weight) || 0,
+                                unidades: Number(cong.peso || cong.weight) || 0,
 
 
                                 cod: producto?.id || "",
@@ -120,21 +120,32 @@ const ProviderForm = () => {
                 const response = await fetch(`${API_URL}/product-name`);
                 const data = await response.json();
 
+                console.log(" Productos recibidos:", data);
+
                 const productos = Array.isArray(data)
-                    ? data.map(producto => ({
-                        id: producto.id,
-                        nombre: producto.product_name,
-                        categoria: producto.product_category,
-                        cantidad: 0,
-                    }))
+                    ? data
+                        .filter(producto =>
+                            ["externo", "ambos"].includes(
+                                producto.product_general_category?.toLowerCase()
+                            )
+                        )
+                        .map(producto => ({
+                            id: producto.id,
+                            nombre: producto.product_name,
+                            categoria: producto.product_category,
+                            general: producto.product_general_category,
+                            cantidad: 0,
+                        }))
                     : [];
+
+                console.log(" Productos filtrados:", productos);
 
                 setCortes(productos);
             } catch (err) {
-                console.error("Error al obtener productos:", err);
+                console.error(" Error al obtener productos:", err);
             }
         };
-        fetchProductos();
+        fetchProductos()
     }, []);
 
     const opciones = cortes.map(corte => ({
@@ -317,12 +328,12 @@ const ProviderForm = () => {
             }
         }
 
-       for (const [i, congelado] of congeladosAgregados.entries()) {
-  if (!congelado.tipo || congelado.cantidad == null || congelado.unidades == null) {
-    Swal.fire('Error', `Faltan datos en producto congelado número ${i + 1}`, 'error');
-    return;
-  }
-}
+        for (const [i, congelado] of congeladosAgregados.entries()) {
+            if (!congelado.tipo || congelado.cantidad == null || congelado.unidades == null) {
+                Swal.fire('Error', `Faltan datos en producto congelado número ${i + 1}`, 'error');
+                return;
+            }
+        }
 
 
         const totalCantidadCortes = cortesAgregados.reduce((sum, corte) => sum + Number(corte.cantidad), 0);

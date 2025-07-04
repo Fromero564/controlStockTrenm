@@ -14,9 +14,44 @@ const ProcessMeat = db.ProcessMeat;
 const ObservationsMeatIncome = db.ObservationsMeatIncome;
 const ProductStock = db.ProductStock;
 const OtherProductManual = db.OtherProductManual;
+const ProductCategories = db.ProductCategories
 
 
 const operatorApiController = {
+    getAllProductCatagories: async (req, res) => {
+
+        try {
+            const allProductsCategories = await ProductCategories.findAll({});
+            res.json(allProductsCategories)
+        } catch (error) {
+            console.error("Error al obtener categorías:", error);
+            res.status(500).json({ error: "No se pueden cargar las categorias" })
+        }
+    },
+    loadNewCategory: async (req, res) => {
+        const { category_name } = req.body;
+
+        // Validación: que venga un nombre
+        if (!category_name || category_name.trim() === "") {
+            return res.status(400).json({ error: "El nombre de la categoría es obligatorio" });
+        }
+
+        // Formateo del nombre a mayúsculas
+        const formattedName = category_name.trim().toUpperCase();
+
+        try {
+            // Crear directamente sin verificar duplicado
+            await ProductCategories.create({
+                category_name: formattedName
+            });
+
+            res.status(201).json({ message: "Categoría creada correctamente" });
+
+        } catch (error) {
+            console.error("Error al crear categoría:", error);
+            res.status(500).json({ error: "No se pudo crear la categoría" });
+        }
+    },
 
     getProductStock: async (req, res) => {
         try {
@@ -551,7 +586,7 @@ const operatorApiController = {
                     }
                 }
             } else if (remito.income_state === "manual") {
-           
+
                 console.log("Ingreso manual, stock actualizado desde tablas manuales");
             }
 
@@ -565,67 +600,67 @@ const operatorApiController = {
 
 
 
-uploadProductsProcess: async (req, res) => {
-  try {
-    const {
-      type,
-      average,
-      quantity,
-      gross_weight,
-      tares,
-      net_weight
-    } = req.body;
+    uploadProductsProcess: async (req, res) => {
+        try {
+            const {
+                type,
+                average,
+                quantity,
+                gross_weight,
+                tares,
+                net_weight
+            } = req.body;
 
-    if (
-      !type ||
-      average === undefined || isNaN(average) ||
-      quantity === undefined || isNaN(quantity) ||
-      gross_weight === undefined || isNaN(gross_weight) ||
-      tares === undefined || isNaN(tares) ||
-      net_weight === undefined || isNaN(net_weight)
-    ) {
-      return res.status(400).json({ message: "Faltan campos obligatorios o hay valores inválidos." });
-    }
+            if (
+                !type ||
+                average === undefined || isNaN(average) ||
+                quantity === undefined || isNaN(quantity) ||
+                gross_weight === undefined || isNaN(gross_weight) ||
+                tares === undefined || isNaN(tares) ||
+                net_weight === undefined || isNaN(net_weight)
+            ) {
+                return res.status(400).json({ message: "Faltan campos obligatorios o hay valores inválidos." });
+            }
 
-    // Guardar en ProcessMeat
-    await ProcessMeat.create({
-      type,
-      average,
-      quantity,
-      gross_weight,
-      tares,
-      net_weight
-    });
+            // Guardar en ProcessMeat
+            await ProcessMeat.create({
+                type,
+                average,
+                quantity,
+                gross_weight,
+                tares,
+                net_weight
+            });
 
-    // Buscar en stock general
-    const existing = await ProductStock.findOne({ where: { product_name: type } });
+            // Buscar en stock general
+            const existing = await ProductStock.findOne({ where: { product_name: type } });
 
-    if (existing) {
-      // Actualizar cantidad
-      await existing.increment("product_quantity", { by: quantity });
-    } else {
-      // Buscar datos base para crear nuevo
-      const baseProduct = await ProductsAvailable.findOne({ where: { product_name: type } });
+            if (existing) {
+                // Actualizar cantidad
+                await existing.increment("product_quantity", { by: quantity });
+            } else {
+                // Buscar datos base para crear nuevo
+                const baseProduct = await ProductsAvailable.findOne({ where: { product_name: type } });
 
-      if (!baseProduct) {
-        return res.status(400).json({ message: `No se pudo crear el producto "${type}" porque no existe en ProductsAvailable.` });
-      }
+                if (!baseProduct) {
+                    return res.status(400).json({ message: `No se pudo crear el producto "${type}" porque no existe en ProductsAvailable.` });
+                }
 
-      await ProductStock.create({
-        product_name: type,
-        product_quantity: quantity,
-        product_cod: baseProduct.id,
-        product_category: baseProduct.product_category,
-      });
-    }
+                await ProductStock.create({
+                    product_name: type,
+                    product_quantity: quantity,
+                    product_cod: baseProduct.id,
+                    product_category: baseProduct.product_category,
+                });
+            }
 
-    return res.status(201).json({ message: "Corte y stock guardados correctamente." });
+            return res.status(201).json({ message: "Corte y stock guardados correctamente." });
 
-  } catch (error) {
-    console.error("Error al cargar datos:", error);
-    return res.status(500).json({ message: "Error interno del servidor", error: error.message });
-  }
-},
+        } catch (error) {
+            console.error("Error al cargar datos:", error);
+            return res.status(500).json({ message: "Error interno del servidor", error: error.message });
+        }
+    },
 
 
     chargeUpdateBillDetails: async (req, res) => {
@@ -1012,7 +1047,7 @@ uploadProductsProcess: async (req, res) => {
     loadAllProductsCategories: async (req, res) => {
         try {
             const allProductsCategories = await ProductsAvailable.findAll({
-                attributes: ['id', 'product_name', 'product_category'],
+                attributes: ['id', 'product_name', 'product_category','product_general_category'],
             });
 
 
@@ -1370,11 +1405,12 @@ uploadProductsProcess: async (req, res) => {
     editProductAvailable: async (req, res) => {
         try {
             const { id } = req.params;
-            const { product_name, product_category } = req.body;
+            const { product_name, product_category, product_general_category } = req.body;
 
-            if (!product_name || !product_category) {
+            if (!product_name || !product_category || !product_general_category) {
                 return res.status(400).json({ message: "Faltan campos obligatorios." });
             }
+
 
             const producto = await ProductsAvailable.findOne({ where: { id } });
 
@@ -1384,8 +1420,10 @@ uploadProductsProcess: async (req, res) => {
 
             await producto.update({
                 product_name,
-                product_category
+                product_category,
+                product_general_category
             });
+
 
             return res.status(200).json({ message: "Producto actualizado correctamente." });
         } catch (error) {

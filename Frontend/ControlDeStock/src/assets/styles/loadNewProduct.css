@@ -8,6 +8,20 @@
   background-color: #fafafa;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
 }
+.radio-group {
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}
+
+.radio-group legend {
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+}
+
+.radio-group label {
+  margin-right: 1rem;
+}
+
 
 /* Etiquetas */
 .product-form-container label {

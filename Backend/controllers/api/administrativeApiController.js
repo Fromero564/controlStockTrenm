@@ -13,11 +13,17 @@ const Client = db.Client;
 const administrativeApiController = {
     loadNewProduct: async (req, res) => {
         try {
-            const { product_name, product_category } = req.body;
+            const { product_name, product_category, product_general_category } = req.body;
+
+            // Validación básica
+            if (!product_name || !product_category || !product_general_category) {
+                return res.status(400).json({ mensaje: "Faltan campos obligatorios." });
+            }
 
             await ProductsAvailable.create({
                 product_name,
                 product_category,
+                product_general_category
             });
 
             res.status(201).json({ mensaje: 'Producto registrado con éxito' });
