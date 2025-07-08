@@ -2,10 +2,10 @@ module.exports = (sequelize, DataTypes) => {
     let alias = "MeatIncome";
 
     let cols = {
-        id: {
-            type: DataTypes.INTEGER,
+         id: {
+            type: DataTypes.BIGINT(10).UNSIGNED,
             primaryKey: true,
-            allowNull: false, 
+            autoIncrement: true
         },
         id_bill_suppliers: {
             type: DataTypes.INTEGER,

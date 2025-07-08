@@ -10,7 +10,7 @@ const AllProductsAvailables = () => {
   const [productos, setProductos] = useState([]);
   const [loading, setLoading] = useState(true);
   const API_URL = import.meta.env.VITE_API_URL;
-  const navigate = useNavigate(); 
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchProductos = async () => {
@@ -62,7 +62,7 @@ const AllProductsAvailables = () => {
     <>
       <Navbar />
       <div className="products-container">
-        <h1 className="products-title">Productos Disponibles</h1>
+        <h1 className="products-title">Listado de productos</h1>
 
         {loading ? (
           <p className="products-loading">Cargando...</p>
@@ -81,12 +81,12 @@ const AllProductsAvailables = () => {
                 <tr key={prod.id}>
                   <td>{prod.id}</td>
                   <td>{prod.product_name}</td>
-                  <td>{prod.product_category}</td>
+                  <td>{prod.category?.category_name || "Sin categoría"}</td>
                   <td>
                     <div className="products-actions">
                       <button
                         className="products-btn-icon products-btn-edit"
-                       onClick={() => navigate(`/product-load/${prod.id}`)}  
+                        onClick={() => navigate(`/product-load/${prod.id}`)}
                       >
                         <FontAwesomeIcon icon={faPen} />
                       </button>
@@ -108,6 +108,7 @@ const AllProductsAvailables = () => {
                 </tr>
               )}
             </tbody>
+
           </table>
         )}
       </div>

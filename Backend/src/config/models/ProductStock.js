@@ -34,6 +34,15 @@ module.exports = (sequelize, dataTypes) => {
 
     const ProductStock = sequelize.define(alias, cols, config);
 
+    ProductStock.associate = (models) => {
+  ProductStock.belongsTo(models.ProductsAvailable, {
+    foreignKey: "product_cod",
+    targetKey: "id",
+    as: "productAvailable",
+  });
+};
+
+
 
     return ProductStock;
 };

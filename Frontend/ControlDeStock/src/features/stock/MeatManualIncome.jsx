@@ -305,8 +305,10 @@ const MeatManualIncome = () => {
           value: producto.product_name,
           label: producto.product_name,
           id: producto.id,
-          categoria: producto.product_category,
+         categoria: producto.category_id,
         }));
+
+        console.log("Datos de las opciones:",opciones)
 
         setOpcionesProductos(opciones);
       } catch (err) {
@@ -430,10 +432,10 @@ const MeatManualIncome = () => {
       throw error;
     }
   };
-  const opcionesCortes = cortes.map((corte) => ({
-    value: corte.nombre,
-    label: corte.nombre,
-  }));
+  // const opcionesCortes = cortes.map((corte) => ({
+  //   value: corte.nombre,
+  //   label: corte.nombre,
+  // }));
 
   const handleGuardarObservacion = async () => {
     const texto = formData.observaciones?.trim() ?? "";
@@ -535,6 +537,8 @@ const MeatManualIncome = () => {
           product_cod: item.cod || null,
           product_category: item.categoria || null,
         }));
+
+        console.log("Productos que se envian:",payloadCongelados)
 
         const endpoint = isEditing
           ? `${API_URL}/editOtherProductsManual/${data.id}`
@@ -780,26 +784,26 @@ const eliminarCorte = async (index) => {
     }
 
   }, [cortesAgregados]);
-  useEffect(() => {
-    const saved = localStorage.getItem("cortes_en_edicion");
-    if (saved) {
-      const mapearCorteDesdeBackend = (item) => ({
-        id: item.id,
-        tipo: item.products_name || "",
-        cabeza: item.product_head ?? 0,
-        cantidad: parseFloat(item.products_quantity) || 0,
-        pesoProveedor: parseFloat(item.provider_weight) || 0,
-        pesoBruto: parseFloat(item.gross_weight) || 0,
-        tara: parseFloat(item.tare) || 0,
-        garron: item.products_garron || "",
-        pesoNeto:
-          (parseFloat(item.gross_weight) || 0) - (parseFloat(item.tare) || 0),
-      });
-      const cortesGuardados = JSON.parse(saved);
-      const cortesFormateados = cortesGuardados.map(mapearCorteDesdeBackend);
-      setCortesAgregados(cortesFormateados);
-    }
-  }, []);
+  // useEffect(() => {
+  //   const saved = localStorage.getItem("cortes_en_edicion");
+  //   if (saved) {
+  //     const mapearCorteDesdeBackend = (item) => ({
+  //       id: item.id,
+  //       tipo: item.products_name || "",
+  //       cabeza: item.product_head ?? 0,
+  //       cantidad: parseFloat(item.products_quantity) || 0,
+  //       pesoProveedor: parseFloat(item.provider_weight) || 0,
+  //       pesoBruto: parseFloat(item.gross_weight) || 0,
+  //       tara: parseFloat(item.tare) || 0,
+  //       garron: item.products_garron || "",
+  //       pesoNeto:
+  //         (parseFloat(item.gross_weight) || 0) - (parseFloat(item.tare) || 0),
+  //     });
+  //     const cortesGuardados = JSON.parse(saved);
+  //     const cortesFormateados = cortesGuardados.map(mapearCorteDesdeBackend);
+  //     setCortesAgregados(cortesFormateados);
+  //   }
+  // }, []);
   const eliminarCongelado = async (index) => {
     const producto = congeladosAgregados[index];
 
@@ -1421,8 +1425,10 @@ const eliminarCorte = async (index) => {
                   <thead>
                     <tr>
                       <th>TIPO</th>
+                      <th>NUMERO GARRON</th>
+                       <th>PESO ETIQUETA</th>
                       <th>CANTIDAD</th>
-                      <th>CABEZAS</th>
+                      <th>CABEZAS</th>                
                       <th>KG NETO</th>
                       <th>MERMA (%)</th>
                     </tr>
@@ -1439,6 +1445,8 @@ const eliminarCorte = async (index) => {
                       return (
                         <tr key={index}>
                           <td>{corte.tipo}</td>
+                           <td>{corte.garron}</td>
+                            <td>{corte.pesoProveedor}</td>
                           <td>{corte.cantidad}</td>
                           <td>{corte.cabeza}</td>
                           <td>{Number(corte.pesoNeto || 0).toFixed(2)}</td>
@@ -1456,6 +1464,8 @@ const eliminarCorte = async (index) => {
                       <td>
                         <strong>Diferencia declarado en romaneo</strong>
                       </td>
+                      <td></td>
+                      <td></td>
                       <td style={{ color: cantidad > totalAnimalesCargados ? "red" : "green" }}>
                         {cantidad - totalAnimalesCargados}{" "}
                         <span>

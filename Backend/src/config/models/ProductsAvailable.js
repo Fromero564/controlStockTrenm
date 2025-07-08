@@ -10,17 +10,22 @@ module.exports = (sequelize, dataTypes) => {
             type: dataTypes.STRING(255),
             allowNull: false
         },
-        product_category: {
-            type: dataTypes.STRING(255),
+        category_id: {
+            type: dataTypes.INTEGER,
             allowNull: false
         },
         product_general_category: {
             type: dataTypes.STRING(255),
             allowNull: false,
-        }
-
-
-
+        },
+        min_stock: {
+            type: dataTypes.INTEGER,
+            allowNull: false,
+        },
+        max_stock: {
+            type: dataTypes.INTEGER,
+            allowNull: false,
+        },
     };
 
     let config = {
@@ -31,6 +36,17 @@ module.exports = (sequelize, dataTypes) => {
     const ProductsAvailable = sequelize.define(alias, cols, config);
 
 
+    ProductsAvailable.associate = (models) => {
+        ProductsAvailable.belongsTo(models.ProductCategories, {
+            foreignKey: "category_id",
+            as: "category"
+        });
+
+        ProductsAvailable.hasMany(models.ProductStock, {  
+            foreignKey: "product_cod",
+            as: "stocks",
+        });
+    };
 
     return ProductsAvailable;
 };

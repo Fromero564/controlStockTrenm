@@ -4,6 +4,8 @@ const path = require("path");
 const apiOperatorController= require("../../controllers/api/operatorApiController.js");
 const operatorApiController = require("../../controllers/api/operatorApiController.js");
 
+//Api para ver todos los productos congelados/otros cargados
+router.get("/all-products-fresh-others",apiOperatorController.getAllOtherProductsManual);
 //Api para ver productos cargados
 router.get("/allProducts",apiOperatorController.allProducts);
 //Api para ver stock productos
@@ -38,6 +40,8 @@ router.get("/all-products-stock",apiOperatorController.getProductStock);
 router.get("/product/:id", operatorApiController.getProductById);
 //Api para traer todas las categorias
 router.get("/all-product-categories",operatorApiController.getAllProductCatagories);
+
+
 //Api para crear nuevas categorias
 router.post("/uploadCategory",operatorApiController.loadNewCategory);
 //Api para cargar productos
@@ -52,6 +56,8 @@ router.post("/addProducts/:id",apiOperatorController.addIncomeMeat);
 router.post("/observations-create",apiOperatorController.createObservation);
 //Agregar productos congelados o otro productos no cortes por manual
 router.post("/addOtherProductsManual",apiOperatorController.addOtherProductsManual);
+
+
 //Api para actualizar los productos disponibles 
 router.put('/product-update/:id', operatorApiController.editProductAvailable);
 //Api para actualizar las piezas congeladas/otros productos
@@ -68,6 +74,8 @@ router.put("/updateBillSupplier/:id",apiOperatorController.updateBillSupplier);
 router.put("/observations-edit/:id",apiOperatorController.updateObservationMeatIncome);
 //Api para actualizar los cortes cargados en un remito
 router.put("/meat-income-edit/:id",apiOperatorController.editAddIncome);
+
+
 //Api eliminar corte de la bd cuando se modifica detalle del proveedor
 router.delete("/delete-bill-detail/:id",apiOperatorController.deleteDetailProviderForm);
 //Api apra eliminar una tara

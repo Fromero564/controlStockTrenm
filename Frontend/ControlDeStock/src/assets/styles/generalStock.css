@@ -10,6 +10,46 @@ body {
     padding: 0 20px;
   }
   
+  .low-stock {
+  background-color: #ffe5e5;
+  color: #b10000;
+  font-weight: bold;
+}
+
+.high-stock {
+  background-color: #e5ffe5;
+  color: #006b00;
+  font-weight: bold;
+}
+
+.filters {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.filters label {
+  font-weight: bold;
+}
+
+.filters select {
+  margin-left: 0.5rem;
+  padding: 0.2rem 0.5rem;
+}
+.clear-button {
+  background-color: #ccc;
+  border: none;
+  padding: 0.4rem 0.8rem;
+  cursor: pointer;
+  border-radius: 5px;
+  font-weight: bold;
+  transition: background-color 0.3s ease;
+}
+
+.clear-button:hover {
+  background-color: #aaa;
+}
+
   .stock-title {
     font-size: 32px;
     font-weight: 700;

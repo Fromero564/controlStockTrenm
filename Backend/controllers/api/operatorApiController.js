@@ -18,6 +18,15 @@ const ProductCategories = db.ProductCategories
 
 
 const operatorApiController = {
+    getAllOtherProductsManual: async (req, res) => {
+        try {
+            const allOtherProducts = await OtherProductManual.findAll({});
+            res.json(allOtherProducts)
+        } catch (error) {
+            console.error("Error al obtener los productos congelados/otros cargados de forma manual:", error);
+            res.status(500).json({ error: "Error al obtener los productos congelados/otros cargados de forma manual" })
+        }
+    },
     getAllProductCatagories: async (req, res) => {
 
         try {
@@ -52,17 +61,40 @@ const operatorApiController = {
             res.status(500).json({ error: "No se pudo crear la categoría" });
         }
     },
-
     getProductStock: async (req, res) => {
         try {
-            let AllProductStock = await ProductStock.findAll({});
-            res.json(AllProductStock)
+            const AllProductStock = await ProductStock.findAll({
+                include: [
+                    {
+                        model: ProductsAvailable,
+                        as: "productAvailable",
+                        attributes: ["min_stock", "max_stock"],
+                    },
+                ],
+            });
+
+
+            const result = AllProductStock.map(stock => {
+                return {
+                    id: stock.id,
+                    product_name: stock.product_name,
+                    product_quantity: stock.product_quantity,
+                    product_cod: stock.product_cod,
+                    product_category: stock.product_category,
+                    min_stock: stock.productAvailable?.min_stock || 0,
+                    max_stock: stock.productAvailable?.max_stock || 0,
+
+                };
+            });
+
+            res.json(result);
         } catch (error) {
             console.error("Error al obtener los productos", error);
             res.status(500).json({ error: "Error al obtener los productos" });
-
         }
     },
+
+
     loadLastBillSupplier: async (req, res) => {
         try {
             const ultimoRegistro = await billSupplier.findOne({
@@ -575,13 +607,21 @@ const operatorApiController = {
                     if (producto) {
                         await producto.update({ product_quantity: cantidadTotal });
                     } else {
-                        const productoBase = await ProductsAvailable.findOne({ where: { product_name: nombre } });
+                        const productoBase = await ProductsAvailable.findOne({
+                            where: { product_name: nombre },
+                            include: {
+                                model: ProductCategories,
+                                as: "category",
+                                attributes: ["category_name"]
+                            }
+                        });
+
                         if (!productoBase) continue;
                         await ProductStock.create({
                             product_name: nombre,
-                            product_quantity: cantidadTotal,
+                            product_quantity: cantidad,
                             product_cod: productoBase.id,
-                            product_category: productoBase.product_category,
+                            product_category: productoBase.category.category_name
                         });
                     }
                 }
@@ -640,18 +680,26 @@ const operatorApiController = {
                 await existing.increment("product_quantity", { by: quantity });
             } else {
                 // Buscar datos base para crear nuevo
-                const baseProduct = await ProductsAvailable.findOne({ where: { product_name: type } });
+                await ProductsAvailable.findOne({
+                    where: { product_name: type },
+                    include: {
+                        model: ProductCategories,
+                        as: "category",
+                        attributes: ["category_name"]
+                    }
+                });
 
                 if (!baseProduct) {
                     return res.status(400).json({ message: `No se pudo crear el producto "${type}" porque no existe en ProductsAvailable.` });
                 }
 
                 await ProductStock.create({
-                    product_name: type,
-                    product_quantity: quantity,
-                    product_cod: baseProduct.id,
-                    product_category: baseProduct.product_category,
+                    product_name: nombre,
+                    product_quantity: cantidad,
+                    product_cod: productoBase.id,
+                    product_category: productoBase.category.category_name
                 });
+
             }
 
             return res.status(201).json({ message: "Corte y stock guardados correctamente." });
@@ -743,7 +791,6 @@ const operatorApiController = {
                 }
 
                 await meatIncome.create({
-                    id: garron,
                     id_bill_suppliers: Supplierid,
                     products_name: tipo,
                     products_garron: garron,
@@ -867,16 +914,25 @@ const operatorApiController = {
                 if (producto) {
                     await producto.update({ product_quantity: total });
                 } else {
-                    const productoBase = await ProductsAvailable.findOne({ where: { product_name: nombre } });
+                    const productoBase = await ProductsAvailable.findOne({
+                        where: { product_name: nombre },
+                        include: {
+                            model: ProductCategories,
+                            as: "category",
+                            attributes: ["category_name"]
+                        }
+                    });
+
                     if (productoBase) {
                         await ProductStock.create({
                             product_name: nombre,
-                            product_quantity: total,
+                            product_quantity: cantidad,
                             product_cod: productoBase.id,
-                            product_category: productoBase.product_category,
+                            product_category: productoBase.category.category_name
                         });
+
                     } else {
-                        console.warn(`⚠️ No se pudo crear stock para "${nombre}" porque no existe en ProductsAvailable.`);
+                        console.warn(`No se pudo crear stock para "${nombre}" porque no existe en ProductsAvailable.`);
                     }
                 }
             }
@@ -884,7 +940,7 @@ const operatorApiController = {
             return res.status(200).json({ mensaje: "Los productos fueron actualizados correctamente." });
 
         } catch (error) {
-            console.error("❌ Error al actualizar los cortes:", error);
+            console.error(" Error al actualizar los cortes:", error);
             return res.status(500).json({ mensaje: "Error al actualizar los cortes", error: error.message });
         }
     },
@@ -1047,9 +1103,15 @@ const operatorApiController = {
     loadAllProductsCategories: async (req, res) => {
         try {
             const allProductsCategories = await ProductsAvailable.findAll({
-                attributes: ['id', 'product_name', 'product_category','product_general_category'],
+                attributes: ['id', 'product_name', 'product_general_category', 'category_id'],
+                include: [
+                    {
+                        model: db.ProductCategories,
+                        as: 'category',
+                        attributes: ['id', 'category_name']
+                    }
+                ]
             });
-
 
             res.json(allProductsCategories);
         } catch (error) {
@@ -1057,6 +1119,7 @@ const operatorApiController = {
             return res.status(500).json({ message: "Error interno del servidor" });
         }
     },
+
 
     deleteDetailProviderForm: async (req, res) => {
         const { id } = req.params;
@@ -1136,15 +1199,28 @@ const operatorApiController = {
                     product_quantity,
                     product_net_weight,
                     product_gross_weight,
-                    decrease,
+                    decrease = 0,
                     id_bill_suppliers,
-                    product_cod,
-                    product_category
                 } = item;
 
                 if (!product_name || product_quantity == null || product_net_weight == null) {
-                    return res.status(400).json({ mensaje: "Datos incompletos en al menos un producto." });
+                    return res.status(400).json({ mensaje: `Datos incompletos en el producto "${product_name}".` });
                 }
+
+                // ✅ Buscar el producto base
+                const productoBase = await ProductsAvailable.findOne({
+                    where: { product_name },
+                    include: {
+                        model: ProductCategories,
+                        as: "category",
+                        attributes: ["category_name"],
+                    },
+                });
+
+                if (!productoBase || !productoBase.id || !productoBase.category || !productoBase.category.category_name) {
+                    return res.status(400).json({ mensaje: `No se puede guardar "${product_name}" porque falta ID o categoría.` });
+                }
+
 
                 await OtherProductManual.create({
                     product_name,
@@ -1154,9 +1230,11 @@ const operatorApiController = {
                     product_gross_weight,
                     decrease,
                     id_bill_suppliers,
+                    product_cod: productoBase.id,
+                    product_category: productoBase.category.category_name,
                 });
 
-                // ACTUALIZAR STOCK
+
                 const stock = await ProductStock.findOne({ where: { product_name } });
 
                 if (stock) {
@@ -1165,8 +1243,8 @@ const operatorApiController = {
                     await ProductStock.create({
                         product_name,
                         product_quantity,
-                        product_cod: product_cod || null,
-                        product_category: product_category || null,
+                        product_cod: productoBase.id,
+                        product_category: productoBase.category.category_name,
                     });
                 }
             }
@@ -1224,10 +1302,17 @@ const operatorApiController = {
                     return res.status(400).json({ mensaje: "Faltan campos obligatorios en al menos un producto congelado." });
                 }
 
-                const productoBase = await ProductsAvailable.findOne({ where: { product_name } });
+                const productoBase = await ProductsAvailable.findOne({
+                    where: { product_name },
+                    include: {
+                        model: ProductCategories,
+                        as: "category",
+                        attributes: ["category_name"]
+                    }
+                });
 
-                if (!productoBase || !productoBase.id || !productoBase.product_category) {
-                    console.log(`❌ Producto "${product_name}" no válido en ProductsAvailable.`);
+                if (!productoBase || !productoBase.id || !productoBase.category || !productoBase.category.category_name) {
+                    console.log(`Producto "${product_name}" no válido en ProductsAvailable.`);
                     return res.status(400).json({
                         mensaje: `No se puede crear stock para "${product_name}" porque falta ID o categoría.`,
                     });
@@ -1241,8 +1326,8 @@ const operatorApiController = {
                     product_portion,
                     decrease,
                     id_bill_suppliers: id,
-                    product_cod: productoBase.id, // ✔ este es el cod
-                    product_category: productoBase.product_category,
+                    product_cod: productoBase.id,
+                    product_category: productoBase.category.category_name,
                 });
             }
 
@@ -1270,10 +1355,17 @@ const operatorApiController = {
                 if (stock) {
                     await stock.update({ product_quantity: cantidadTotal });
                 } else {
-                    const productoBase = await ProductsAvailable.findOne({ where: { product_name: nombre } });
+                    const productoBase = await ProductsAvailable.findOne({
+                        where: { product_name: nombre },
+                        include: {
+                            model: ProductCategories,
+                            as: "category",
+                            attributes: ["category_name"]
+                        }
+                    });
 
-                    if (!productoBase || !productoBase.id || !productoBase.product_category) {
-                        console.log(` Producto "${nombre}" no válido para crear stock.`);
+                    if (!productoBase || !productoBase.id || !productoBase.category || !productoBase.category.category_name) {
+                        console.log(`Producto "${nombre}" no válido para crear stock.`);
                         return res.status(400).json({
                             mensaje: `No se puede crear stock para "${nombre}" porque falta ID o categoría.`,
                         });
@@ -1282,8 +1374,8 @@ const operatorApiController = {
                     await ProductStock.create({
                         product_name: nombre,
                         product_quantity: cantidadTotal,
-                        product_cod: productoBase.id, // ✔ este es el cod
-                        product_category: productoBase.product_category,
+                        product_cod: productoBase.id,
+                        product_category: productoBase.category.category_name,
                     });
                 }
             }
@@ -1291,7 +1383,7 @@ const operatorApiController = {
             return res.status(200).json({ mensaje: "Congelados actualizados correctamente." });
 
         } catch (error) {
-            console.error(" Error en editOtherProductsManual:", error);
+            console.error("Error en editOtherProductsManual:", error);
             return res.status(500).json({
                 mensaje: "Error al actualizar productos congelados",
                 error: error.message || error.toString(),
@@ -1300,7 +1392,6 @@ const operatorApiController = {
     },
 
 
-    // Eliminar congelado por ID
     deleteOtherProduct: async (req, res) => {
         try {
             const { id } = req.params;
@@ -1405,12 +1496,12 @@ const operatorApiController = {
     editProductAvailable: async (req, res) => {
         try {
             const { id } = req.params;
-            const { product_name, product_category, product_general_category } = req.body;
+            const { product_name, category_id, product_general_category, min_stock, max_stock } = req.body;
 
-            if (!product_name || !product_category || !product_general_category) {
+            // Validación de campos obligatorios
+            if (!product_name || !category_id || !product_general_category || min_stock == null || max_stock == null) {
                 return res.status(400).json({ message: "Faltan campos obligatorios." });
             }
-
 
             const producto = await ProductsAvailable.findOne({ where: { id } });
 
@@ -1420,10 +1511,11 @@ const operatorApiController = {
 
             await producto.update({
                 product_name,
-                product_category,
-                product_general_category
+                category_id,
+                product_general_category,
+                min_stock,
+                max_stock
             });
-
 
             return res.status(200).json({ message: "Producto actualizado correctamente." });
         } catch (error) {
@@ -1434,6 +1526,7 @@ const operatorApiController = {
             });
         }
     },
+
 
     getProductById: async (req, res) => {
         try {

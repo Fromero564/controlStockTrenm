@@ -1,17 +1,44 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import Navbar from "../../components/Navbar";
 import Swal from "sweetalert2";
 import '../../assets/styles/loadNewCategory.css';
 
-const LoadNewCategory = () => {
+const LoadCategory = () => {
   const [categoryName, setCategoryName] = useState("");
+  const [loading, setLoading] = useState(true);
+  const { id } = useParams(); // Detecta si estamos editando
   const API_URL = import.meta.env.VITE_API_URL;
   const navigate = useNavigate();
 
+  const isEditMode = !!id;
+
+  useEffect(() => {
+    if (!isEditMode) {
+      setLoading(false);
+      return;
+    }
+
+    const fetchCategory = async () => {
+      try {
+        const res = await fetch(`${API_URL}/product-category/${id}`);
+        if (!res.ok) throw new Error("Error al obtener la categoría");
+        const data = await res.json();
+        setCategoryName(data.category_name || "");
+      } catch (err) {
+        console.error("Error al cargar categoría:", err);
+        Swal.fire("Error", "No se pudo cargar la categoría.", "error");
+        navigate("/product-categories-list");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCategory();
+  }, [id]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     const trimmedName = categoryName.trim();
 
     if (trimmedName === "") {
@@ -19,29 +46,22 @@ const LoadNewCategory = () => {
     }
 
     const formattedName = trimmedName.toUpperCase();
-    console.log("Enviando categoría:", formattedName); // Debug opcional
 
     try {
-      const response = await fetch(`${API_URL}/uploadCategory`, {
-        method: "POST",
+      const res = await fetch(`${API_URL}/${isEditMode ? `category-product-edit/${id}` : "uploadCategory"}`, {
+        method: isEditMode ? "PUT" : "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ category_name: formattedName }),
       });
 
-      if (response.ok) {
-        await Swal.fire({
-          icon: "success",
-          title: "Categoría cargada",
-          text: "Se guardó correctamente.",
-          confirmButtonText: "Aceptar"
-        });
-        navigate("/all-products-availables");
+      if (res.ok) {
+        await Swal.fire("Éxito", `Categoría ${isEditMode ? "actualizada" : "cargada"} correctamente.`, "success");
+        navigate("/product-categories-list");
       } else {
-        const errorData = await response.json();
-        console.error("Error al guardar categoría:", errorData);
-        Swal.fire("Error", errorData?.error || "Error al guardar la categoría.", "error");
+        const error = await res.json();
+        Swal.fire("Error", error?.mensaje || "Ocurrió un error.", "error");
       }
 
     } catch (error) {
@@ -50,11 +70,13 @@ const LoadNewCategory = () => {
     }
   };
 
+  if (loading) return <p>Cargando...</p>;
+
   return (
     <div>
       <Navbar />
       <div className="category-form-container">
-        <h2>Cargar Nueva Categoría</h2>
+        <h2>{isEditMode ? "Editar Categoría" : "Cargar Nueva Categoría"}</h2>
         <form onSubmit={handleSubmit}>
           <label htmlFor="nombre">Nombre de la Categoría</label>
           <input
@@ -66,11 +88,13 @@ const LoadNewCategory = () => {
             required
           />
           <div className="category-form-buttons">
-            <button type="submit" className="category-btn-primary">Cargar</button>
+            <button type="submit" className="category-btn-primary">
+              {isEditMode ? "Actualizar" : "Cargar"}
+            </button>
             <button
               type="button"
               className="category-btn-secondary"
-              onClick={() => setCategoryName("")}
+              onClick={() => navigate("/product-categories-list")}
             >
               Cancelar
             </button>
@@ -81,4 +105,4 @@ const LoadNewCategory = () => {
   );
 };
 
-export default LoadNewCategory;
+export default LoadCategory;

@@ -11,8 +11,10 @@ const LoadNewProduct = () => {
     const [categoriasDisponibles, setCategoriasDisponibles] = useState([]);
     const [productData, setProductData] = useState({
         nombre: "",
-        categoria: "",
-        tipo: "externo"
+        categoriaId: "",
+        tipo: "externo",
+        min_stock: "",
+        max_stock: ""
     });
 
     const API_URL = import.meta.env.VITE_API_URL;
@@ -26,8 +28,10 @@ const LoadNewProduct = () => {
                         const data = await response.json();
                         setProductData({
                             nombre: data.product_name || "",
-                            categoria: data.product_category || "",
-                            tipo: data.product_type || "externo"
+                            categoriaId: data.category_id?.toString() || "",
+                            tipo: data.product_general_category || "externo",
+                            min_stock: data.min_stock?.toString() || "",
+                            max_stock: data.max_stock?.toString() || ""
                         });
                     } else {
                         Swal.fire("Error", "No se pudo cargar el producto.", "error");
@@ -51,11 +55,10 @@ const LoadNewProduct = () => {
                     const data = await response.json();
                     setCategoriasDisponibles(data);
 
-                    // Setear la primera categoría automáticamente si está vacío
-                    if (data.length > 0 && !productData.categoria) {
+                    if (data.length > 0 && !productData.categoriaId) {
                         setProductData(prev => ({
                             ...prev,
-                            categoria: data[0].category_name
+                            categoriaId: data[0].id.toString()
                         }));
                     }
                 } else {
@@ -67,7 +70,7 @@ const LoadNewProduct = () => {
         };
 
         fetchCategorias();
-    }, [API_URL, productData.categoria]);
+    }, [API_URL, productData.categoriaId]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -79,9 +82,20 @@ const LoadNewProduct = () => {
         if (isSubmitting) return;
         setIsSubmitting(true);
 
-        // Validación de campos obligatorios
-        if (!productData.nombre.trim() || !productData.categoria.trim() || !productData.tipo.trim()) {
+        if (
+            !productData.nombre.trim() ||
+            !productData.categoriaId.trim() ||
+            !productData.tipo.trim() ||
+            productData.min_stock === "" ||
+            productData.max_stock === ""
+        ) {
             Swal.fire("Atención", "Todos los campos son obligatorios.", "warning");
+            setIsSubmitting(false);
+            return;
+        }
+
+        if (isNaN(productData.min_stock) || isNaN(productData.max_stock)) {
+            Swal.fire("Atención", "Stock mínimo y máximo deben ser números válidos.", "warning");
             setIsSubmitting(false);
             return;
         }
@@ -106,8 +120,10 @@ const LoadNewProduct = () => {
 
             const payload = {
                 product_name: productData.nombre,
-                product_category: productData.categoria,
-                product_general_category: productData.tipo
+                category_id: parseInt(productData.categoriaId),
+                product_general_category: productData.tipo,
+                min_stock: parseInt(productData.min_stock),
+                max_stock: parseInt(productData.max_stock)
             };
 
             console.log("Payload enviado:", payload);
@@ -155,21 +171,39 @@ const LoadNewProduct = () => {
                         value={productData.nombre}
                         onChange={handleChange}
                     />
-
-                    <label htmlFor="categoria">Categoría</label>
+                    
+                    <label htmlFor="categoriaId">Categoría</label>
                     <select
-                        name="categoria"
-                        id="categoria"
-                        value={productData.categoria}
+                        name="categoriaId"
+                        id="categoriaId"
+                        value={productData.categoriaId}
                         onChange={handleChange}
                     >
+                        
                         <option value="" disabled>Seleccionar categoría</option>
                         {categoriasDisponibles.map((cat) => (
-                            <option key={cat.id} value={cat.category_name}>
+                            <option key={cat.id} value={cat.id}>
                                 {cat.category_name}
                             </option>
                         ))}
                     </select>
+                      <label htmlFor="min_stock">Stock Mínimo</label>
+                    <input
+                        type="number"
+                        name="min_stock"
+                        id="min_stock"
+                        value={productData.min_stock}
+                        onChange={handleChange}
+                    />
+
+                    <label htmlFor="max_stock">Stock Máximo</label>
+                    <input
+                        type="number"
+                        name="max_stock"
+                        id="max_stock"
+                        value={productData.max_stock}
+                        onChange={handleChange}
+                    />
 
                     <fieldset className="radio-group">
                         <legend>Tipo de Producto</legend>
@@ -204,6 +238,8 @@ const LoadNewProduct = () => {
                             Ambos
                         </label>
                     </fieldset>
+
+                  
 
                     <button type="submit" disabled={isSubmitting}>
                         {isSubmitting ? "Guardando..." : id ? "Actualizar" : "Cargar"}

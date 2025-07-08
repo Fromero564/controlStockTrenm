@@ -27,6 +27,7 @@ import SalesPanel from './pages/SalesPanel.jsx';
 import Modal from 'react-modal';
 import AllproductsAvailables from './features/products/AllProductsAvailables.jsx';
 import LoadNewCategory from './features/products/LoadNewCategory.jsx';
+import AllCategoriesList from './features/products/AllCategoriesList.jsx';
 
 
 const router = createBrowserRouter([
@@ -86,6 +87,15 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
+    {
+    path: "/product-categories-list",
+    element: (
+      <ProtectedRoute>
+        <AllCategoriesList />
+      </ProtectedRoute>
+    ),
+  },
+
   {
     path: "/product-load/:id",
     element: (
@@ -163,6 +173,14 @@ const router = createBrowserRouter([
   },
      {
     path: "/category-load",
+    element: (
+      <ProtectedRoute>
+        <LoadNewCategory />
+      </ProtectedRoute>
+    ),
+  },
+      {
+    path: "/category-load/:id",
     element: (
       <ProtectedRoute>
         <LoadNewCategory />

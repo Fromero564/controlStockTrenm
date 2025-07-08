@@ -8,22 +8,49 @@ const moment = require("moment");
 const ProductsAvailable = db.ProductsAvailable;
 const Provider = db.Provider;
 const meatIncome = db.MeatIncome;
+const ProductCategories = db.ProductCategories
 const Client = db.Client;
 
 const administrativeApiController = {
     loadNewProduct: async (req, res) => {
         try {
-            const { product_name, product_category, product_general_category } = req.body;
+            const {
+                product_name,
+                category_id,
+                product_general_category,
+                min_stock,
+                max_stock
+            } = req.body;
 
-            // Validación básica
-            if (!product_name || !product_category || !product_general_category) {
+            // Validación básica de campos obligatorios
+            if (
+                !product_name ||
+                !category_id ||
+                !product_general_category ||
+                min_stock === undefined ||
+                max_stock === undefined
+            ) {
                 return res.status(400).json({ mensaje: "Faltan campos obligatorios." });
+            }
+
+         
+            const min = parseInt(min_stock);
+            const max = parseInt(max_stock);
+
+            if (isNaN(min) || isNaN(max)) {
+                return res.status(400).json({ mensaje: "El stock mínimo y máximo deben ser números válidos." });
+            }
+
+            if (min > max) {
+                return res.status(400).json({ mensaje: "El stock mínimo no puede ser mayor que el stock máximo." });
             }
 
             await ProductsAvailable.create({
                 product_name,
-                product_category,
-                product_general_category
+                category_id,
+                product_general_category,
+                min_stock: min,
+                max_stock: max
             });
 
             res.status(201).json({ mensaje: 'Producto registrado con éxito' });
@@ -32,6 +59,7 @@ const administrativeApiController = {
             res.status(500).json({ mensaje: 'Error al registrar el producto', error });
         }
     },
+
 
     loadNewProvider: async (req, res) => {
 
@@ -248,6 +276,91 @@ const administrativeApiController = {
             return res.status(500).json({ message: "Error interno del servidor" });
         }
     },
+
+    allProductCategories: async (req, res) => {
+        try {
+            const allProductCategories = await ProductCategories.findAll({});
+            res.json(allProductCategories);
+        } catch (error) {
+            console.error("Error al obtener categorias:", error);
+            return res.status(500).json({ message: "Error interno del servidor" });
+        }
+    },
+
+    deleteProductCategory: async (req, res) => {
+        const { id } = req.params;
+
+        try {
+
+            const productosUsandoCategoria = await ProductsAvailable.findAll({
+                where: { category_id: id }
+            });
+
+            if (productosUsandoCategoria.length > 0) {
+                return res.status(400).json({
+                    mensaje: "No se puede eliminar la categoría porque está siendo utilizada por productos."
+                });
+            }
+
+            await db.ProductCategories.destroy({ where: { id } });
+            return res.status(200).json({ mensaje: "Categoría eliminada correctamente." });
+
+        } catch (error) {
+            console.error("Error al eliminar categoría:", error);
+            return res.status(500).json({ mensaje: "Error del servidor." });
+        }
+    },
+
+    editCategory: async (req, res) => {
+
+        const { id } = req.params;
+        const { category_name } = req.body;
+
+        // Validación: nombre obligatorio
+        if (!category_name || category_name.trim() === "") {
+            return res.status(400).json({ error: "El nombre de la categoría es obligatorio." });
+        }
+
+        const formattedName = category_name.trim().toUpperCase();
+
+        try {
+            // Buscar categoría por ID
+            const categoria = await ProductCategories.findByPk(id);
+
+            if (!categoria) {
+                return res.status(404).json({ error: "Categoría no encontrada." });
+            }
+
+            // Actualizar
+            await categoria.update({ category_name: formattedName });
+
+            return res.status(200).json({ message: "Categoría actualizada correctamente." });
+
+        } catch (error) {
+            console.error("Error al editar categoría:", error);
+            return res.status(500).json({ error: "Error del servidor al actualizar la categoría." });
+        }
+
+
+    },
+    getProductCategoryById: async (req, res) => {
+        const { id } = req.params;
+
+        try {
+            const category = await ProductCategories.findByPk(id);
+
+            if (!category) {
+                return res.status(404).json({ mensaje: "Categoría no encontrada." });
+            }
+
+            return res.status(200).json(category);
+        } catch (error) {
+            console.error("Error al obtener categoría:", error);
+            return res.status(500).json({ mensaje: "Error del servidor." });
+        }
+    },
+
+
 
 
 }

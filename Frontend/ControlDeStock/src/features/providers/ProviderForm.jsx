@@ -132,11 +132,12 @@ const ProviderForm = () => {
                         .map(producto => ({
                             id: producto.id,
                             nombre: producto.product_name,
-                            categoria: producto.product_category,
+                            categoria: producto.category?.category_name || "", 
                             general: producto.product_general_category,
                             cantidad: 0,
                         }))
                     : [];
+
 
                 console.log(" Productos filtrados:", productos);
 
@@ -491,7 +492,18 @@ const ProviderForm = () => {
                             </div>
                         ))}
                     </div>
-
+                      <label className="label-provider-form">
+                        PESO DECLARADO EN ROMANEO (KG):
+                        <input
+                            type="number"
+                            name="pesoTotal"
+                            step="0.01"
+                            className="input"
+                            min="0"
+                            value={formState.pesoTotal}
+                            onChange={(e) => setFormState({ ...formState, pesoTotal: e.target.value })}
+                        />
+                    </label>
                     {/* CONGELADOS */}
                     {mostrarCongelados && (
                         <div className="cortes-section">
@@ -530,18 +542,7 @@ const ProviderForm = () => {
                         </div>
                     )}
 
-                    <label className="label-provider-form">
-                        PESO DECLARADO EN ROMANEO (KG):
-                        <input
-                            type="number"
-                            name="pesoTotal"
-                            step="0.01"
-                            className="input"
-                            min="0"
-                            value={formState.pesoTotal}
-                            onChange={(e) => setFormState({ ...formState, pesoTotal: e.target.value })}
-                        />
-                    </label>
+                   
 
                     <div className="button-container">
                         <button type="submit" className="button-primary">

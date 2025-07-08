@@ -7,6 +7,7 @@ const ViewMeatBillQuantity = ({ id, onClose }) => {
     const [remito, setRemito] = useState(null);
     const [observacion, setObservacion] = useState(null);
     const [cortesStock, setCortesStock] = useState([]);
+    const [otrosProductos, setOtrosProductos] = useState([]);
 
     useEffect(() => {
         if (id) {
@@ -23,6 +24,14 @@ const ViewMeatBillQuantity = ({ id, onClose }) => {
                             item => parseInt(item.id_bill_suppliers) === parseInt(data.internal_number)
                         );
                         setCortesStock(cortesDelRemito);
+
+                        // NUEVO: traer otros productos congelados (manual)
+                        const otrosResponse = await fetch(`${API_URL}/all-products-fresh-others`);
+                        const otrosData = await otrosResponse.json();
+                        const filtrados = otrosData.filter(
+                            item => parseInt(item.id_bill_suppliers) === parseInt(data.internal_number)
+                        );
+                        setOtrosProductos(filtrados);
                     }
 
                     const obsResponse = await fetch(`${API_URL}/allObservations`);
@@ -60,7 +69,6 @@ const ViewMeatBillQuantity = ({ id, onClose }) => {
                             <th>Tipo</th>
                             <th>Cantidad</th>
                             <th>Cabezas</th>
-                           
                         </tr>
                     </thead>
                     <tbody>
@@ -69,13 +77,11 @@ const ViewMeatBillQuantity = ({ id, onClose }) => {
                                 <td>{corte.tipo}</td>
                                 <td>{corte.cantidad}</td>
                                 <td>{corte.cabezas}</td>
-                           
                             </tr>
                         ))}
                     </tbody>
                 </table>
 
-                {/* Nueva tabla para congelados */}
                 {remito.congelados && remito.congelados.length > 0 && (
                     <>
                         <h3>Productos Congelados</h3>
@@ -129,6 +135,37 @@ const ViewMeatBillQuantity = ({ id, onClose }) => {
                                         <td>{corte.tare}</td>
                                         <td>{corte.net_weight}</td>
                                         <td>{corte.decrease}%</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </>
+                )}
+
+                {/* NUEVO BLOQUE: Otros congelados manuales */}
+                {otrosProductos.length > 0 && (
+                    <>
+                        <h3>Otros Productos Congelados (Manual)</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>Cantidad</th>
+                                    <th>Peso Neto</th>
+                                    <th>Peso Bruto</th>
+                                    <th>Porciones</th>
+                                    <th>Merma</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {otrosProductos.map((prod) => (
+                                    <tr key={prod.id}>
+                                        <td>{prod.product_name}</td>
+                                        <td>{prod.product_quantity}</td>
+                                        <td>{prod.product_net_weight}</td>
+                                        <td>{prod.product_gross_weight}</td>
+                                        <td>{prod.product_portion || "-"}</td>
+                                        <td>{prod.decrease}%</td>
                                     </tr>
                                 ))}
                             </tbody>

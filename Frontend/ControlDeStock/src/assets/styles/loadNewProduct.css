@@ -8,6 +8,8 @@
   background-color: #fafafa;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
 }
+
+/* Radio group */
 .radio-group {
   margin-top: 1rem;
   margin-bottom: 1rem;
@@ -22,7 +24,6 @@
   margin-right: 1rem;
 }
 
-
 /* Etiquetas */
 .product-form-container label {
   display: block;
@@ -33,6 +34,7 @@
 
 /* Inputs y selects */
 .product-form-container input[type="text"],
+.product-form-container input[type="number"],
 .product-form-container select {
   width: 100%;
   padding: 0.6rem;
@@ -40,6 +42,18 @@
   border: 1px solid #ccc;
   border-radius: 8px;
   font-size: 1rem;
+  box-sizing: border-box;
+}
+
+/* Opcional: eliminar flechas de inputs number */
+.product-form-container input[type="number"]::-webkit-outer-spin-button,
+.product-form-container input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.product-form-container input[type="number"] {
+  -moz-appearance: textfield;
 }
 
 /* Botones */
