@@ -1,0 +1,44 @@
+.warehouse-stock-container {
+  padding: 20px;
+}
+
+.stock-form {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 30px;
+  flex-wrap: wrap;
+}
+
+.stock-form select,
+.stock-form input {
+  padding: 8px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+}
+
+.stock-form button {
+  padding: 8px 12px;
+  background-color: #3085d6;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.warehouse-section {
+  margin-bottom: 30px;
+}
+
+.warehouse-stock-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+.warehouse-stock-table th,
+.warehouse-stock-table td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: left;
+}

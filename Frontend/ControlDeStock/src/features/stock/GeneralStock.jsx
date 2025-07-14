@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import Navbar from "../../components/Navbar.jsx";
+import { useNavigate } from "react-router-dom";
 import "../../assets/styles/generalStock.css";
 
 const GeneralStock = () => {
@@ -8,7 +9,9 @@ const GeneralStock = () => {
   const [selectedCategory, setSelectedCategory] = useState("Todas");
   const [stockAlert, setStockAlert] = useState("Todos");
   const [categories, setCategories] = useState([]);
-  const [searchQuery, setSearchQuery] = useState(""); // NUEVO ESTADO
+  const [searchQuery, setSearchQuery] = useState(""); 
+    const navigate = useNavigate();
+
 
   const API_URL = import.meta.env.VITE_API_URL;
 
@@ -57,6 +60,7 @@ const GeneralStock = () => {
       <Navbar />
       <div className="stock-container">
         <h1 className="stock-title">Stock</h1>
+        <button onClick={() => navigate("/warehouse-stock")}>Ver por almacenes</button>
 
         <div className="filters">
           <label>

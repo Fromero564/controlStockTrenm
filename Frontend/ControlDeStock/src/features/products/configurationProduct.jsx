@@ -15,7 +15,7 @@ const configurationProduct = () => {
         { title: "PRODUCTOS", desc: "Aca se pueden agregar nuevos productos", viewPath: "/all-products-availables", newPath: "/product-load", newText: "Nuevo producto" },
         { title: "TARAS", desc: "Aca se pueden agregar nuevas taras y ver todas las disponibles", viewPath: "/all-tares", newPath: "/tare-load", newText: "Nueva tara" },
         { title: "CATEGORIAS", desc: "Aca se pueden agregar o eliminar categorias", viewPath: "/product-categories-list", newPath: "/category-load", newText: "Nueva categoria" },
-
+        { title: "ALMACENES", desc: "Aca se pueden agregar o eliminar almacenes", viewPath: "/warehouses-list", newPath: "/warehouse-load", newText: "Nuevo almacen" },
     ];
 
     return (

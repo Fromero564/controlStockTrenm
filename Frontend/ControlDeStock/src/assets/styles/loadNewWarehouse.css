@@ -1,0 +1,60 @@
+.warehouse-form-container {
+  background-color: #fff;
+  width: 400px;
+  margin: 80px auto;
+  padding: 30px 40px;
+  border-radius: 12px;
+  box-shadow: 0 0 15px rgba(0,0,0,0.1);
+  text-align: left;
+}
+
+.warehouse-form-container h2 {
+  font-size: 22px;
+  margin-bottom: 20px;
+}
+
+.warehouse-form-container label {
+  display: block;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.warehouse-form-container input {
+  width: 100%;
+  padding: 10px;
+  font-size: 16px;
+  margin-bottom: 20px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+}
+
+.warehouse-form-buttons {
+  display: flex;
+  justify-content: space-between;
+}
+
+.warehouse-btn-primary {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 10px 18px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.warehouse-btn-primary:hover {
+  background-color: #0056b3;
+}
+
+.warehouse-btn-secondary {
+  background-color: #ccc;
+  color: #333;
+  border: none;
+  padding: 10px 18px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.warehouse-btn-secondary:hover {
+  background-color: #aaa;
+}

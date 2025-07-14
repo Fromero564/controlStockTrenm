@@ -28,6 +28,10 @@ import Modal from 'react-modal';
 import AllproductsAvailables from './features/products/AllProductsAvailables.jsx';
 import LoadNewCategory from './features/products/LoadNewCategory.jsx';
 import AllCategoriesList from './features/products/AllCategoriesList.jsx';
+import LoadWarehouse from './features/products/LoadNewWarehouse.jsx';
+import AllWarehousesList from './features/products/AllWarehousesList.jsx';
+import WarehouseStockView from './features/stock/WarehousesStockView.jsx';
+
 
 
 const router = createBrowserRouter([
@@ -87,6 +91,30 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
+    {
+    path: "/warehouse-load",
+    element: (
+      <ProtectedRoute>
+        <LoadWarehouse />
+      </ProtectedRoute>
+    ),
+  },
+  {
+  path: "/warehouse-load/:id",
+  element: (
+    <ProtectedRoute>
+      <LoadWarehouse />
+    </ProtectedRoute>
+  ),
+},
+{
+  path: "/warehouses-list",
+  element: (
+    <ProtectedRoute>
+      <AllWarehousesList />
+    </ProtectedRoute>
+  ),
+},
     {
     path: "/product-categories-list",
     element: (
@@ -211,6 +239,15 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
+    {
+    path: "/warehouse-stock",
+    element: (
+      <ProtectedRoute>
+        <WarehouseStockView />
+      </ProtectedRoute>
+    ),
+  },
+
   {
     path: "/all-tares",
     element: (

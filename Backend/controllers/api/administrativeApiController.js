@@ -10,6 +10,8 @@ const Provider = db.Provider;
 const meatIncome = db.MeatIncome;
 const ProductCategories = db.ProductCategories
 const Client = db.Client;
+const Warehouses= db.Warehouses;
+const WarehouseStock= db.WarehouseStock;
 
 const administrativeApiController = {
     loadNewProduct: async (req, res) => {
@@ -359,6 +361,272 @@ const administrativeApiController = {
             return res.status(500).json({ mensaje: "Error del servidor." });
         }
     },
+
+    loadNewWarehouse:async(req,res)=>{
+          try {
+      const { warehouse_name } = req.body;
+
+      if (!warehouse_name || warehouse_name.trim() === "") {
+        return res.status(400).json({ mensaje: "El nombre del depósito es obligatorio." });
+      }
+
+      const nombreFormateado = warehouse_name.trim().toUpperCase();
+
+      // Verificamos si ya existe uno con el mismo nombre
+      const existing = await Warehouses.findOne({
+        where: { Warehouse_name: nombreFormateado }
+      });
+
+      if (existing) {
+        return res.status(409).json({ mensaje: "Ya existe un depósito con ese nombre." });
+      }
+
+      await Warehouses.create({
+        Warehouse_name: nombreFormateado
+      });
+
+      return res.status(201).json({ mensaje: "Depósito creado exitosamente." });
+
+    } catch (error) {
+      console.error("Error al crear depósito:", error);
+      return res.status(500).json({ mensaje: "Error interno del servidor." });
+    }
+  },
+  editWarehouse: async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { warehouse_name } = req.body;
+
+    if (!id || !warehouse_name || warehouse_name.trim() === "") {
+      return res.status(400).json({ mensaje: "ID y nombre son requeridos." });
+    }
+
+    const nombreFormateado = warehouse_name.trim().toUpperCase();
+
+    const warehouse = await db.Warehouses.findByPk(id);
+    if (!warehouse) {
+      return res.status(404).json({ mensaje: "Depósito no encontrado." });
+    }
+
+    await warehouse.update({ Warehouse_name: nombreFormateado });
+
+    return res.status(200).json({ mensaje: "Depósito actualizado correctamente." });
+  } catch (error) {
+    console.error("Error al editar depósito:", error);
+    return res.status(500).json({ mensaje: "Error interno del servidor." });
+  }
+},
+deleteWarehouse: async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({ mensaje: "ID requerido para eliminar." });
+    }
+
+    const warehouse = await db.Warehouses.findByPk(id);
+    if (!warehouse) {
+      return res.status(404).json({ mensaje: "Depósito no encontrado." });
+    }
+
+    await warehouse.destroy();
+
+    return res.status(200).json({ mensaje: "Depósito eliminado correctamente." });
+  } catch (error) {
+    console.error("Error al eliminar depósito:", error);
+    return res.status(500).json({ mensaje: "Error interno del servidor." });
+  }
+},
+getAllWarehouses: async (req, res) => {
+  try {
+    const warehouses = await db.Warehouses.findAll({
+      order: [["id", "ASC"]], 
+    });
+
+    return res.status(200).json(warehouses);
+  } catch (error) {
+    console.error("Error al obtener los depósitos:", error);
+    return res.status(500).json({ mensaje: "Error interno del servidor." });
+  }
+},
+getOneWarehouse: async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const warehouse = await Warehouses.findByPk(id);
+
+    if (!warehouse) {
+      return res.status(404).json({ mensaje: "Depósito no encontrado." });
+    }
+
+    return res.status(200).json(warehouse);
+  } catch (error) {
+    console.error("Error al obtener depósito:", error);
+    return res.status(500).json({ mensaje: "Error interno del servidor." });
+  }
+},
+getAllWarehouseStock: async (req, res) => {
+  try {
+    const data = await WarehouseStock.findAll({
+      include: [{ model: Warehouses, as: "warehouse" }],
+      order: [["id_warehouse", "ASC"]]
+    });
+    return res.status(200).json(data);
+  } catch (error) {
+    console.error("Error al obtener stock por depósito:", error);
+    return res.status(500).json({ mensaje: "Error interno del servidor." });
+  }
+},
+assignStockToWarehouse: async (req, res) => {
+  const { id_warehouse, product_name, quantity } = req.body;
+
+  if (!id_warehouse || !product_name || quantity == null) {
+    return res.status(400).json({ mensaje: "Faltan datos" });
+  }
+
+  try {
+ 
+    const totalGeneral = await ProductsAvailable.findOne({
+      where: { product_name }
+    });
+
+    if (!totalGeneral) {
+      return res.status(404).json({ mensaje: "Producto no encontrado en stock general" });
+    }
+
+    const totalAsignado = await WarehouseStock.sum("quantity", {
+      where: { product_name }
+    });
+
+    const disponible = totalGeneral.product_quantity - (totalAsignado || 0);
+
+    if (quantity > disponible) {
+      return res.status(400).json({
+        mensaje: `No hay suficiente stock disponible. Disponible: ${disponible}`
+      });
+    }
+
+   
+    const existing = await WarehouseStock.findOne({
+      where: { id_warehouse, product_name }
+    });
+
+    if (existing) {
+      existing.quantity += quantity;
+      await existing.save();
+    } else {
+      await WarehouseStock.create({
+        id_warehouse,
+        product_name,
+        quantity
+      });
+    }
+
+    return res.status(200).json({ mensaje: "Stock asignado correctamente." });
+  } catch (error) {
+    console.error("Error al asignar stock:", error);
+    return res.status(500).json({ mensaje: "Error interno del servidor." });
+  }
+},
+removeFromWarehouse: async (req, res) => {
+  const { id_warehouse, product_name, quantity } = req.body;
+
+  try {
+    const registro = await WarehouseStock.findOne({
+      where: { id_warehouse, product_name }
+    });
+
+    if (!registro || registro.quantity < quantity) {
+      return res.status(400).json({ mensaje: "No hay suficiente stock en el depósito." });
+    }
+
+    registro.quantity -= quantity;
+
+    if (registro.quantity === 0) {
+      await registro.destroy();
+    } else {
+      await registro.save();
+    }
+
+    return res.status(200).json({ mensaje: "Stock descontado del depósito." });
+  } catch (error) {
+    console.error("Error al descontar:", error);
+    return res.status(500).json({ mensaje: "Error interno del servidor." });
+  }
+},
+getUnassignedStock: async (req, res) => {
+  try {
+    const allProducts = await ProductsAvailable.findAll();
+
+    const result = await Promise.all(allProducts.map(async (prod) => {
+      const totalAsignado = await db.WarehouseStock.sum("quantity", {
+        where: { product_name: prod.product_name }
+      });
+
+      const cantidadSinAsignar = prod.product_quantity - (totalAsignado || 0);
+
+      return {
+        product_name: prod.product_name,
+        total_general: prod.product_quantity,
+        asignado: totalAsignado || 0,
+        sin_asignar: cantidadSinAsignar
+      };
+    }));
+
+    return res.status(200).json(result);
+  } catch (error) {
+    console.error("Error al calcular stock sin asignar:", error);
+    return res.status(500).json({ mensaje: "Error interno del servidor." });
+  }
+},
+
+updateWarehouseStock: async (req, res) => {
+  const { id_warehouse, product_name, new_quantity } = req.body;
+
+  if (!id_warehouse || !product_name || new_quantity == null) {
+    return res.status(400).json({ mensaje: "Faltan datos." });
+  }
+
+  try {
+    const totalGeneral = await db.ProductsAvailable.findOne({ where: { product_name } });
+
+    if (!totalGeneral) {
+      return res.status(404).json({ mensaje: "Producto no encontrado en stock general." });
+    }
+
+    const totalAsignado = await db.WarehouseStock.sum("quantity", {
+      where: { product_name }
+    });
+
+    const actualRegistro = await db.WarehouseStock.findOne({
+      where: { id_warehouse, product_name }
+    });
+
+    const diferencia = new_quantity - (actualRegistro?.quantity || 0);
+    const disponible = totalGeneral.product_quantity - (totalAsignado - (actualRegistro?.quantity || 0));
+
+    if (diferencia > disponible) {
+      return res.status(400).json({ mensaje: `No hay suficiente stock general. Disponible: ${disponible}` });
+    }
+
+    if (actualRegistro) {
+      if (new_quantity <= 0) {
+        await actualRegistro.destroy();
+      } else {
+        actualRegistro.quantity = new_quantity;
+        await actualRegistro.save();
+      }
+    } else {
+      await db.WarehouseStock.create({ id_warehouse, product_name, quantity: new_quantity });
+    }
+
+    return res.status(200).json({ mensaje: "Stock del depósito actualizado correctamente." });
+  } catch (error) {
+    console.error("Error al actualizar stock:", error);
+    return res.status(500).json({ mensaje: "Error del servidor." });
+  }
+}
+
 
 
 
