@@ -8,6 +8,9 @@ const LoadNewProvider = () => {
     const navigate = useNavigate();
     const { id } = useParams();
     const [countries, setCountries] = useState([]);
+    const [provincias, setProvincias] = useState([]);
+    const [localidades, setLocalidades] = useState([]);
+
     const API_URL = import.meta.env.VITE_API_URL;
     const [formData, setFormData] = useState({
         id,
@@ -22,6 +25,74 @@ const LoadNewProvider = () => {
         provinciaProveedor: "",
         localidadProveedor: "",
     });
+
+    const esArgentina = formData.paisProveedor === "Argentina";
+
+    useEffect(() => {
+        if (!esArgentina) {
+            setLocalidades([]);
+            return;
+        }
+
+        const fetchLocalidades = async () => {
+            setLocalidades([]);
+
+            if (!formData.provinciaProveedor) return;
+
+            try {
+                const res = await fetch(`https://apis.datos.gob.ar/georef/api/localidades?provincia=${encodeURIComponent(formData.provinciaProveedor)}&max=1000`);
+                if (res.ok) {
+                    const data = await res.json();
+                    const nombresLocalidades = data.localidades
+                        .map(loc => loc.nombre)
+                        .sort((a, b) => a.localeCompare(b));
+                    setLocalidades(nombresLocalidades);
+                }
+            } catch (error) {
+                console.error("Error al obtener localidades:", error);
+            }
+        };
+
+        fetchLocalidades();
+    }, [formData.provinciaProveedor, esArgentina]);
+
+    useEffect(() => {
+        const fetchProvincias = async () => {
+            try {
+                const res = await fetch("https://apis.datos.gob.ar/georef/api/provincias");
+                if (res.ok) {
+                    const data = await res.json();
+                    const provinciasOrdenadas = data.provincias
+                        .map(p => p.nombre)
+                        .sort((a, b) => a.localeCompare(b));
+                    setProvincias(provinciasOrdenadas);
+                }
+            } catch (error) {
+                console.error("Error al obtener provincias:", error);
+            }
+        };
+
+        fetchProvincias();
+    }, []);
+
+    useEffect(() => {
+        const fetchCountries = async () => {
+            try {
+                const res = await fetch("https://restcountries.com/v3.1/all?fields=name");
+                if (res.ok) {
+                    const data = await res.json();
+                    const countryNames = data
+                        .map(c => c.name.common)
+                        .sort((a, b) => a.localeCompare(b));
+                    setCountries(countryNames);
+                }
+            } catch (error) {
+                console.error("Error fetching countries:", error);
+            }
+        };
+
+        fetchCountries();
+    }, []);
 
     useEffect(() => {
         const fetchProveedor = async () => {
@@ -43,8 +114,6 @@ const LoadNewProvider = () => {
                             provinciaProveedor: data.provider_province || "",
                             localidadProveedor: data.provider_location || "",
                         });
-                    } else {
-                        console.error("No se pudo cargar el proveedor.");
                     }
                 } catch (error) {
                     console.error("Error al buscar proveedor:", error);
@@ -55,38 +124,43 @@ const LoadNewProvider = () => {
         fetchProveedor();
     }, [id]);
 
-    useEffect(() => {
-        const fetchCountries = async () => {
-            try {
-                const res = await fetch("https://restcountries.com/v3.1/all?fields=name");
-                if (res.ok) {
-                    const data = await res.json();
-                    const countryNames = data
-                        .map(c => c.name.common)
-                        .sort((a, b) => a.localeCompare(b));
-                    setCountries(countryNames);
-                }
-            } catch (error) {
-                console.error("Error fetching countries:", error);
-            }
-        };
-
-        fetchCountries();
-    }, []);
-
     const handleChange = (e) => {
+        const { name, value } = e.target;
+
+        if (name === "paisProveedor") {
+            const esArg = value === "Argentina";
+            setFormData({
+                ...formData,
+                paisProveedor: value,
+                provinciaProveedor: "",
+                localidadProveedor: "",
+            });
+            if (!esArg) {
+                setLocalidades([]);
+            }
+            return;
+        }
+
+        if (name === "provinciaProveedor") {
+            setFormData({
+                ...formData,
+                provinciaProveedor: value,
+                localidadProveedor: "",
+            });
+            return;
+        }
+
         setFormData({
             ...formData,
-            [e.target.name]: e.target.value,
+            [name]: value,
         });
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        // Validación: todos los campos son obligatorios
         const values = Object.values(formData);
-      if (values.some(value => typeof value === "string" && value.trim() === "")) {
+        if (values.some(value => typeof value === "string" && value.trim() === "")) {
             Swal.fire({
                 icon: "warning",
                 title: "Campos incompletos",
@@ -109,22 +183,25 @@ const LoadNewProvider = () => {
                 body: JSON.stringify(formData),
             });
 
-            if (response.ok) {
-                Swal.fire({
-                    icon: 'success',
-                    title: id ? 'Proveedor actualizado' : 'Proveedor creado',
-                    text: 'Los datos se guardaron correctamente',
-                    confirmButtonText: 'Aceptar'
-                }).then(() => {
-                    navigate("/operator-panel");
-                });
-            } else {
+            if (!response.ok) {
+                const errorData = await response.json();
                 Swal.fire({
                     icon: "error",
                     title: "Error al guardar",
-                    text: "No se pudieron guardar los datos.",
+                    text: errorData?.mensaje || "No se pudieron guardar los datos.",
                 });
+                return;
             }
+
+            Swal.fire({
+                icon: 'success',
+                title: id ? 'Proveedor actualizado' : 'Proveedor creado',
+                text: 'Los datos se guardaron correctamente',
+                confirmButtonText: 'Aceptar'
+            }).then(() => {
+                navigate("/operator-panel");
+            });
+
         } catch (error) {
             console.error("Error en la solicitud:", error);
         }
@@ -133,6 +210,11 @@ const LoadNewProvider = () => {
     return (
         <div>
             <Navbar />
+            <div style={{ margin: "20px" }}>
+                <button className="boton-volver" onClick={() => navigate(-1)}>
+                    ⬅ Volver
+                </button>
+            </div>
             <h2 className="title-proveedor">{id ? "EDITAR PROVEEDOR" : "NUEVO PROVEEDOR"}</h2>
             <form className="provider-form-load" onSubmit={handleSubmit}>
                 <div className="form-grid">
@@ -201,12 +283,50 @@ const LoadNewProvider = () => {
 
                     <div className="form-group-provider">
                         <label htmlFor="provinciaProveedor">Provincia</label>
-                        <input type="text" name="provinciaProveedor" id="provinciaProveedor" value={formData.provinciaProveedor} onChange={handleChange} required />
+                        {esArgentina ? (
+                            <select name="provinciaProveedor" id="provinciaProveedor" value={formData.provinciaProveedor} onChange={handleChange} required>
+                                <option value="">Seleccione una provincia</option>
+                                {provincias.map((provincia) => (
+                                    <option key={provincia} value={provincia}>
+                                        {provincia}
+                                    </option>
+                                ))}
+                            </select>
+                        ) : (
+                            <input
+                                type="text"
+                                name="provinciaProveedor"
+                                id="provinciaProveedor"
+                                value={formData.provinciaProveedor}
+                                onChange={handleChange}
+                                placeholder="Ingrese la provincia"
+                                required
+                            />
+                        )}
                     </div>
 
                     <div className="form-group-provider">
                         <label htmlFor="localidadProveedor">Localidad</label>
-                        <input type="text" name="localidadProveedor" id="localidadProveedor" value={formData.localidadProveedor} onChange={handleChange} required />
+                        {esArgentina ? (
+                            <select name="localidadProveedor" id="localidadProveedor" value={formData.localidadProveedor} onChange={handleChange} required>
+                                <option value="">Seleccione una localidad</option>
+                                {localidades.map((loc) => (
+                                    <option key={loc} value={loc}>
+                                        {loc}
+                                    </option>
+                                ))}
+                            </select>
+                        ) : (
+                            <input
+                                type="text"
+                                name="localidadProveedor"
+                                id="localidadProveedor"
+                                value={formData.localidadProveedor}
+                                onChange={handleChange}
+                                placeholder="Ingrese la localidad"
+                                required
+                            />
+                        )}
                     </div>
 
                     <div className="buttons">

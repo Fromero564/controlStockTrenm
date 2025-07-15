@@ -188,6 +188,11 @@ const LoadNewClient = () => {
     return (
         <div>
             <Navbar />
+          <div style={{ margin: "20px" }}>
+                <button className="boton-volver" onClick={() => navigate(-1)}>
+                    ⬅ Volver
+                </button>
+            </div>
             <h1 className="title-cliente">{id ? "EDITAR CLIENTE" : "NUEVO CLIENTE"}</h1>
             <form className="client-form-load" onSubmit={handleSubmit}>
                 <div className="form-grid">

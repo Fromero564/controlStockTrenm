@@ -75,6 +75,11 @@ const Tareload = () => {
     return (
         <>
             <Navbar />
+              <div style={{ margin: "20px" }}>
+                <button className="boton-volver" onClick={() => navigate(-1)}>
+                    ⬅ Volver
+                </button>
+            </div>
             {mensaje && <p className="tara-form-message">{mensaje}</p>}
             <div className="tara-form-container">
                 <h1 className="tara-form-title">{esEdicion ? "EDITAR TARA" : "NUEVA TARA"}</h1>

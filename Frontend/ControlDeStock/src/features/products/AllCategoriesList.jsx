@@ -66,6 +66,11 @@ const AllCategoriesList = () => {
   return (
     <div>
       <Navbar />
+      <div style={{ margin: "20px" }}>
+                <button className="boton-volver" onClick={() => navigate(-1)}>
+                    ⬅ Volver
+                </button>
+            </div>
       <div className="categories-container">
         <h1 className="categories-title">Categorías de Productos</h1>
 

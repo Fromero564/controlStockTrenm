@@ -868,6 +868,11 @@ const eliminarCorte = async (index) => {
   return (
     <div>
       <Navbar />
+       <div style={{ margin: "20px" }}>
+                <button className="boton-volver" onClick={() => navigate(-1)}>
+                    ⬅ Volver
+                </button>
+            </div>
       <h1 className="title-mercaderia">Detalle Mercadería</h1>
       <div className="main-container">
         <div>

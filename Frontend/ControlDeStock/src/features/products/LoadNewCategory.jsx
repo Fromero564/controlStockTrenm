@@ -75,6 +75,11 @@ const LoadCategory = () => {
   return (
     <div>
       <Navbar />
+       <div style={{ margin: "20px" }}>
+                <button className="boton-volver" onClick={() => navigate(-1)}>
+                    ⬅ Volver
+                </button>
+            </div>
       <div className="category-form-container">
         <h2>{isEditMode ? "Editar Categoría" : "Cargar Nueva Categoría"}</h2>
         <form onSubmit={handleSubmit}>

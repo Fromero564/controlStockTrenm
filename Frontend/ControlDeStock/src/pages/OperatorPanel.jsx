@@ -14,7 +14,7 @@ const OperatorPanel = () => {
         { title: "PROCESO PRODUCTIVO", desc: "Realiza el desposte de piezas cargadas para obtener productos y subproductos", newPath: "/production-process", newText: "Nuevo Proceso" },
         { title: "STOCK", desc: "Revisa el stock de piezas, productos y subproductos.", viewPath: "/general-stock", newText: "Consultar stock" },
         { title: "PROVEEDORES", desc: "Administa a los agentes que proveen de mercadería al frigorífico.", viewPath: "/provider-list", newPath: "/provider-load", newText: "Cargar" },
-        
+
         { title: "CONFIGURACION", desc: "Configuración de productos,taras y depositos.", newPath: "/product-configuration", newText: "Agregar o modificar configuración" },
 
     ];
@@ -22,6 +22,11 @@ const OperatorPanel = () => {
     return (
         <div className="">
             <Navbar />
+            <div style={{ margin: "20px" }}>
+                <button className="boton-volver" onClick={() => navigate(-1)}>
+                    ⬅ Volver
+                </button>
+            </div>
 
             <h2 className="title">Producción y stock</h2>
 

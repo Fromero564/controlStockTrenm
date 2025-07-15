@@ -78,6 +78,11 @@ const ProviderList = () => {
 
         <div>
             <Navbar />
+            <div style={{ margin: "20px" }}>
+                <button className="boton-volver" onClick={() => navigate(-1)}>
+                    ⬅ Volver
+                </button>
+            </div>
             <div className="container">
                 <h1>Proveedores</h1>
                 <div className="header">

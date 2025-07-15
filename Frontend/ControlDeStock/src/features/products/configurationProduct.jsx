@@ -21,6 +21,11 @@ const configurationProduct = () => {
     return (
         <div className="">
             <Navbar />
+        <div style={{ margin: "20px" }}>
+                <button className="boton-volver" onClick={() => navigate(-1)}>
+                    ⬅ Volver
+                </button>
+            </div>
 
             <h2 className="title">Configuración</h2>
 

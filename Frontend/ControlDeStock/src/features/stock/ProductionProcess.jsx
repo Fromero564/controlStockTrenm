@@ -33,6 +33,7 @@ const ProductionProcess = () => {
         const productosConCantidad = data.map((producto) => ({
           id: producto.id,
           nombre: producto.product_name,
+          categoria: producto.category?.category_name || "",
           cantidad: 0,
         }));
         setCortes(productosConCantidad);
@@ -152,79 +153,84 @@ const ProductionProcess = () => {
     setPiezasDespostar(piezasDespostar.filter((_, i) => i !== index));
   };
 
-const handleGuardar = async () => {
-  if (cortesAgregados.length === 0 && piezasDespostar.length === 0) {
-    Swal.fire("Aviso", "No hay datos para guardar.", "info");
-    return;
-  }
-
-  try {
-    for (const corte of cortesAgregados) {
-      const type = corte.tipo?.trim();
-      const quantity = Number(corte.cantidad);
-      const gross_weight = Number(corte.pesoBruto);
-      const tares = Number(corte.tara);
-      const net_weight = Number((gross_weight - tares).toFixed(2));
-      const average = Number((net_weight / quantity).toFixed(2));
-
-      if (
-        !type ||
-        isNaN(quantity) || quantity <= 0 ||
-        isNaN(gross_weight) || gross_weight <= 0 ||
-        isNaN(tares) || tares < 0 ||
-        isNaN(net_weight) || net_weight <= 0 ||
-        isNaN(average) || average <= 0
-      ) {
-        throw new Error(`Datos inválidos en el corte: ${type || "sin tipo"}`);
-      }
-
-      const payload = { type, quantity, gross_weight, tares, net_weight, average };
-
-      const response = await fetch(`${API_URL}/uploadProcessMeat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Error al guardar corte.");
-      }
+  const handleGuardar = async () => {
+    if (cortesAgregados.length === 0 && piezasDespostar.length === 0) {
+      Swal.fire("Aviso", "No hay datos para guardar.", "info");
+      return;
     }
 
-    // Descontar stock
-    for (const pieza of piezasDespostar) {
-      const res = await fetch(`${API_URL}/update-product-stock`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          product_name: pieza.tipo,
-          subtract_quantity: pieza.cantidad,
-        }),
-      });
+    try {
+      for (const corte of cortesAgregados) {
+        const type = corte.tipo?.trim();
+        const quantity = Number(corte.cantidad);
+        const gross_weight = Number(corte.pesoBruto);
+        const tares = Number(corte.tara);
+        const net_weight = Number((gross_weight - tares).toFixed(2));
+        const average = Number((net_weight / quantity).toFixed(2));
 
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(`Error al descontar stock: ${errorData.message}`);
+        if (
+          !type ||
+          isNaN(quantity) || quantity <= 0 ||
+          isNaN(gross_weight) || gross_weight <= 0 ||
+          isNaN(tares) || tares < 0 ||
+          isNaN(net_weight) || net_weight <= 0 ||
+          isNaN(average) || average <= 0
+        ) {
+          throw new Error(`Datos inválidos en el corte: ${type || "sin tipo"}`);
+        }
+
+        const payload = { type, quantity, gross_weight, tares, net_weight, average };
+
+        const response = await fetch(`${API_URL}/uploadProcessMeat`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || "Error al guardar corte.");
+        }
       }
+
+      // Descontar stock
+      for (const pieza of piezasDespostar) {
+        const res = await fetch(`${API_URL}/update-product-stock`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            product_name: pieza.tipo,
+            subtract_quantity: pieza.cantidad,
+          }),
+        });
+
+        if (!res.ok) {
+          const errorData = await res.json();
+          throw new Error(`Error al descontar stock: ${errorData.message}`);
+        }
+      }
+
+      Swal.fire("Éxito", "Cortes guardados y stock actualizado correctamente.", "success");
+      setCortesAgregados([]);
+      setPiezasDespostar([]);
+      navigate("/operator-panel");
+
+    } catch (err) {
+      console.error("Error al guardar:", err);
+      Swal.fire("Error", err.message || "Ocurrió un error al guardar.", "error");
     }
-
-    Swal.fire("Éxito", "Cortes guardados y stock actualizado correctamente.", "success");
-    setCortesAgregados([]);
-    setPiezasDespostar([]);
-    navigate("/operator-panel");
-
-  } catch (err) {
-    console.error("Error al guardar:", err);
-    Swal.fire("Error", err.message || "Ocurrió un error al guardar.", "error");
-  }
-};
+  };
 
 
 
   return (
     <>
       <Navbar />
+      <div style={{ margin: "20px" }}>
+        <button className="boton-volver" onClick={() => navigate(-1)}>
+          ⬅ Volver
+        </button>
+      </div>
       <div className="pp-main-container">
         <section className="pp-despostar-section">
           <h2>Piezas a Despostar</h2>
@@ -233,11 +239,14 @@ const handleGuardar = async () => {
               <label>TIPO</label>
               <select value={despostarTipo} onChange={(e) => setDespostarTipo(e.target.value)}>
                 <option value="">Seleccionar</option>
-                {cortes.map((corte) => (
-                  <option key={corte.id} value={corte.nombre}>
-                    {corte.nombre}
-                  </option>
-                ))}
+                {cortes
+                  .filter((corte) => corte.categoria === "DESPOSTE")
+                  .map((corte) => (
+                    <option key={corte.id} value={corte.nombre}>
+                      {corte.nombre}
+                    </option>
+                  ))}
+
               </select>
             </div>
             <div>

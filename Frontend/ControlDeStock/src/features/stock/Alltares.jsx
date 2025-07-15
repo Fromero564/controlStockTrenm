@@ -82,6 +82,11 @@ const Alltares = () => {
     return (
         <>
             <Navbar />
+             <div style={{ margin: "20px" }}>
+                <button className="boton-volver" onClick={() => navigate(-1)}>
+                    ⬅ Volver
+                </button>
+            </div>
             <div className="alltares-container">
                 <h1 className="title-taras">Taras</h1>
 

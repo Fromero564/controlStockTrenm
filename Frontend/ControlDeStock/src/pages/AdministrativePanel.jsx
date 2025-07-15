@@ -10,8 +10,8 @@ const AdministrativePanel = () => {
     const navigate = useNavigate();
 
     const sections = [
-     
-      
+
+
 
 
     ];
@@ -19,7 +19,11 @@ const AdministrativePanel = () => {
     return (
         <div className="">
             <Navbar />
-
+             <div style={{ margin: "20px" }}>
+                <button className="boton-volver" onClick={() => navigate(-1)}>
+                    ⬅ Volver
+                </button>
+            </div>
             <h2 className="title">Administrativo</h2>
 
             <div className="grid-container">

@@ -159,6 +159,11 @@ const LoadNewProduct = () => {
     return (
         <div>
             <Navbar />
+             <div style={{ margin: "20px" }}>
+                <button className="boton-volver" onClick={() => navigate(-1)}>
+                    ⬅ Volver
+                </button>
+            </div>
             <div className="product-form-container">
                 <h2>{id ? "Editar Producto" : "Cargar Nuevo Producto"}</h2>
 

@@ -125,6 +125,11 @@ const WarehouseStockView = () => {
   return (
     <div>
       <Navbar />
+       <div style={{ margin: "20px" }}>
+                <button className="boton-volver" onClick={() => navigate(-1)}>
+                    ⬅ Volver
+                </button>
+            </div>
       <div className="warehouse-stock-container">
         <h1>Stock por Almacén</h1>
 

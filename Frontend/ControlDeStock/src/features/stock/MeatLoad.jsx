@@ -93,6 +93,11 @@ const MeatLoad = () => {
 
         <div className="body-meat-load">
             <Navbar />
+             <div style={{ margin: "20px" }}>
+                <button className="boton-volver" onClick={() => navigate(-1)}>
+                    ⬅ Volver
+                </button>
+            </div>
             <div className="container">
                 <h1>Mercaderías</h1>
                 <div className="header">

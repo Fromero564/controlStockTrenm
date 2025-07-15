@@ -166,32 +166,6 @@ const EditMeatBillModal = ({ isOpen, onClose, id, onUpdate }) => {
             <label className="label-provider-form">N° COMPROBANTE: {id}</label>
           </div>
 
-          <div className="radio-buttons">
-            <div className="radius-style">
-              <input
-                type="radio"
-                id="romaneo_check"
-                name="tipoIngreso"
-                value="romaneo"
-                checked={tipoIngreso === "romaneo"}
-                onChange={handleRadioChange}
-              />
-              <label htmlFor="romaneo_check">Romaneo</label>
-            </div>
-
-            <div className="radius-style">
-              <input
-                type="radio"
-                id="manual_check"
-                name="tipoIngreso"
-                value="manual"
-                checked={tipoIngreso === "manual"}
-                onChange={handleRadioChange}
-              />
-              <label htmlFor="manual_check">Manual</label>
-            </div>
-          </div>
-
           <div className="provider-remit-romaneo">
             <label className="label-provider-form">
               PROVEEDOR:

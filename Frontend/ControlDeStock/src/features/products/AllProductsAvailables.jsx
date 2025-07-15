@@ -61,6 +61,11 @@ const AllProductsAvailables = () => {
   return (
     <>
       <Navbar />
+       <div style={{ margin: "20px" }}>
+                <button className="boton-volver" onClick={() => navigate(-1)}>
+                    ⬅ Volver
+                </button>
+            </div>
       <div className="products-container">
         <h1 className="products-title">Listado de productos</h1>
 

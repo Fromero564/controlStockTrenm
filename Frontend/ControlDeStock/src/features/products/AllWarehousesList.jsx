@@ -71,6 +71,11 @@ const AllWarehousesList = () => {
     return (
         <div>
             <Navbar />
+             <div style={{ margin: "20px" }}>
+                <button className="boton-volver" onClick={() => navigate(-1)}>
+                    ⬅ Volver
+                </button>
+            </div>
             <div className="warehouses-container">
                 <h1 className="warehouses-title">Depósitos Registrados</h1>
                 <input

@@ -58,6 +58,11 @@ const GeneralStock = () => {
   return (
     <>
       <Navbar />
+       <div style={{ margin: "20px" }}>
+                <button className="boton-volver" onClick={() => navigate(-1)}>
+                    ⬅ Volver
+                </button>
+            </div>
       <div className="stock-container">
         <h1 className="stock-title">Stock</h1>
         <button onClick={() => navigate("/warehouse-stock")}>Ver por almacenes</button>

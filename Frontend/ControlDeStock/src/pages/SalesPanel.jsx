@@ -10,16 +10,20 @@ const SalesPanel = () => {
     const navigate = useNavigate();
 
     const sections = [
-     
-      
-{ title: "CLIENTES", desc: "Administa a los clientes del frigorífico.", viewPath: "/client-list", newPath: "/client-load", newText: "Cargar" },
+
+
+        { title: "CLIENTES", desc: "Administa a los clientes del frigorífico.", viewPath: "/client-list", newPath: "/client-load", newText: "Cargar" },
 
     ];
 
     return (
         <div className="">
             <Navbar />
-
+              <div style={{ margin: "20px" }}>
+                <button className="boton-volver" onClick={() => navigate(-1)}>
+                    ⬅ Volver
+                </button>
+            </div>
             <h2 className="title">Administrativo</h2>
 
             <div className="grid-container">

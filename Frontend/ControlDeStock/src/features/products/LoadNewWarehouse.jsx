@@ -75,6 +75,11 @@ const LoadWarehouse = () => {
   return (
     <div>
       <Navbar />
+       <div style={{ margin: "20px" }}>
+                <button className="boton-volver" onClick={() => navigate(-1)}>
+                    ⬅ Volver
+                </button>
+            </div>
       <div className="warehouse-form-container">
         <h2>{isEditMode ? "Editar Depósito" : "Cargar Nuevo Depósito"}</h2>
         <form onSubmit={handleSubmit}>

@@ -394,6 +394,11 @@ const ProviderForm = () => {
     return (
         <div>
             <Navbar />
+          <div style={{ margin: "20px" }}>
+                <button className="boton-volver" onClick={() => navigate(-1)}>
+                    ⬅ Volver
+                </button>
+            </div>
             <div className="new-register-container">
                 <form onSubmit={handleSubmit} className="form-container-provider">
                     <h2 className="form-title">{id ? "Editar Registro" : "Nuevo Registro"}</h2>

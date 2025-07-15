@@ -49,6 +49,11 @@ const Register = () => {
   return (
     <div>
       <Navbar />
+        <div style={{ margin: "20px" }}>
+                <button className="boton-volver" onClick={() => navigate(-1)}>
+                    ⬅ Volver
+                </button>
+            </div>
       <form onSubmit={handleSubmit} className="register-form">
         <div className="form-group">
           <label className="form-label">Usuario:</label>
