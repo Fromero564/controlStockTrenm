@@ -4,6 +4,10 @@ const path = require("path");
 const apiOperatorController= require("../../controllers/api/operatorApiController.js");
 const operatorApiController = require("../../controllers/api/operatorApiController.js");
 
+
+
+//Api para traer subproductos cuando se hace el proceso productivo
+router.get("/subproducts-by-name/:name", operatorApiController.getSubproductsForProduct);
 //Api para ver todos los productos congelados/otros cargados
 router.get("/all-products-fresh-others",apiOperatorController.getAllOtherProductsManual);
 //Api para ver productos cargados
@@ -28,16 +32,16 @@ router.get("/chargeUpdateBillDetails/:id",apiOperatorController.chargeUpdateBill
 router.get("/last-provider-bill",apiOperatorController.loadLastBillSupplier);
 //Api encontrar tara edicion
 router.get("/tareLoadFind/:id",apiOperatorController.tareLoadFind);
-//Api para encontrar ultimo recibo de proveedor
-router.get("/last-provider-bill",apiOperatorController.loadLastBillSupplier);
+// //Api para encontrar ultimo recibo de proveedor
+// router.get("/last-provider-bill",apiOperatorController.loadLastBillSupplier);
 //Api modificar ingreso por manual
 router.get("/getProductsFromRemito/:id",apiOperatorController.updateProductFromRemit);
 //Api para ver todos los productos congelados/otros productos que tengo cargue por manual
 router.get("/getOtherProductsFromRemito/:id",apiOperatorController.getOtherProductsFromRemito);
 //Api para ver stock disponible
 router.get("/all-products-stock",apiOperatorController.getProductStock);
-//Api para traer producto disponible por ID
-router.get("/product/:id", operatorApiController.getProductById);
+// //Api para traer producto disponible por ID
+// router.get("/product/:id", operatorApiController.getProductById);
 //Api para traer todas las categorias
 router.get("/all-product-categories",operatorApiController.getAllProductCatagories);
 
@@ -59,7 +63,7 @@ router.post("/addOtherProductsManual",apiOperatorController.addOtherProductsManu
 
 
 //Api para actualizar los productos disponibles 
-router.put('/product-update/:id', operatorApiController.editProductAvailable);
+// router.put('/product-update/:id', operatorApiController.editProductAvailable);
 //Api para actualizar las piezas congeladas/otros productos
 router.put("/editOtherProductsManual/:id",apiOperatorController.editOtherProductsManual);
 //Api para actualizar las piezas que se despostaron

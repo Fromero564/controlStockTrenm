@@ -6,61 +6,62 @@ const moment = require("moment");
 
 
 const ProductsAvailable = db.ProductsAvailable;
+const ProductSubproduct = db.ProductSubproduct;
 const Provider = db.Provider;
-const meatIncome = db.MeatIncome;
+const billDetail = db.BillDetail;
 const ProductCategories = db.ProductCategories
 const Client = db.Client;
 const Warehouses = db.Warehouses;
 const WarehouseStock = db.WarehouseStock;
 
 const administrativeApiController = {
-  loadNewProduct: async (req, res) => {
-    try {
-      const {
-        product_name,
-        category_id,
-        product_general_category,
-        min_stock,
-        max_stock
-      } = req.body;
-
-      // Validación básica de campos obligatorios
-      if (
-        !product_name ||
-        !category_id ||
-        !product_general_category ||
-        min_stock === undefined ||
-        max_stock === undefined
-      ) {
-        return res.status(400).json({ mensaje: "Faltan campos obligatorios." });
-      }
+  // loadNewProduct: async (req, res) => {
+  //   try {
+  //     const {
+  //       product_name,
+  //       category_id,
+  //       product_general_category,
+  //       min_stock,
+  //       max_stock
+  //     } = req.body;
 
 
-      const min = parseInt(min_stock);
-      const max = parseInt(max_stock);
+  //     if (
+  //       !product_name ||
+  //       !category_id ||
+  //       !product_general_category ||
+  //       min_stock === undefined ||
+  //       max_stock === undefined
+  //     ) {
+  //       return res.status(400).json({ mensaje: "Faltan campos obligatorios." });
+  //     }
 
-      if (isNaN(min) || isNaN(max)) {
-        return res.status(400).json({ mensaje: "El stock mínimo y máximo deben ser números válidos." });
-      }
 
-      if (min > max) {
-        return res.status(400).json({ mensaje: "El stock mínimo no puede ser mayor que el stock máximo." });
-      }
+  //     const min = parseInt(min_stock);
+  //     const max = parseInt(max_stock);
 
-      await ProductsAvailable.create({
-        product_name,
-        category_id,
-        product_general_category,
-        min_stock: min,
-        max_stock: max
-      });
+  //     if (isNaN(min) || isNaN(max)) {
+  //       return res.status(400).json({ mensaje: "El stock mínimo y máximo deben ser números válidos." });
+  //     }
 
-      res.status(201).json({ mensaje: 'Producto registrado con éxito' });
-    } catch (error) {
-      console.error("Error al registrar producto:", error);
-      res.status(500).json({ mensaje: 'Error al registrar el producto', error });
-    }
-  },
+  //     if (min > max) {
+  //       return res.status(400).json({ mensaje: "El stock mínimo no puede ser mayor que el stock máximo." });
+  //     }
+
+  //     await ProductsAvailable.create({
+  //       product_name,
+  //       category_id,
+  //       product_general_category,
+  //       min_stock: min,
+  //       max_stock: max
+  //     });
+
+  //     res.status(201).json({ mensaje: 'Producto registrado con éxito' });
+  //   } catch (error) {
+  //     console.error("Error al registrar producto:", error);
+  //     res.status(500).json({ mensaje: 'Error al registrar el producto', error });
+  //   }
+  // },
 
 
   loadNewProvider: async (req, res) => {
@@ -648,7 +649,222 @@ const administrativeApiController = {
       console.error("Error al actualizar stock:", error);
       return res.status(500).json({ mensaje: "Error del servidor." });
     }
+  },
+  findBillDetailsById: async (req, res) => {
+    const { id } = req.params;
+    try {
+      const billDetailsData = await billDetail.findAll({
+        where: {
+          bill_supplier_id: id
+        }
+      })
+      res.json(billDetailsData)
+    } catch (error) {
+      res.status(500).json({ message: "Error interno del servidor" })
+    }
+
+
+  },
+  createProductWithSubproducts: async (req, res) => {
+    try {
+      const {
+        product_name,
+        category_id,
+        product_general_category,
+        min_stock,
+        max_stock,
+        subproducts = []
+      } = req.body;
+
+      if (!product_name || !category_id || !product_general_category || min_stock === undefined || max_stock === undefined) {
+        return res.status(400).json({ message: "Faltan campos obligatorios." });
+      }
+
+      const min = parseInt(min_stock);
+      const max = parseInt(max_stock);
+
+      if (isNaN(min) || isNaN(max) || min > max) {
+        return res.status(400).json({ message: "Stock mínimo y máximo inválidos." });
+      }
+
+      // Paso 1: Crear producto principal y guardar ID
+      const nuevoProducto = await db.ProductsAvailable.create({
+        product_name,
+        category_id,
+        product_general_category,
+        min_stock: min,
+        max_stock: max
+      });
+
+      // Validar si se creó bien y tiene ID
+      if (!nuevoProducto || !nuevoProducto.id) {
+        return res.status(500).json({ message: "No se pudo crear el producto principal." });
+      }
+
+      // Paso 2: Crear subproductos (si hay)
+      for (const sub of subproducts) {
+        const { subproductId, quantity } = sub;
+        if (!subproductId || !quantity) continue;
+
+        await db.ProductSubproduct.create({
+          parent_product_id: nuevoProducto.id,
+          subproduct_id: subproductId,
+          quantity: quantity
+        });
+      }
+
+      res.status(201).json({ message: "Producto y subproductos registrados con éxito." });
+
+    } catch (error) {
+      console.error("Error al registrar producto con subproductos:", error);
+      res.status(500).json({ message: "Error interno del servidor", error });
+    }
+  },
+
+  getAllAvailableProducts: async (req, res) => {
+    try {
+      const productos = await db.ProductsAvailable.findAll();
+      res.status(200).json(productos);
+    } catch (error) {
+      console.error("Error al obtener productos disponibles:", error);
+      res.status(500).json({ message: "Error interno del servidor" });
+    }
+  },
+  getProductWithSubproducts: async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      const producto = await db.ProductsAvailable.findOne({
+        where: { id },
+        include: [
+          {
+            model: db.ProductCategories,
+            as: "category",
+            attributes: ["id", "category_name"]
+          }
+        ]
+      });
+
+      if (!producto) {
+        return res.status(404).json({ message: "Producto no encontrado" });
+      }
+
+      const subproductos = await ProductSubproduct.findAll({
+        where: { parent_product_id: id },
+        attributes: ["id", "subproduct_id", "quantity"]
+      });
+
+      res.status(200).json({
+        id: producto.id,
+        product_name: producto.product_name,
+        category_id: producto.category_id,
+        product_general_category: producto.product_general_category,
+        min_stock: producto.min_stock,
+        max_stock: producto.max_stock,
+        subproducts: subproductos
+      });
+
+    } catch (error) {
+      console.error("Error al obtener producto con subproductos:", error);
+      res.status(500).json({ message: "Error al obtener el producto", error: error.message });
+    }
+  },
+  editProductAvailable: async (req, res) => {
+    const { id } = req.params;
+    const {
+      product_name,
+      category_id,
+      product_general_category,
+      min_stock,
+      max_stock,
+      subproducts
+    } = req.body;
+
+    console.log("llega por console:", req.params)
+    if (!product_name || !category_id || !product_general_category || min_stock === undefined || max_stock === undefined) {
+      return res.status(400).json({ message: "Todos los campos son obligatorios." });
+    }
+
+  try {
+
+  const productoExistente = await ProductsAvailable.findByPk(id);
+
+  if (!productoExistente) {
+    return res.status(404).json({ message: "Producto no encontrado." });
   }
+
+
+  const updated = await ProductsAvailable.update({
+    product_name,
+    category_id,
+    product_general_category,
+    min_stock,
+    max_stock
+  }, {
+    where: { id }
+  });
+
+  if (updated[0] === 0) {
+    console.log(`Producto ${id} sin cambios en tabla products_available`);
+  } else {
+    console.log(`Producto ${id} actualizado`);
+  }
+
+
+  if (Array.isArray(subproducts) && subproducts.length > 0) {
+    
+    const deleted = await ProductSubproduct.destroy({
+      where: { parent_product_id: id }
+    });
+    console.log(`${deleted} subproductos eliminados para producto ${id}`);
+
+    const nuevos = subproducts.map(sp => ({
+      parent_product_id: id,
+      subproduct_id: sp.subproductId,
+      quantity: sp.quantity
+    }));
+
+    await ProductSubproduct.bulkCreate(nuevos);
+    console.log(`${nuevos.length} subproductos insertados para producto ${id}`);
+
+  } else {
+    console.log(`No se modificaron subproductos para producto ${id}`);
+  }
+
+  return res.status(200).json({ message: "Producto y subproductos procesados correctamente." });
+
+} catch (error) {
+  console.error("Error al actualizar producto:", error);
+  return res.status(500).json({ message: "Error interno del servidor.", error: error.message });
+}
+
+  },
+  deleteSubproduct: async (req, res) => {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({ message: "ID de subproducto requerido." });
+    }
+
+    try {
+      const deleted = await ProductSubproduct.destroy({
+        where: { id }
+      });
+
+      if (deleted === 0) {
+        return res.status(404).json({ message: "Subproducto no encontrado." });
+      }
+
+      return res.status(200).json({ message: "Subproducto eliminado correctamente." });
+    } catch (error) {
+      console.error("Error al eliminar subproducto:", error);
+      return res.status(500).json({ message: "Error interno del servidor.", error: error.message });
+    }
+  },
+
+
+
+
 
 
 

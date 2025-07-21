@@ -21,9 +21,10 @@ const ProductionProcess = () => {
     pesoNeto: 0,
   });
 
-  const [despostarTipo, setDespostarTipo] = useState("");
-  const [despostarCantidad, setDespostarCantidad] = useState("");
-  const [piezasDespostar, setPiezasDespostar] = useState([]);
+  const [subproductosEsperados, setSubproductosEsperados] = useState([]);
+  const [cargandoSubproductos, setCargandoSubproductos] = useState(false);
+  const [comprobanteSeleccionado, setComprobanteSeleccionado] = useState("");
+  const [detallesComprobante, setDetallesComprobante] = useState([]);
 
   useEffect(() => {
     const fetchProductos = async () => {
@@ -42,7 +43,7 @@ const ProductionProcess = () => {
       }
     };
     fetchProductos();
-  }, []);
+  }, [API_URL]);
 
   useEffect(() => {
     const fetchTares = async () => {
@@ -60,7 +61,53 @@ const ProductionProcess = () => {
       }
     };
     fetchTares();
-  }, []);
+  }, [API_URL]);
+
+  const fetchSubproductos = async (tipoProducto, cantidad) => {
+    try {
+      const url = `${API_URL}/subproducts-by-name/${encodeURIComponent(tipoProducto)}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`Status ${res.status}`);
+      const data = await res.json();
+      return data.map((sub) => ({
+        nombre: sub.nombre,
+        cantidadTotal: sub.cantidadPorUnidad * cantidad,
+        cantidadPorUnidad: sub.cantidadPorUnidad,
+        productoOrigen: tipoProducto,
+      }));
+    } catch (error) {
+      console.error("Error al obtener subproductos:", error);
+      return [];
+    }
+  };
+
+  const handleBuscarComprobante = async () => {
+    if (!comprobanteSeleccionado) {
+      Swal.fire("Atención", "Ingrese un ID de comprobante válido.", "warning");
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_URL}/bill-details/${comprobanteSeleccionado}`);
+      const data = await response.json();
+      setDetallesComprobante(data);
+
+      setCargandoSubproductos(true);
+      const subproductosTodos = [];
+
+      for (const detalle of data) {
+        const subproductos = await fetchSubproductos(detalle.type, detalle.quantity);
+        subproductosTodos.push(...subproductos);
+      }
+
+      setSubproductosEsperados(subproductosTodos);
+    } catch (error) {
+      console.error("Error al obtener detalles del comprobante:", error);
+      Swal.fire("Error", "No se pudo obtener el comprobante.", "error");
+    } finally {
+      setCargandoSubproductos(false);
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -78,22 +125,42 @@ const ProductionProcess = () => {
     return cantidad > 0 ? (pesoNeto / cantidad).toFixed(2) : "0.00";
   };
 
-  const agregarCorte = () => {
-    if (!formData.tipo || formData.cantidad === "" || formData.pesoBruto === "" || formData.tara === "") {
+  const agregarCorte = async () => {
+    if (!formData.tipo || formData.cantidad === "" || formData.pesoBruto === "" || formData.tara === 0) {
       Swal.fire("Atención", "Complete todos los campos antes de agregar.", "warning");
+      return;
+    }
+
+    const tipoActual = formData.tipo.trim();
+    const cantidadAgregar = Number(formData.cantidad);
+
+    const subEsperado = subproductosEsperados.find((s) => s.nombre.trim() === tipoActual);
+    const detalleRemito = detallesComprobante.find((d) => d.type.trim() === tipoActual);
+
+    let cantidadPermitida = 0;
+    if (subEsperado) {
+      cantidadPermitida = Number(subEsperado.cantidadTotal);
+    } else if (detalleRemito) {
+      cantidadPermitida = Number(detalleRemito.quantity);
+    } else {
+      Swal.fire("Error", `El corte "${tipoActual}" no está en los subproductos esperados ni en el remito.`, "error");
+      return;
+    }
+
+    const cantidadYaAgregada = cortesAgregados
+      .filter((c) => c.tipo.trim() === tipoActual)
+      .reduce((acc, c) => acc + Number(c.cantidad), 0);
+
+    if (cantidadYaAgregada + cantidadAgregar > cantidadPermitida) {
+      const restante = cantidadPermitida - cantidadYaAgregada;
+      Swal.fire("Atención", `Solo puede agregar ${restante} unidades más de "${tipoActual}".`, "warning");
       return;
     }
 
     const pesoNeto = +(formData.pesoBruto - formData.tara).toFixed(2);
     const promedio = formData.cantidad > 0 ? +(pesoNeto / formData.cantidad).toFixed(2) : 0;
-
-    const nuevoCorte = {
-      ...formData,
-      pesoNeto,
-      promedio,
-    };
-
-    setCortesAgregados([...cortesAgregados, nuevoCorte]);
+    const nuevoCorte = { ...formData, pesoNeto, promedio };
+    setCortesAgregados((prev) => [...prev, nuevoCorte]);
 
     setFormData({
       tipo: "",
@@ -110,51 +177,8 @@ const ProductionProcess = () => {
     setCortesAgregados(cortesAgregados.filter((_, i) => i !== index));
   };
 
-  const agregarPiezaDespostar = async () => {
-    if (!despostarTipo || despostarCantidad === "" || despostarCantidad <= 0) {
-      Swal.fire("Error", "Complete el tipo y cantidad válidos para agregar.", "warning");
-      return;
-    }
-
-    try {
-      const response = await fetch(`${API_URL}/all-products-stock`);
-      const data = await response.json();
-      const producto = data.find((p) => p.product_name === despostarTipo);
-
-      if (!producto) {
-        Swal.fire("Error", `El producto "${despostarTipo}" no se encuentra en stock.`, "error");
-        return;
-      }
-
-      if (producto.product_quantity < parseInt(despostarCantidad)) {
-        Swal.fire(
-          "Stock insuficiente",
-          `Solo hay ${producto.product_quantity} unidades de "${despostarTipo}".`,
-          "error"
-        );
-        return;
-      }
-
-      const nuevaPieza = {
-        tipo: despostarTipo,
-        cantidad: parseInt(despostarCantidad, 10),
-      };
-
-      setPiezasDespostar([...piezasDespostar, nuevaPieza]);
-      setDespostarTipo("");
-      setDespostarCantidad("");
-    } catch (error) {
-      console.error("Error al verificar stock:", error);
-      Swal.fire("Error", "No se pudo verificar el stock.", "error");
-    }
-  };
-
-  const eliminarPiezaDespostar = (index) => {
-    setPiezasDespostar(piezasDespostar.filter((_, i) => i !== index));
-  };
-
   const handleGuardar = async () => {
-    if (cortesAgregados.length === 0 && piezasDespostar.length === 0) {
+    if (cortesAgregados.length === 0) {
       Swal.fire("Aviso", "No hay datos para guardar.", "info");
       return;
     }
@@ -168,14 +192,7 @@ const ProductionProcess = () => {
         const net_weight = Number((gross_weight - tares).toFixed(2));
         const average = Number((net_weight / quantity).toFixed(2));
 
-        if (
-          !type ||
-          isNaN(quantity) || quantity <= 0 ||
-          isNaN(gross_weight) || gross_weight <= 0 ||
-          isNaN(tares) || tares < 0 ||
-          isNaN(net_weight) || net_weight <= 0 ||
-          isNaN(average) || average <= 0
-        ) {
+        if (!type || quantity <= 0 || gross_weight <= 0 || tares < 0 || net_weight <= 0 || average <= 0) {
           throw new Error(`Datos inválidos en el corte: ${type || "sin tipo"}`);
         }
 
@@ -193,93 +210,71 @@ const ProductionProcess = () => {
         }
       }
 
-      // Descontar stock
-      for (const pieza of piezasDespostar) {
-        const res = await fetch(`${API_URL}/update-product-stock`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            product_name: pieza.tipo,
-            subtract_quantity: pieza.cantidad,
-          }),
-        });
-
-        if (!res.ok) {
-          const errorData = await res.json();
-          throw new Error(`Error al descontar stock: ${errorData.message}`);
-        }
-      }
-
-      Swal.fire("Éxito", "Cortes guardados y stock actualizado correctamente.", "success");
+      Swal.fire("Éxito", "Cortes guardados correctamente.", "success");
       setCortesAgregados([]);
-      setPiezasDespostar([]);
       navigate("/operator-panel");
-
     } catch (err) {
       console.error("Error al guardar:", err);
       Swal.fire("Error", err.message || "Ocurrió un error al guardar.", "error");
     }
   };
-
-
-
   return (
     <>
       <Navbar />
       <div style={{ margin: "20px" }}>
-        <button className="boton-volver" onClick={() => navigate(-1)}>
-          ⬅ Volver
-        </button>
+        <button className="boton-volver" onClick={() => navigate(-1)}>⬅ Volver</button>
       </div>
       <div className="pp-main-container">
+
         <section className="pp-despostar-section">
-          <h2>Piezas a Despostar</h2>
+          <h2>Buscar Comprobante</h2>
           <div className="pp-form-group">
             <div>
-              <label>TIPO</label>
-              <select value={despostarTipo} onChange={(e) => setDespostarTipo(e.target.value)}>
-                <option value="">Seleccionar</option>
-                {cortes
-                  .filter((corte) => corte.categoria === "DESPOSTE")
-                  .map((corte) => (
-                    <option key={corte.id} value={corte.nombre}>
-                      {corte.nombre}
-                    </option>
-                  ))}
-
-              </select>
-            </div>
-            <div>
-              <label>CANTIDAD</label>
+              <label>N° Comprobante</label>
               <input
-                type="number"
-                min="1"
-                value={despostarCantidad}
-                onChange={(e) => setDespostarCantidad(e.target.value)}
+                type="text"
+                value={comprobanteSeleccionado}
+                onChange={(e) => setComprobanteSeleccionado(e.target.value)}
+                placeholder="Ingrese ID"
               />
             </div>
             <div className="pp-boton-agregar-wrapper">
-              <button type="button" className="pp-btn-agregar" onClick={agregarPiezaDespostar}>
-                +
+              <button type="button" className="pp-btn-agregar" onClick={handleBuscarComprobante}>
+                Buscar
               </button>
             </div>
           </div>
-
           <div className="pp-piezas-despostar-lista">
-            {piezasDespostar.length === 0 && <p>No hay piezas agregadas.</p>}
-            {piezasDespostar.map((pieza, index) => (
-              <div key={index} className="pp-pieza-despostar-item">
-                <div>
-                  <strong>{pieza.tipo}</strong> — {pieza.cantidad} unidades
-                </div>
-                <button type="button" className="pp-btn-eliminar" onClick={() => eliminarPiezaDespostar(index)}>
-                  X
-                </button>
+            {detallesComprobante.length === 0 && <p>No hay cortes para este comprobante.</p>}
+            {detallesComprobante.map((detalle) => (
+              <div key={detalle.id} className="pp-pieza-despostar-item">
+                <strong>{detalle.type}</strong> — {detalle.quantity} unidades
               </div>
             ))}
           </div>
         </section>
 
+        <section className="subproductos-section">
+          <h3>Subproductos Esperados</h3>
+          {cargandoSubproductos && <p style={{ color: "blue" }}>Cargando subproductos...</p>}
+          {subproductosEsperados.length === 0 ? (
+            <p>No hay subproductos esperados.</p>
+          ) : (
+            <ul className="subproductos-list">
+              {subproductosEsperados.map((sub, idx) => (
+                <li key={idx}>
+                  <span className="subproducto-label">{sub.nombre} — {sub.cantidadTotal} unidades</span>
+                  <span className="subproducto-meta">
+                    de {sub.productoOrigen}, {sub.cantidadPorUnidad} x unidad
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+
+        {/* Sección Formulario */}
         <section className="pp-cortes-section">
           <h1>Proceso Productivo</h1>
           <div className="pp-content-wrapper">

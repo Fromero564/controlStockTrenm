@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 14-07-2025 a las 21:34:05
+-- Tiempo de generación: 21-07-2025 a las 19:16:23
 -- Versión del servidor: 10.4.28-MariaDB
 -- Versión de PHP: 8.2.4
 
@@ -38,15 +38,6 @@ CREATE TABLE `bill_details` (
   `weight` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
---
--- Volcado de datos para la tabla `bill_details`
---
-
-INSERT INTO `bill_details` (`id`, `bill_supplier_id`, `type`, `quantity`, `heads`, `createdAt`, `updatedAt`, `weight`) VALUES
-(1, 1, 'Pollo', 10, 10, '2025-07-14 17:03:34', '2025-07-14 17:03:34', 0),
-(2, 2, 'Pollo', 10, 10, '2025-07-14 17:04:17', '2025-07-14 17:04:17', 0),
-(3, 2, 'Menudo de pollo', 70, 0, '2025-07-14 17:04:17', '2025-07-14 17:04:17', 70);
-
 -- --------------------------------------------------------
 
 --
@@ -67,14 +58,6 @@ CREATE TABLE `bill_suppliers` (
   `fresh_quantity` int(11) NOT NULL,
   `fresh_weight` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Volcado de datos para la tabla `bill_suppliers`
---
-
-INSERT INTO `bill_suppliers` (`id`, `supplier`, `total_weight`, `head_quantity`, `quantity`, `romaneo_number`, `income_state`, `createdAt`, `updatedAt`, `check_state`, `fresh_quantity`, `fresh_weight`) VALUES
-(1, 'TREMN SRL', '750', 10, 10, 7400, 'romaneo', '2025-07-14 17:03:34', '2025-07-14 17:03:34', 1, 0, 0),
-(2, 'TREMN SRL', '1409', 10, 10, 6540, 'manual', '2025-07-14 17:04:17', '2025-07-14 17:05:02', 0, 10, 844);
 
 -- --------------------------------------------------------
 
@@ -117,13 +100,6 @@ CREATE TABLE `meat_manual_income` (
   `decrease` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Volcado de datos para la tabla `meat_manual_income`
---
-
-INSERT INTO `meat_manual_income` (`id`, `id_bill_suppliers`, `products_name`, `products_garron`, `products_quantity`, `product_head`, `provider_weight`, `gross_weight`, `tare`, `net_weight`, `decrease`) VALUES
-(1, 2, 'Pollo', 890, '10', 10, 1560, 1565, 156, 1409, -10);
-
 -- --------------------------------------------------------
 
 --
@@ -134,13 +110,6 @@ CREATE TABLE `observations_meatincome` (
   `id` int(11) NOT NULL,
   `observation` varchar(255) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Volcado de datos para la tabla `observations_meatincome`
---
-
-INSERT INTO `observations_meatincome` (`id`, `observation`) VALUES
-(2, '');
 
 -- --------------------------------------------------------
 
@@ -160,13 +129,6 @@ CREATE TABLE `other_product_manual` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Volcado de datos para la tabla `other_product_manual`
---
-
-INSERT INTO `other_product_manual` (`id`, `product_portion`, `product_name`, `product_quantity`, `product_gross_weight`, `product_net_weight`, `decrease`, `id_bill_suppliers`, `created_at`, `updated_at`) VALUES
-(1, 7896, 'Patitas', 10.00, 1000, 844, 15.6, 2, '2025-07-14 17:05:02', '2025-07-14 17:05:02');
 
 -- --------------------------------------------------------
 
@@ -199,15 +161,6 @@ CREATE TABLE `products_available` (
   `max_stock` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Volcado de datos para la tabla `products_available`
---
-
-INSERT INTO `products_available` (`id`, `product_name`, `product_general_category`, `category_id`, `min_stock`, `max_stock`) VALUES
-(1, 'Pollo', 'externo', 1, 50, 150),
-(2, 'Patitas', 'propio', 2, 10, 100),
-(3, 'Menudo de pollo', 'ambos', 1, 90, 180);
-
 -- --------------------------------------------------------
 
 --
@@ -218,14 +171,6 @@ CREATE TABLE `product_categories` (
   `id` int(11) NOT NULL,
   `category_name` varchar(100) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Volcado de datos para la tabla `product_categories`
---
-
-INSERT INTO `product_categories` (`id`, `category_name`) VALUES
-(1, 'PRINCIPAL'),
-(2, 'SECUNDARIO');
 
 -- --------------------------------------------------------
 
@@ -241,13 +186,18 @@ CREATE TABLE `product_stock` (
   `product_category` varchar(255) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+-- --------------------------------------------------------
+
 --
--- Volcado de datos para la tabla `product_stock`
+-- Estructura de tabla para la tabla `product_subproducts`
 --
 
-INSERT INTO `product_stock` (`id`, `product_name`, `product_quantity`, `product_cod`, `product_category`) VALUES
-(1, 'Pollo', 20, 1, 'PRINCIPAL'),
-(2, 'Patitas', 10, 2, 'SECUNDARIO');
+CREATE TABLE `product_subproducts` (
+  `id` int(11) NOT NULL,
+  `parent_product_id` int(11) NOT NULL,
+  `subproduct_id` int(11) NOT NULL,
+  `quantity` decimal(10,2) NOT NULL CHECK (`quantity` >= 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -269,13 +219,6 @@ CREATE TABLE `providers` (
   `provider_location` varchar(255) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Volcado de datos para la tabla `providers`
---
-
-INSERT INTO `providers` (`id`, `provider_name`, `provider_type_id`, `provider_id_number`, `provider_iva_condition`, `provider_email`, `provider_phone`, `provider_adress`, `provider_country`, `provider_province`, `provider_location`) VALUES
-(1, 'TREMN SRL', 'CUIT', '36900690', 'IVA RESPONSABLE INSCRIPTO', 'tremn@tremn.com', '3364202020', 'CALLE123', 'ARGENTINA', 'BUENOS AIRES', 'SAN NICOLAS');
-
 -- --------------------------------------------------------
 
 --
@@ -287,13 +230,6 @@ CREATE TABLE `tares` (
   `tare_name` varchar(255) NOT NULL,
   `tare_weight` float NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Volcado de datos para la tabla `tares`
---
-
-INSERT INTO `tares` (`id`, `tare_name`, `tare_weight`) VALUES
-(1, 'Cajon', 156);
 
 -- --------------------------------------------------------
 
@@ -412,6 +348,14 @@ ALTER TABLE `product_stock`
   ADD KEY `fk_product_cod` (`product_cod`);
 
 --
+-- Indices de la tabla `product_subproducts`
+--
+ALTER TABLE `product_subproducts`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `parent_product_id` (`parent_product_id`),
+  ADD KEY `subproduct_id` (`subproduct_id`);
+
+--
 -- Indices de la tabla `providers`
 --
 ALTER TABLE `providers`
@@ -450,13 +394,13 @@ ALTER TABLE `warehouse_stock`
 -- AUTO_INCREMENT de la tabla `bill_details`
 --
 ALTER TABLE `bill_details`
-  MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT de la tabla `bill_suppliers`
 --
 ALTER TABLE `bill_suppliers`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT de la tabla `clients`
@@ -468,13 +412,13 @@ ALTER TABLE `clients`
 -- AUTO_INCREMENT de la tabla `meat_manual_income`
 --
 ALTER TABLE `meat_manual_income`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT de la tabla `other_product_manual`
 --
 ALTER TABLE `other_product_manual`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT de la tabla `process_meats`
@@ -486,31 +430,37 @@ ALTER TABLE `process_meats`
 -- AUTO_INCREMENT de la tabla `products_available`
 --
 ALTER TABLE `products_available`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT de la tabla `product_categories`
 --
 ALTER TABLE `product_categories`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT de la tabla `product_stock`
 --
 ALTER TABLE `product_stock`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT de la tabla `product_subproducts`
+--
+ALTER TABLE `product_subproducts`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT de la tabla `providers`
 --
 ALTER TABLE `providers`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT de la tabla `tares`
 --
 ALTER TABLE `tares`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT de la tabla `users`
@@ -522,7 +472,7 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT de la tabla `warehouses`
 --
 ALTER TABLE `warehouses`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT de la tabla `warehouse_stock`
@@ -563,6 +513,13 @@ ALTER TABLE `products_available`
 --
 ALTER TABLE `product_stock`
   ADD CONSTRAINT `fk_product_cod` FOREIGN KEY (`product_cod`) REFERENCES `products_available` (`id`);
+
+--
+-- Filtros para la tabla `product_subproducts`
+--
+ALTER TABLE `product_subproducts`
+  ADD CONSTRAINT `product_subproducts_ibfk_1` FOREIGN KEY (`parent_product_id`) REFERENCES `products_available` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `product_subproducts_ibfk_2` FOREIGN KEY (`subproduct_id`) REFERENCES `products_available` (`id`) ON DELETE CASCADE;
 
 --
 -- Filtros para la tabla `warehouse_stock`

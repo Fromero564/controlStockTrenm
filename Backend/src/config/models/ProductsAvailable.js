@@ -42,10 +42,19 @@ module.exports = (sequelize, dataTypes) => {
             as: "category"
         });
 
-        ProductsAvailable.hasMany(models.ProductStock, {  
+        ProductsAvailable.hasMany(models.ProductStock, {
             foreignKey: "product_cod",
             as: "stocks",
         });
+        ProductsAvailable.hasMany(models.ProductSubproduct, {
+            foreignKey: "parent_product_id",
+            as: "subproducts",
+        });
+        ProductsAvailable.hasMany(models.ProductSubproduct, {
+            foreignKey: "subproduct_id",
+            as: "usedInProducts",
+        });
+
     };
 
     return ProductsAvailable;

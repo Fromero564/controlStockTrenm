@@ -4,6 +4,8 @@ const path = require("path");
 const apiAdministrativeController= require("../../controllers/api/administrativeApiController");
 
 
+// Obtener un producto con sus subproductos
+router.get("/product/:id", apiAdministrativeController.getProductWithSubproducts);
 //Api para obtener todos los depósitos
 router.get("/all-warehouses", apiAdministrativeController.getAllWarehouses);
 //Api para ver proveedores cargados
@@ -24,6 +26,11 @@ router.get("/warehouse/:id", apiAdministrativeController.getOneWarehouse);
 router.get("/warehouse-stock", apiAdministrativeController.getAllWarehouseStock);
 //Api para ver stock no asignado
 router.get("/warehouse-stock-unassigned", apiAdministrativeController.getUnassignedStock);
+//Api para encontrar productos cargados en un remito
+router.get("/bill-details/:id",apiAdministrativeController.findBillDetailsById);
+//Api para ver todos los productos disponibles
+router.get("/all-products-availables", apiAdministrativeController.getAllAvailableProducts);
+
 
 //Api para actualizar proveedor
 router.put("/provider-edit/:id",apiAdministrativeController.editProvider);
@@ -35,6 +42,9 @@ router.put("/category-product-edit/:id",apiAdministrativeController.editCategory
 router.put("/warehouse-edit/:id", apiAdministrativeController.editWarehouse);
 //Api modificar stock de un deposito
 router.put("/warehouse-stock-update", apiAdministrativeController.updateWarehouseStock);
+//Api para editar un producto
+router.put('/product-update/:id', apiAdministrativeController.editProductAvailable);
+
 
 
 //Crear nuevo almancen
@@ -44,11 +54,17 @@ router.post("/provider-load",apiAdministrativeController.loadNewProvider);
 //Cargar nuevo cliente
 router.post("/client-load",apiAdministrativeController.loadNewClient);
 //Cargar nuevo producto en la bd para ser usado en operaciones
-router.post("/product-load",apiAdministrativeController.loadNewProduct);
+// router.post("/product-load",apiAdministrativeController.loadNewProduct);
 //Api para cargar productos a un almacen
 router.post("/warehouse-stock-assign", apiAdministrativeController.assignStockToWarehouse);
 //Api para eliminar un producto de un almacen
 router.post("/warehouse-stock-remove", apiAdministrativeController.removeFromWarehouse);
+//Api para crear productos con subproductos
+router.post("/product-load-with-subproducts", apiAdministrativeController.createProductWithSubproducts);
+// Api para crear o actualizar un subproducto
+// router.post("/create-or-update-subproduct", apiAdministrativeController.createOrUpdateSubproduct);
+
+
 
 //Api para eliminar proveedor
 router.delete("/deleteProvider/:id", apiAdministrativeController.deleteProvider);
@@ -58,6 +74,8 @@ router.delete("/deleteClient/:id", apiAdministrativeController.deleteClient);
 router.delete("/deleteCategory/:id", apiAdministrativeController.deleteProductCategory);
 // Api para eliminar un depósito
 router.delete("/deleteWarehouse/:id", apiAdministrativeController.deleteWarehouse);
+//Api para eliminar un subproducto cuando editas
+router.delete("/delete-subproduct/:id", apiAdministrativeController.deleteSubproduct);
 
 
 module.exports = router;
