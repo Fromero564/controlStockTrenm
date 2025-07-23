@@ -81,33 +81,50 @@ const ProductionProcess = () => {
     }
   };
 
-  const handleBuscarComprobante = async () => {
-    if (!comprobanteSeleccionado) {
-      Swal.fire("Atención", "Ingrese un ID de comprobante válido.", "warning");
+const handleBuscarComprobante = async () => {
+  if (!comprobanteSeleccionado) {
+    Swal.fire("Atención", "Ingrese un ID de comprobante válido.", "warning");
+    return;
+  }
+
+  try {
+    const response = await fetch(`${API_URL}/bill-details/${comprobanteSeleccionado}`);
+    const data = await response.json();
+
+   
+    if (data?.message) {
+      await Swal.fire("Atención", data.message, "info");
+      window.location.reload(); // 🔁 Recargar la página
       return;
     }
 
-    try {
-      const response = await fetch(`${API_URL}/bill-details/${comprobanteSeleccionado}`);
-      const data = await response.json();
-      setDetallesComprobante(data);
-
-      setCargandoSubproductos(true);
-      const subproductosTodos = [];
-
-      for (const detalle of data) {
-        const subproductos = await fetchSubproductos(detalle.type, detalle.quantity);
-        subproductosTodos.push(...subproductos);
-      }
-
-      setSubproductosEsperados(subproductosTodos);
-    } catch (error) {
-      console.error("Error al obtener detalles del comprobante:", error);
-      Swal.fire("Error", "No se pudo obtener el comprobante.", "error");
-    } finally {
-      setCargandoSubproductos(false);
+    if (!Array.isArray(data) || data.length === 0) {
+      await Swal.fire("Error", "No se encontró ningún detalle para ese comprobante.", "error");
+      window.location.reload(); 
+      return;
     }
-  };
+
+    setDetallesComprobante(data);
+
+    setCargandoSubproductos(true);
+    const subproductosTodos = [];
+
+    for (const detalle of data) {
+      const subproductos = await fetchSubproductos(detalle.type, detalle.quantity);
+      subproductosTodos.push(...subproductos);
+    }
+
+    setSubproductosEsperados(subproductosTodos);
+  } catch (error) {
+    console.error("Error al obtener detalles del comprobante:", error);
+    await Swal.fire("Error", "No se pudo obtener el comprobante.", "error");
+    window.location.reload(); // 🔁 En caso de error técnico también
+  } finally {
+    setCargandoSubproductos(false);
+  }
+};
+
+
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -196,7 +213,7 @@ const ProductionProcess = () => {
           throw new Error(`Datos inválidos en el corte: ${type || "sin tipo"}`);
         }
 
-        const payload = { type, quantity, gross_weight, tares, net_weight, average };
+        const payload = { type, quantity, gross_weight, tares, net_weight, average,bill_id: comprobanteSeleccionado };
 
         const response = await fetch(`${API_URL}/uploadProcessMeat`, {
           method: "POST",

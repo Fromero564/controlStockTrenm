@@ -31,6 +31,7 @@ import AllCategoriesList from './features/products/AllCategoriesList.jsx';
 import LoadWarehouse from './features/products/LoadNewWarehouse.jsx';
 import AllWarehousesList from './features/products/AllWarehousesList.jsx';
 import WarehouseStockView from './features/stock/WarehousesStockView.jsx';
+import ListProductionProcess from './features/stock/ListProductionProcess.jsx';
 
 
 
@@ -228,6 +229,14 @@ const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <ProductionProcess />
+      </ProtectedRoute>
+    ),
+  },
+    {
+    path: "/list-production-process",
+    element: (
+      <ProtectedRoute>
+        <ListProductionProcess/>
       </ProtectedRoute>
     ),
   },

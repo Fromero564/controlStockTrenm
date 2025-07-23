@@ -11,7 +11,7 @@ const OperatorPanel = () => {
 
     const sections = [
         { title: "INGRESOS", desc: "Ingreso Mercaderia proveniente de proveedores", viewPath: "/meat-load", newPath: "/provider-form", newText: "Nuevo ingreso" },
-        { title: "PROCESO PRODUCTIVO", desc: "Realiza el desposte de piezas cargadas para obtener productos y subproductos", newPath: "/production-process", newText: "Nuevo Proceso" },
+        { title: "PROCESO PRODUCTIVO", desc: "Realiza el desposte de piezas cargadas para obtener productos y subproductos",viewPath: "/list-production-process", newPath: "/production-process", newText: "Nuevo Proceso" },
         { title: "STOCK", desc: "Revisa el stock de piezas, productos y subproductos.", viewPath: "/general-stock", newText: "Consultar stock" },
         { title: "PROVEEDORES", desc: "Administa a los agentes que proveen de mercadería al frigorífico.", viewPath: "/provider-list", newPath: "/provider-load", newText: "Cargar" },
 

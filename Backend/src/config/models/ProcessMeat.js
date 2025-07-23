@@ -7,32 +7,45 @@ module.exports = (sequelize, DataTypes) => {
             primaryKey: true,
             autoIncrement: true
         },
-        type:  {
+        type: {
             type: DataTypes.STRING(255),
             allowNull: false,
-        
+
         },
         average: {
             type: DataTypes.FLOAT,
-              allowNull: false
-          },  
-        quantity:{
+            allowNull: false
+        },
+        quantity: {
             type: DataTypes.BIGINT(10),
             allowNull: false
         },
         gross_weight: {
             type: DataTypes.FLOAT,
-              allowNull: false
-          }, 
+            allowNull: false
+        },
         tares: {
             type: DataTypes.FLOAT,
-              allowNull: false
-          }, 
+            allowNull: false
+        },
         net_weight: {
             type: DataTypes.FLOAT,
-              allowNull: false
-          }, 
+            allowNull: false
+        },
+        bill_id: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+        },
+        createdAt: {
+            type: DataTypes.DATE,
+            allowNull: false
+        },
+        updatedAt: {
+            type: DataTypes.DATE,
+            allowNull: false
         }
+
+    }
 
     let config = {
         tableName: "process_meats",

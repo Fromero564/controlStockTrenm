@@ -311,8 +311,9 @@ const operatorApiController = {
                         type: nombre,
                         quantity: cantidad,
                         heads: cabezas,
-                        weight: 0
+                        weight: corte.pesoRomaneo || 0
                     });
+
 
                     // Solo actualizar stock si es romaneo
                     if (tipoIngreso === 'romaneo') {
@@ -373,6 +374,8 @@ const operatorApiController = {
                     }
                 }
             }
+
+
 
             return res.status(201).json({
                 id: nuevoRegistro.id,
@@ -452,12 +455,13 @@ const operatorApiController = {
                         );
                     } else {
                         await billDetail.create({
-                            bill_supplier_id: id,
-                            type: nombreProducto,
+                            bill_supplier_id: nuevoRegistro.id,
+                            type: nombre,
                             quantity: cantidad,
                             heads: cabezas,
-                            weight: 0
+                            weight: corte.pesoRomaneo || 0
                         });
+
 
                         // Crear o actualizar stock
                         const existing = await ProductStock.findOne({ where: { product_name: nombreProducto } });
@@ -694,7 +698,8 @@ const operatorApiController = {
                 quantity,
                 gross_weight,
                 tares,
-                net_weight
+                net_weight,
+                bill_id
             } = req.body;
 
             if (
@@ -742,17 +747,21 @@ const operatorApiController = {
                 return res.status(400).json({ message: `No se pudo identificar el producto "${type}" en ProductsAvailable.` });
             }
 
-            // === Guardar en ProcessMeat ===
+
             await ProcessMeat.create({
                 type,
                 average,
                 quantity,
                 gross_weight,
                 tares,
-                net_weight
+                net_weight,
+                bill_id
             });
+            await billSupplier.update(
+                { production_process: true },
+                { where: { id: bill_id } }
+            );
 
-            // === Stock ===
             const existing = await ProductStock.findOne({ where: { product_name: type } });
 
             if (existing) {
@@ -787,7 +796,8 @@ const operatorApiController = {
                 tipo: det.type,
                 cantidad: det.quantity,
                 cabezas: det.heads,
-                peso: det.weight
+                peso: det.weight,
+                pesoRomaneo: det.weight
             }));
 
             // Separar en cortes y congelados

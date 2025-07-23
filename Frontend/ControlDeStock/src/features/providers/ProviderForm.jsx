@@ -18,7 +18,8 @@ const ProviderForm = () => {
     const [mostrarCongelados, setMostrarCongelados] = useState(false);
     const [formState, setFormState] = useState({ proveedor: "", pesoTotal: "", romaneo: "" });
 
-    const [nuevoCorte, setNuevoCorte] = useState({ tipo: "", cantidad: 0, cabezas: 0 });
+    const [nuevoCorte, setNuevoCorte] = useState({ tipo: "", cantidad: 0, cabezas: 0, pesoRomaneo: 0 });
+
     const [nuevoCongelado, setNuevoCongelado] = useState({ tipo: "", cantidad: 0, unidades: 0 });
 
     const navigate = useNavigate();
@@ -75,7 +76,7 @@ const ProviderForm = () => {
 
                     setFormState({
                         proveedor: data.proveedor,
-                        pesoTotal: data.peso_total,
+                      
                         romaneo: data.romaneo
                     });
                 } catch (error) {
@@ -132,7 +133,7 @@ const ProviderForm = () => {
                         .map(producto => ({
                             id: producto.id,
                             nombre: producto.product_name,
-                            categoria: producto.category?.category_name || "", 
+                            categoria: producto.category?.category_name || "",
                             general: producto.product_general_category,
                             cantidad: 0,
                         }))
@@ -175,13 +176,15 @@ const ProviderForm = () => {
         }
 
         const nuevo = {
-            tipo: seleccion.value, // ID para el backend
-            nombre: seleccion.label, // Nombre legible para mostrar
-            cantidad: nuevoCorte.cantidad,
-            cabezas: nuevoCorte.cabezas,
+            tipo: seleccion.value,
+            nombre: seleccion.label,
+            cantidad: Number(nuevoCorte.cantidad),
+            cabezas: Number(nuevoCorte.cabezas),
             cod: seleccion.value,
-            categoria: productoSeleccionado.categoria
+            categoria: productoSeleccionado.categoria,
+            pesoRomaneo: Number(nuevoCorte.pesoRomaneo) || 0
         };
+
 
         if (cortesAgregados.some(c => c.tipo === nuevo.tipo)) {
             setErrorCorteDuplicado(true);
@@ -189,10 +192,13 @@ const ProviderForm = () => {
         }
 
         setCortesAgregados([...cortesAgregados, nuevo]);
-        setNuevoCorte({ tipo: "", cantidad: "", cabezas: "" });
+      setNuevoCorte({ tipo: "", cantidad: "", cabezas: "", pesoRomaneo: "" });
         setErrorCorteDuplicado(false);
     };
 
+    const totalPesoRomaneo = cortesAgregados.reduce(
+        (sum, corte) => sum + Number(corte.pesoRomaneo || 0), 0
+    );
 
     const agregarCongelado = () => {
         if (!nuevoCongelado.tipo || nuevoCongelado.cantidad <= 0) return;
@@ -302,15 +308,12 @@ const ProviderForm = () => {
             return;
         }
 
-        const pesoTotalNumber = Number(formState.pesoTotal);
-        const sinCortes = cortesAgregados.length === 0;
-        const hayCongelados = congeladosAgregados.length > 0;
+        const totalPesoRomaneo = cortesAgregados.reduce(
+            (sum, corte) => sum + Number(corte.pesoRomaneo || 0), 0
+        );
 
-        if (
-            isNaN(pesoTotalNumber) ||
-            (pesoTotalNumber <= 0 && !(sinCortes && hayCongelados))
-        ) {
-            Swal.fire('Error', 'Debe ingresar un peso total válido', 'error');
+        if (totalPesoRomaneo <= 0 && cortesAgregados.length > 0) {
+            Swal.fire('Error', 'Cada corte debe tener un peso romaneo mayor a 0', 'error');
             return;
         }
 
@@ -323,7 +326,7 @@ const ProviderForm = () => {
 
         // Validar cortes y congelados completos:
         for (const [i, corte] of cortesAgregados.entries()) {
-            if (!corte.tipo || !corte.cod || !corte.cantidad || !corte.categoria) {
+            if (!corte.tipo || !corte.cod || !corte.cantidad || !corte.categoria || corte.pesoRomaneo == null) {
                 Swal.fire('Error', `Faltan datos en corte número ${i + 1}`, 'error');
                 return;
             }
@@ -350,7 +353,7 @@ const ProviderForm = () => {
 
         const formData = {
             proveedor: formState.proveedor.trim(),
-            pesoTotal: pesoTotalNumber,
+            pesoTotal: totalPesoRomaneo,
             romaneo: romaneoNumber,
             cantidad: totalCantidad,
             cabezas: totalCabezas,
@@ -394,7 +397,7 @@ const ProviderForm = () => {
     return (
         <div>
             <Navbar />
-          <div style={{ margin: "20px" }}>
+            <div style={{ margin: "20px" }}>
                 <button className="boton-volver" onClick={() => navigate(-1)}>
                     ⬅ Volver
                 </button>
@@ -484,31 +487,57 @@ const ProviderForm = () => {
                                 <label>CABEZAS</label>
                                 <input type="number" name="cabezas" value={nuevoCorte.cabezas} onChange={handleCorteChange} />
                             </div>
+                            <div className="input-group">
+                                <label>PESO ROMANEO(kg)</label>
+                                <input
+                                    type="number"
+                                    name="pesoRomaneo"
+                                    value={nuevoCorte.pesoRomaneo}
+                                    onChange={handleCorteChange}
+                                    className="input-form"
+                                    min="0"
+                                    step="0.01"
+                                />
+                            </div>
+
                             <button type="button" onClick={agregarCorte} className="btn-add">+</button>
                         </div>
 
                         {cortesAgregados.map((corte, i) => (
                             <div key={i} className="corte-card">
-                                <div className="input-group"><label>TIPO</label><input readOnly value={corte.nombre
-                                } /></div>
-                                <div className="input-group"><label>CANTIDAD</label><input readOnly value={corte.cantidad} /></div>
-                                <div className="input-group"><label>CABEZAS</label><input readOnly value={corte.cabezas} /></div>
+                                <div className="input-group">
+                                    <label>TIPO</label>
+                                    <input readOnly value={corte.nombre} />
+                                </div>
+                                <div className="input-group">
+                                    <label>CANTIDAD</label>
+                                    <input readOnly value={corte.cantidad} />
+                                </div>
+                                <div className="input-group">
+                                    <label>CABEZAS</label>
+                                    <input readOnly value={corte.cabezas} />
+                                </div>
+                                <div className="input-group">
+                                    <label>PESO ROMANEO (kg)</label>
+                                    <input readOnly value={corte.pesoRomaneo} />
+                                </div>
                                 <button type="button" onClick={() => eliminarCorte(i)} className="btn-delete">×</button>
                             </div>
                         ))}
+
                     </div>
-                      <label className="label-provider-form">
-                        PESO DECLARADO EN ROMANEO (KG):
-                        <input
-                            type="number"
-                            name="pesoTotal"
-                            step="0.01"
-                            className="input"
-                            min="0"
-                            value={formState.pesoTotal}
-                            onChange={(e) => setFormState({ ...formState, pesoTotal: e.target.value })}
-                        />
-                    </label>
+                    {/* <label className="label-provider-form">
+                            PESO DECLARADO EN ROMANEO (KG):
+                            <input
+                                type="number"
+                                name="pesoTotal"
+                                step="0.01"
+                                className="input"
+                                min="0"
+                                value={formState.pesoTotal}
+                                onChange={(e) => setFormState({ ...formState, pesoTotal: e.target.value })}
+                            />
+                        </label> */}
                     {/* CONGELADOS */}
                     {mostrarCongelados && (
                         <div className="cortes-section">
@@ -547,7 +576,7 @@ const ProviderForm = () => {
                         </div>
                     )}
 
-                   
+
 
                     <div className="button-container">
                         <button type="submit" className="button-primary">

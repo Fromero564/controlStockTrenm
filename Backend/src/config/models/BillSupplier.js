@@ -41,6 +41,11 @@ module.exports = (sequelize, dataTypes) => {
         fresh_weight: {
             type: dataTypes.INTEGER,
             allowNull: false
+        },
+        production_process: {
+            type: dataTypes.BOOLEAN,
+            allowNull: false,
+            defaultValue: false
         }
     };
     let config = {
@@ -48,11 +53,13 @@ module.exports = (sequelize, dataTypes) => {
         timestamps: true,
     };
     const BillSupplier = sequelize.define(alias, cols, config);
-    
-    BillSupplier.hasMany(sequelize.models.BillDetail, {
-        foreignKey: 'bill_supplier_id',
-        as: 'billDetails'
-    });
+
+    BillSupplier.associate = (models) => {
+        BillSupplier.hasMany(models.BillDetail, {
+            foreignKey: 'bill_supplier_id',
+            as: 'billDetails'
+        });
+    };
 
     return BillSupplier;
 };

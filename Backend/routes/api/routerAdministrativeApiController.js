@@ -3,7 +3,8 @@ const router = express.Router();
 const path = require("path");
 const apiAdministrativeController= require("../../controllers/api/administrativeApiController");
 
-
+//Obterner todos los productos del proceso productivo
+router.get("/all-process-products",apiAdministrativeController.getAllProcessProducts);
 // Obtener un producto con sus subproductos
 router.get("/product/:id", apiAdministrativeController.getProductWithSubproducts);
 //Api para obtener todos los depósitos

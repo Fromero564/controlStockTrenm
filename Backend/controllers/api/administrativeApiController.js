@@ -13,6 +13,8 @@ const ProductCategories = db.ProductCategories
 const Client = db.Client;
 const Warehouses = db.Warehouses;
 const WarehouseStock = db.WarehouseStock;
+const billSupplier = db.BillSupplier;
+const ProcessMeat = db.ProcessMeat;
 
 const administrativeApiController = {
   // loadNewProduct: async (req, res) => {
@@ -652,19 +654,36 @@ const administrativeApiController = {
   },
   findBillDetailsById: async (req, res) => {
     const { id } = req.params;
+
     try {
+     
+      const comprobante = await billSupplier.findByPk(id, {
+        attributes: ['production_process']
+      });
+
+      if (!comprobante) {
+        return res.status(404).json({ message: "Comprobante no encontrado." });
+      }
+
+      if (comprobante.production_process) {
+        return res.status(200).json({ message: "Este comprobante ya fue procesado." });
+      }
+
+  
       const billDetailsData = await billDetail.findAll({
         where: {
           bill_supplier_id: id
         }
-      })
-      res.json(billDetailsData)
+      });
+
+      return res.status(200).json(billDetailsData);
+
     } catch (error) {
-      res.status(500).json({ message: "Error interno del servidor" })
+      console.error("Error al obtener detalles de remito:", error);
+      return res.status(500).json({ message: "Error interno del servidor" });
     }
-
-
   },
+
   createProductWithSubproducts: async (req, res) => {
     try {
       const {
@@ -785,58 +804,58 @@ const administrativeApiController = {
       return res.status(400).json({ message: "Todos los campos son obligatorios." });
     }
 
-  try {
+    try {
 
-  const productoExistente = await ProductsAvailable.findByPk(id);
+      const productoExistente = await ProductsAvailable.findByPk(id);
 
-  if (!productoExistente) {
-    return res.status(404).json({ message: "Producto no encontrado." });
-  }
-
-
-  const updated = await ProductsAvailable.update({
-    product_name,
-    category_id,
-    product_general_category,
-    min_stock,
-    max_stock
-  }, {
-    where: { id }
-  });
-
-  if (updated[0] === 0) {
-    console.log(`Producto ${id} sin cambios en tabla products_available`);
-  } else {
-    console.log(`Producto ${id} actualizado`);
-  }
+      if (!productoExistente) {
+        return res.status(404).json({ message: "Producto no encontrado." });
+      }
 
 
-  if (Array.isArray(subproducts) && subproducts.length > 0) {
-    
-    const deleted = await ProductSubproduct.destroy({
-      where: { parent_product_id: id }
-    });
-    console.log(`${deleted} subproductos eliminados para producto ${id}`);
+      const updated = await ProductsAvailable.update({
+        product_name,
+        category_id,
+        product_general_category,
+        min_stock,
+        max_stock
+      }, {
+        where: { id }
+      });
 
-    const nuevos = subproducts.map(sp => ({
-      parent_product_id: id,
-      subproduct_id: sp.subproductId,
-      quantity: sp.quantity
-    }));
+      if (updated[0] === 0) {
+        console.log(`Producto ${id} sin cambios en tabla products_available`);
+      } else {
+        console.log(`Producto ${id} actualizado`);
+      }
 
-    await ProductSubproduct.bulkCreate(nuevos);
-    console.log(`${nuevos.length} subproductos insertados para producto ${id}`);
 
-  } else {
-    console.log(`No se modificaron subproductos para producto ${id}`);
-  }
+      if (Array.isArray(subproducts) && subproducts.length > 0) {
 
-  return res.status(200).json({ message: "Producto y subproductos procesados correctamente." });
+        const deleted = await ProductSubproduct.destroy({
+          where: { parent_product_id: id }
+        });
+        console.log(`${deleted} subproductos eliminados para producto ${id}`);
 
-} catch (error) {
-  console.error("Error al actualizar producto:", error);
-  return res.status(500).json({ message: "Error interno del servidor.", error: error.message });
-}
+        const nuevos = subproducts.map(sp => ({
+          parent_product_id: id,
+          subproduct_id: sp.subproductId,
+          quantity: sp.quantity
+        }));
+
+        await ProductSubproduct.bulkCreate(nuevos);
+        console.log(`${nuevos.length} subproductos insertados para producto ${id}`);
+
+      } else {
+        console.log(`No se modificaron subproductos para producto ${id}`);
+      }
+
+      return res.status(200).json({ message: "Producto y subproductos procesados correctamente." });
+
+    } catch (error) {
+      console.error("Error al actualizar producto:", error);
+      return res.status(500).json({ message: "Error interno del servidor.", error: error.message });
+    }
 
   },
   deleteSubproduct: async (req, res) => {
@@ -862,12 +881,15 @@ const administrativeApiController = {
     }
   },
 
-
-
-
-
-
-
+  getAllProcessProducts:async(req,res)=>{
+       try{
+      const processProductos = await ProcessMeat.findAll();
+      res.status(200).json(processProductos);
+    } catch (error) {
+      console.error("Error al obtener los productos del proceso productivos disponibles:", error);
+      res.status(500).json({ message: "Error interno del servidor" });
+    }
+  }
 
 
 }

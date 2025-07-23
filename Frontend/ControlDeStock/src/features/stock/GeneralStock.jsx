@@ -52,7 +52,7 @@ const GeneralStock = () => {
   const handleClearFilters = () => {
     setSelectedCategory("Todas");
     setStockAlert("Todos");
-    setSearchQuery(""); // Limpiar búsqueda también
+    setSearchQuery(""); 
   };
 
   return (
