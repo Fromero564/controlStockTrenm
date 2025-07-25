@@ -120,6 +120,7 @@ const GeneralStock = () => {
                   <th>CÓDIGO</th>
                   <th>PRODUCTO</th>
                   <th>CANTIDAD</th>
+                  <th>KG TOTAL</th>
                   <th>STOCK MÍNIMO</th>
                   <th>STOCK MÁXIMO</th>
                   <th>CATEGORÍA</th>
@@ -139,6 +140,7 @@ const GeneralStock = () => {
                       <td>{item.product_cod}</td>
                       <td>{item.product_name}</td>
                       <td className={quantityClass}>{item.product_quantity}</td>
+                      <td>{item.product_total_weight || 0}</td>
                       <td>{item.min_stock}</td>
                       <td>{item.max_stock}</td>
                       <td>{item.product_category}</td>

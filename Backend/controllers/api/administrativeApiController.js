@@ -15,6 +15,8 @@ const Warehouses = db.Warehouses;
 const WarehouseStock = db.WarehouseStock;
 const billSupplier = db.BillSupplier;
 const ProcessMeat = db.ProcessMeat;
+const ProductStock = db.ProductStock;
+
 
 const administrativeApiController = {
   // loadNewProduct: async (req, res) => {
@@ -889,7 +891,86 @@ const administrativeApiController = {
       console.error("Error al obtener los productos del proceso productivos disponibles:", error);
       res.status(500).json({ message: "Error interno del servidor" });
     }
+  },
+deleteProcessByBillId: async (req, res) => {
+  const { bill_id } = req.params;
+
+  const t = await sequelize.transaction();
+
+  try {
+    // Buscar todos los procesos con ese bill_id
+    const procesos = await ProcessMeat.findAll({
+      where: { bill_id },
+      transaction: t
+    });
+
+    if (!procesos || procesos.length === 0) {
+      await t.rollback();
+      return res.status(404).json({ mensaje: "No se encontraron procesos para este bill_id." });
+    }
+
+    // Agrupar cantidad y peso neto por producto
+    const acumuladoPorProducto = procesos.reduce((acc, proceso) => {
+      const nombre = proceso.type;
+      const cantidad = Number(proceso.quantity || 0);
+      const peso = Number(proceso.net_weight || 0);
+
+      if (!acc[nombre]) {
+        acc[nombre] = { cantidad: 0, peso: 0 };
+      }
+
+      acc[nombre].cantidad += cantidad;
+      acc[nombre].peso += peso;
+
+      return acc;
+    }, {});
+
+    // Descontar del stock general
+    for (const nombre in acumuladoPorProducto) {
+      const { cantidad, peso } = acumuladoPorProducto[nombre];
+
+      const productoStock = await ProductStock.findOne({
+        where: { product_name: nombre },
+        transaction: t
+      });
+
+      if (productoStock) {
+        productoStock.product_quantity -= cantidad;
+        productoStock.product_total_weight -= peso;
+
+        // Evitar negativos
+        if (productoStock.product_quantity < 0) productoStock.product_quantity = 0;
+        if (productoStock.product_total_weight < 0) productoStock.product_total_weight = 0;
+
+        await productoStock.save({ transaction: t });
+      }
+    }
+
+    // Eliminar procesos
+    await ProcessMeat.destroy({
+      where: { bill_id },
+      transaction: t
+    });
+
+    // Marcar el remito como NO procesado
+    await billSupplier.update(
+      { production_process: false },
+      { where: { id: bill_id }, transaction: t }
+    );
+
+    await t.commit();
+
+    return res.status(200).json({ mensaje: "Procesos eliminados, stock actualizado y remito actualizado." });
+  } catch (error) {
+    await t.rollback();
+    console.error("Error al eliminar procesos por bill_id:", error);
+    return res.status(500).json({ mensaje: "Error interno del servidor.", error: error.message });
   }
+}
+
+
+
+
 
 
 }

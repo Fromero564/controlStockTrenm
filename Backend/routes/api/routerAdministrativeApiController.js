@@ -48,6 +48,8 @@ router.put('/product-update/:id', apiAdministrativeController.editProductAvailab
 
 
 
+
+
 //Crear nuevo almancen
 router.post("/warehouse-load",apiAdministrativeController.loadNewWarehouse);
 //Cargar nuevo proveedor
@@ -77,6 +79,9 @@ router.delete("/deleteCategory/:id", apiAdministrativeController.deleteProductCa
 router.delete("/deleteWarehouse/:id", apiAdministrativeController.deleteWarehouse);
 //Api para eliminar un subproducto cuando editas
 router.delete("/delete-subproduct/:id", apiAdministrativeController.deleteSubproduct);
+//Api para eliminar un proceso productivo
+router.delete('/delete-process-by-bill/:bill_id',apiAdministrativeController.deleteProcessByBillId);
+
 
 
 module.exports = router;

@@ -232,6 +232,14 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
+   {
+    path: "/production-process/:id",
+    element: (
+      <ProtectedRoute>
+        <ProductionProcess />
+      </ProtectedRoute>
+    ),
+  },
     {
     path: "/list-production-process",
     element: (

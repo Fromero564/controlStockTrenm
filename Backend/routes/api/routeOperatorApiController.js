@@ -80,6 +80,7 @@ router.put("/observations-edit/:id",apiOperatorController.updateObservationMeatI
 router.put("/meat-income-edit/:id",apiOperatorController.editAddIncome);
 
 
+
 //Api eliminar corte de la bd cuando se modifica detalle del proveedor
 router.delete("/delete-bill-detail/:id",apiOperatorController.deleteDetailProviderForm);
 //Api apra eliminar una tara

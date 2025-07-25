@@ -16,11 +16,16 @@ module.exports = (sequelize, dataTypes) => {
             type: dataTypes.INTEGER,
             allowNull: false,
         },
+        product_total_weight: {
+            type: dataTypes.FLOAT,
+            allowNull: true,
+            defaultValue: 0
+        },
         product_cod: {
             type: dataTypes.INTEGER,
             allowNull: false,
         },
-            product_category: {
+        product_category: {
             type: dataTypes.STRING(255),
             allowNull: false,
 
@@ -29,18 +34,18 @@ module.exports = (sequelize, dataTypes) => {
 
     let config = {
         tableName: 'product_stock',
-          timestamps: false,
+        timestamps: false,
     };
 
     const ProductStock = sequelize.define(alias, cols, config);
 
     ProductStock.associate = (models) => {
-  ProductStock.belongsTo(models.ProductsAvailable, {
-    foreignKey: "product_cod",
-    targetKey: "id",
-    as: "productAvailable",
-  });
-};
+        ProductStock.belongsTo(models.ProductsAvailable, {
+            foreignKey: "product_cod",
+            targetKey: "id",
+            as: "productAvailable",
+        });
+    };
 
 
 

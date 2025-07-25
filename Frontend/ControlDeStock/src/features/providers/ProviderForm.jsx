@@ -47,7 +47,8 @@ const ProviderForm = () => {
                                 cantidad: Number(corte.cantidad) || 0,
                                 cabezas: Number(corte.cabezas) || 0,
                                 cod: producto?.id || "",
-                                categoria: producto?.categoria || ""
+                                categoria: producto?.categoria || "",
+                                  pesoRomaneo: Number(corte.pesoRomaneo) || 0
                             };
                         });
                         setCortesAgregados(cortesMapeados);

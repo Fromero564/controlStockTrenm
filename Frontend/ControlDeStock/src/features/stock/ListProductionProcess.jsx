@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Navbar from "../../components/Navbar";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEye, faPen, faTrash } from "@fortawesome/free-solid-svg-icons";
@@ -8,6 +9,7 @@ import "../../assets/styles/listProductionProcess.css";
 const API_URL = import.meta.env.VITE_API_URL;
 
 const ListProductionProcess = () => {
+   const navigate = useNavigate();
   const [processes, setProcesses] = useState([]);
   const [groupedBills, setGroupedBills] = useState({});
   const [searchTerm, setSearchTerm] = useState("");
@@ -64,11 +66,10 @@ const ListProductionProcess = () => {
     setSelectedBill(null);
     setShowModal(false);
   };
-
-  const handleDelete = async (id) => {
+  const handleDelete = async (bill_id) => {
     const confirm = await Swal.fire({
       title: "¿Estás seguro?",
-      text: "Esta acción eliminará el proceso.",
+      text: "Esta acción eliminará TODOS los procesos de este comprobante y actualizará el stock.",
       icon: "warning",
       showCancelButton: true,
       confirmButtonText: "Sí, eliminar",
@@ -77,14 +78,27 @@ const ListProductionProcess = () => {
 
     if (confirm.isConfirmed) {
       try {
-        await fetch(`${API_URL}/delete-process/${id}`, { method: "DELETE" });
-        Swal.fire("Eliminado", "El proceso fue eliminado.", "success");
-        fetchProcesses();
-      } catch {
-        Swal.fire("Error", "No se pudo eliminar el proceso.", "error");
+        const res = await fetch(`${API_URL}/delete-process-by-bill/${bill_id}`, {
+          method: "DELETE",
+        });
+
+        if (res.ok) {
+          Swal.fire("Eliminado", "Los procesos fueron eliminados y el stock actualizado.", "success");
+          fetchProcesses(); // recarga la lista
+        } else {
+          const error = await res.json();
+          Swal.fire("Error", error.mensaje || "No se pudo eliminar los procesos.", "error");
+        }
+      } catch (error) {
+        console.error(error);
+        Swal.fire("Error", "No se pudo eliminar los procesos.", "error");
       }
     }
   };
+  const handleEdit = (bill_id) => {
+    window.location.href = `/production-process/${bill_id}`;
+  };
+
 
   const uniqueBillIds = Object.keys(groupedBills);
   const totalPages = Math.ceil(uniqueBillIds.length / itemsPerPage);
@@ -108,12 +122,9 @@ const ListProductionProcess = () => {
     <div className="production-process-container">
       <Navbar />
 
-      <div className="production-process-back-button">
-        <button onClick={() => history.back()} className="pp-btn">
-          ⬅ Volver
-        </button>
+      <div style={{ margin: "20px" }}>
+        <button className="boton-volver" onClick={() => navigate(-1)}>⬅ Volver</button>
       </div>
-
       <div className="production-process-search">
         <label>N° Comprobante</label>
         <input
@@ -149,15 +160,20 @@ const ListProductionProcess = () => {
                   >
                     <FontAwesomeIcon icon={faEye} />
                   </button>
-                  <button className="pp-btn pp-btn-edit" disabled>
+                  <button
+                    className="pp-btn pp-btn-edit"
+                    onClick={() => handleEdit(firstProcess.bill_id)}
+                  >
                     <FontAwesomeIcon icon={faPen} />
                   </button>
+
                   <button
                     className="pp-btn pp-btn-delete"
-                    onClick={() => handleDelete(firstProcess.id)}
+                    onClick={() => handleDelete(firstProcess.bill_id)}
                   >
                     <FontAwesomeIcon icon={faTrash} />
                   </button>
+
                 </td>
               </tr>
             );
