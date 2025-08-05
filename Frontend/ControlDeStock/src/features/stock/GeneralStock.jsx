@@ -65,7 +65,7 @@ const GeneralStock = () => {
             </div>
       <div className="stock-container">
         <h1 className="stock-title">Stock</h1>
-        <button onClick={() => navigate("/warehouse-stock")}>Ver por almacenes</button>
+        {/* <button onClick={() => navigate("/warehouse-stock")}>Ver por almacenes</button> */}
 
         <div className="filters">
           <label>

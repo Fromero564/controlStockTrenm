@@ -9,67 +9,81 @@ import "../../assets/styles/listProductionProcess.css";
 const API_URL = import.meta.env.VITE_API_URL;
 
 const ListProductionProcess = () => {
-   const navigate = useNavigate();
+  const navigate = useNavigate();
   const [processes, setProcesses] = useState([]);
-  const [groupedBills, setGroupedBills] = useState({});
+  const [groupedProcesses, setGroupedProcesses] = useState({});
+  const [processNumberBills, setProcessNumberBills] = useState({});
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [selectedBill, setSelectedBill] = useState(null);
-  const [showModal, setShowModal] = useState(false);
 
   const itemsPerPage = 10;
 
   useEffect(() => {
     fetchProcesses();
+    fetchProcessNumbers();
+    // eslint-disable-next-line
   }, []);
 
+  // Trae los procesos productivos
   const fetchProcesses = async () => {
     try {
       const res = await fetch(`${API_URL}/all-process-products`);
       const data = await res.json();
 
       const grouped = data.reduce((acc, process) => {
-        if (!acc[process.bill_id]) acc[process.bill_id] = [];
-        acc[process.bill_id].push(process);
+        if (!acc[process.process_number]) acc[process.process_number] = [];
+        acc[process.process_number].push(process);
         return acc;
       }, {});
 
       setProcesses(data);
-      setGroupedBills(grouped);
+      setGroupedProcesses(grouped);
     } catch (error) {
       console.error("Error al obtener procesos:", error);
+    }
+  };
+
+  // Trae la tabla pivote process_number => [bill_id, ...]
+  const fetchProcessNumbers = async () => {
+    try {
+      const res = await fetch(`${API_URL}/all-process-number`);
+      const data = await res.json();
+      const grouped = data.reduce((acc, row) => {
+        if (!acc[row.process_number]) acc[row.process_number] = [];
+        acc[row.process_number].push(row.bill_id);
+        return acc;
+      }, {});
+      setProcessNumberBills(grouped);
+    } catch (error) {
+      console.error("Error al obtener process numbers:", error);
     }
   };
 
   const handleSearch = () => {
     const term = searchTerm.trim();
     const filtered = term
-      ? processes.filter((p) => p.bill_id.toString().includes(term))
+      ? processes.filter((p) => p.process_number.toString().includes(term))
       : processes;
 
     const grouped = filtered.reduce((acc, process) => {
-      if (!acc[process.bill_id]) acc[process.bill_id] = [];
-      acc[process.bill_id].push(process);
+      if (!acc[process.process_number]) acc[process.process_number] = [];
+      acc[process.process_number].push(process);
       return acc;
     }, {});
 
-    setGroupedBills(grouped);
+    setGroupedProcesses(grouped);
     setCurrentPage(1);
   };
 
-  const handleView = (bill_id) => {
-    setSelectedBill(groupedBills[bill_id]);
-    setShowModal(true);
+  // 🚨 MODIFICADO: ahora navega a ProductionProcessDetails
+  const handleView = (process_number) => {
+    navigate(`/production-process/details/${process_number}`);
   };
 
-  const handleCloseModal = () => {
-    setSelectedBill(null);
-    setShowModal(false);
-  };
-  const handleDelete = async (bill_id) => {
+  const handleDelete = async (process_number) => {
     const confirm = await Swal.fire({
       title: "¿Estás seguro?",
-      text: "Esta acción eliminará TODOS los procesos de este comprobante y actualizará el stock.",
+      text: "Esta acción eliminará TODOS los procesos de este número de proceso y actualizará el stock.",
       icon: "warning",
       showCancelButton: true,
       confirmButtonText: "Sí, eliminar",
@@ -78,13 +92,15 @@ const ListProductionProcess = () => {
 
     if (confirm.isConfirmed) {
       try {
-        const res = await fetch(`${API_URL}/delete-process-by-bill/${bill_id}`, {
-          method: "DELETE",
-        });
+        const res = await fetch(
+          `${API_URL}/delete-process-by-process-number/${process_number}`,
+          { method: "DELETE" }
+        );
 
         if (res.ok) {
           Swal.fire("Eliminado", "Los procesos fueron eliminados y el stock actualizado.", "success");
           fetchProcesses(); // recarga la lista
+          fetchProcessNumbers(); // recarga la lista de bills asociados
         } else {
           const error = await res.json();
           Swal.fire("Error", error.mensaje || "No se pudo eliminar los procesos.", "error");
@@ -95,14 +111,14 @@ const ListProductionProcess = () => {
       }
     }
   };
-  const handleEdit = (bill_id) => {
-    window.location.href = `/production-process/${bill_id}`;
+
+  const handleEdit = (process_number) => {
+    window.location.href = `/production-process/${process_number}`;
   };
 
-
-  const uniqueBillIds = Object.keys(groupedBills);
-  const totalPages = Math.ceil(uniqueBillIds.length / itemsPerPage);
-  const paginatedBillIds = uniqueBillIds.slice(
+  const uniqueProcessNumbers = Object.keys(groupedProcesses);
+  const totalPages = Math.ceil(uniqueProcessNumbers.length / itemsPerPage);
+  const paginatedProcessNumbers = uniqueProcessNumbers.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
@@ -115,7 +131,7 @@ const ListProductionProcess = () => {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
-    }); // Formato dd/MM/yyyy
+    });
   };
 
   return (
@@ -126,12 +142,12 @@ const ListProductionProcess = () => {
         <button className="boton-volver" onClick={() => navigate(-1)}>⬅ Volver</button>
       </div>
       <div className="production-process-search">
-        <label>N° Comprobante</label>
+        <label>Número de proceso</label>
         <input
           type="text"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          placeholder="Buscar por N° Comprobante"
+          placeholder="Buscar por Número de proceso"
         />
         <button onClick={handleSearch} className="pp-btn pp-btn-search">
           Buscar
@@ -141,47 +157,51 @@ const ListProductionProcess = () => {
       <table className="production-process-table">
         <thead>
           <tr>
-            <th>N° Comprobante</th>
+            <th>Número de proceso</th>
             <th>Fecha</th>
+            <th>Comprobantes asociados</th>
             <th>Acciones</th>
           </tr>
         </thead>
         <tbody>
-          {paginatedBillIds.map((billId) => {
-            const firstProcess = groupedBills[billId][0];
+          {paginatedProcessNumbers.map((processNumber) => {
+            const firstProcess = groupedProcesses[processNumber][0];
+            const comprobantes =
+              processNumberBills[processNumber] && processNumberBills[processNumber].length
+                ? processNumberBills[processNumber].join(", ")
+                : "N/A";
             return (
-              <tr key={billId}>
-                <td>{billId}</td>
+              <tr key={processNumber}>
+                <td>{processNumber}</td>
                 <td>{formatDate(firstProcess.createdAt)}</td>
+                <td>{comprobantes}</td>
                 <td>
                   <button
                     className="pp-btn pp-btn-view"
-                    onClick={() => handleView(billId)}
+                    onClick={() => handleView(processNumber)}
                   >
                     <FontAwesomeIcon icon={faEye} />
                   </button>
                   <button
                     className="pp-btn pp-btn-edit"
-                    onClick={() => handleEdit(firstProcess.bill_id)}
+                    onClick={() => handleEdit(firstProcess.process_number)}
                   >
                     <FontAwesomeIcon icon={faPen} />
                   </button>
-
                   <button
                     className="pp-btn pp-btn-delete"
-                    onClick={() => handleDelete(firstProcess.bill_id)}
+                    onClick={() => handleDelete(firstProcess.process_number)}
                   >
                     <FontAwesomeIcon icon={faTrash} />
                   </button>
-
                 </td>
               </tr>
             );
           })}
 
-          {paginatedBillIds.length === 0 && (
+          {paginatedProcessNumbers.length === 0 && (
             <tr>
-              <td colSpan="3">No hay procesos para mostrar.</td>
+              <td colSpan="4">No hay procesos para mostrar.</td>
             </tr>
           )}
         </tbody>
@@ -204,40 +224,6 @@ const ListProductionProcess = () => {
           Siguiente →
         </button>
       </div>
-
-      {showModal && selectedBill && (
-        <div className="production-process-modal-overlay">
-          <div className="production-process-modal">
-            <h3>Detalles del Comprobante #{selectedBill[0].bill_id}</h3>
-            {selectedBill.map((proc) => (
-              <div key={proc.id} className="production-process-detail">
-                <p>
-                  <strong>Tipo:</strong> {proc.type}
-                </p>
-                <p>
-                  <strong>Cantidad:</strong> {proc.quantity}
-                </p>
-                <p>
-                  <strong>Peso Bruto:</strong> {proc.gross_weight}
-                </p>
-                <p>
-                  <strong>Tara:</strong> {proc.tares}
-                </p>
-                <p>
-                  <strong>Peso Neto:</strong> {proc.net_weight}
-                </p>
-                <hr />
-              </div>
-            ))}
-            <button
-              className="pp-btn pp-btn-close"
-              onClick={handleCloseModal}
-            >
-              Cerrar
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

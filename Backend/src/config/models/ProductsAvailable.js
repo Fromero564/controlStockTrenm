@@ -4,7 +4,7 @@ module.exports = (sequelize, dataTypes) => {
         id: {
             type: dataTypes.INTEGER,
             primaryKey: true,
-            autoIncrement: true,
+            allowNull: false,
         },
         product_name: {
             type: dataTypes.STRING(255),
@@ -39,20 +39,24 @@ module.exports = (sequelize, dataTypes) => {
     ProductsAvailable.associate = (models) => {
         ProductsAvailable.belongsTo(models.ProductCategories, {
             foreignKey: "category_id",
-            as: "category"
+            as: "category",
+             
         });
 
         ProductsAvailable.hasMany(models.ProductStock, {
             foreignKey: "product_cod",
             as: "stocks",
+               onUpdate: "CASCADE",
         });
         ProductsAvailable.hasMany(models.ProductSubproduct, {
             foreignKey: "parent_product_id",
             as: "subproducts",
+              onUpdate: "CASCADE",
         });
         ProductsAvailable.hasMany(models.ProductSubproduct, {
             foreignKey: "subproduct_id",
             as: "usedInProducts",
+              onUpdate: "CASCADE",
         });
 
     };

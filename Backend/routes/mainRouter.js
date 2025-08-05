@@ -3,16 +3,21 @@ const router = express.Router();
 const apiMainRoutes = require("./api/routeApiMain.js");
 const apiOperatorRouters= require("./api/routeOperatorApiController.js")
 const apiAdministativeRouters= require("./api/routerAdministrativeApiController.js")
+
+const apiSaleRouters=require("./api/routerSaleApiController.js")
 const {authenticateJWT}=require("../middlewares/authMiddleware.js");
+
 
 
 //Se traen datos de Api Principal
 router.use("/", apiMainRoutes);
 
+//Se traen datos de Api Ventas
+router.use("/",apiSaleRouters);
 //Se traen datos de Api Proveedores
-router.use("/",apiOperatorRouters)
+router.use("/",apiOperatorRouters);
 
 //Se traen datos de Api Administrativo
-router.use("/",apiAdministativeRouters)
+router.use("/",apiAdministativeRouters);
 
 module.exports = router;

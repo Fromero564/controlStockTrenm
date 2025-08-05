@@ -3,6 +3,9 @@ import { useEffect, useState } from "react";
 import Navbar from "../../components/Navbar.jsx";
 import Swal from "sweetalert2";
 import '../../assets/styles/loadNewProduct.css';
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faTrash } from "@fortawesome/free-solid-svg-icons";
+import Select from "react-select";
 
 const LoadNewProduct = () => {
   const navigate = useNavigate();
@@ -10,9 +13,13 @@ const LoadNewProduct = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [categoriasDisponibles, setCategoriasDisponibles] = useState([]);
   const [allProducts, setAllProducts] = useState([]);
-  const [subproductos, setSubproductos] = useState([{ subproductId: "", quantity: "" }]);
+  const [subproductos, setSubproductos] = useState([]);
+
+  const [selectedSubproducto, setSelectedSubproducto] = useState(null);
+  const [cantidad, setCantidad] = useState("");
 
   const [productData, setProductData] = useState({
+    codigo: "",
     nombre: "",
     categoriaId: "",
     tipo: "externo",
@@ -20,9 +27,12 @@ const LoadNewProduct = () => {
     max_stock: ""
   });
 
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+
   const API_URL = import.meta.env.VITE_API_URL;
 
-  // Traer todos los productos disponibles
   useEffect(() => {
     const fetchAllProducts = async () => {
       try {
@@ -36,7 +46,6 @@ const LoadNewProduct = () => {
     fetchAllProducts();
   }, [API_URL]);
 
-  // Traer todas las categorías
   useEffect(() => {
     const fetchCategorias = async () => {
       try {
@@ -50,7 +59,6 @@ const LoadNewProduct = () => {
     fetchCategorias();
   }, [API_URL]);
 
-  // Si hay un ID, cargar el producto existente para editar
   useEffect(() => {
     const fetchProducto = async () => {
       try {
@@ -61,6 +69,7 @@ const LoadNewProduct = () => {
 
         const data = await response.json();
         setProductData({
+           codigo: data.id?.toString() || "",
           nombre: data.product_name,
           categoriaId: data.category_id?.toString() || "",
           tipo: data.product_general_category,
@@ -70,15 +79,12 @@ const LoadNewProduct = () => {
 
         if (data.subproducts && data.subproducts.length > 0) {
           const mapped = data.subproducts.map(sp => ({
-             id: sp.id?.toString() || "",
+            id: sp.id?.toString() || "",
             subproductId: sp.subproduct_id?.toString() || "",
             quantity: sp.quantity?.toString() || ""
           }));
           setSubproductos(mapped);
-        } else {
-          setSubproductos([{ subproductId: "", quantity: "" }]);
         }
-
       } catch (error) {
         console.error("Error al cargar producto para editar:", error);
       }
@@ -112,6 +118,11 @@ const LoadNewProduct = () => {
       subproducts: subproductos.filter(sp => sp.subproductId && sp.quantity)
     };
 
+    if (productData.codigo) {
+      payload.id = parseInt(productData.codigo);
+    }
+
+
     try {
       const url = id
         ? `${API_URL}/product-update/${id}`
@@ -140,6 +151,79 @@ const LoadNewProduct = () => {
     }
   };
 
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentSubproductos = subproductos.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(subproductos.length / itemsPerPage);
+
+  const handlePageChange = (newPage) => {
+    if (newPage > 0 && newPage <= totalPages) {
+      setCurrentPage(newPage);
+    }
+  };
+
+  const productOptions = allProducts.map(p => ({
+    value: p.id.toString(),
+    label: p.product_name
+  }));
+
+  const handleAddSubproducto = () => {
+    if (!selectedSubproducto || !cantidad) {
+      Swal.fire("Atención", "Debes seleccionar un subproducto y la cantidad", "warning");
+      return;
+    }
+
+    const existe = subproductos.some(sp => sp.subproductId === selectedSubproducto.value);
+    if (existe) {
+      Swal.fire("Atención", "Ese subproducto ya fue agregado.", "warning");
+      return;
+    }
+
+    setSubproductos([...subproductos, { subproductId: selectedSubproducto.value, quantity: cantidad }]);
+    setSelectedSubproducto(null);
+    setCantidad("");
+  };
+
+  const eliminarSubproducto = (globalIndex, sub) => {
+    Swal.fire({
+      title: "¿Estás seguro?",
+      text: "Este subproducto se eliminará permanentemente.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#3085d6",
+      confirmButtonText: "Sí, eliminar",
+      cancelButtonText: "Cancelar"
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        if (sub.id) {
+          try {
+            const response = await fetch(`${API_URL}/delete-subproduct/${sub.id}`, {
+              method: "DELETE"
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+              const updated = subproductos.filter((_, i) => i !== globalIndex);
+              setSubproductos(updated);
+              Swal.fire("Eliminado", "Subproducto eliminado correctamente.", "success");
+            } else {
+              Swal.fire("Error", data.message || "Error al eliminar subproducto.", "error");
+            }
+          } catch (error) {
+            console.error("Error al eliminar subproducto:", error);
+            Swal.fire("Error", "Error en la conexión.", "error");
+          }
+        } else {
+          const updated = subproductos.filter((_, i) => i !== globalIndex);
+          setSubproductos(updated);
+          Swal.fire("Eliminado", "Subproducto eliminado localmente.", "success");
+        }
+      }
+    });
+  };
+
   return (
     <div>
       <Navbar />
@@ -152,6 +236,15 @@ const LoadNewProduct = () => {
         <h2>{id ? "Editar Producto" : "Cargar Nuevo Producto"}</h2>
 
         <form onSubmit={handleSubmit}>
+          <label>Código del Producto (opcional)</label>
+          <input
+            type="number"
+            name="codigo"
+            value={productData.codigo}
+            onChange={handleChange}
+            placeholder="Ej: 105"
+          />
+
           <label>Nombre del Producto</label>
           <input type="text" name="nombre" value={productData.nombre} onChange={handleChange} />
 
@@ -182,102 +275,54 @@ const LoadNewProduct = () => {
             </label>
           </fieldset>
 
-          <h3>Subproductos Generados</h3>
-          {subproductos.map((item, index) => (
-            <div key={index} className="subproduct-row">
-              <select
-                value={item.subproductId}
-                onChange={(e) => {
-                  const updated = [...subproductos];
-                  updated[index].subproductId = e.target.value;
-                  setSubproductos(updated);
-                }}
-              >
-                <option value="">Seleccionar producto</option>
-                {allProducts.map((prod) => (
-                  <option key={prod.id} value={prod.id}>{prod.product_name}</option>
-                ))}
-              </select>
-
-              <input
-                type="number"
-                placeholder="Cantidad"
-                value={item.quantity}
-                onChange={(e) => {
-                  const updated = [...subproductos];
-                  updated[index].quantity = e.target.value;
-                  setSubproductos(updated);
-                }}
+          <h3>Agregar Subproducto</h3>
+          <div className="subproduct-add-container">
+            <div style={{ flex: 1 }}>
+              <Select
+                classNamePrefix="react-select"
+                value={selectedSubproducto}
+                onChange={(opt) => setSelectedSubproducto(opt)}
+                options={productOptions}
+                placeholder="Buscar subproducto..."
+                isClearable
               />
-              <button
-                type="button"
-                onClick={() => {
-                  Swal.fire({
-                    title: "¿Estás seguro?",
-                    text: "Este subproducto se eliminará permanentemente.",
-                    icon: "warning",
-                    showCancelButton: true,
-                    confirmButtonColor: "#d33",
-                    cancelButtonColor: "#3085d6",
-                    confirmButtonText: "Sí, eliminar",
-                    cancelButtonText: "Cancelar"
-                  }).then(async (result) => {
-                    if (result.isConfirmed) {
-                      const subId = item.id; // Asegurate de traer el id en el GET de subproductos
-
-                      if (subId) {
-                        try {
-                          const response = await fetch(`${API_URL}/delete-subproduct/${subId}`, {
-                            method: "DELETE"
-                          });
-
-                          const data = await response.json();
-
-                          if (response.ok) {
-                            const updated = subproductos.filter((_, i) => i !== index);
-                            setSubproductos(updated);
-                            Swal.fire("Eliminado", "Subproducto eliminado correctamente.", "success");
-                          } else {
-                            Swal.fire("Error", data.message || "Error al eliminar subproducto.", "error");
-                          }
-                        } catch (error) {
-                          console.error("Error al eliminar subproducto:", error);
-                          Swal.fire("Error", "Error en la conexión.", "error");
-                        }
-                      } else {
-                        
-                        const updated = subproductos.filter((_, i) => i !== index);
-                        setSubproductos(updated);
-                        Swal.fire("Eliminado", "Subproducto eliminado localmente.", "success");
-                      }
-                    }
-                  });
-                }}
-              >X</button>
-
-
             </div>
-          ))}
-
-          <div style={{ marginBottom: "1.5rem" }}>
-            <button
-              type="button"
-              className="btn-add-subproduct"
-              style={{
-                backgroundColor: "#6c757d",
-                color: "white",
-                padding: "0.5rem 1rem",
-                borderRadius: "6px",
-                border: "none",
-                cursor: "pointer"
-              }}
-              onClick={() => setSubproductos([...subproductos, { subproductId: "", quantity: "" }])}
-            >
-              + Agregar subproducto
-            </button>
+            <input
+              type="number"
+              placeholder="Cantidad"
+              value={cantidad}
+              onChange={(e) => setCantidad(e.target.value)}
+            />
+            <button type="button" onClick={handleAddSubproducto}>Agregar</button>
           </div>
 
-          <div style={{ display: "flex", gap: "1rem" }}>
+          <h3>Subproductos Generados</h3>
+          <ul className="subproduct-list">
+            {currentSubproductos.map((item, index) => {
+              const globalIndex = indexOfFirstItem + index;
+              const producto = allProducts.find(p => p.id.toString() === item.subproductId);
+              const nombreProducto = producto ? producto.product_name.toUpperCase() : "SIN NOMBRE";
+
+              return (
+                <li key={globalIndex}>
+                  <span>{nombreProducto} ------- CANTIDAD {item.quantity}</span>
+                  <FontAwesomeIcon
+                    icon={faTrash}
+                    onClick={() => eliminarSubproducto(globalIndex, item)}
+                    style={{ cursor: "pointer", marginLeft: "10px", color: "#dc3545" }}
+                  />
+                </li>
+              );
+            })}
+          </ul>
+
+          <div className="pagination-controls">
+            <button type="button" disabled={currentPage === 1} onClick={() => handlePageChange(currentPage - 1)}>Anterior</button>
+            <span>Página {currentPage} de {totalPages}</span>
+            <button type="button" disabled={currentPage === totalPages} onClick={() => handlePageChange(currentPage + 1)}>Siguiente</button>
+          </div>
+
+          <div style={{ display: "flex", gap: "1rem", marginTop: "1rem" }}>
             <button
               type="submit"
               disabled={isSubmitting}

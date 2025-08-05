@@ -1,4 +1,3 @@
-
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import Navbar from "../components/Navbar.jsx";
@@ -10,16 +9,21 @@ const SalesPanel = () => {
     const navigate = useNavigate();
 
     const sections = [
-
-
+        { title: "PEDIDOS", desc: "", viewPath: "/order-list", newPath: "/order-new", newText: "Nuevo pedido" },
+        { title: "ÓRDENES DE VENTA", desc: "", viewPath: "/sales-orders", newPath: "/sales-orders-new", newText: "Nueva orden" },
+        { title: "REMITOS", desc: "", viewPath: "/remito-list", newPath: "/remito-new", newText: "Generar remito" },
+        { title: "VENDEDORES", desc: "", viewPath: "/seller-list", newPath: "/seller-new", newText: "Nuevo vendedor" },
+        { title: "PREFACTURACIONES", desc: "", viewPath: "/prefact-list", newPath: "/prefact-new", newText: "Nueva prefacturación" },
+        { title: "REPORTES", desc: "", viewPath: "/report-list", newPath: null, newText: null },
         { title: "CLIENTES", desc: "Administa a los clientes del frigorífico.", viewPath: "/client-list", newPath: "/client-load", newText: "Cargar" },
-
+        { title: "HOJA DE RUTA", desc: "", viewPath: "/route-list", newPath: "/route-new", newText: "Nueva hoja de ruta" },
+         { title: "Listado de precios", desc: "", viewPath: "/price-list-general", newPath: "/new-price-list", newText: "Nueva lista de precios" },
     ];
 
     return (
         <div className="">
             <Navbar />
-              <div style={{ margin: "20px" }}>
+            <div style={{ margin: "20px" }}>
                 <button className="boton-volver" onClick={() => navigate(-1)}>
                     ⬅ Volver
                 </button>
@@ -30,7 +34,7 @@ const SalesPanel = () => {
                 {sections.map((section, index) => (
                     <div className="card" key={index}>
                         <h3>{section.title}</h3>
-                        <p>{section.desc}</p>
+                        {section.desc && <p>{section.desc}</p>}
                         <div className="buttons">
                             {section.viewPath && (
                                 <button className="btn view-btn" onClick={() => navigate(section.viewPath)}>

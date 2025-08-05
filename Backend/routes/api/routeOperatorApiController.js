@@ -10,7 +10,7 @@ const operatorApiController = require("../../controllers/api/operatorApiControll
 router.get("/subproducts-by-name/:name", operatorApiController.getSubproductsForProduct);
 //Api para ver todos los productos congelados/otros cargados
 router.get("/all-products-fresh-others",apiOperatorController.getAllOtherProductsManual);
-//Api para ver productos cargados
+//Api para ver carga de remitos de proveedores
 router.get("/allProducts",apiOperatorController.allProducts);
 //Api para ver stock productos
 router.get("/allProductsStock",apiOperatorController.productStock);
@@ -60,6 +60,9 @@ router.post("/addProducts/:id",apiOperatorController.addIncomeMeat);
 router.post("/observations-create",apiOperatorController.createObservation);
 //Agregar productos congelados o otro productos no cortes por manual
 router.post("/addOtherProductsManual",apiOperatorController.addOtherProductsManual);
+//Api para descontar productos del stock cuando no tienen remitos en el proceso productivo 
+router.post("/descontar-stock-sin-remito", operatorApiController.descontarStockSinRemito);
+
 
 
 //Api para actualizar los productos disponibles 

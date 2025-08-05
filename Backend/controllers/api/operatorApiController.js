@@ -16,7 +16,7 @@ const ObservationsMeatIncome = db.ObservationsMeatIncome;
 const ProductStock = db.ProductStock;
 const OtherProductManual = db.OtherProductManual;
 const ProductCategories = db.ProductCategories
-
+const ProcessNumber = db.ProcessNumber;
 
 const operatorApiController = {
     getAllOtherProductsManual: async (req, res) => {
@@ -651,156 +651,122 @@ const operatorApiController = {
     },
 
     uploadProductsProcess: async (req, res) => {
+        let t;
         try {
-            let {
-                type,
-                average,
-                quantity,
-                gross_weight,
-                tares,
-                net_weight,
-                bill_id
-            } = req.body;
 
-            if (
-                !type ||
-                average === undefined || isNaN(average) ||
-                quantity === undefined || isNaN(quantity) ||
-                gross_weight === undefined || isNaN(gross_weight) ||
-                tares === undefined || isNaN(tares) ||
-                net_weight === undefined || isNaN(net_weight)
-            ) {
-                return res.status(400).json({ message: "Faltan campos obligatorios o hay valores inválidos." });
+            const { cortes, bill_ids } = req.body;
+
+            if (!Array.isArray(cortes) || cortes.length === 0 || !Array.isArray(bill_ids) || bill_ids.length === 0) {
+                return res.status(400).json({ message: "Faltan cortes o comprobantes para asociar." });
             }
 
-            // === Normalizar `type` si es un ID numérico ===
-            let baseProduct = null;
+            t = await sequelize.transaction();
 
-            if (!isNaN(type)) {
-                baseProduct = await ProductsAvailable.findByPk(type, {
-                    include: {
-                        model: ProductCategories,
-                        as: "category",
-                        attributes: ["category_name"]
-                    }
-                });
+            // BUSCAR O CREAR process_number
+            const ultimoProceso = await ProcessNumber.findOne({ order: [['process_number', 'DESC']] });
+            const nuevoProcessNumber = ultimoProceso ? ultimoProceso.process_number + 1 : 1;
 
-                if (!baseProduct) {
-                    return res.status(400).json({ message: `No se encontró ningún producto con ID ${type}` });
+
+            for (const bill_id of bill_ids) {
+                await ProcessNumber.create({ process_number: nuevoProcessNumber, bill_id }, { transaction: t });
+            }
+
+
+            for (const corte of cortes) {
+                let { type, average, quantity, gross_weight, tares, net_weight } = corte;
+
+                const avg = Number(average);
+                const qty = Number(quantity);
+                const gross = Number(gross_weight);
+                const tare = Number(tares);
+                const net = Number(net_weight);
+
+                if (
+                    type == null ||
+                    Number.isNaN(avg) || Number.isNaN(qty) ||
+                    Number.isNaN(gross) || Number.isNaN(tare) ||
+                    Number.isNaN(net)
+                ) {
+                    await t.rollback();
+                    return res.status(400).json({ message: "Faltan campos obligatorios o hay valores inválidos en algún corte." });
                 }
 
-                // Reemplazamos el ID por el nombre
-                type = baseProduct.product_name;
-            } else {
-                // Buscar por nombre si vino como string
-                baseProduct = await ProductsAvailable.findOne({
-                    where: { product_name: type },
-                    include: {
-                        model: ProductCategories,
-                        as: "category",
-                        attributes: ["category_name"]
-                    }
-                });
-            }
+                let baseProduct = null;
+                let productName = null;
 
-            if (!baseProduct) {
-                return res.status(400).json({ message: `No se pudo identificar el producto "${type}" en ProductsAvailable.` });
-            }
-
-            // === Guardar proceso productivo
-            await ProcessMeat.create({
-                type,
-                average,
-                quantity,
-                gross_weight,
-                tares,
-                net_weight,
-                bill_id
-            });
-
-            // Marcar el remito como procesado
-            await billSupplier.update(
-                { production_process: true },
-                { where: { id: bill_id } }
-            );
-
-            // === Sumar corte procesado al stock general
-            const existing = await ProductStock.findOne({ where: { product_name: type } });
-
-            if (existing) {
-                await existing.increment("product_quantity", { by: quantity });
-                await existing.increment("product_total_weight", { by: net_weight });
-            } else {
-                await ProductStock.create({
-                    product_name: type,
-                    product_quantity: quantity,
-                     product_total_weight: net_weight,
-                    product_cod: baseProduct.id,
-                    product_category: baseProduct.category?.category_name || "desconocida"
-                });
-            }
-
-            // === Descontar del stock original del remito
-            const remito = await billSupplier.findByPk(bill_id);
-
-            if (!remito) {
-                return res.status(404).json({ message: "Remito no encontrado" });
-            }
-
-            if (remito.income_state === "romaneo") {
-                // Descontar de billDetail
-                const detalle = await billDetail.findOne({
-                    where: {
-                        bill_supplier_id: bill_id,
-                        type: type
-                    }
-                });
-
-                if (detalle) {
-                    detalle.quantity -= quantity;
-                    detalle.weight -= net_weight;
-                    if (detalle.quantity < 0) detalle.quantity = 0;
-                    if (detalle.weight < 0) detalle.weight = 0;
-                    await detalle.save();
-                }
-
-            } else if (remito.income_state === "manual") {
-                // Intentar encontrar en meatIncome
-                const manual = await meatIncome.findOne({
-                    where: {
-                        id_bill_suppliers: bill_id,
-                        products_name: type
-                    }
-                });
-
-                if (manual) {
-                    manual.products_quantity -= quantity;
-                    manual.net_weight -= net_weight;
-                    if (manual.products_quantity < 0) manual.products_quantity = 0;
-                    if (manual.net_weight < 0) manual.net_weight = 0;
-                    await manual.save();
-                } else {
-                    // Buscar en congelados
-                    const otro = await OtherProductManual.findOne({
-                        where: {
-                            id_bill_suppliers: bill_id,
-                            type: type
-                        }
+                if (!Number.isNaN(Number(type))) {
+                    baseProduct = await ProductsAvailable.findByPk(type, {
+                        include: { model: ProductCategories, as: "category", attributes: ["category_name"] },
+                        transaction: t
                     });
-
-                    if (otro) {
-                        otro.quantity -= quantity;
-                        otro.weight -= net_weight;
-                        if (otro.quantity < 0) otro.quantity = 0;
-                        if (otro.weight < 0) otro.weight = 0;
-                        await otro.save();
+                    if (!baseProduct) {
+                        await t.rollback();
+                        return res.status(400).json({ message: `No se encontró ningún producto con ID ${type}` });
                     }
+                    productName = baseProduct.product_name;
+                } else {
+                    baseProduct = await ProductsAvailable.findOne({
+                        where: { product_name: type },
+                        include: { model: ProductCategories, as: "category", attributes: ["category_name"] },
+                        transaction: t
+                    });
+                    if (!baseProduct) {
+                        await t.rollback();
+                        return res.status(400).json({ message: `No se pudo identificar el producto "${type}" en ProductsAvailable.` });
+                    }
+                    productName = baseProduct.product_name;
                 }
+
+
+                await ProcessMeat.create({
+                    type: productName,
+                    average: avg,
+                    quantity: qty,
+                    gross_weight: gross,
+                    tares: tare,
+                    net_weight: net,
+                    process_number: nuevoProcessNumber
+                }, { transaction: t });
+
+
+                const existing = await ProductStock.findOne({
+                    where: { product_name: productName },
+                    transaction: t
+                });
+
+                if (existing) {
+                    await existing.increment(
+                        { product_quantity: qty, product_total_weight: net },
+                        { transaction: t }
+                    );
+                } else {
+                    await ProductStock.create({
+                        product_name: productName,
+                        product_quantity: qty,
+                        product_total_weight: net,
+                        product_cod: baseProduct.id,
+                        product_category: baseProduct.category?.category_name || "desconocida"
+                    }, { transaction: t });
+                }
+
+
+                for (const bill_id of bill_ids) {
+                    await billSupplier.update(
+                        { production_process: true },
+                        { where: { id: bill_id }, transaction: t }
+                    );
+                }
+
+
             }
 
-            return res.status(201).json({ message: "Corte y stock guardados correctamente." });
-
+            await t.commit();
+            return res.status(201).json({
+                message: "Cortes y proceso guardados correctamente.",
+                process_number: nuevoProcessNumber
+            });
         } catch (error) {
+            if (t) { try { await t.rollback(); } catch { } }
             console.error("Error al cargar datos:", error);
             return res.status(500).json({ message: "Error interno del servidor", error: error.message });
         }
@@ -1712,6 +1678,48 @@ const operatorApiController = {
             res.status(500).json({ message: "Error interno al obtener subproductos" });
         }
     },
+    descontarStockSinRemito: async (req, res) => {
+        try {
+            const { product_name, quantity } = req.body;
+
+            // Validación básica
+            if (!product_name || !quantity || quantity <= 0) {
+                return res.status(400).json({ message: "Datos inválidos. Se requiere product_name y quantity mayor a 0." });
+            }
+
+            // Buscar producto en ProductStock
+            const productoStock = await ProductStock.findOne({
+                where: { product_name }
+            });
+
+            if (!productoStock) {
+                return res.status(404).json({ message: `Producto "${product_name}" no encontrado en stock.` });
+            }
+
+            // Validar stock suficiente
+            if (productoStock.product_quantity < quantity) {
+                return res.status(400).json({
+                    message: `Stock insuficiente para "${product_name}". Disponible: ${productoStock.product_quantity}, solicitado: ${quantity}`
+                });
+            }
+
+            // Descontar cantidad
+            productoStock.product_quantity -= quantity;
+            if (productoStock.product_quantity < 0) productoStock.product_quantity = 0;
+            await productoStock.save();
+
+            return res.status(200).json({
+                message: `Stock de "${product_name}" descontado correctamente.`,
+                product_name,
+                cantidad_restada: quantity,
+                cantidad_restante: productoStock.product_quantity
+            });
+        } catch (error) {
+            console.error("Error al descontar stock sin remito:", error);
+            return res.status(500).json({ message: "Error interno del servidor", error: error.message });
+        }
+    }
+
 
 
 

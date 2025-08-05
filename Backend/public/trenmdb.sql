@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 25-07-2025 a las 22:17:04
+-- Tiempo de generación: 05-08-2025 a las 19:49:13
 -- Versión del servidor: 10.4.28-MariaDB
 -- Versión de PHP: 8.2.4
 
@@ -104,12 +104,45 @@ CREATE TABLE `meat_manual_income` (
 -- --------------------------------------------------------
 
 --
+-- Estructura de tabla para la tabla `new_orders`
+--
+
+CREATE TABLE `new_orders` (
+  `id` int(11) NOT NULL,
+  `date_order` date NOT NULL,
+  `client_name` varchar(255) NOT NULL,
+  `salesman_name` varchar(255) NOT NULL,
+  `price_list` varchar(255) DEFAULT NULL,
+  `sell_condition` varchar(255) NOT NULL,
+  `payment_condition` varchar(255) NOT NULL,
+  `observation_order` varchar(255) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Estructura de tabla para la tabla `observations_meatincome`
 --
 
 CREATE TABLE `observations_meatincome` (
   `id` int(11) NOT NULL,
   `observation` varchar(255) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `order_products_client`
+--
+
+CREATE TABLE `order_products_client` (
+  `id` int(11) NOT NULL,
+  `order_id` int(11) NOT NULL,
+  `product_cod` varchar(50) NOT NULL,
+  `product_name` varchar(100) NOT NULL,
+  `precio` decimal(10,2) NOT NULL,
+  `cantidad` decimal(10,2) NOT NULL,
+  `tipo_medida` varchar(20) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -134,6 +167,36 @@ CREATE TABLE `other_product_manual` (
 -- --------------------------------------------------------
 
 --
+-- Estructura de tabla para la tabla `price_lists`
+--
+
+CREATE TABLE `price_lists` (
+  `id` int(11) NOT NULL,
+  `list_number` int(11) NOT NULL,
+  `name` varchar(100) NOT NULL,
+  `client_id` int(11) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `price_list_products`
+--
+
+CREATE TABLE `price_list_products` (
+  `id` int(11) NOT NULL,
+  `price_list_number` int(11) NOT NULL,
+  `product_id` int(11) NOT NULL,
+  `product_name` varchar(100) NOT NULL,
+  `unidad_venta` varchar(20) NOT NULL,
+  `costo` decimal(12,2) DEFAULT 0.00,
+  `precio_sin_iva` decimal(12,2) DEFAULT 0.00,
+  `precio_con_iva` decimal(12,2) DEFAULT 0.00
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Estructura de tabla para la tabla `process_meats`
 --
 
@@ -145,9 +208,21 @@ CREATE TABLE `process_meats` (
   `gross_weight` float NOT NULL,
   `tares` float NOT NULL,
   `net_weight` float NOT NULL,
-  `bill_id` int(11) NOT NULL,
+  `process_number` int(11) NOT NULL,
   `createdAt` timestamp NOT NULL DEFAULT current_timestamp(),
   `updatedAt` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `process_number`
+--
+
+CREATE TABLE `process_number` (
+  `id` int(11) NOT NULL,
+  `process_number` int(11) NOT NULL,
+  `bill_id` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -222,6 +297,26 @@ CREATE TABLE `providers` (
   `provider_country` varchar(255) NOT NULL,
   `provider_province` varchar(255) NOT NULL,
   `provider_location` varchar(255) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `sellers`
+--
+
+CREATE TABLE `sellers` (
+  `id` int(11) NOT NULL,
+  `code` varchar(32) NOT NULL,
+  `name` varchar(128) NOT NULL,
+  `province` varchar(64) DEFAULT NULL,
+  `city` varchar(64) DEFAULT NULL,
+  `street` varchar(80) DEFAULT NULL,
+  `number` varchar(16) DEFAULT NULL,
+  `floor` varchar(16) DEFAULT NULL,
+  `office` varchar(32) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -313,10 +408,23 @@ ALTER TABLE `meat_manual_income`
   ADD KEY `id_received_suppliers` (`id_bill_suppliers`);
 
 --
+-- Indices de la tabla `new_orders`
+--
+ALTER TABLE `new_orders`
+  ADD PRIMARY KEY (`id`);
+
+--
 -- Indices de la tabla `observations_meatincome`
 --
 ALTER TABLE `observations_meatincome`
   ADD PRIMARY KEY (`id`);
+
+--
+-- Indices de la tabla `order_products_client`
+--
+ALTER TABLE `order_products_client`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `fk_order` (`order_id`);
 
 --
 -- Indices de la tabla `other_product_manual`
@@ -326,9 +434,27 @@ ALTER TABLE `other_product_manual`
   ADD KEY `fk_bill_suppliers` (`id_bill_suppliers`);
 
 --
+-- Indices de la tabla `price_lists`
+--
+ALTER TABLE `price_lists`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indices de la tabla `price_list_products`
+--
+ALTER TABLE `price_list_products`
+  ADD PRIMARY KEY (`id`);
+
+--
 -- Indices de la tabla `process_meats`
 --
 ALTER TABLE `process_meats`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indices de la tabla `process_number`
+--
+ALTER TABLE `process_number`
   ADD PRIMARY KEY (`id`);
 
 --
@@ -365,6 +491,13 @@ ALTER TABLE `product_subproducts`
 --
 ALTER TABLE `providers`
   ADD PRIMARY KEY (`id`);
+
+--
+-- Indices de la tabla `sellers`
+--
+ALTER TABLE `sellers`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `code` (`code`);
 
 --
 -- Indices de la tabla `tares`
@@ -417,24 +550,48 @@ ALTER TABLE `clients`
 -- AUTO_INCREMENT de la tabla `meat_manual_income`
 --
 ALTER TABLE `meat_manual_income`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- AUTO_INCREMENT de la tabla `new_orders`
+--
+ALTER TABLE `new_orders`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT de la tabla `order_products_client`
+--
+ALTER TABLE `order_products_client`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT de la tabla `other_product_manual`
 --
 ALTER TABLE `other_product_manual`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- AUTO_INCREMENT de la tabla `price_lists`
+--
+ALTER TABLE `price_lists`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT de la tabla `price_list_products`
+--
+ALTER TABLE `price_list_products`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT de la tabla `process_meats`
 --
 ALTER TABLE `process_meats`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
--- AUTO_INCREMENT de la tabla `products_available`
+-- AUTO_INCREMENT de la tabla `process_number`
 --
-ALTER TABLE `products_available`
+ALTER TABLE `process_number`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
@@ -459,6 +616,12 @@ ALTER TABLE `product_subproducts`
 -- AUTO_INCREMENT de la tabla `providers`
 --
 ALTER TABLE `providers`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT de la tabla `sellers`
+--
+ALTER TABLE `sellers`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
@@ -500,6 +663,12 @@ ALTER TABLE `bill_details`
 --
 ALTER TABLE `meat_manual_income`
   ADD CONSTRAINT `fk_meat_income_received_suppliers` FOREIGN KEY (`id_bill_suppliers`) REFERENCES `bill_suppliers` (`id`);
+
+--
+-- Filtros para la tabla `order_products_client`
+--
+ALTER TABLE `order_products_client`
+  ADD CONSTRAINT `fk_order` FOREIGN KEY (`order_id`) REFERENCES `new_orders` (`id`) ON DELETE CASCADE;
 
 --
 -- Filtros para la tabla `other_product_manual`

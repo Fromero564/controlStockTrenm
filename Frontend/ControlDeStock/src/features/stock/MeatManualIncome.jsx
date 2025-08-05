@@ -305,10 +305,10 @@ const MeatManualIncome = () => {
           value: producto.product_name,
           label: producto.product_name,
           id: producto.id,
-         categoria: producto.category_id,
+          categoria: producto.category_id,
         }));
 
-        console.log("Datos de las opciones:",opciones)
+        console.log("Datos de las opciones:", opciones)
 
         setOpcionesProductos(opciones);
       } catch (err) {
@@ -473,10 +473,14 @@ const MeatManualIncome = () => {
       await handleGuardarObservacion();
       console.log("Observación guardada correctamente.");
 
+      const pesoTotalCortes = cortesAgregados.reduce((acc, item) => acc + (item.pesoNeto || 0), 0);
+      const pesoTotalCongelados = congeladosAgregados.reduce((acc, item) => acc + (item.pesoNeto || 0), 0);
+      const pesoTotalCombinado = pesoTotalCortes + pesoTotalCongelados;
+
       const updatePayload = {
         cantidad_animales_cargados: totalAnimalesCargados,
         cantidad_cabezas_cargadas: totalCabezasCargadas,
-        peso_total_neto_cargado: totalKgNeto,
+        peso_total_neto_cargado: pesoTotalCombinado,
         fresh_quantity: totalQuantityCongelados,
         fresh_weight: totalWeightCongelados,
       };
@@ -538,7 +542,7 @@ const MeatManualIncome = () => {
           product_category: item.categoria || null,
         }));
 
-        console.log("Productos que se envian:",payloadCongelados)
+        console.log("Productos que se envian:", payloadCongelados)
 
         const endpoint = isEditing
           ? `${API_URL}/editOtherProductsManual/${data.id}`
@@ -660,41 +664,41 @@ const MeatManualIncome = () => {
 
     setTaraSeleccionadaId("");
   };
-const eliminarCorte = async (index) => {
-  const corte = cortesAgregados[index];
+  const eliminarCorte = async (index) => {
+    const corte = cortesAgregados[index];
 
-  const confirm = await Swal.fire({
-    title: "¿Eliminar corte?",
-    text: "Esta acción eliminará el corte y actualizará el stock.",
-    icon: "warning",
-    showCancelButton: true,
-    confirmButtonText: "Sí, eliminar",
-    cancelButtonText: "Cancelar",
-  });
+    const confirm = await Swal.fire({
+      title: "¿Eliminar corte?",
+      text: "Esta acción eliminará el corte y actualizará el stock.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Sí, eliminar",
+      cancelButtonText: "Cancelar",
+    });
 
-  if (!confirm.isConfirmed) return;
+    if (!confirm.isConfirmed) return;
 
-  try {
-    // Si el corte existe en la base de datos (tiene ID), eliminá en backend
-    if (corte.id) {
-      const res = await fetch(`${API_URL}/provider-item-delete/${corte.id}`, {
-        method: "DELETE",
-      });
+    try {
+      // Si el corte existe en la base de datos (tiene ID), eliminá en backend
+      if (corte.id) {
+        const res = await fetch(`${API_URL}/provider-item-delete/${corte.id}`, {
+          method: "DELETE",
+        });
 
-      if (!res.ok) {
-        throw new Error("No se pudo eliminar el corte de la base de datos.");
+        if (!res.ok) {
+          throw new Error("No se pudo eliminar el corte de la base de datos.");
+        }
       }
+
+      // Siempre lo eliminamos del estado del frontend
+      setCortesAgregados((prev) => prev.filter((_, i) => i !== index));
+
+      Swal.fire("Eliminado", "Corte eliminado con éxito.", "success");
+    } catch (err) {
+      console.error("Error al eliminar de la base de datos:", err);
+      Swal.fire("Error", err.message, "error");
     }
-
-    // Siempre lo eliminamos del estado del frontend
-    setCortesAgregados((prev) => prev.filter((_, i) => i !== index));
-
-    Swal.fire("Eliminado", "Corte eliminado con éxito.", "success");
-  } catch (err) {
-    console.error("Error al eliminar de la base de datos:", err);
-    Swal.fire("Error", err.message, "error");
-  }
-};
+  };
 
 
 
@@ -868,11 +872,11 @@ const eliminarCorte = async (index) => {
   return (
     <div>
       <Navbar />
-       <div style={{ margin: "20px" }}>
-                <button className="boton-volver" onClick={() => navigate(-1)}>
-                    ⬅ Volver
-                </button>
-            </div>
+      <div style={{ margin: "20px" }}>
+        <button className="boton-volver" onClick={() => navigate(-1)}>
+          ⬅ Volver
+        </button>
+      </div>
       <h1 className="title-mercaderia">Detalle Mercadería</h1>
       <div className="main-container">
         <div>
@@ -1431,9 +1435,9 @@ const eliminarCorte = async (index) => {
                     <tr>
                       <th>TIPO</th>
                       <th>NUMERO GARRON</th>
-                       <th>PESO ETIQUETA</th>
+                      <th>PESO ETIQUETA</th>
                       <th>CANTIDAD</th>
-                      <th>CABEZAS</th>                
+                      <th>CABEZAS</th>
                       <th>KG NETO</th>
                       <th>MERMA (%)</th>
                     </tr>
@@ -1450,8 +1454,8 @@ const eliminarCorte = async (index) => {
                       return (
                         <tr key={index}>
                           <td>{corte.tipo}</td>
-                           <td>{corte.garron}</td>
-                            <td>{corte.pesoProveedor}</td>
+                          <td>{corte.garron}</td>
+                          <td>{corte.pesoProveedor}</td>
                           <td>{corte.cantidad}</td>
                           <td>{corte.cabeza}</td>
                           <td>{Number(corte.pesoNeto || 0).toFixed(2)}</td>

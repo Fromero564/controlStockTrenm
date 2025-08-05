@@ -31,6 +31,12 @@ router.get("/warehouse-stock-unassigned", apiAdministrativeController.getUnassig
 router.get("/bill-details/:id",apiAdministrativeController.findBillDetailsById);
 //Api para ver todos los productos disponibles
 router.get("/all-products-availables", apiAdministrativeController.getAllAvailableProducts);
+//Api para traer todos los procesos productivos
+router.get("/all-process-number",apiAdministrativeController.getAllProcessNumber);
+//Api para traer remito solo lectura con sus detalles
+router.get('/bill-details-readonly/:id', apiAdministrativeController.findBillDetailsReadonlyById);
+
+
 
 
 //Api para actualizar proveedor

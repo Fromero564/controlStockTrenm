@@ -8,7 +8,10 @@ const LoadNewClient = () => {
     const navigate = useNavigate();
     const { id } = useParams();
     const [countries, setCountries] = useState([]);
+    const [provincias, setProvincias] = useState([]);
+    const [localidades, setLocalidades] = useState([]);
     const API_URL = import.meta.env.VITE_API_URL;
+
     const [formData, setFormData] = useState({
         id,
         nombreCliente: "",
@@ -23,6 +26,8 @@ const LoadNewClient = () => {
         localidadCliente: "",
         estadoCliente: true,
     });
+
+    const esArgentina = formData.paisCliente === "Argentina";
 
     useEffect(() => {
         const fetchCliente = async () => {
@@ -54,7 +59,7 @@ const LoadNewClient = () => {
             }
         };
         fetchCliente();
-    }, [id]);
+    }, [id, API_URL]);
 
     useEffect(() => {
         const fetchCountries = async () => {
@@ -74,10 +79,82 @@ const LoadNewClient = () => {
         fetchCountries();
     }, []);
 
+    useEffect(() => {
+        const fetchProvincias = async () => {
+            try {
+                const res = await fetch("https://apis.datos.gob.ar/georef/api/provincias");
+                if (res.ok) {
+                    const data = await res.json();
+                    const provinciasOrdenadas = data.provincias
+                        .map(p => p.nombre)
+                        .sort((a, b) => a.localeCompare(b));
+                    setProvincias(provinciasOrdenadas);
+                }
+            } catch (error) {
+                console.error("Error al obtener provincias:", error);
+            }
+        };
+
+        fetchProvincias();
+    }, []);
+
+    useEffect(() => {
+        if (!esArgentina) {
+            setLocalidades([]);
+            return;
+        }
+
+        const fetchLocalidades = async () => {
+            setLocalidades([]);
+
+            if (!formData.provinciaCliente) return;
+
+            try {
+                const res = await fetch(`https://apis.datos.gob.ar/georef/api/localidades?provincia=${encodeURIComponent(formData.provinciaCliente)}&max=1000`);
+                if (res.ok) {
+                    const data = await res.json();
+                    const nombresLocalidades = data.localidades
+                        .map(loc => loc.nombre)
+                        .sort((a, b) => a.localeCompare(b));
+                    setLocalidades(nombresLocalidades);
+                }
+            } catch (error) {
+                console.error("Error al obtener localidades:", error);
+            }
+        };
+
+        fetchLocalidades();
+    }, [formData.provinciaCliente, esArgentina]);
+
     const handleChange = (e) => {
+        const { name, value } = e.target;
+
+        if (name === "paisCliente") {
+            const esArg = value === "Argentina";
+            setFormData({
+                ...formData,
+                paisCliente: value,
+                provinciaCliente: "",
+                localidadCliente: "",
+            });
+            if (!esArg) {
+                setLocalidades([]);
+            }
+            return;
+        }
+
+        if (name === "provinciaCliente") {
+            setFormData({
+                ...formData,
+                provinciaCliente: value,
+                localidadCliente: "",
+            });
+            return;
+        }
+
         setFormData({
             ...formData,
-            [e.target.name]: e.target.value,
+            [name]: value,
         });
     };
 
@@ -188,7 +265,7 @@ const LoadNewClient = () => {
     return (
         <div>
             <Navbar />
-          <div style={{ margin: "20px" }}>
+            <div style={{ margin: "20px" }}>
                 <button className="boton-volver" onClick={() => navigate(-1)}>
                     ⬅ Volver
                 </button>
@@ -258,12 +335,42 @@ const LoadNewClient = () => {
 
                     <div className="form-group-client">
                         <label htmlFor="provinciaCliente">Provincia</label>
-                        <input type="text" name="provinciaCliente" value={formData.provinciaCliente} onChange={handleChange} />
+                        {esArgentina ? (
+                            <select name="provinciaCliente" value={formData.provinciaCliente} onChange={handleChange}>
+                                <option value="">Seleccione una provincia</option>
+                                {provincias.map((provincia) => (
+                                    <option key={provincia} value={provincia}>{provincia}</option>
+                                ))}
+                            </select>
+                        ) : (
+                            <input
+                                type="text"
+                                name="provinciaCliente"
+                                value={formData.provinciaCliente}
+                                onChange={handleChange}
+                                placeholder="Ingrese la provincia"
+                            />
+                        )}
                     </div>
 
                     <div className="form-group-client">
                         <label htmlFor="localidadCliente">Localidad</label>
-                        <input type="text" name="localidadCliente" value={formData.localidadCliente} onChange={handleChange} />
+                        {esArgentina ? (
+                            <select name="localidadCliente" value={formData.localidadCliente} onChange={handleChange}>
+                                <option value="">Seleccione una localidad</option>
+                                {localidades.map((loc) => (
+                                    <option key={loc} value={loc}>{loc}</option>
+                                ))}
+                            </select>
+                        ) : (
+                            <input
+                                type="text"
+                                name="localidadCliente"
+                                value={formData.localidadCliente}
+                                onChange={handleChange}
+                                placeholder="Ingrese la localidad"
+                            />
+                        )}
                     </div>
                 </div>
 

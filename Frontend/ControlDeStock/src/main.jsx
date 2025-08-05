@@ -32,6 +32,11 @@ import LoadWarehouse from './features/products/LoadNewWarehouse.jsx';
 import AllWarehousesList from './features/products/AllWarehousesList.jsx';
 import WarehouseStockView from './features/stock/WarehousesStockView.jsx';
 import ListProductionProcess from './features/stock/ListProductionProcess.jsx';
+import LoadNewOrder from './features/sales/LoadNewOrder.jsx';
+import LoadNewSeller from './features/salesman/LoadNewSeller.jsx';
+import ListSellers from './features/salesman/ListSellers.jsx';
+import LoadNewPriceList from './features/sales/LoadNewPriceList.jsx';
+import ProductionProcessDetails from './features/stock/ProductionProcessDetails.jsx';
 
 
 
@@ -92,7 +97,7 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
-    {
+  {
     path: "/warehouse-load",
     element: (
       <ProtectedRoute>
@@ -101,22 +106,22 @@ const router = createBrowserRouter([
     ),
   },
   {
-  path: "/warehouse-load/:id",
-  element: (
-    <ProtectedRoute>
-      <LoadWarehouse />
-    </ProtectedRoute>
-  ),
-},
-{
-  path: "/warehouses-list",
-  element: (
-    <ProtectedRoute>
-      <AllWarehousesList />
-    </ProtectedRoute>
-  ),
-},
-    {
+    path: "/warehouse-load/:id",
+    element: (
+      <ProtectedRoute>
+        <LoadWarehouse />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/warehouses-list",
+    element: (
+      <ProtectedRoute>
+        <AllWarehousesList />
+      </ProtectedRoute>
+    ),
+  },
+  {
     path: "/product-categories-list",
     element: (
       <ProtectedRoute>
@@ -133,7 +138,7 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
-   {
+  {
     path: "/product-configuration",
     element: (
       <ProtectedRoute>
@@ -141,7 +146,7 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
-  
+
   {
     path: "/provider-load",
     element: (
@@ -150,7 +155,7 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
-  
+
   {
     path: "/provider-load/:id",
     element: (
@@ -175,7 +180,7 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
-   
+
   {
     path: "/meat-manual-income/:remitoId/",
     element: (
@@ -192,7 +197,7 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
-   {
+  {
     path: "/all-products-availables",
     element: (
       <ProtectedRoute>
@@ -200,7 +205,7 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
-     {
+  {
     path: "/category-load",
     element: (
       <ProtectedRoute>
@@ -208,7 +213,7 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
-      {
+  {
     path: "/category-load/:id",
     element: (
       <ProtectedRoute>
@@ -232,7 +237,7 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
-   {
+  {
     path: "/production-process/:id",
     element: (
       <ProtectedRoute>
@@ -240,11 +245,11 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
-    {
+  {
     path: "/list-production-process",
     element: (
       <ProtectedRoute>
-        <ListProductionProcess/>
+        <ListProductionProcess />
       </ProtectedRoute>
     ),
   },
@@ -256,7 +261,7 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
-    {
+  {
     path: "/warehouse-stock",
     element: (
       <ProtectedRoute>
@@ -305,7 +310,57 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
+  {
+    path: "/sales-orders-new",
+    element: (
+      <ProtectedRoute>
+        <LoadNewOrder />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/seller-new",
+    element: (
+      <ProtectedRoute>
+        <LoadNewSeller />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/edit-seller/:id",
+    element: (
+      <ProtectedRoute>
+        <LoadNewSeller />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/seller-list",
+    element: (
+      <ProtectedRoute>
+        <ListSellers/>
+      </ProtectedRoute>
+    ),
+  },
+   {
+    path: "/new-price-list",
+    element: (
+      <ProtectedRoute>
+        <LoadNewPriceList/>
+      </ProtectedRoute>
+    ),
+  },
+  {
+  path: "/production-process/details/:processNumber",
+  element: (
+    <ProtectedRoute>
+      <ProductionProcessDetails/>
+    </ProtectedRoute>
+  ),
+},
+
 ]);
+
 
 Modal.setAppElement('#root');
 

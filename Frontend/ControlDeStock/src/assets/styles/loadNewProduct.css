@@ -1,34 +1,20 @@
 /* Contenedor principal */
 .product-form-container {
-  max-width: 500px;
+  width: 90%;
+  max-width: 600px;
   margin: 2rem auto;
   padding: 2rem;
   border: 1px solid #ddd;
   border-radius: 12px;
-  background-color: #fafafa;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
-}
-
-/* Radio group */
-.radio-group {
-  margin-top: 1rem;
-  margin-bottom: 1rem;
-}
-
-.radio-group legend {
-  font-weight: bold;
-  margin-bottom: 0.5rem;
-}
-
-.radio-group label {
-  margin-right: 1rem;
+  background-color: #fdfdfd;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
 }
 
 /* Etiquetas */
 .product-form-container label {
   display: block;
-  margin-bottom: 0.5rem;
-  font-weight: bold;
+  margin-bottom: 0.4rem;
+  font-weight: 600;
   color: #333;
 }
 
@@ -37,23 +23,36 @@
 .product-form-container input[type="number"],
 .product-form-container select {
   width: 100%;
-  padding: 0.6rem;
+  padding: 0.65rem;
   margin-bottom: 1.2rem;
   border: 1px solid #ccc;
   border-radius: 8px;
   font-size: 1rem;
   box-sizing: border-box;
+  transition: border 0.2s ease;
 }
 
-/* Opcional: eliminar flechas de inputs number */
-.product-form-container input[type="number"]::-webkit-outer-spin-button,
-.product-form-container input[type="number"]::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
+.product-form-container input[type="text"]:focus,
+.product-form-container input[type="number"]:focus,
+.product-form-container select:focus {
+  border-color: #007bff;
+  outline: none;
 }
 
-.product-form-container input[type="number"] {
-  -moz-appearance: textfield;
+/* Radio group */
+.radio-group {
+  margin-top: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.radio-group legend {
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+}
+
+.radio-group label {
+  margin-right: 1.5rem;
+  font-weight: normal;
 }
 
 /* Botones */
@@ -64,13 +63,17 @@
   border-radius: 8px;
   cursor: pointer;
   margin-right: 1rem;
-  transition: background-color 0.3s ease;
+  transition: background-color 0.3s ease, transform 0.1s ease;
 }
 
 /* Botón de submit */
 .product-form-container button[type="submit"] {
   background-color: #007bff;
   color: white;
+}
+
+.product-form-container button[type="submit"]:hover {
+  background-color: #0056b3;
 }
 
 .product-form-container button[type="submit"]:disabled {
@@ -80,12 +83,12 @@
 
 /* Botón cancelar */
 .product-form-container button[type="button"] {
-  background-color: #ccc;
+  background-color: #e2e2e2;
   color: #333;
 }
 
 .product-form-container button[type="button"]:hover {
-  background-color: #bbb;
+  background-color: #d0d0d0;
 }
 
 /* Mensaje de éxito */
@@ -94,4 +97,127 @@
   font-weight: bold;
   margin-top: 1rem;
   text-align: center;
+}
+
+/* Subproducto */
+.subproduct-add-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 1rem;
+}
+
+/* Select */
+.subproduct-add-container .react-select__control {
+  flex: 1;
+  min-height: 38px !important;
+  height: 38px !important;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 14px;
+}
+
+/* Input cantidad */
+.subproduct-add-container input[type="number"] {
+  width: 80px;
+  height: 38px;
+  padding: 6px;
+  font-size: 14px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  text-align: center;
+  margin: 0;
+}
+
+/* Botón agregar */
+.subproduct-add-container button {
+  height: 38px;
+  padding: 0 14px;
+  background-color: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.subproduct-add-container button:hover {
+  background-color: #5a6268;
+}
+
+/* Lista de subproductos */
+.subproduct-list {
+  list-style: none;
+  padding-left: 0;
+  margin-bottom: 1rem;
+}
+
+.subproduct-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  font-size: 15px;
+  border-bottom: 1px solid #eee;
+  color: #333;
+}
+
+.subproduct-list li span {
+  flex: 1;
+}
+
+/* Ícono eliminar */
+.subproduct-list li svg {
+  cursor: pointer;
+  color: #dc3545;
+  transition: transform 0.2s ease, color 0.2s ease;
+  font-size: 16px;
+}
+
+.subproduct-list li svg:hover {
+  transform: scale(1.2);
+  color: #b02a37;
+}
+
+/* Títulos de sección */
+.product-form-container h2 {
+  font-size: 1.5rem;
+  margin-bottom: 1.5rem;
+  color: #222;
+}
+
+.product-form-container h3 {
+  margin-top: 2rem;
+  color: #444;
+  font-size: 1.15rem;
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 4px;
+  margin-bottom: 1rem;
+}
+
+/* Paginación */
+.pagination-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.pagination-controls button {
+  padding: 5px 10px;
+  border: none;
+  background-color: #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.pagination-controls button:hover:not(:disabled) {
+  background-color: #bbb;
+}
+
+.pagination-controls button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }

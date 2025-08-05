@@ -8,7 +8,6 @@ import "../../assets/styles/providerForm.css";
 const ProviderForm = () => {
     const [tipoIngreso, setTipoIngreso] = useState("romaneo");
     const API_URL = import.meta.env.VITE_API_URL;
-    const [errorCorteDuplicado, setErrorCorteDuplicado] = useState(false);
     const [errorCongeladoDuplicado, setErrorCongeladoDuplicado] = useState(false);
     const [providers, setProviders] = useState([]);
     const [cortes, setCortes] = useState([]);
@@ -19,12 +18,30 @@ const ProviderForm = () => {
     const [formState, setFormState] = useState({ proveedor: "", pesoTotal: "", romaneo: "" });
 
     const [nuevoCorte, setNuevoCorte] = useState({ tipo: "", cantidad: 0, cabezas: 0, pesoRomaneo: 0 });
-
     const [nuevoCongelado, setNuevoCongelado] = useState({ tipo: "", cantidad: 0, unidades: 0 });
+
+    // PAGINACIÓN y contador
+    const cortesPorPagina = 5;
+    const congeladosPorPagina = 5;
+    const [paginaCortes, setPaginaCortes] = useState(1);
+    const [paginaCongelados, setPaginaCongelados] = useState(1);
+
+    const totalPaginasCortes = Math.ceil(cortesAgregados.length / cortesPorPagina) || 1;
+    const cortesEnPagina = cortesAgregados.slice(
+        (paginaCortes - 1) * cortesPorPagina,
+        paginaCortes * cortesPorPagina
+    );
+
+    const totalPaginasCongelados = Math.ceil(congeladosAgregados.length / congeladosPorPagina) || 1;
+    const congeladosEnPagina = congeladosAgregados.slice(
+        (paginaCongelados - 1) * congeladosPorPagina,
+        paginaCongelados * congeladosPorPagina
+    );
 
     const navigate = useNavigate();
     const { id } = useParams();
 
+    // --- Carga datos si es edición ---
     useEffect(() => {
         if (id && cortes.length > 0) {
             const fetchData = async () => {
@@ -32,10 +49,8 @@ const ProviderForm = () => {
                     const response = await fetch(`${API_URL}/chargeUpdateBillDetails/${id}`);
                     const data = await response.json();
 
-
                     setTipoIngreso(data.tipo_ingreso);
                     setUltimoRegistroFactura(data.internal_number);
-
 
                     if (Array.isArray(data.detalles)) {
                         const cortesMapeados = data.detalles.map(corte => {
@@ -48,13 +63,11 @@ const ProviderForm = () => {
                                 cabezas: Number(corte.cabezas) || 0,
                                 cod: producto?.id || "",
                                 categoria: producto?.categoria || "",
-                                  pesoRomaneo: Number(corte.pesoRomaneo) || 0
+                                pesoRomaneo: Number(corte.pesoRomaneo) || 0
                             };
                         });
                         setCortesAgregados(cortesMapeados);
-                        console.log("Cortes cargados:", cortesMapeados);
                     }
-
 
                     if (Array.isArray(data.congelados)) {
                         const congeladosMapeados = data.congelados.map(cong => {
@@ -65,8 +78,6 @@ const ProviderForm = () => {
                                 nombre: producto?.nombre || cong.tipo,
                                 cantidad: Number(cong.cantidad) || 0,
                                 unidades: Number(cong.peso || cong.weight) || 0,
-
-
                                 cod: producto?.id || "",
                                 categoria: producto?.categoria || ""
                             };
@@ -77,7 +88,6 @@ const ProviderForm = () => {
 
                     setFormState({
                         proveedor: data.proveedor,
-                      
                         romaneo: data.romaneo
                     });
                 } catch (error) {
@@ -88,7 +98,7 @@ const ProviderForm = () => {
         }
     }, [id, cortes]);
 
-
+    // --- Carga proveedores ---
     useEffect(() => {
         fetch(`${API_URL}/allProviders`)
             .then(res => res.json())
@@ -96,6 +106,7 @@ const ProviderForm = () => {
             .catch(err => console.error("Error al obtener proveedores:", err));
     }, []);
 
+    // --- Carga último número de comprobante si es nuevo ---
     useEffect(() => {
         if (!id) {
             fetch(`${API_URL}/last-provider-bill`)
@@ -107,22 +118,13 @@ const ProviderForm = () => {
                 .catch(err => console.error("Error al obtener última factura:", err));
         }
     }, [id]);
-    useEffect(() => {
-        const sinCortes = cortesAgregados.length === 0;
-        const hayCongelados = congeladosAgregados.length > 0;
 
-        if (sinCortes && hayCongelados) {
-            setFormState(prev => ({ ...prev, pesoTotal: "0" }));
-        }
-    }, [cortesAgregados, congeladosAgregados]);
-
+    // --- Carga productos ---
     useEffect(() => {
         const fetchProductos = async () => {
             try {
                 const response = await fetch(`${API_URL}/product-name`);
                 const data = await response.json();
-
-                console.log(" Productos recibidos:", data);
 
                 const productos = Array.isArray(data)
                     ? data
@@ -140,15 +142,12 @@ const ProviderForm = () => {
                         }))
                     : [];
 
-
-                console.log(" Productos filtrados:", productos);
-
                 setCortes(productos);
             } catch (err) {
                 console.error(" Error al obtener productos:", err);
             }
         };
-        fetchProductos()
+        fetchProductos();
     }, []);
 
     const opciones = cortes.map(corte => ({
@@ -166,6 +165,7 @@ const ProviderForm = () => {
         setNuevoCongelado({ ...nuevoCongelado, [name]: value });
     };
 
+    // --- Agregar cortes: ahora permite duplicados ---
     const agregarCorte = () => {
         const seleccion = opciones.find(o => o.value === nuevoCorte.tipo);
         if (!seleccion || !nuevoCorte.cantidad || !nuevoCorte.cabezas) return;
@@ -177,6 +177,7 @@ const ProviderForm = () => {
         }
 
         const nuevo = {
+            idTemp: Date.now(),
             tipo: seleccion.value,
             nombre: seleccion.label,
             cantidad: Number(nuevoCorte.cantidad),
@@ -186,21 +187,15 @@ const ProviderForm = () => {
             pesoRomaneo: Number(nuevoCorte.pesoRomaneo) || 0
         };
 
-
-        if (cortesAgregados.some(c => c.tipo === nuevo.tipo)) {
-            setErrorCorteDuplicado(true);
-            return;
-        }
-
         setCortesAgregados([...cortesAgregados, nuevo]);
-      setNuevoCorte({ tipo: "", cantidad: "", cabezas: "", pesoRomaneo: "" });
-        setErrorCorteDuplicado(false);
+        setNuevoCorte({ tipo: "", cantidad: "", cabezas: "", pesoRomaneo: "" });
     };
 
     const totalPesoRomaneo = cortesAgregados.reduce(
         (sum, corte) => sum + Number(corte.pesoRomaneo || 0), 0
     );
 
+    // --- Agregar congelado (sigue igual) ---
     const agregarCongelado = () => {
         if (!nuevoCongelado.tipo || nuevoCongelado.cantidad <= 0) return;
 
@@ -229,8 +224,8 @@ const ProviderForm = () => {
         setErrorCongeladoDuplicado(false);
     };
 
-    const eliminarCorte = async (index) => {
-        const corte = cortesAgregados[index];
+
+    const eliminarCorte = async (idCorte) => {
         const confirmacion = await Swal.fire({
             title: '¿Estás seguro?',
             text: 'Esta acción eliminará el corte seleccionado.',
@@ -242,21 +237,23 @@ const ProviderForm = () => {
             cancelButtonText: 'Cancelar'
         });
 
-        if (confirmacion.isConfirmed) {
-            if (corte.id) {
-                try {
-                    const response = await fetch(`${API_URL}/delete-bill-detail/${corte.id}`, { method: "DELETE" });
-                    if (!response.ok) throw new Error("Error al eliminar en backend");
-                } catch (err) {
-                    console.error("Error eliminando en backend:", err);
-                    Swal.fire('Error', 'No se pudo eliminar en el backend', 'error');
-                    return;
-                }
+        if (!confirmacion.isConfirmed) return;
+
+        if (idCorte && typeof idCorte === "number") {
+            try {
+                const response = await fetch(`${API_URL}/delete-bill-detail/${idCorte}`, { method: "DELETE" });
+                if (!response.ok) throw new Error("Error al eliminar en backend");
+            } catch (err) {
+                console.error("Error eliminando en backend:", err);
+                Swal.fire('Error', 'No se pudo eliminar en el backend', 'error');
+                return;
             }
-            setCortesAgregados(cortesAgregados.filter((_, i) => i !== index));
-            Swal.fire('Eliminado', 'El corte fue eliminado exitosamente.', 'success');
         }
+
+        setCortesAgregados(cortesAgregados.filter(c => c.id !== idCorte && c.idTemp !== idCorte));
+        Swal.fire('Eliminado', 'El corte fue eliminado exitosamente.', 'success');
     };
+
 
     const eliminarCongelado = async (index) => {
         const congelado = congeladosAgregados[index];
@@ -292,107 +289,83 @@ const ProviderForm = () => {
         Swal.fire('Eliminado', 'El producto fue eliminado exitosamente.', 'success');
     };
 
+    
+const handleSubmit = async (e) => {
+    e.preventDefault();
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
+    if (
+        cortesAgregados.length === 0 &&
+        (!mostrarCongelados || congeladosAgregados.length === 0)
+    ) {
+        Swal.fire('Error', 'Debe agregar al menos cortes comunes o productos congelados', 'error');
+        return;
+    }
 
-        if (
-            cortesAgregados.length === 0 &&
-            (!mostrarCongelados || congeladosAgregados.length === 0)
-        ) {
-            Swal.fire('Error', 'Debe agregar al menos cortes comunes o productos congelados', 'error');
-            return;
-        }
+    if (!formState.proveedor || formState.proveedor.trim() === "") {
+        Swal.fire('Error', 'Debe seleccionar un proveedor', 'error');
+        return;
+    }
 
-        if (!formState.proveedor || formState.proveedor.trim() === "") {
-            Swal.fire('Error', 'Debe seleccionar un proveedor', 'error');
-            return;
-        }
+    const romaneoNumber = Number(formState.romaneo);
+    if (isNaN(romaneoNumber) || romaneoNumber <= 0) {
+        Swal.fire('Error', 'Debe ingresar un número de romaneo válido', 'error');
+        return;
+    }
 
-        const totalPesoRomaneo = cortesAgregados.reduce(
-            (sum, corte) => sum + Number(corte.pesoRomaneo || 0), 0
-        );
+    const pesoCortes = cortesAgregados.reduce((sum, corte) => sum + Number(corte.pesoRomaneo || 0), 0);
+    const pesoCongelados = congeladosAgregados.reduce((sum, item) => sum + Number(item.unidades || 0), 0);
+    const totalPesoRomaneo = pesoCortes + pesoCongelados;
 
-        if (totalPesoRomaneo <= 0 && cortesAgregados.length > 0) {
-            Swal.fire('Error', 'Cada corte debe tener un peso romaneo mayor a 0', 'error');
-            return;
-        }
+    if (totalPesoRomaneo <= 0) {
+        Swal.fire('Error', 'El peso total debe ser mayor a 0 (sumando cortes y congelados)', 'error');
+        return;
+    }
 
+    const cortesParaGuardar = cortesAgregados.map(({ idTemp, ...resto }) => resto);
+    const totalCantidadCortes = cortesAgregados.reduce((sum, corte) => sum + Number(corte.cantidad), 0);
+    const totalCantidadCongelados = congeladosAgregados.reduce((sum, item) => sum + Number(item.cantidad), 0);
+    const totalCantidad = totalCantidadCortes;
+    const totalCabezas = cortesAgregados.reduce((sum, corte) => sum + Number(corte.cabezas), 0);
 
-        const romaneoNumber = Number(formState.romaneo);
-        if (isNaN(romaneoNumber) || romaneoNumber <= 0) {
-            Swal.fire('Error', 'Debe ingresar un número de romaneo válido', 'error');
-            return;
-        }
-
-        // Validar cortes y congelados completos:
-        for (const [i, corte] of cortesAgregados.entries()) {
-            if (!corte.tipo || !corte.cod || !corte.cantidad || !corte.categoria || corte.pesoRomaneo == null) {
-                Swal.fire('Error', `Faltan datos en corte número ${i + 1}`, 'error');
-                return;
-            }
-        }
-
-        for (const [i, congelado] of congeladosAgregados.entries()) {
-            if (!congelado.tipo || congelado.cantidad == null || congelado.unidades == null) {
-                Swal.fire('Error', `Faltan datos en producto congelado número ${i + 1}`, 'error');
-                return;
-            }
-        }
-
-
-        const totalCantidadCortes = cortesAgregados.reduce((sum, corte) => sum + Number(corte.cantidad), 0);
-        const totalCantidadCongelados = congeladosAgregados.reduce((sum, item) => sum + Number(item.cantidad), 0);
-        const totalCantidad = totalCantidadCortes;
-
-        const totalCabezas = cortesAgregados.reduce((sum, corte) => sum + Number(corte.cabezas), 0);
-
-        const totalPesoCongelado = congeladosAgregados.reduce(
-            (sum, item) => sum + Number(item.unidades || 0),
-            0
-        );
-
-        const formData = {
-            proveedor: formState.proveedor.trim(),
-            pesoTotal: totalPesoRomaneo,
-            romaneo: romaneoNumber,
-            cantidad: totalCantidad,
-            cabezas: totalCabezas,
-            cortes: cortesAgregados,
-            tipoIngreso: tipoIngreso,
-            congelados: mostrarCongelados ? congeladosAgregados : [],
-            fresh_quantity: totalCantidadCongelados,
-            fresh_weight: totalPesoCongelado
-        };
-
-        console.log("Datos a enviar:", formData);
-
-        try {
-            const response = await fetch(id
-                ? `${API_URL}/update-provider-bill/${id}`
-                : `${API_URL}/uploadProduct`, {
-                method: id ? "PUT" : "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(formData),
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                const productoId = data.id;
-                tipoIngreso === "romaneo"
-                    ? navigate("/meat-load")
-                    : navigate(`/meat-manual-income/${productoId}`);
-            } else {
-                const errorText = await response.text();
-                console.error("Error al enviar los datos. Status:", response.status);
-                console.error("Respuesta del servidor:", errorText);
-                Swal.fire('Error', `No se pudo enviar: ${errorText}`, 'error');
-            }
-        } catch (error) {
-            console.error("Error en la solicitud:", error);
-            Swal.fire('Error', 'Error en la solicitud al servidor', 'error');
-        }
+    const formData = {
+        proveedor: formState.proveedor.trim(),
+        pesoTotal: totalPesoRomaneo,
+        romaneo: romaneoNumber,
+        cantidad: totalCantidad,
+        cabezas: totalCabezas,
+        cortes: cortesParaGuardar,
+        tipoIngreso: tipoIngreso,
+        congelados: mostrarCongelados ? congeladosAgregados : [],
+        fresh_quantity: totalCantidadCongelados,
+        fresh_weight: pesoCongelados
     };
+
+    try {
+        const response = await fetch(id
+            ? `${API_URL}/update-provider-bill/${id}`
+            : `${API_URL}/uploadProduct`, {
+            method: id ? "PUT" : "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(formData),
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            const productoId = data.id;
+            tipoIngreso === "romaneo"
+                ? navigate("/meat-load")
+                : navigate(`/meat-manual-income/${productoId}`);
+        } else {
+            const errorText = await response.text();
+            console.error("Error al enviar los datos. Status:", response.status);
+            console.error("Respuesta del servidor:", errorText);
+            Swal.fire('Error', `No se pudo enviar: ${errorText}`, 'error');
+        }
+    } catch (error) {
+        console.error("Error en la solicitud:", error);
+        Swal.fire('Error', 'Error en la solicitud al servidor', 'error');
+    }
+};
 
 
     return (
@@ -469,7 +442,6 @@ const ProviderForm = () => {
                     {/* CORTES */}
                     <div className="cortes-section">
                         <div className="corte-card">
-                            {errorCorteDuplicado && <p style={{ color: "red" }}>Ya existe.</p>}
                             <div className="input-group">
                                 <label>TIPO</label>
                                 <Select
@@ -500,12 +472,31 @@ const ProviderForm = () => {
                                     step="0.01"
                                 />
                             </div>
-
                             <button type="button" onClick={agregarCorte} className="btn-add">+</button>
                         </div>
 
-                        {cortesAgregados.map((corte, i) => (
-                            <div key={i} className="corte-card">
+                        {/* Contador y paginación */}
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "10px 0 5px 0" }}>
+                            <span><b>Total de cortes:</b> {cortesAgregados.length}</span>
+                            {cortesAgregados.length > cortesPorPagina && (
+                                <div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setPaginaCortes(p => Math.max(1, p - 1))}
+                                        disabled={paginaCortes === 1}
+                                    >←</button>
+                                    <span> Página {paginaCortes} de {totalPaginasCortes} </span>
+                                    <button
+                                        type="button"
+                                        onClick={() => setPaginaCortes(p => Math.min(totalPaginasCortes, p + 1))}
+                                        disabled={paginaCortes === totalPaginasCortes}
+                                    >→</button>
+                                </div>
+                            )}
+                        </div>
+
+                        {cortesEnPagina.map((corte) => (
+                            <div key={corte.id || corte.idTemp} className="corte-card">
                                 <div className="input-group">
                                     <label>TIPO</label>
                                     <input readOnly value={corte.nombre} />
@@ -522,23 +513,15 @@ const ProviderForm = () => {
                                     <label>PESO ROMANEO (kg)</label>
                                     <input readOnly value={corte.pesoRomaneo} />
                                 </div>
-                                <button type="button" onClick={() => eliminarCorte(i)} className="btn-delete">×</button>
+                                <button
+                                    type="button"
+                                    onClick={() => eliminarCorte(corte.id || corte.idTemp)}
+                                    className="btn-delete"
+                                >×</button>
                             </div>
                         ))}
-
                     </div>
-                    {/* <label className="label-provider-form">
-                            PESO DECLARADO EN ROMANEO (KG):
-                            <input
-                                type="number"
-                                name="pesoTotal"
-                                step="0.01"
-                                className="input"
-                                min="0"
-                                value={formState.pesoTotal}
-                                onChange={(e) => setFormState({ ...formState, pesoTotal: e.target.value })}
-                            />
-                        </label> */}
+
                     {/* CONGELADOS */}
                     {mostrarCongelados && (
                         <div className="cortes-section">
@@ -566,22 +549,40 @@ const ProviderForm = () => {
                                 <button type="button" onClick={agregarCongelado} className="btn-add">+</button>
                             </div>
 
-                            {congeladosAgregados.map((item, i) => (
-                                <div key={i} className="corte-card">
+                            {/* Contador y paginación */}
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "10px 0 5px 0" }}>
+                                <span><b>Total de productos:</b> {congeladosAgregados.length}</span>
+                                {congeladosAgregados.length > congeladosPorPagina && (
+                                    <div>
+                                        <button
+                                            type="button"
+                                            onClick={() => setPaginaCongelados(p => Math.max(1, p - 1))}
+                                            disabled={paginaCongelados === 1}
+                                        >←</button>
+                                        <span> Página {paginaCongelados} de {totalPaginasCongelados} </span>
+                                        <button
+                                            type="button"
+                                            onClick={() => setPaginaCongelados(p => Math.min(totalPaginasCongelados, p + 1))}
+                                            disabled={paginaCongelados === totalPaginasCongelados}
+                                        >→</button>
+                                    </div>
+                                )}
+                            </div>
+
+                            {congeladosEnPagina.map((item, i) => (
+                                <div key={i + (paginaCongelados - 1) * congeladosPorPagina} className="corte-card">
                                     <div className="input-group"><label>TIPO</label><input readOnly value={item.tipo} /></div>
                                     <div className="input-group"><label>CANTIDAD</label><input readOnly value={item.cantidad} /></div>
                                     <div className="input-group"><label>PESO</label><input readOnly value={item.unidades} /></div>
-                                    <button type="button" className="btn-delete" onClick={() => eliminarCongelado(i)}>×</button>
+                                    <button type="button" className="btn-delete" onClick={() => eliminarCongelado(i + (paginaCongelados - 1) * congeladosPorPagina)}>×</button>
                                 </div>
                             ))}
                         </div>
                     )}
 
-
-
                     <div className="button-container">
                         <button type="submit" className="button-primary">
-                            {tipoIngreso === "romaneo" ? "Agregar y continuar a pesaje" : "Cargar y completar carga manual"}
+                            {tipoIngreso === "romaneo" ? "Cargar por romaneo" : "Cargar y completar carga manual"}
                         </button>
                         <button type="button" className="button-secondary" onClick={() => navigate("/operator-panel")}>
                             Cancelar

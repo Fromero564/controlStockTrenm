@@ -10,7 +10,6 @@ module.exports = (sequelize, DataTypes) => {
         type: {
             type: DataTypes.STRING(255),
             allowNull: false,
-
         },
         average: {
             type: DataTypes.FLOAT,
@@ -32,7 +31,7 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.FLOAT,
             allowNull: false
         },
-        bill_id: {
+        process_number: {      // <-- CAMBIO IMPORTANTE
             type: DataTypes.INTEGER,
             allowNull: false,
         },
@@ -44,8 +43,7 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.DATE,
             allowNull: true
         }
-
-    }
+    };
 
     let config = {
         tableName: "process_meats",
@@ -54,7 +52,13 @@ module.exports = (sequelize, DataTypes) => {
 
     const ProcessMeat = sequelize.define(alias, cols, config);
 
-
+   
+    ProcessMeat.associate = (models) => {
+        ProcessMeat.belongsTo(models.ProcessNumber, {
+            foreignKey: "process_number",  
+            targetKey: "process_number"
+        });
+    };
 
     return ProcessMeat;
 };

@@ -16,7 +16,7 @@ const WarehouseStock = db.WarehouseStock;
 const billSupplier = db.BillSupplier;
 const ProcessMeat = db.ProcessMeat;
 const ProductStock = db.ProductStock;
-
+const ProcessNumber = db.ProcessNumber;
 
 const administrativeApiController = {
   // loadNewProduct: async (req, res) => {
@@ -658,7 +658,7 @@ const administrativeApiController = {
     const { id } = req.params;
 
     try {
-     
+
       const comprobante = await billSupplier.findByPk(id, {
         attributes: ['production_process']
       });
@@ -671,7 +671,7 @@ const administrativeApiController = {
         return res.status(200).json({ message: "Este comprobante ya fue procesado." });
       }
 
-  
+
       const billDetailsData = await billDetail.findAll({
         where: {
           bill_supplier_id: id
@@ -689,6 +689,7 @@ const administrativeApiController = {
   createProductWithSubproducts: async (req, res) => {
     try {
       const {
+        id, // ✅ nuevo campo opcional
         product_name,
         category_id,
         product_general_category,
@@ -708,8 +709,16 @@ const administrativeApiController = {
         return res.status(400).json({ message: "Stock mínimo y máximo inválidos." });
       }
 
-      // Paso 1: Crear producto principal y guardar ID
+      // ✅ Si no se pasa un ID, buscá el máximo actual y sumá 1
+      let productId = id;
+      if (!productId) {
+        const maxIdResult = await db.ProductsAvailable.max('id');
+        productId = (maxIdResult || 0) + 1;
+      }
+
+      // Paso 1: Crear producto principal con ID manual o generado
       const nuevoProducto = await db.ProductsAvailable.create({
+        id: productId,
         product_name,
         category_id,
         product_general_category,
@@ -717,7 +726,6 @@ const administrativeApiController = {
         max_stock: max
       });
 
-      // Validar si se creó bien y tiene ID
       if (!nuevoProducto || !nuevoProducto.id) {
         return res.status(500).json({ message: "No se pudo crear el producto principal." });
       }
@@ -734,23 +742,57 @@ const administrativeApiController = {
         });
       }
 
-      res.status(201).json({ message: "Producto y subproductos registrados con éxito." });
+      res.status(201).json({ message: "Producto y subproductos registrados con éxito.", id: nuevoProducto.id });
 
     } catch (error) {
       console.error("Error al registrar producto con subproductos:", error);
       res.status(500).json({ message: "Error interno del servidor", error });
     }
   },
+  findBillDetailsReadonlyById: async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // Chequea si existe el comprobante, pero no bloquea si está procesado
+    const comprobante = await billSupplier.findByPk(id);
+    if (!comprobante) {
+      return res.status(404).json({ message: "Comprobante no encontrado." });
+    }
+
+    // SIEMPRE trae los detalles del comprobante
+    const billDetailsData = await billDetail.findAll({
+      where: {
+        bill_supplier_id: id
+      }
+    });
+
+    return res.status(200).json(billDetailsData);
+
+  } catch (error) {
+    console.error("Error al obtener detalles de remito:", error);
+    return res.status(500).json({ message: "Error interno del servidor" });
+  }
+},
+
 
   getAllAvailableProducts: async (req, res) => {
     try {
-      const productos = await db.ProductsAvailable.findAll();
+      const productos = await db.ProductsAvailable.findAll({
+        include: [
+          {
+            model: ProductCategories,
+            as: 'category', 
+
+          }
+        ]
+      });
       res.status(200).json(productos);
     } catch (error) {
       console.error("Error al obtener productos disponibles:", error);
       res.status(500).json({ message: "Error interno del servidor" });
     }
   },
+
   getProductWithSubproducts: async (req, res) => {
     try {
       const { id } = req.params;
@@ -791,8 +833,9 @@ const administrativeApiController = {
     }
   },
   editProductAvailable: async (req, res) => {
-    const { id } = req.params;
+    const { id: currentId } = req.params; // ID original
     const {
+      id: newId, // 👈 nuevo ID deseado, si lo cambiaron
       product_name,
       category_id,
       product_general_category,
@@ -801,65 +844,79 @@ const administrativeApiController = {
       subproducts
     } = req.body;
 
-    console.log("llega por console:", req.params)
     if (!product_name || !category_id || !product_general_category || min_stock === undefined || max_stock === undefined) {
       return res.status(400).json({ message: "Todos los campos son obligatorios." });
     }
 
     try {
-
-      const productoExistente = await ProductsAvailable.findByPk(id);
-
+      const productoExistente = await ProductsAvailable.findByPk(currentId);
       if (!productoExistente) {
         return res.status(404).json({ message: "Producto no encontrado." });
       }
 
+      const finalId = newId && newId !== Number(currentId) ? newId : Number(currentId);
 
-      const updated = await ProductsAvailable.update({
-        product_name,
-        category_id,
-        product_general_category,
-        min_stock,
-        max_stock
-      }, {
-        where: { id }
-      });
+      // Si el nuevo ID es distinto, verificamos que no exista
+      if (finalId !== Number(currentId)) {
+        const idExistente = await ProductsAvailable.findByPk(finalId);
+        if (idExistente) {
+          return res.status(400).json({ message: "El nuevo código de producto ya existe." });
+        }
 
-      if (updated[0] === 0) {
-        console.log(`Producto ${id} sin cambios en tabla products_available`);
+        // Actualizar ID en products_available y subproductos
+        await sequelize.transaction(async (t) => {
+          await ProductsAvailable.update({
+            id: finalId,
+            product_name,
+            category_id,
+            product_general_category,
+            min_stock,
+            max_stock
+          }, {
+            where: { id: currentId },
+            transaction: t
+          });
+
+          await ProductSubproduct.update(
+            { parent_product_id: finalId },
+            { where: { parent_product_id: currentId }, transaction: t }
+          );
+        });
+
       } else {
-        console.log(`Producto ${id} actualizado`);
+        // Si no cambió el ID
+        await ProductsAvailable.update({
+          product_name,
+          category_id,
+          product_general_category,
+          min_stock,
+          max_stock
+        }, {
+          where: { id: currentId }
+        });
       }
 
-
-      if (Array.isArray(subproducts) && subproducts.length > 0) {
-
-        const deleted = await ProductSubproduct.destroy({
-          where: { parent_product_id: id }
-        });
-        console.log(`${deleted} subproductos eliminados para producto ${id}`);
+      // Subproductos
+      if (Array.isArray(subproducts)) {
+        await ProductSubproduct.destroy({ where: { parent_product_id: finalId } });
 
         const nuevos = subproducts.map(sp => ({
-          parent_product_id: id,
+          parent_product_id: finalId,
           subproduct_id: sp.subproductId,
           quantity: sp.quantity
         }));
 
         await ProductSubproduct.bulkCreate(nuevos);
-        console.log(`${nuevos.length} subproductos insertados para producto ${id}`);
-
-      } else {
-        console.log(`No se modificaron subproductos para producto ${id}`);
       }
 
-      return res.status(200).json({ message: "Producto y subproductos procesados correctamente." });
+      return res.status(200).json({ message: "Producto y subproductos actualizados correctamente." });
 
     } catch (error) {
       console.error("Error al actualizar producto:", error);
-      return res.status(500).json({ message: "Error interno del servidor.", error: error.message });
+      return res.status(500).json({ message: "Error interno del servidor", error: error.message });
     }
-
   },
+
   deleteSubproduct: async (req, res) => {
     const { id } = req.params;
 
@@ -883,8 +940,8 @@ const administrativeApiController = {
     }
   },
 
-  getAllProcessProducts:async(req,res)=>{
-       try{
+  getAllProcessProducts: async (req, res) => {
+    try {
       const processProductos = await ProcessMeat.findAll();
       res.status(200).json(processProductos);
     } catch (error) {
@@ -892,83 +949,90 @@ const administrativeApiController = {
       res.status(500).json({ message: "Error interno del servidor" });
     }
   },
-deleteProcessByBillId: async (req, res) => {
-  const { bill_id } = req.params;
+  deleteProcessByBillId: async (req, res) => {
+    const { bill_id } = req.params;
 
-  const t = await sequelize.transaction();
+    const t = await sequelize.transaction();
 
-  try {
-    // Buscar todos los procesos con ese bill_id
-    const procesos = await ProcessMeat.findAll({
-      where: { bill_id },
-      transaction: t
-    });
-
-    if (!procesos || procesos.length === 0) {
-      await t.rollback();
-      return res.status(404).json({ mensaje: "No se encontraron procesos para este bill_id." });
-    }
-
-    // Agrupar cantidad y peso neto por producto
-    const acumuladoPorProducto = procesos.reduce((acc, proceso) => {
-      const nombre = proceso.type;
-      const cantidad = Number(proceso.quantity || 0);
-      const peso = Number(proceso.net_weight || 0);
-
-      if (!acc[nombre]) {
-        acc[nombre] = { cantidad: 0, peso: 0 };
-      }
-
-      acc[nombre].cantidad += cantidad;
-      acc[nombre].peso += peso;
-
-      return acc;
-    }, {});
-
-    // Descontar del stock general
-    for (const nombre in acumuladoPorProducto) {
-      const { cantidad, peso } = acumuladoPorProducto[nombre];
-
-      const productoStock = await ProductStock.findOne({
-        where: { product_name: nombre },
+    try {
+      // Buscar todos los procesos con ese bill_id
+      const procesos = await ProcessMeat.findAll({
+        where: { bill_id },
         transaction: t
       });
 
-      if (productoStock) {
-        productoStock.product_quantity -= cantidad;
-        productoStock.product_total_weight -= peso;
-
-        // Evitar negativos
-        if (productoStock.product_quantity < 0) productoStock.product_quantity = 0;
-        if (productoStock.product_total_weight < 0) productoStock.product_total_weight = 0;
-
-        await productoStock.save({ transaction: t });
+      if (!procesos || procesos.length === 0) {
+        await t.rollback();
+        return res.status(404).json({ mensaje: "No se encontraron procesos para este bill_id." });
       }
+
+      // Agrupar cantidad y peso neto por producto
+      const acumuladoPorProducto = procesos.reduce((acc, proceso) => {
+        const nombre = proceso.type;
+        const cantidad = Number(proceso.quantity || 0);
+        const peso = Number(proceso.net_weight || 0);
+
+        if (!acc[nombre]) {
+          acc[nombre] = { cantidad: 0, peso: 0 };
+        }
+
+        acc[nombre].cantidad += cantidad;
+        acc[nombre].peso += peso;
+
+        return acc;
+      }, {});
+
+      // Descontar del stock general
+      for (const nombre in acumuladoPorProducto) {
+        const { cantidad, peso } = acumuladoPorProducto[nombre];
+
+        const productoStock = await ProductStock.findOne({
+          where: { product_name: nombre },
+          transaction: t
+        });
+
+        if (productoStock) {
+          productoStock.product_quantity -= cantidad;
+          productoStock.product_total_weight -= peso;
+
+          // Evitar negativos
+          if (productoStock.product_quantity < 0) productoStock.product_quantity = 0;
+          if (productoStock.product_total_weight < 0) productoStock.product_total_weight = 0;
+
+          await productoStock.save({ transaction: t });
+        }
+      }
+
+      // Eliminar procesos
+      await ProcessMeat.destroy({
+        where: { bill_id },
+        transaction: t
+      });
+
+      // Marcar el remito como NO procesado
+      await billSupplier.update(
+        { production_process: false },
+        { where: { id: bill_id }, transaction: t }
+      );
+
+      await t.commit();
+
+      return res.status(200).json({ mensaje: "Procesos eliminados, stock actualizado y remito actualizado." });
+    } catch (error) {
+      await t.rollback();
+      console.error("Error al eliminar procesos por bill_id:", error);
+      return res.status(500).json({ mensaje: "Error interno del servidor.", error: error.message });
     }
+  },
 
-    // Eliminar procesos
-    await ProcessMeat.destroy({
-      where: { bill_id },
-      transaction: t
-    });
-
-    // Marcar el remito como NO procesado
-    await billSupplier.update(
-      { production_process: false },
-      { where: { id: bill_id }, transaction: t }
-    );
-
-    await t.commit();
-
-    return res.status(200).json({ mensaje: "Procesos eliminados, stock actualizado y remito actualizado." });
-  } catch (error) {
-    await t.rollback();
-    console.error("Error al eliminar procesos por bill_id:", error);
-    return res.status(500).json({ mensaje: "Error interno del servidor.", error: error.message });
+  getAllProcessNumber: async (req, res) => {
+    try {
+      const AllProductionNumber = await ProcessNumber.findAll({});
+      res.json(AllProductionNumber)
+    } catch (error) {
+      res.status(500).json({ mensaje: "Error interno del servidor.", error: error.message })
+    }
   }
-}
-
-
 
 
 
