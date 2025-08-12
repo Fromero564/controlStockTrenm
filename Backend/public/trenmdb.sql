@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 05-08-2025 a las 19:49:13
+-- Tiempo de generación: 12-08-2025 a las 06:07:13
 -- Versión del servidor: 10.4.28-MariaDB
 -- Versión de PHP: 8.2.4
 
@@ -78,7 +78,8 @@ CREATE TABLE `clients` (
   `client_country` varchar(255) NOT NULL,
   `client_province` varchar(255) NOT NULL,
   `client_location` varchar(255) NOT NULL,
-  `client_state` tinyint(1) NOT NULL
+  `client_state` tinyint(1) NOT NULL,
+  `client_seller` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -115,7 +116,10 @@ CREATE TABLE `new_orders` (
   `price_list` varchar(255) DEFAULT NULL,
   `sell_condition` varchar(255) NOT NULL,
   `payment_condition` varchar(255) NOT NULL,
-  `observation_order` varchar(255) DEFAULT NULL
+  `observation_order` varchar(255) DEFAULT NULL,
+  `order_check` tinyint(1) NOT NULL DEFAULT 0,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -234,10 +238,28 @@ CREATE TABLE `process_number` (
 CREATE TABLE `products_available` (
   `id` int(11) NOT NULL,
   `product_name` varchar(255) NOT NULL,
-  `product_general_category` varchar(255) NOT NULL,
+  `product_general_category` varchar(255) DEFAULT NULL,
   `category_id` int(11) DEFAULT NULL,
-  `min_stock` int(11) NOT NULL,
-  `max_stock` int(11) NOT NULL
+  `min_stock` int(11) DEFAULT NULL,
+  `max_stock` int(11) DEFAULT NULL,
+  `alicuota` decimal(5,2) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `products_sell_order`
+--
+
+CREATE TABLE `products_sell_order` (
+  `id` int(11) NOT NULL,
+  `sell_order_id` int(11) NOT NULL,
+  `product_id` int(11) NOT NULL,
+  `product_name` varchar(255) NOT NULL,
+  `product_price` float NOT NULL,
+  `product_quantity` int(11) NOT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -465,6 +487,12 @@ ALTER TABLE `products_available`
   ADD KEY `fk_products_available_category` (`category_id`);
 
 --
+-- Indices de la tabla `products_sell_order`
+--
+ALTER TABLE `products_sell_order`
+  ADD PRIMARY KEY (`id`);
+
+--
 -- Indices de la tabla `product_categories`
 --
 ALTER TABLE `product_categories`
@@ -592,6 +620,12 @@ ALTER TABLE `process_meats`
 -- AUTO_INCREMENT de la tabla `process_number`
 --
 ALTER TABLE `process_number`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT de la tabla `products_sell_order`
+--
+ALTER TABLE `products_sell_order`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --

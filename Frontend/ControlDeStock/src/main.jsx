@@ -37,6 +37,8 @@ import LoadNewSeller from './features/salesman/LoadNewSeller.jsx';
 import ListSellers from './features/salesman/ListSellers.jsx';
 import LoadNewPriceList from './features/sales/LoadNewPriceList.jsx';
 import ProductionProcessDetails from './features/stock/ProductionProcessDetails.jsx';
+import ListOrders from './features/sales/ListOrders.jsx';
+import GenerateSalesOrder from './features/sales/GenerateSalesOrder.jsx';
 
 
 
@@ -318,6 +320,14 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
+    {
+    path: "/sales-orders-new/:id",
+    element: (
+      <ProtectedRoute>
+        <LoadNewOrder />
+      </ProtectedRoute>
+    ),
+  },
   {
     path: "/seller-new",
     element: (
@@ -355,6 +365,22 @@ const router = createBrowserRouter([
   element: (
     <ProtectedRoute>
       <ProductionProcessDetails/>
+    </ProtectedRoute>
+  ),
+},
+  {
+  path: "/list-orders",
+  element: (
+    <ProtectedRoute>
+      <ListOrders/>
+    </ProtectedRoute>
+  ),
+},
+{
+  path: "/generate-sales-order/:id",
+  element: (
+    <ProtectedRoute>
+      <GenerateSalesOrder/>
     </ProtectedRoute>
   ),
 },

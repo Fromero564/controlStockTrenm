@@ -10,6 +10,14 @@ const CLIENTES_URL = `${API_URL}/allclients`;
 
 const ITEMS_PER_PAGE = 5;
 
+// ----------- CALCULO PRECIO CON IVA SEGÚN ALICUOTA ----------------
+function calcularPrecioConIVA(precioSinIVA, alicuota) {
+    const sinIva = parseFloat(precioSinIVA);
+    const ali = parseFloat(alicuota);
+    if (isNaN(sinIva) || isNaN(ali)) return 0;
+    return +(sinIva * (1 + ali / 100)).toFixed(2);
+}
+
 const LoadNewPriceList = () => {
     const [nombreLista, setNombreLista] = useState("");
     const [clientesOptions, setClientesOptions] = useState([]);
@@ -57,7 +65,10 @@ const LoadNewPriceList = () => {
         let newValue = value;
         if (field === "sinIva") {
             const sinIva = parseFloat(value) || 0;
-            const conIva = +(sinIva * 1.105).toFixed(2);
+            // Buscá la alícuota real del producto
+            const prod = productos.find(p => p.id === id);
+            const alicuota = prod?.alicuota || 0;
+            const conIva = calcularPrecioConIVA(sinIva, alicuota);
             setPrecios({
                 ...precios,
                 [id]: {

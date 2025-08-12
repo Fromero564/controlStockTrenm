@@ -12,18 +12,22 @@ module.exports = (sequelize, dataTypes) => {
         },
         category_id: {
             type: dataTypes.INTEGER,
-            allowNull: false
+            allowNull: true
         },
         product_general_category: {
             type: dataTypes.STRING(255),
-            allowNull: false,
+            allowNull: true,
         },
         min_stock: {
             type: dataTypes.INTEGER,
-            allowNull: false,
+            allowNull: true,
         },
         max_stock: {
             type: dataTypes.INTEGER,
+            allowNull: true,
+        },
+        alicuota: {
+            type: dataTypes.FLOAT,
             allowNull: false,
         },
     };
@@ -35,28 +39,26 @@ module.exports = (sequelize, dataTypes) => {
 
     const ProductsAvailable = sequelize.define(alias, cols, config);
 
-
     ProductsAvailable.associate = (models) => {
         ProductsAvailable.belongsTo(models.ProductCategories, {
             foreignKey: "category_id",
             as: "category",
-             
         });
 
         ProductsAvailable.hasMany(models.ProductStock, {
             foreignKey: "product_cod",
             as: "stocks",
-               onUpdate: "CASCADE",
+            onUpdate: "CASCADE",
         });
         ProductsAvailable.hasMany(models.ProductSubproduct, {
             foreignKey: "parent_product_id",
             as: "subproducts",
-              onUpdate: "CASCADE",
+            onUpdate: "CASCADE",
         });
         ProductsAvailable.hasMany(models.ProductSubproduct, {
             foreignKey: "subproduct_id",
             as: "usedInProducts",
-              onUpdate: "CASCADE",
+            onUpdate: "CASCADE",
         });
 
     };

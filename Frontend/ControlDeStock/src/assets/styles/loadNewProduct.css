@@ -1,13 +1,28 @@
-/* Contenedor principal */
 .product-form-container {
   width: 90%;
-  max-width: 600px;
+  max-width: 1200px;
   margin: 2rem auto;
   padding: 2rem;
   border: 1px solid #ddd;
   border-radius: 12px;
   background-color: #fdfdfd;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
+}
+
+
+.product-form-horizontal {
+  display: flex;
+  gap: 3rem;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.product-form-fields {
+  flex: 1 1 60%;
+}
+
+.product-form-subproducts {
+  flex: 1 1 40%;
 }
 
 /* Etiquetas */
@@ -220,4 +235,46 @@
 .pagination-controls button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+@media (max-width: 900px) {
+  .product-form-horizontal {
+    flex-direction: column;
+    gap: 1.5rem;
+    align-items: stretch;
+  }
+  .product-form-fields,
+  .product-form-subproducts {
+    flex: 1 1 100%;
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 600px) {
+  .product-form-container {
+    padding: 1rem;
+    min-width: 0;
+    width: 98%;
+  }
+
+  .product-form-horizontal {
+    gap: 1rem;
+  }
+
+  .product-form-fields label,
+  .product-form-fields input,
+  .product-form-fields select,
+  .product-form-fields fieldset {
+    font-size: 15px;
+  }
+
+  .product-form-subproducts h3 {
+    font-size: 1rem;
+  }
+
+  .subproduct-add-container {
+    flex-direction: column;
+    gap: 6px;
+    align-items: stretch;
+  }
 }

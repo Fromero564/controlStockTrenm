@@ -157,6 +157,7 @@ const administrativeApiController = {
       return res.status(500).json({ mensaje: "Error del servidor" });
     }
   },
+
   editClient: async (req, res) => {
     const { id } = req.params;
     const {
@@ -171,31 +172,36 @@ const administrativeApiController = {
       provinciaCliente,
       localidadCliente,
       estadoCliente,
+      sellerId,
+      client_seller
     } = req.body;
 
     try {
-      await Client.update({
-        client_name: nombreCliente.toUpperCase(),
-        client_type_id: identidad.toUpperCase(),
-        client_id_number: numeroIdentidad,
-        client_iva_condition: ivaCondicion.toUpperCase(),
-        client_email: emailCliente,
-        client_phone: telefonoCliente,
-        client_adress: domicilioCliente.toUpperCase(),
-        client_country: paisCliente.toUpperCase(),
-        client_province: provinciaCliente.toUpperCase(),
-        client_location: localidadCliente.toUpperCase(),
-        client_state: estadoCliente,
-      }, {
-        where: { id: id }
-      });
+      await Client.update(
+        {
+          client_name: (nombreCliente || "").toUpperCase(),
+          client_type_id: (identidad || "").toUpperCase(),
+          client_id_number: numeroIdentidad,
+          client_iva_condition: (ivaCondicion || "").toUpperCase(),
+          client_email: emailCliente,
+          client_phone: telefonoCliente,
+          client_adress: (domicilioCliente || "").toUpperCase(),
+          client_country: (paisCliente || "").toUpperCase(),
+          client_province: (provinciaCliente || "").toUpperCase(),
+          client_location: (localidadCliente || "").toUpperCase(),
+          client_state: estadoCliente === true || estadoCliente === "true",
+          client_seller: sellerId ?? client_seller ?? null
+        },
+        { where: { id } }
+      );
 
       return res.status(200).json({ mensaje: "Cliente actualizado" });
     } catch (error) {
-      console.error("Error al actualizar:", error);
+      console.error("Error al actualizar cliente:", error);
       return res.status(500).json({ mensaje: "Error del servidor" });
     }
   },
+
   editProvider: async (req, res) => {
     const { id } = req.params;
     const {
@@ -256,35 +262,53 @@ const administrativeApiController = {
 
 
   loadNewClient: async (req, res) => {
+    try {
+      const {
+        nombreCliente,
+        identidad,
+        numeroIdentidad,
+        ivaCondicion,
+        emailCliente,
+        telefonoCliente,
+        domicilioCliente,
+        paisCliente,
+        provinciaCliente,
+        localidadCliente,
+        client_state,
+        sellerId,
+        client_seller
+      } = req.body;
 
-    const { nombreCliente, identidad, numeroIdentidad, ivaCondicion, emailCliente, telefonoCliente, domicilioCliente, paisCliente, provinciaCliente, localidadCliente, client_state } = req.body;
-
-    const clienteExistente = await Client.findOne({
-      where: {
-        client_id_number: numeroIdentidad,
-      }
-    });
-
-    if (!clienteExistente) {
-      await Client.create({
-        client_name: nombreCliente.toUpperCase(),
-        client_type_id: identidad.toUpperCase(),
-        client_id_number: numeroIdentidad,
-        client_iva_condition: ivaCondicion.toUpperCase(),
-        client_email: emailCliente,
-        client_phone: telefonoCliente,
-        client_adress: domicilioCliente.toUpperCase(),
-        client_country: paisCliente.toUpperCase(),
-        client_province: provinciaCliente.toUpperCase(),
-        client_location: localidadCliente.toUpperCase(),
-        client_state: client_state === true || client_state === "true" ? true : false
+      const existente = await Client.findOne({
+        where: { client_id_number: numeroIdentidad },
       });
 
-      return res.status(201).json({ mensaje: 'Ingreso registrado con éxito' });
-    } else {
-      return res.status(400).json({ mensaje: 'El cliente con ese código ya existe' });
+      if (existente) {
+        return res.status(400).json({ mensaje: "El cliente con ese código ya existe" });
+      }
+
+      await Client.create({
+        client_name: (nombreCliente || "").toUpperCase(),
+        client_type_id: (identidad || "").toUpperCase(),
+        client_id_number: numeroIdentidad,
+        client_iva_condition: (ivaCondicion || "").toUpperCase(),
+        client_email: emailCliente,
+        client_phone: telefonoCliente,
+        client_adress: (domicilioCliente || "").toUpperCase(),
+        client_country: (paisCliente || "").toUpperCase(),
+        client_province: (provinciaCliente || "").toUpperCase(),
+        client_location: (localidadCliente || "").toUpperCase(),
+        client_state: client_state === true || client_state === "true",
+        client_seller: sellerId ?? client_seller ?? null
+      });
+
+      return res.status(201).json({ mensaje: "Ingreso registrado con éxito" });
+    } catch (error) {
+      console.error("Error al crear cliente:", error);
+      return res.status(500).json({ mensaje: "Error del servidor" });
     }
   },
+
 
   allProviders: async (req, res) => {
 
@@ -689,41 +713,43 @@ const administrativeApiController = {
   createProductWithSubproducts: async (req, res) => {
     try {
       const {
-        id, // ✅ nuevo campo opcional
+        id,
         product_name,
         category_id,
         product_general_category,
         min_stock,
         max_stock,
+        alicuota,      // <-- AGREGADO
         subproducts = []
       } = req.body;
 
-      if (!product_name || !category_id || !product_general_category || min_stock === undefined || max_stock === undefined) {
-        return res.status(400).json({ message: "Faltan campos obligatorios." });
+      // Ahora solo product_name es obligatorio, lo demás opcional:
+      if (!product_name) {
+        return res.status(400).json({ message: "El nombre es obligatorio." });
       }
 
-      const min = parseInt(min_stock);
-      const max = parseInt(max_stock);
+      // Convierte a enteros si existen
+      const min = min_stock !== undefined && min_stock !== null && min_stock !== '' ? parseInt(min_stock) : null;
+      const max = max_stock !== undefined && max_stock !== null && max_stock !== '' ? parseInt(max_stock) : null;
 
-      if (isNaN(min) || isNaN(max) || min > max) {
-        return res.status(400).json({ message: "Stock mínimo y máximo inválidos." });
-      }
+      // Convierte alicuota a float si existe
+      const alicuotaValue = alicuota !== undefined && alicuota !== null && alicuota !== '' ? parseFloat(alicuota) : null;
 
-      // ✅ Si no se pasa un ID, buscá el máximo actual y sumá 1
+      // Paso 1: Crear producto principal con ID manual o generado
       let productId = id;
       if (!productId) {
         const maxIdResult = await db.ProductsAvailable.max('id');
         productId = (maxIdResult || 0) + 1;
       }
 
-      // Paso 1: Crear producto principal con ID manual o generado
       const nuevoProducto = await db.ProductsAvailable.create({
         id: productId,
         product_name,
-        category_id,
-        product_general_category,
+        category_id: category_id ? category_id : null,
+        product_general_category: product_general_category || null,
         min_stock: min,
-        max_stock: max
+        max_stock: max,
+        alicuota: alicuotaValue  // <-- AGREGADO
       });
 
       if (!nuevoProducto || !nuevoProducto.id) {
@@ -749,30 +775,31 @@ const administrativeApiController = {
       res.status(500).json({ message: "Error interno del servidor", error });
     }
   },
+
   findBillDetailsReadonlyById: async (req, res) => {
-  const { id } = req.params;
+    const { id } = req.params;
 
-  try {
-    // Chequea si existe el comprobante, pero no bloquea si está procesado
-    const comprobante = await billSupplier.findByPk(id);
-    if (!comprobante) {
-      return res.status(404).json({ message: "Comprobante no encontrado." });
-    }
-
-    // SIEMPRE trae los detalles del comprobante
-    const billDetailsData = await billDetail.findAll({
-      where: {
-        bill_supplier_id: id
+    try {
+      // Chequea si existe el comprobante, pero no bloquea si está procesado
+      const comprobante = await billSupplier.findByPk(id);
+      if (!comprobante) {
+        return res.status(404).json({ message: "Comprobante no encontrado." });
       }
-    });
 
-    return res.status(200).json(billDetailsData);
+      // SIEMPRE trae los detalles del comprobante
+      const billDetailsData = await billDetail.findAll({
+        where: {
+          bill_supplier_id: id
+        }
+      });
 
-  } catch (error) {
-    console.error("Error al obtener detalles de remito:", error);
-    return res.status(500).json({ message: "Error interno del servidor" });
-  }
-},
+      return res.status(200).json(billDetailsData);
+
+    } catch (error) {
+      console.error("Error al obtener detalles de remito:", error);
+      return res.status(500).json({ message: "Error interno del servidor" });
+    }
+  },
 
 
   getAllAvailableProducts: async (req, res) => {
@@ -781,7 +808,7 @@ const administrativeApiController = {
         include: [
           {
             model: ProductCategories,
-            as: 'category', 
+            as: 'category',
 
           }
         ]
@@ -824,6 +851,7 @@ const administrativeApiController = {
         product_general_category: producto.product_general_category,
         min_stock: producto.min_stock,
         max_stock: producto.max_stock,
+        alicuota: producto.alicuota, // <--- AGREGADO ESTO
         subproducts: subproductos
       });
 
@@ -832,20 +860,22 @@ const administrativeApiController = {
       res.status(500).json({ message: "Error al obtener el producto", error: error.message });
     }
   },
+
   editProductAvailable: async (req, res) => {
-    const { id: currentId } = req.params; // ID original
+    const { id: currentId } = req.params;
     const {
-      id: newId, // 👈 nuevo ID deseado, si lo cambiaron
+      id: newId,
       product_name,
       category_id,
       product_general_category,
       min_stock,
       max_stock,
+      alicuota,
       subproducts
     } = req.body;
 
-    if (!product_name || !category_id || !product_general_category || min_stock === undefined || max_stock === undefined) {
-      return res.status(400).json({ message: "Todos los campos son obligatorios." });
+    if (!product_name) {
+      return res.status(400).json({ message: "El nombre es obligatorio." });
     }
 
     try {
@@ -855,23 +885,25 @@ const administrativeApiController = {
       }
 
       const finalId = newId && newId !== Number(currentId) ? newId : Number(currentId);
+      const min = min_stock !== undefined && min_stock !== null && min_stock !== '' ? parseInt(min_stock) : null;
+      const max = max_stock !== undefined && max_stock !== null && max_stock !== '' ? parseInt(max_stock) : null;
+      const alicuotaValue = alicuota !== undefined && alicuota !== null && alicuota !== '' ? parseFloat(alicuota) : null;
 
-      // Si el nuevo ID es distinto, verificamos que no exista
       if (finalId !== Number(currentId)) {
         const idExistente = await ProductsAvailable.findByPk(finalId);
         if (idExistente) {
           return res.status(400).json({ message: "El nuevo código de producto ya existe." });
         }
 
-        // Actualizar ID en products_available y subproductos
         await sequelize.transaction(async (t) => {
           await ProductsAvailable.update({
             id: finalId,
             product_name,
-            category_id,
-            product_general_category,
-            min_stock,
-            max_stock
+            category_id: category_id ? category_id : null,
+            product_general_category: product_general_category || null,
+            min_stock: min,
+            max_stock: max,
+            alicuota: alicuotaValue
           }, {
             where: { id: currentId },
             transaction: t
@@ -884,19 +916,18 @@ const administrativeApiController = {
         });
 
       } else {
-        // Si no cambió el ID
         await ProductsAvailable.update({
           product_name,
-          category_id,
-          product_general_category,
-          min_stock,
-          max_stock
+          category_id: category_id ? category_id : null,
+          product_general_category: product_general_category || null,
+          min_stock: min,
+          max_stock: max,
+          alicuota: alicuotaValue
         }, {
           where: { id: currentId }
         });
       }
 
-      // Subproductos
       if (Array.isArray(subproducts)) {
         await ProductSubproduct.destroy({ where: { parent_product_id: finalId } });
 

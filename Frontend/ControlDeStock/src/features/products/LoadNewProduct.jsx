@@ -24,9 +24,9 @@ const LoadNewProduct = () => {
     categoriaId: "",
     tipo: "externo",
     min_stock: "",
-    max_stock: ""
+    max_stock: "",
+    alicuota: ""
   });
-
 
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
@@ -69,21 +69,26 @@ const LoadNewProduct = () => {
 
         const data = await response.json();
         setProductData({
-           codigo: data.id?.toString() || "",
+          codigo: data.id?.toString() || "",
           nombre: data.product_name,
           categoriaId: data.category_id?.toString() || "",
           tipo: data.product_general_category,
           min_stock: data.min_stock?.toString() || "",
-          max_stock: data.max_stock?.toString() || ""
+          max_stock: data.max_stock?.toString() || "",
+          alicuota: data.alicuota?.toString() || ""
         });
 
-        if (data.subproducts && data.subproducts.length > 0) {
-          const mapped = data.subproducts.map(sp => ({
-            id: sp.id?.toString() || "",
-            subproductId: sp.subproduct_id?.toString() || "",
-            quantity: sp.quantity?.toString() || ""
-          }));
+        if (data.subproducts && Array.isArray(data.subproducts) && data.subproducts.length > 0) {
+          const mapped = data.subproducts
+            .filter(sp => sp && sp.subproduct_id && sp.quantity)
+            .map(sp => ({
+              id: sp.id?.toString() || "",
+              subproductId: sp.subproduct_id?.toString() || "",
+              quantity: sp.quantity?.toString() || ""
+            }));
           setSubproductos(mapped);
+        } else {
+          setSubproductos([]);
         }
       } catch (error) {
         console.error("Error al cargar producto para editar:", error);
@@ -103,25 +108,38 @@ const LoadNewProduct = () => {
     if (isSubmitting) return;
     setIsSubmitting(true);
 
-    if (!productData.nombre || !productData.categoriaId || !productData.tipo || productData.min_stock === "" || productData.max_stock === "") {
-      Swal.fire("Atención", "Todos los campos son obligatorios.", "warning");
+    // SOLO nombre obligatorio
+    if (!productData.nombre) {
+      Swal.fire("Atención", "El campo nombre es obligatorio.", "warning");
       setIsSubmitting(false);
       return;
     }
 
+    // Filtro fuerte para subproductos válidos (NO vacíos)
+    const subproductosValidos = Array.isArray(subproductos)
+      ? subproductos.filter(
+          sp => sp &&
+            typeof sp.subproductId === "string" &&
+            sp.subproductId.trim() !== "" &&
+            sp.quantity &&
+            !isNaN(Number(sp.quantity)) &&
+            Number(sp.quantity) > 0
+        )
+      : [];
+
     const payload = {
       product_name: productData.nombre,
-      category_id: parseInt(productData.categoriaId),
+      category_id: productData.categoriaId ? parseInt(productData.categoriaId) : null,
       product_general_category: productData.tipo,
-      min_stock: parseInt(productData.min_stock),
-      max_stock: parseInt(productData.max_stock),
-      subproducts: subproductos.filter(sp => sp.subproductId && sp.quantity)
+      min_stock: productData.min_stock !== "" ? parseInt(productData.min_stock) : null,
+      max_stock: productData.max_stock !== "" ? parseInt(productData.max_stock) : null,
+      alicuota: productData.alicuota !== "" ? parseFloat(productData.alicuota) : null,
+      subproducts: subproductosValidos
     };
 
     if (productData.codigo) {
       payload.id = parseInt(productData.codigo);
     }
-
 
     try {
       const url = id
@@ -168,8 +186,15 @@ const LoadNewProduct = () => {
   }));
 
   const handleAddSubproducto = () => {
-    if (!selectedSubproducto || !cantidad) {
-      Swal.fire("Atención", "Debes seleccionar un subproducto y la cantidad", "warning");
+    // Validación fuerte: no agrega nada vacío
+    if (
+      !selectedSubproducto ||
+      !selectedSubproducto.value ||
+      !cantidad ||
+      isNaN(Number(cantidad)) ||
+      Number(cantidad) <= 0
+    ) {
+      Swal.fire("Atención", "Debes seleccionar un subproducto y una cantidad válida", "warning");
       return;
     }
 
@@ -179,7 +204,10 @@ const LoadNewProduct = () => {
       return;
     }
 
-    setSubproductos([...subproductos, { subproductId: selectedSubproducto.value, quantity: cantidad }]);
+    setSubproductos([
+      ...subproductos,
+      { subproductId: selectedSubproducto.value, quantity: cantidad }
+    ]);
     setSelectedSubproducto(null);
     setCantidad("");
   };
@@ -234,120 +262,123 @@ const LoadNewProduct = () => {
       </div>
       <div className="product-form-container">
         <h2>{id ? "Editar Producto" : "Cargar Nuevo Producto"}</h2>
-
         <form onSubmit={handleSubmit}>
-          <label>Código del Producto (opcional)</label>
-          <input
-            type="number"
-            name="codigo"
-            value={productData.codigo}
-            onChange={handleChange}
-            placeholder="Ej: 105"
-          />
-
-          <label>Nombre del Producto</label>
-          <input type="text" name="nombre" value={productData.nombre} onChange={handleChange} />
-
-          <label>Categoría</label>
-          <select name="categoriaId" value={productData.categoriaId} onChange={handleChange}>
-            <option value="">Seleccionar categoría</option>
-            {categoriasDisponibles.map((cat) => (
-              <option key={cat.id} value={cat.id}>{cat.category_name}</option>
-            ))}
-          </select>
-
-          <label>Stock Mínimo</label>
-          <input type="number" name="min_stock" value={productData.min_stock} onChange={handleChange} />
-
-          <label>Stock Máximo</label>
-          <input type="number" name="max_stock" value={productData.max_stock} onChange={handleChange} />
-
-          <fieldset className="radio-group">
-            <legend>Tipo de Producto</legend>
-            <label>
-              <input type="radio" name="tipo" value="externo" checked={productData.tipo === "externo"} onChange={handleChange} /> Externo
-            </label>
-            <label>
-              <input type="radio" name="tipo" value="propio" checked={productData.tipo === "propio"} onChange={handleChange} /> Propio
-            </label>
-            <label>
-              <input type="radio" name="tipo" value="ambos" checked={productData.tipo === "ambos"} onChange={handleChange} /> Ambos
-            </label>
-          </fieldset>
-
-          <h3>Agregar Subproducto</h3>
-          <div className="subproduct-add-container">
-            <div style={{ flex: 1 }}>
-              <Select
-                classNamePrefix="react-select"
-                value={selectedSubproducto}
-                onChange={(opt) => setSelectedSubproducto(opt)}
-                options={productOptions}
-                placeholder="Buscar subproducto..."
-                isClearable
+          <div className="product-form-horizontal">
+            {/* Campos principales */}
+            <div className="product-form-fields">
+              <label>Código del Producto (opcional)</label>
+              <input
+                type="number"
+                name="codigo"
+                value={productData.codigo}
+                onChange={handleChange}
+                placeholder="Ej: 105"
               />
+
+              <label>Nombre del Producto</label>
+              <input type="text" name="nombre" value={productData.nombre} onChange={handleChange} />
+
+              <label>Categoría</label>
+              <select name="categoriaId" value={productData.categoriaId} onChange={handleChange}>
+                <option value="">Seleccionar categoría</option>
+                {categoriasDisponibles.map((cat) => (
+                  <option key={cat.id} value={cat.id}>{cat.category_name}</option>
+                ))}
+              </select>
+
+              <label>Stock Mínimo</label>
+              <input type="number" name="min_stock" value={productData.min_stock} onChange={handleChange} />
+
+              <label>Stock Máximo</label>
+              <input type="number" name="max_stock" value={productData.max_stock} onChange={handleChange} />
+
+              <label>Alícuota (%)</label>
+              <input
+                type="number"
+                name="alicuota"
+                value={productData.alicuota}
+                onChange={handleChange}
+                placeholder="Ej: 21"
+                step="0.01"
+                min="0"
+              />
+
+              <fieldset className="radio-group">
+                <legend>Tipo de Producto</legend>
+                <label>
+                  <input type="radio" name="tipo" value="externo" checked={productData.tipo === "externo"} onChange={handleChange} /> Externo
+                </label>
+                <label>
+                  <input type="radio" name="tipo" value="propio" checked={productData.tipo === "propio"} onChange={handleChange} /> Propio
+                </label>
+                <label>
+                  <input type="radio" name="tipo" value="ambos" checked={productData.tipo === "ambos"} onChange={handleChange} /> Ambos
+                </label>
+              </fieldset>
             </div>
-            <input
-              type="number"
-              placeholder="Cantidad"
-              value={cantidad}
-              onChange={(e) => setCantidad(e.target.value)}
-            />
-            <button type="button" onClick={handleAddSubproducto}>Agregar</button>
-          </div>
 
-          <h3>Subproductos Generados</h3>
-          <ul className="subproduct-list">
-            {currentSubproductos.map((item, index) => {
-              const globalIndex = indexOfFirstItem + index;
-              const producto = allProducts.find(p => p.id.toString() === item.subproductId);
-              const nombreProducto = producto ? producto.product_name.toUpperCase() : "SIN NOMBRE";
-
-              return (
-                <li key={globalIndex}>
-                  <span>{nombreProducto} ------- CANTIDAD {item.quantity}</span>
-                  <FontAwesomeIcon
-                    icon={faTrash}
-                    onClick={() => eliminarSubproducto(globalIndex, item)}
-                    style={{ cursor: "pointer", marginLeft: "10px", color: "#dc3545" }}
+            {/* Subproductos y paginación */}
+            <div className="product-form-subproducts">
+              <h3>Agregar Subproducto</h3>
+              <div className="subproduct-add-container">
+                <div style={{ flex: 1 }}>
+                  <Select
+                    classNamePrefix="react-select"
+                    value={selectedSubproducto}
+                    onChange={(opt) => setSelectedSubproducto(opt)}
+                    options={productOptions}
+                    placeholder="Buscar subproducto..."
+                    isClearable
                   />
-                </li>
-              );
-            })}
-          </ul>
+                </div>
+                <input
+                  type="number"
+                  placeholder="Cantidad"
+                  value={cantidad}
+                  onChange={(e) => setCantidad(e.target.value)}
+                />
+                <button type="button" onClick={handleAddSubproducto}>Agregar</button>
+              </div>
+              {subproductos.length > 0 && (
+                <>
+                  <h3>Subproductos Generados</h3>
+                  <ul className="subproduct-list">
+                    {currentSubproductos.map((item, index) => {
+                      const globalIndex = indexOfFirstItem + index;
+                      const producto = allProducts.find(p => p.id.toString() === item.subproductId);
+                      const nombreProducto = producto ? producto.product_name.toUpperCase() : "SIN NOMBRE";
 
-          <div className="pagination-controls">
-            <button type="button" disabled={currentPage === 1} onClick={() => handlePageChange(currentPage - 1)}>Anterior</button>
-            <span>Página {currentPage} de {totalPages}</span>
-            <button type="button" disabled={currentPage === totalPages} onClick={() => handlePageChange(currentPage + 1)}>Siguiente</button>
+                      return (
+                        <li key={globalIndex}>
+                          <span>{nombreProducto} ------- CANTIDAD {item.quantity}</span>
+                          <FontAwesomeIcon
+                            icon={faTrash}
+                            onClick={() => eliminarSubproducto(globalIndex, item)}
+                            style={{ cursor: "pointer", marginLeft: "10px", color: "#dc3545" }}
+                          />
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  <div className="pagination-controls">
+                    <button type="button" disabled={currentPage === 1} onClick={() => handlePageChange(currentPage - 1)}>Anterior</button>
+                    <span>Página {currentPage} de {totalPages}</span>
+                    <button type="button" disabled={currentPage === totalPages} onClick={() => handlePageChange(currentPage + 1)}>Siguiente</button>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
-
           <div style={{ display: "flex", gap: "1rem", marginTop: "1rem" }}>
             <button
               type="submit"
               disabled={isSubmitting}
-              style={{
-                backgroundColor: "#007bff",
-                color: "white",
-                padding: "0.6rem 1.2rem",
-                borderRadius: "6px",
-                border: "none",
-                cursor: "pointer"
-              }}
             >
               {isSubmitting ? "Guardando..." : id ? "Actualizar" : "Cargar"}
             </button>
             <button
               type="button"
               onClick={() => navigate("/all-products-availables")}
-              style={{
-                backgroundColor: "#ccc",
-                color: "#333",
-                padding: "0.6rem 1.2rem",
-                borderRadius: "6px",
-                border: "none",
-                cursor: "pointer"
-              }}
             >
               Cancelar
             </button>

@@ -10,13 +10,13 @@ module.exports = (sequelize, dataTypes) => {
             type: dataTypes.STRING(255),
             allowNull: false
         },
-       
+
         client_type_id: {
             type: dataTypes.STRING(255),
             allowNull: false
         },
-       
-        client_id_number:{
+
+        client_id_number: {
             type: dataTypes.BIGINT(10),
             allowNull: false
         },
@@ -29,7 +29,7 @@ module.exports = (sequelize, dataTypes) => {
             allowNull: false
         },
         client_phone: {
-            type: dataTypes.STRING(20), 
+            type: dataTypes.STRING(20),
             allowNull: false
         },
         client_adress: {
@@ -51,6 +51,10 @@ module.exports = (sequelize, dataTypes) => {
         client_state: {
             type: dataTypes.BOOLEAN,
             allowNull: false,
+        },
+        client_seller: {
+            type: dataTypes.BIGINT(10),
+            allowNull: true
         }
 
     };
@@ -58,7 +62,7 @@ module.exports = (sequelize, dataTypes) => {
 
 
     let config = {
-           tableName: "clients",
+        tableName: "clients",
         timestamps: false,
     };
     const Client = sequelize.define(alias, cols, config);
