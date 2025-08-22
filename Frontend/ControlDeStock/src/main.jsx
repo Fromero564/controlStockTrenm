@@ -39,6 +39,13 @@ import LoadNewPriceList from './features/sales/LoadNewPriceList.jsx';
 import ProductionProcessDetails from './features/stock/ProductionProcessDetails.jsx';
 import ListOrders from './features/sales/ListOrders.jsx';
 import GenerateSalesOrder from './features/sales/GenerateSalesOrder.jsx';
+import ListFinalOrders from './features/sales/ListFinalOrders.jsx';
+import MeatLoadView from './features/stock/MeatLoadView.jsx';
+import SaleConfiguration from './pages/SaleConfiguration.jsx';
+import SaleConditionLoad from './features/sales/SaleConditionLoad.jsx';
+import ListSaleConditionLoad from './features/sales/ListSaleConditionLoad.jsx';
+import PaymentConditionLoad from './features/sales/PaymentConditionLoad.jsx';
+import ListPaymentConditionLoad from './features/sales/ListPaymentConditionLoad.jsx';
 
 
 
@@ -384,7 +391,62 @@ const router = createBrowserRouter([
     </ProtectedRoute>
   ),
 },
-
+{
+  path: "/list-final-orders",
+  element: (
+    <ProtectedRoute>
+      <ListFinalOrders/>
+    </ProtectedRoute>
+  ),
+},
+{
+  path: "/meat-load-view/:id",
+  element: (
+    <ProtectedRoute>
+    <MeatLoadView/>
+    </ProtectedRoute>
+  ),
+},
+{
+  path: "/sale-condition-load",
+  element: (
+    <ProtectedRoute>
+    <SaleConditionLoad/>
+    </ProtectedRoute>
+  ),
+},
+{
+  path: "/payment-condition-load",
+  element: (
+    <ProtectedRoute>
+    <PaymentConditionLoad/>
+    </ProtectedRoute>
+  ),
+},
+{
+  path: "/sale-configuration",
+  element: (
+    <ProtectedRoute>
+    <SaleConfiguration/>
+    </ProtectedRoute>
+  ),
+},
+{
+  path: "/list-sell-condition",
+  element: (
+    <ProtectedRoute>
+    <ListSaleConditionLoad/>
+    </ProtectedRoute>
+  ),
+},
+{
+  path: "/list-payment-condition",
+  element: (
+    <ProtectedRoute>
+    <ListPaymentConditionLoad/>
+    </ProtectedRoute>
+  ),
+},
 ]);
 
 

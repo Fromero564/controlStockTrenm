@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 12-08-2025 a las 06:07:13
+-- Tiempo de generación: 22-08-2025 a las 14:02:57
 -- Versión del servidor: 10.4.28-MariaDB
 -- Versión de PHP: 8.2.4
 
@@ -35,7 +35,8 @@ CREATE TABLE `bill_details` (
   `heads` int(11) DEFAULT NULL,
   `createdAt` datetime DEFAULT NULL,
   `updatedAt` datetime DEFAULT NULL,
-  `weight` int(11) NOT NULL
+  `weight` int(11) NOT NULL,
+  `identification_product` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -79,7 +80,9 @@ CREATE TABLE `clients` (
   `client_province` varchar(255) NOT NULL,
   `client_location` varchar(255) NOT NULL,
   `client_state` tinyint(1) NOT NULL,
-  `client_seller` int(11) DEFAULT NULL
+  `client_seller` int(11) DEFAULT NULL,
+  `client_sale_condition` varchar(255) NOT NULL,
+  `client_payment_condition` varchar(255) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -118,6 +121,7 @@ CREATE TABLE `new_orders` (
   `payment_condition` varchar(255) NOT NULL,
   `observation_order` varchar(255) DEFAULT NULL,
   `order_check` tinyint(1) NOT NULL DEFAULT 0,
+  `order_weight_check` tinyint(1) DEFAULT 0,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -166,6 +170,17 @@ CREATE TABLE `other_product_manual` (
   `id_bill_suppliers` int(11) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `payment_conditions`
+--
+
+CREATE TABLE `payment_conditions` (
+  `id` int(11) NOT NULL,
+  `payment_condition` varchar(255) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -298,7 +313,8 @@ CREATE TABLE `product_subproducts` (
   `id` int(11) NOT NULL,
   `parent_product_id` int(11) NOT NULL,
   `subproduct_id` int(11) NOT NULL,
-  `quantity` decimal(10,2) NOT NULL CHECK (`quantity` >= 0)
+  `quantity` decimal(10,2) NOT NULL CHECK (`quantity` >= 0),
+  `unit` varchar(200) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -319,6 +335,17 @@ CREATE TABLE `providers` (
   `provider_country` varchar(255) NOT NULL,
   `provider_province` varchar(255) NOT NULL,
   `provider_location` varchar(255) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `sale_conditions`
+--
+
+CREATE TABLE `sale_conditions` (
+  `id` int(11) NOT NULL,
+  `condition_name` varchar(255) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -456,6 +483,12 @@ ALTER TABLE `other_product_manual`
   ADD KEY `fk_bill_suppliers` (`id_bill_suppliers`);
 
 --
+-- Indices de la tabla `payment_conditions`
+--
+ALTER TABLE `payment_conditions`
+  ADD PRIMARY KEY (`id`);
+
+--
 -- Indices de la tabla `price_lists`
 --
 ALTER TABLE `price_lists`
@@ -521,6 +554,12 @@ ALTER TABLE `providers`
   ADD PRIMARY KEY (`id`);
 
 --
+-- Indices de la tabla `sale_conditions`
+--
+ALTER TABLE `sale_conditions`
+  ADD PRIMARY KEY (`id`);
+
+--
 -- Indices de la tabla `sellers`
 --
 ALTER TABLE `sellers`
@@ -578,7 +617,7 @@ ALTER TABLE `clients`
 -- AUTO_INCREMENT de la tabla `meat_manual_income`
 --
 ALTER TABLE `meat_manual_income`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT de la tabla `new_orders`
@@ -597,6 +636,12 @@ ALTER TABLE `order_products_client`
 --
 ALTER TABLE `other_product_manual`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- AUTO_INCREMENT de la tabla `payment_conditions`
+--
+ALTER TABLE `payment_conditions`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT de la tabla `price_lists`
@@ -650,6 +695,12 @@ ALTER TABLE `product_subproducts`
 -- AUTO_INCREMENT de la tabla `providers`
 --
 ALTER TABLE `providers`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT de la tabla `sale_conditions`
+--
+ALTER TABLE `sale_conditions`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --

@@ -154,6 +154,7 @@ const LoadNewSeller = () => {
     return (
         <div className="seller-bg">
             <Navbar />
+            
             <div className="seller-modal">
                 <h2 className="seller-title">
                     {id ? "EDITAR VENDEDOR" : "NUEVO VENDEDOR"}

@@ -55,6 +55,14 @@ module.exports = (sequelize, dataTypes) => {
         client_seller: {
             type: dataTypes.BIGINT(10),
             allowNull: true
+        },
+        client_payment_condition: {
+            type: dataTypes.STRING(255),
+            allowNull: true
+        },
+        client_sale_condition: {
+            type: dataTypes.STRING(255),
+            allowNull: true
         }
 
     };

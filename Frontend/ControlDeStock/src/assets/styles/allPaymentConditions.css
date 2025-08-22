@@ -1,0 +1,169 @@
+.apc-container {
+    width: min(1100px, 95%);
+    margin: 8px auto 36px;
+}
+
+.apc-title {
+    font-size: 26px;
+    font-weight: 900;
+    color: #0d7bac;
+    margin: 6px 0 14px;
+    letter-spacing: .2px;
+}
+
+.apc-topbar {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: flex-end;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+}
+
+.apc-search {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1;
+    min-width: 280px;
+}
+
+.apc-search label {
+    font-weight: 800;
+    color: #2a5c92;
+    font-size: 12px;
+    letter-spacing: .2px;
+}
+
+.apc-search-inline {
+    display: flex;
+    gap: 8px;
+}
+
+.apc-search-input {
+    flex: 1;
+    border: 1px solid #cfd9e7;
+    border-radius: 10px;
+    padding: .55rem .7rem;
+    background: #f6f8fb;
+    font-size: 14px;
+    outline: none;
+}
+
+.apc-search-btn {
+    background: #fff;
+    border: 1px solid #e1e7f0;
+    border-radius: 10px;
+    padding: .55rem .9rem;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.apc-new-btn {
+    background: #1075a5;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: .6rem 1rem;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.apc-new-btn:hover {
+    background: #0d6b98;
+}
+
+.apc-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #fff;
+    border: 1px solid #e6eef6;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 1px 8px rgba(0, 0, 0, .05);
+}
+
+.apc-table thead {
+    background: #f0f6ff;
+    color: #235d9f;
+    border-bottom: 1px solid #e1ecfb;
+}
+
+.apc-table th,
+.apc-table td {
+    padding: 12px 14px;
+    border-bottom: 1px solid #f3f6fb;
+    text-align: left;
+    font-size: 14px;
+}
+
+.apc-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.apc-actions-col {
+    width: 140px;
+}
+
+.apc-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.apc-edit-btn,
+.apc-delete-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    border: 1px solid #e1e7f0;
+    background: #fff;
+    cursor: pointer;
+}
+
+.apc-edit-btn {
+    color: #0d7bac;
+}
+
+.apc-edit-btn:hover {
+    background: #eaf6ff;
+}
+
+.apc-delete-btn {
+    color: #d33;
+}
+
+.apc-delete-btn:hover {
+    background: #fde8e8;
+}
+
+.apc-empty {
+    text-align: center;
+    color: #73819c;
+    padding: 18px;
+}
+
+.apc-pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    margin-top: 14px;
+}
+
+.apc-pagination button {
+    background: #fff;
+    border: 1px solid #e1e7f0;
+    border-radius: 10px;
+    padding: .5rem .9rem;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.apc-pagination button:disabled {
+    opacity: .5;
+    cursor: not-allowed;
+}

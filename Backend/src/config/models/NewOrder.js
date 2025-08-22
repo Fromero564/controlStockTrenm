@@ -39,7 +39,13 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false
+    },
+    order_weight_check: {
+      type: DataTypes.BOOLEAN,
+      allowNull: true,
+      defaultValue: false
     }
+
   };
 
   let config = {
@@ -50,5 +56,12 @@ module.exports = (sequelize, DataTypes) => {
   };
 
   const NewOrder = sequelize.define(alias, cols, config);
+
+  NewOrder.associate = (models) => {
+    NewOrder.hasMany(models.ProductsSellOrder, {
+      foreignKey: "sell_order_id",
+      as: "lines"
+    });
+  };
   return NewOrder;
 };

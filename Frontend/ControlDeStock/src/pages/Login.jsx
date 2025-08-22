@@ -22,8 +22,7 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    
-    const res = await fetch( `${API_URL}/login`, {
+    const res = await fetch(`${API_URL}/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, password }),
@@ -41,38 +40,37 @@ const Login = () => {
     }
   };
 
-
-  
-
-
   return (
-    <div className="login-container">
-      <form onSubmit={handleSubmit} className="form-container">
-        <h2 className="form-title">INICIO DE SESIÓN</h2>
-        <label className="label">USUARIO</label>
+    <div className="loginv2-container">
+      <form onSubmit={handleSubmit} className="loginv2-form">
+        <h2 className="loginv2-title">INICIO DE SESIÓN</h2>
+
+        <label className="loginv2-label">USUARIO</label>
         <input
           type="text"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
           required
-          className="input"
+          className="loginv2-input"
         />
-        <label className="label">CONTRASEÑA</label>
-        <div className="password-container">
+
+        <label className="loginv2-label">CONTRASEÑA</label>
+        <div className="loginv2-password-wrap">
           <input
             type={showPassword ? "text" : "password"}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            className="input"
+            className="loginv2-input loginv2-input--password"
           />
           <FontAwesomeIcon
             icon={showPassword ? faEyeSlash : faEye}
-            className="toggle-password-icon"
+            className="loginv2-password-toggle"
             onClick={() => setShowPassword((prev) => !prev)}
           />
         </div>
-        <button type="submit" className="submit-button">INGRESAR</button>
+
+        <button type="submit" className="loginv2-submit">INGRESAR</button>
       </form>
     </div>
   );

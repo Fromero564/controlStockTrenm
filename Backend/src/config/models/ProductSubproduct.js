@@ -14,9 +14,14 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: false,
     },
     quantity: {
-      type: DataTypes.NUMERIC(10,2),
+      type: DataTypes.DECIMAL(10, 2),
       allowNull: false,
       validate: { min: 0 },
+    },
+    // ⬇️ Nuevo campo unit sin restricción
+    unit: {
+      type: DataTypes.STRING(200),
+      allowNull: false,
     },
   }, {
     tableName: "product_subproducts",

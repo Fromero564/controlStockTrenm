@@ -61,13 +61,21 @@ const AllProductsAvailables = () => {
   return (
     <>
       <Navbar />
-       <div style={{ margin: "20px" }}>
-                <button className="boton-volver" onClick={() => navigate(-1)}>
-                    ⬅ Volver
-                </button>
-            </div>
+      <div style={{ margin: "20px" }}>
+        <button className="boton-volver" onClick={() => navigate(-1)}>
+          ⬅ Volver
+        </button>
+      </div>
       <div className="products-container">
-        <h1 className="products-title">Listado de productos</h1>
+        <div className="products-header">
+          <h1 className="products-title-style">Listado de productos</h1>
+          <button
+            className="btn-nuevo"
+            onClick={() => navigate("/product-load")}
+          >
+            Agregar producto +
+          </button>
+        </div>
 
         {loading ? (
           <p className="products-loading">Cargando...</p>

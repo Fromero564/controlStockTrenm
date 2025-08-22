@@ -24,6 +24,8 @@ const OrderProductClient = db.OrderProductClient;
 const PriceList = db.PriceList;
 const PriceListProduct = db.PriceListProduct;
 const ProductsSellOrder = db.ProductsSellOrder;
+const SaleCondition = db.SaleCondition;
+const PaymentCondition = db.PaymentCondition;
 
 const toNumber = (v) => {
     if (v === null || v === undefined) return 0;
@@ -540,7 +542,245 @@ const saleApiController = {
         }
     },
 
+    getFinalOrdersGrouped: async (req, res) => {
+        try {
+            const page = Math.max(1, Number(req.query.page || 1));
+            const pageSize = Math.max(1, Number(req.query.pageSize || 10));
 
+            const status = String(req.query.status || "all");
+            const number = req.query.number ? Number(req.query.number) : null;
+            const client = req.query.client ? String(req.query.client) : null;
+            const dateFrom = req.query.date_from || null;          // YYYY-MM-DD
+            const dateTo = req.query.date_to || null;
+
+            // WHERE para NewOrder (encabezado)
+            const whereHeader = {};
+            if (status === "generated") whereHeader.order_check = true;
+            if (status === "pending") whereHeader.order_check = false;
+            if (number) whereHeader.id = number;
+            if (client) whereHeader.client_name = { [Op.like]: `%${client}%` };
+            if (dateFrom || dateTo) {
+                whereHeader.date_order = {};
+                if (dateFrom) whereHeader.date_order[Op.gte] = dateFrom;
+                if (dateTo) whereHeader.date_order[Op.lte] = dateTo;
+            }
+
+            const { fn, col, literal } = sequelize;
+
+            const { count, rows } = await NewOrder.findAndCountAll({
+                attributes: [
+                    "id",
+                    "date_order",
+                    "client_name",
+                    "salesman_name",
+                    "order_check",
+                    // usar un agregado para evitar problemas con ONLY_FULL_GROUP_BY
+                    [fn("MAX", col("order_weight_check")), "order_weight_check"],
+                    [fn("SUM", col("lines.product_quantity")), "total_items"],
+                    [fn("SUM", literal("lines.product_price * lines.product_quantity")), "total_amount"],
+                ],
+                include: [
+                    {
+                        model: ProductsSellOrder,
+                        as: "lines",
+                        attributes: [],
+                        required: true,
+                    },
+                ],
+                where: whereHeader,
+                group: ["NewOrder.id"],
+                order: [["id", "DESC"]],
+                limit: pageSize,
+                offset: (page - 1) * pageSize,
+                subQuery: false,
+                distinct: true,
+            });
+
+            const total = Array.isArray(count) ? count.length : count;
+            const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+            const data = rows.map(r => ({
+                order_id: r.id,
+                date_order: r.date_order,
+                client_name: r.client_name,
+                salesman_name: r.salesman_name,
+                order_check: !!r.order_check,
+                // viene con alias => se obtiene con r.get("order_weight_check")
+                order_weight_check: !!Number(r.get("order_weight_check")),
+                total_items: Number(r.get("total_items") || 0),
+                total_amount: Number(r.get("total_amount") || 0),
+            }));
+
+            return res.json({ ok: true, page, pageSize, total, totalPages, rows: data });
+        } catch (error) {
+            console.error(error);
+            return res.status(500).json({ ok: false, msg: "Error al obtener órdenes generadas" });
+        }
+    },
+    getAllSaleConditions: async (req, res) => {
+        try {
+            const rows = await SaleCondition.findAll({ order: [["condition_name", "ASC"]] });
+            return res.json({ ok: true, conditions: rows });
+        } catch (e) {
+            console.error(e);
+            return res.status(500).json({ ok: false, msg: "Error al listar condiciones" });
+        }
+    },
+
+    getSaleConditionById: async (req, res) => {
+        try {
+            const { id } = req.params;
+            const condition = await SaleCondition.findByPk(id);
+            if (!condition) return res.status(404).json({ ok: false, msg: "Condición no encontrada" });
+            return res.json({ ok: true, condition });
+        } catch (e) {
+            console.error(e);
+            return res.status(500).json({ ok: false, msg: "Error al obtener la condición" });
+        }
+    },
+
+    createSaleCondition: async (req, res) => {
+        try {
+            const { condition_name } = req.body;
+            if (!condition_name || !condition_name.trim()) {
+                return res.status(400).json({ ok: false, msg: "El nombre es obligatorio" });
+            }
+            const created = await SaleCondition.create({ condition_name: condition_name.trim() });
+            return res.status(201).json({ ok: true, condition: created });
+        } catch (e) {
+            console.error(e);
+            return res.status(500).json({ ok: false, msg: "Error al crear la condición" });
+        }
+    },
+
+    updateSaleCondition: async (req, res) => {
+        try {
+            const { id } = req.params;
+            const { condition_name } = req.body;
+            if (!condition_name || !condition_name.trim()) {
+                return res.status(400).json({ ok: false, msg: "El nombre es obligatorio" });
+            }
+            const [updated] = await SaleCondition.update(
+                { condition_name: condition_name.trim() },
+                { where: { id } }
+            );
+            if (!updated) return res.status(404).json({ ok: false, msg: "Condición no encontrada" });
+            const condition = await SaleCondition.findByPk(id);
+            return res.json({ ok: true, condition, msg: "Condición actualizada" });
+        } catch (e) {
+            console.error(e);
+            return res.status(500).json({ ok: false, msg: "Error al actualizar la condición" });
+        }
+    },
+
+    deleteSaleCondition: async (req, res) => {
+        try {
+            const { id } = req.params;
+            const deleted = await SaleCondition.destroy({ where: { id } });
+            if (!deleted) return res.status(404).json({ ok: false, msg: "Condición no encontrada" });
+            return res.json({ ok: true, msg: "Condición eliminada" });
+        } catch (e) {
+            console.error(e);
+            return res.status(500).json({ ok: false, msg: "Error al eliminar la condición" });
+        }
+    },
+
+
+    getAllPaymentConditions: async (req, res) => {
+        try {
+            const rows = await PaymentCondition.findAll({
+                order: [["payment_condition", "ASC"]],
+            });
+            return res.json({ ok: true, paymentConditions: rows });
+        } catch (e) {
+            console.error(e);
+            return res
+                .status(500)
+                .json({ ok: false, msg: "Error al listar condiciones de cobro" });
+        }
+    },
+
+    getPaymentConditionById: async (req, res) => {
+        try {
+            const { id } = req.params;
+            const item = await PaymentCondition.findByPk(id);
+            if (!item)
+                return res
+                    .status(404)
+                    .json({ ok: false, msg: "Condición no encontrada" });
+            return res.json({ ok: true, paymentCondition: item });
+        } catch (e) {
+            console.error(e);
+            return res
+                .status(500)
+                .json({ ok: false, msg: "Error al obtener la condición" });
+        }
+    },
+
+    createPaymentCondition: async (req, res) => {
+        try {
+            const { payment_condition } = req.body;
+            if (!payment_condition || !payment_condition.trim()) {
+                return res
+                    .status(400)
+                    .json({ ok: false, msg: "El nombre es obligatorio" });
+            }
+            const created = await PaymentCondition.create({
+                payment_condition: payment_condition.trim(),
+            });
+            return res.status(201).json({ ok: true, paymentCondition: created });
+        } catch (e) {
+            console.error(e);
+            return res
+                .status(500)
+                .json({ ok: false, msg: "Error al crear la condición" });
+        }
+    },
+
+    updatePaymentCondition: async (req, res) => {
+        try {
+            const { id } = req.params;
+            const { payment_condition } = req.body;
+            if (!payment_condition || !payment_condition.trim()) {
+                return res
+                    .status(400)
+                    .json({ ok: false, msg: "El nombre es obligatorio" });
+            }
+            const [updated] = await PaymentCondition.update(
+                { payment_condition: payment_condition.trim() },
+                { where: { id } }
+            );
+            if (!updated)
+                return res
+                    .status(404)
+                    .json({ ok: false, msg: "Condición no encontrada" });
+
+            const item = await PaymentCondition.findByPk(id);
+            return res.json({ ok: true, paymentCondition: item, msg: "Condición actualizada" });
+        } catch (e) {
+            console.error(e);
+            return res
+                .status(500)
+                .json({ ok: false, msg: "Error al actualizar la condición" });
+        }
+    },
+
+    deletePaymentCondition: async (req, res) => {
+        try {
+            const { id } = req.params;
+            const deleted = await PaymentCondition.destroy({ where: { id } });
+            if (!deleted)
+                return res
+                    .status(404)
+                    .json({ ok: false, msg: "Condición no encontrada" });
+            return res.json({ ok: true, msg: "Condición eliminada" });
+        } catch (e) {
+            console.error(e);
+            return res
+                .status(500)
+                .json({ ok: false, msg: "Error al eliminar la condición" });
+        }
+    },
 
 
 

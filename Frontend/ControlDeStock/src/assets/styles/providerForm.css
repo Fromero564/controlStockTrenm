@@ -1,229 +1,346 @@
-.provider-form {
-    height: 100vh; 
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin-top: 10px;
-    margin-bottom: 50px;
-  }
-  .new-register-container{
-    margin-top: 20px;
-    margin-bottom: 30px;
-  }
-  .form-container-provider {
-    background: white;
-    padding: 20px;
-    border-radius: 10px;
-    box-shadow: 2px 2px 2px 3px rgba(0, 0, 0, 0.1);
-    width: 600px;
-    margin: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-  }
-  
-  .form-title {
-    text-align: left;
-    font-size: 18px;
-    font-weight: bold;
-    color: #333;
-  }
-  
-  .label-provider-form {
-    font-size: 12px;
-    font-weight: bold;
-    /* margin-bottom: 1px; */
-    color: #666;
-  }
-  .title-remit-div{
-    width: 100%;
-    display: flex;
-    justify-content: space-between;
-  }
-  .input {
-    width: 98%;
-    padding: 10px;
-    font-size: 16px;
-    border: none;
-    border-radius: 5px;
-    background-color: #eee;
-    font-weight: bold;
-  }
-  
+/* ===== Provider Form – Scoped CSS (no global) ===== */
 
-  
-  .submit-button {
-    width: 100%;
-    background: #0077b6;
-    color: white;
-    border: none;
-    padding: 12px;
-    font-size: 16px;
-    font-weight: bold;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background 0.3s;
-  }
-  
-  .submit-button:hover {
-    background: #005f8a;
-  }
-  .peso-container {
-    display: flex;
-    gap: 10px; 
+.provider-form-scope {
+  --bg: #f5f8fc;
+  --card: #ffffff;
+  --border: #e6eef6;
+  --muted: #667085;
+  --text: #1f2f49;
+  --primary: #1075a5;
+  --primary-600: #0d6b98;
+  --primary-50: #eaf6ff;
+  --pill: #f7fbff;
+  --danger: #e24a4a;
 }
 
-.input {
-    padding: 8px;
-    margin: 5px 0;
-    height: 6vh;
-}
-.radio-buttons{
-  width: 100%;
-  height: 8vh;
-  display: flex;
-  align-items: center;
-  justify-content:space-around;
-  background-color: #F2F7FF;
-  border-radius: 5px;
+/* Page wrapper */
+.provider-form-scope .new-register-container {
+  width: min(1200px, 95%);
+  margin: 0 auto 40px;
 }
 
-.radius-style{
-  font-size: 15px;
-  color:#000;
+.provider-form-scope .form-container-provider {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, .06);
+  padding: 18px;
 }
 
-.radius-style input[type="radio"] {
-
-  transform: scale(3); 
-  margin-right: 15px; 
-  
+.provider-form-scope .form-title {
+  font-size: 28px;
+  font-weight: 900;
+  color: var(--primary);
+  margin: 6px 0 14px;
 }
 
-.button-container {
+/* Top context row */
+.provider-form-scope .title-remit-div {
   display: flex;
   justify-content: space-between;
-  margin-top: 20px;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 8px;
 }
 
-.button-primary {
-  background-color: #0073b1; 
-  color: white;
-  font-size: 16px;
-  font-weight: bold;
-  padding: 12px 20px;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  width: 100%;
-  max-width: 280px;
-  margin-right: 5px;
-  transition: background 0.3s ease;
-}
-
-.button-primary:hover {
-  background-color: #005f90; 
-}
-
-.button-secondary {
-  background-color: transparent;
-  color: #0073b1;
-  font-size: 16px;
-  font-weight: bold;
-  padding: 12px 20px;
-  border: 2px solid #0073b1;
-  border-radius: 6px;
-  cursor: pointer;
-  width: 100%;
-  max-width: 280px;
-  transition: background 0.3s ease, color 0.3s ease;
-}
-
-.button-secondary:hover {
-  background-color: #0073b1;
-  color: white;
-}
-
-
-.cortes-section {
-  background-color: #f5f9ff;
-  padding: 1rem;
-  border-radius: 12px;
+.provider-form-scope .label-provider-form {
+  font-weight: 800;
+  color: #2a5c92;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 6px;
 }
 
-.corte-card {
+/* Inputs */
+.provider-form-scope .input {
+  border: 1px solid #cfd9e7;
+  border-radius: 10px;
+  padding: .55rem .7rem;
+  background: #f0f2f5;
+  font-size: 14px;
+  height: 38px;
+  outline: none;
+}
+
+/* Radio buttons */
+.provider-form-scope .radio-buttons {
   display: flex;
-  gap: 1rem;
-  align-items: flex-end;
-  flex-wrap: wrap;
+  gap: 18px;
+  margin: 8px 0 6px;
+}
+
+.provider-form-scope .radius-style {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #f7f9fc;
+  border: 1px solid var(--border);
+  padding: 8px 12px;
+  border-radius: 10px;
+}
+
+.provider-form-scope .provider-remit-romaneo {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin: 10px 0 6px;
+}
+
+/* Checkbox otros productos */
+.provider-form-scope .checkbox-congelado {
+  margin: 10px 0 6px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.provider-form-scope .checkbox-congelado input {
+  margin-right: 8px;
+}
+
+/* =========================
+   Secciones de Cortes / Otros
+   ========================= */
+
+.provider-form-scope .cortes-section {
+  margin-top: 14px;
+  background: #f5f9ff;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px;
+}
+
+/* ------- Tarjeta de alta (Cortes) ------- */
+/* 6 columnas: Tipo | Cant | Cabezas | Peso | N° Romaneo | Agregar */
+.provider-form-scope .corte-card {
+  display: grid;
+  grid-template-columns: 2fr .9fr .9fr 1.1fr 1.1fr .7fr;
+  gap: .75rem;
+  align-items: end;
   background: #fff;
   padding: 1rem;
   border-radius: 10px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .1);
+  margin-bottom: 10px;
 }
 
-.input-group {
+.provider-form-scope .input-group {
   display: flex;
   flex-direction: column;
-  flex: 1;
-  min-width: 120px;
+  gap: 6px;
 }
 
-.input-group label {
-  font-size: 0.75rem;
-  color: #888;
-  margin-bottom: 4px;
+.provider-form-scope .input-group label {
+  font-size: 12px;
+  font-weight: 800;
+  color: #2a5c92;
+  letter-spacing: .2px;
 }
 
-.input-group input,
-.input-group select {
-  padding: 0.5rem;
-  border-radius: 6px;
-  border: 1px solid #ccc;
-  background-color: #f0f2f5;
+/* Inputs compactos para que todo entre en una fila */
+.provider-form-scope .input-group input,
+.provider-form-scope .input-group select {
+  padding: .45rem .5rem;
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid #cfd9e7;
+  background: #f0f2f5;
+  font-size: 14px;
 }
 
-.btn-add {
-  background-color: #007bff;
-  color: white;
-  font-size: 1.5rem;
+/* Normalizar react-select dentro del scope */
+.provider-form-scope .corte-card .select__control,
+.provider-form-scope .corte-card .Select__control,
+.provider-form-scope .corte-card .react-select__control {
+  min-height: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border-color: #cfd9e7;
+}
+
+.provider-form-scope .corte-card .select__value-container {
+  padding: 0 8px;
+}
+
+.provider-form-scope .corte-card .select__single-value {
+  font-size: 14px;
+}
+
+/* Botón agregar del mismo alto */
+.provider-form-scope .btn-add {
+  height: 36px;
+  padding: 0 12px;
   border: none;
   border-radius: 8px;
-  padding: 0 1rem;
+  background: var(--primary);
+  color: #fff;
+  font-weight: 800;
+  font-size: 13px;
   cursor: pointer;
-  height: 42px;
-  align-self: center;
-  transition: background 0.3s;
 }
 
-.btn-add:hover {
-  background-color: #005dc1;
+.provider-form-scope .btn-add:hover {
+  background: var(--primary-600);
 }
-.btn-delete {
-  background-color: #dc3545;
-  color: white;
-  font-size: 1.2rem;
+
+/* ------- Listado de Cortes ------- */
+.provider-form-scope .row-header {
+  display: grid;
+  grid-template-columns: 2fr .9fr .9fr 1.1fr 1.1fr .6fr;
+  gap: 10px;
+  padding: 0 6px;
+  color: var(--muted);
+  font-weight: 700;
+  margin: 8px 0 6px;
+  text-transform: none;
+}
+
+.provider-form-scope .corte-row {
+  display: grid;
+  grid-template-columns: 2fr .9fr .9fr 1.1fr 1.1fr .6fr;
+  gap: 10px;
+  align-items: center;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 6px 10px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .06);
+  margin-bottom: 8px;
+}
+
+.provider-form-scope .pill {
+  width: 100%;
+  padding: 8px 8px;
+  border: 1px solid #b7cbe0;
+  border-radius: 8px;
+  background: var(--pill);
+  font-size: 13px;
+  text-align: center;
+  color: var(--text);
+}
+
+.provider-form-scope .pill-danger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 36px;
   border: none;
   border-radius: 8px;
-  padding: 0 0.75rem;
+  background: var(--danger);
+  color: #fff;
+  font-weight: 900;
   cursor: pointer;
-  height: 42px;
-  align-self: center;
-  transition: background 0.3s;
 }
 
-.btn-delete:hover {
-  background-color: #b02a37;
+/* Totales */
+.provider-form-scope .totales-linea {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  justify-content: space-between;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-top: 10px;
 }
 
-.provider-remit-romaneo{
- display: flex;
- justify-content: space-between;
+.provider-form-scope .totales-linea b {
+  color: var(--text);
 }
 
-.provider-remit-romaneo label{
-  max-width: 50%;
+/* Paginador */
+.provider-form-scope .pager {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 0;
+}
+
+.provider-form-scope .pager button {
+  padding: .4rem .8rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: #fff;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.provider-form-scope .pager button:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+/* Buttons footer */
+.provider-form-scope .button-container {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+
+.provider-form-scope .button-primary {
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: .7rem 1rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.provider-form-scope .button-primary:hover {
+  background: var(--primary-600);
+}
+
+.provider-form-scope .button-secondary {
+  background: #fff;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: .7rem 1rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+/* =========================
+   Responsive (scoped)
+   ========================= */
+
+@media (max-width: 1100px) {
+  .provider-form-scope .provider-remit-romaneo {
+    grid-template-columns: 1fr;
+  }
+
+  .provider-form-scope .corte-card {
+    grid-template-columns: 1.8fr .8fr .8fr 1fr 1fr .7fr;
+  }
+
+  .provider-form-scope .row-header,
+  .provider-form-scope .corte-row {
+    grid-template-columns: 1.8fr .8fr .8fr 1fr 1fr .6fr;
+  }
+}
+
+@media (max-width: 820px) {
+  .provider-form-scope .corte-card {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+
+  .provider-form-scope .row-header {
+    display: none;
+  }
+
+  .provider-form-scope .corte-row {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .provider-form-scope .pill-danger {
+    justify-self: end;
+  }
+
+  .provider-form-scope .totales-linea {
+    gap: 8px;
+  }
 }

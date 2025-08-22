@@ -9,8 +9,8 @@ const SalesPanel = () => {
     const navigate = useNavigate();
 
     const sections = [
-        { title: "PEDIDOS", desc: "", viewPath: "/order-list", newPath: "/order-new", newText: "Nuevo pedido" },
-        { title: "ÓRDENES DE VENTA", desc: "", viewPath: "/list-orders", newPath: "/sales-orders-new", newText: "Nueva orden" },
+        { title: "PEDIDOS", desc: "", viewPath: "/list-orders", newPath: "/sales-orders-new", newText: "Nuevo pedido" },
+        { title: "ÓRDENES DE VENTA", desc: "", viewPath: "/list-final-orders", newText: "Nueva orden" },
         { title: "REMITOS", desc: "", viewPath: "/remito-list", newPath: "/remito-new", newText: "Generar remito" },
         { title: "VENDEDORES", desc: "", viewPath: "/seller-list", newPath: "/seller-new", newText: "Nuevo vendedor" },
         { title: "PREFACTURACIONES", desc: "", viewPath: "/prefact-list", newPath: "/prefact-new", newText: "Nueva prefacturación" },
@@ -18,6 +18,7 @@ const SalesPanel = () => {
         { title: "CLIENTES", desc: "", viewPath: "/client-list", newPath: "/client-load", newText: "Cargar" },
         { title: "HOJA DE RUTA", desc: "", viewPath: "/route-list", newPath: "/route-new", newText: "Nueva hoja de ruta" },
          { title: "LISTADO DE PRECIOS", desc: "", viewPath: "/price-list-general", newPath: "/new-price-list", newText: "Nueva lista de precios" },
+          { title: "CONFIGURACIÓN", desc: "", newPath: "/sale-configuration", newText: "Agregar configuracion+" },
     ];
 
     return (

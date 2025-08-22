@@ -1,5 +1,5 @@
 module.exports = (sequelize, dataTypes) => {
-    let alias = 'BillDetail'; 
+    let alias = 'BillDetail';
     let cols = {
         id: {
             type: dataTypes.BIGINT(10).UNSIGNED,
@@ -19,8 +19,11 @@ module.exports = (sequelize, dataTypes) => {
         quantity: dataTypes.INTEGER,
         heads: dataTypes.INTEGER,
 
-       
         weight: {
+            type: dataTypes.INTEGER,
+            allowNull: false
+        },
+        identification_product: {
             type: dataTypes.INTEGER,
             allowNull: false
         },
@@ -30,7 +33,7 @@ module.exports = (sequelize, dataTypes) => {
     };
 
     let config = {
-        tableName: 'bill_details',  
+        tableName: 'bill_details',
         timestamps: true
     };
 

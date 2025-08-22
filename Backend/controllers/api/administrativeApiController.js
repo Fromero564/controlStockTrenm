@@ -17,6 +17,9 @@ const billSupplier = db.BillSupplier;
 const ProcessMeat = db.ProcessMeat;
 const ProductStock = db.ProductStock;
 const ProcessNumber = db.ProcessNumber;
+const PaymentCondition = db.PaymentCondition;
+const SaleCondition = db.SaleCondition;
+
 
 const administrativeApiController = {
   // loadNewProduct: async (req, res) => {
@@ -157,7 +160,6 @@ const administrativeApiController = {
       return res.status(500).json({ mensaje: "Error del servidor" });
     }
   },
-
   editClient: async (req, res) => {
     const { id } = req.params;
     const {
@@ -173,10 +175,26 @@ const administrativeApiController = {
       localidadCliente,
       estadoCliente,
       sellerId,
-      client_seller
+      client_seller,
+      client_payment_condition,
+      client_sale_condition,
+      payment_condition_id,
+      sale_condition_id
     } = req.body;
 
     try {
+      let paymentCondName = client_payment_condition ?? null;
+      if (!paymentCondName && payment_condition_id) {
+        const pc = await PaymentCondition.findByPk(payment_condition_id);
+        paymentCondName = pc ? pc.payment_condition : null;
+      }
+
+      let saleCondName = client_sale_condition ?? null;
+      if (!saleCondName && sale_condition_id) {
+        const sc = await SaleCondition.findByPk(sale_condition_id);
+        saleCondName = sc ? sc.condition_name : null;
+      }
+
       await Client.update(
         {
           client_name: (nombreCliente || "").toUpperCase(),
@@ -190,7 +208,9 @@ const administrativeApiController = {
           client_province: (provinciaCliente || "").toUpperCase(),
           client_location: (localidadCliente || "").toUpperCase(),
           client_state: estadoCliente === true || estadoCliente === "true",
-          client_seller: sellerId ?? client_seller ?? null
+          client_seller: sellerId ?? client_seller ?? null,
+          client_payment_condition: paymentCondName,
+          client_sale_condition: saleCondName
         },
         { where: { id } }
       );
@@ -201,6 +221,7 @@ const administrativeApiController = {
       return res.status(500).json({ mensaje: "Error del servidor" });
     }
   },
+
 
   editProvider: async (req, res) => {
     const { id } = req.params;
@@ -276,15 +297,22 @@ const administrativeApiController = {
         localidadCliente,
         client_state,
         sellerId,
-        client_seller
+        client_payment_condition,
+        client_sale_condition,
+        payment_condition_id,
+        sale_condition_id
       } = req.body;
 
-      const existente = await Client.findOne({
-        where: { client_id_number: numeroIdentidad },
-      });
+      let paymentCondName = client_payment_condition ?? null;
+      if (!paymentCondName && payment_condition_id) {
+        const pc = await PaymentCondition.findByPk(payment_condition_id);
+        paymentCondName = pc ? pc.payment_condition : null;
+      }
 
-      if (existente) {
-        return res.status(400).json({ mensaje: "El cliente con ese código ya existe" });
+      let saleCondName = client_sale_condition ?? null;
+      if (!saleCondName && sale_condition_id) {
+        const sc = await SaleCondition.findByPk(sale_condition_id);
+        saleCondName = sc ? sc.condition_name : null;
       }
 
       await Client.create({
@@ -299,10 +327,12 @@ const administrativeApiController = {
         client_province: (provinciaCliente || "").toUpperCase(),
         client_location: (localidadCliente || "").toUpperCase(),
         client_state: client_state === true || client_state === "true",
-        client_seller: sellerId ?? client_seller ?? null
+        client_seller: sellerId ?? null,
+        client_payment_condition: paymentCondName,
+        client_sale_condition: saleCondName
       });
 
-      return res.status(201).json({ mensaje: "Ingreso registrado con éxito" });
+      return res.status(201).json({ mensaje: "Cliente creado" });
     } catch (error) {
       console.error("Error al crear cliente:", error);
       return res.status(500).json({ mensaje: "Error del servidor" });
@@ -719,26 +749,22 @@ const administrativeApiController = {
         product_general_category,
         min_stock,
         max_stock,
-        alicuota,      // <-- AGREGADO
+        alicuota,
         subproducts = []
       } = req.body;
 
-      // Ahora solo product_name es obligatorio, lo demás opcional:
       if (!product_name) {
         return res.status(400).json({ message: "El nombre es obligatorio." });
       }
 
-      // Convierte a enteros si existen
       const min = min_stock !== undefined && min_stock !== null && min_stock !== '' ? parseInt(min_stock) : null;
       const max = max_stock !== undefined && max_stock !== null && max_stock !== '' ? parseInt(max_stock) : null;
-
-      // Convierte alicuota a float si existe
       const alicuotaValue = alicuota !== undefined && alicuota !== null && alicuota !== '' ? parseFloat(alicuota) : null;
 
-      // Paso 1: Crear producto principal con ID manual o generado
+      // Generar id si no viene
       let productId = id;
       if (!productId) {
-        const maxIdResult = await db.ProductsAvailable.max('id');
+        const maxIdResult = await db.ProductsAvailable.max("id");
         productId = (maxIdResult || 0) + 1;
       }
 
@@ -749,22 +775,23 @@ const administrativeApiController = {
         product_general_category: product_general_category || null,
         min_stock: min,
         max_stock: max,
-        alicuota: alicuotaValue  // <-- AGREGADO
+        alicuota: alicuotaValue
       });
 
       if (!nuevoProducto || !nuevoProducto.id) {
         return res.status(500).json({ message: "No se pudo crear el producto principal." });
       }
 
-      // Paso 2: Crear subproductos (si hay)
+      // Crear subproductos con unidad
       for (const sub of subproducts) {
-        const { subproductId, quantity } = sub;
+        const { subproductId, quantity, unit } = sub;
         if (!subproductId || !quantity) continue;
 
         await db.ProductSubproduct.create({
           parent_product_id: nuevoProducto.id,
           subproduct_id: subproductId,
-          quantity: quantity
+          quantity: quantity,
+          unit: unit || "kg" // 👈 agregado
         });
       }
 
@@ -824,129 +851,79 @@ const administrativeApiController = {
     try {
       const { id } = req.params;
 
-      const producto = await db.ProductsAvailable.findOne({
-        where: { id },
+      const producto = await db.ProductsAvailable.findByPk(id, {
         include: [
           {
-            model: db.ProductCategories,
-            as: "category",
-            attributes: ["id", "category_name"]
+            model: db.ProductSubproduct,
+            as: "subproducts",
+            attributes: ["id", "subproduct_id", "quantity", "unit"],
           }
         ]
       });
 
       if (!producto) {
-        return res.status(404).json({ message: "Producto no encontrado" });
-      }
-
-      const subproductos = await ProductSubproduct.findAll({
-        where: { parent_product_id: id },
-        attributes: ["id", "subproduct_id", "quantity"]
-      });
-
-      res.status(200).json({
-        id: producto.id,
-        product_name: producto.product_name,
-        category_id: producto.category_id,
-        product_general_category: producto.product_general_category,
-        min_stock: producto.min_stock,
-        max_stock: producto.max_stock,
-        alicuota: producto.alicuota, // <--- AGREGADO ESTO
-        subproducts: subproductos
-      });
-
-    } catch (error) {
-      console.error("Error al obtener producto con subproductos:", error);
-      res.status(500).json({ message: "Error al obtener el producto", error: error.message });
-    }
-  },
-
-  editProductAvailable: async (req, res) => {
-    const { id: currentId } = req.params;
-    const {
-      id: newId,
-      product_name,
-      category_id,
-      product_general_category,
-      min_stock,
-      max_stock,
-      alicuota,
-      subproducts
-    } = req.body;
-
-    if (!product_name) {
-      return res.status(400).json({ message: "El nombre es obligatorio." });
-    }
-
-    try {
-      const productoExistente = await ProductsAvailable.findByPk(currentId);
-      if (!productoExistente) {
         return res.status(404).json({ message: "Producto no encontrado." });
       }
 
-      const finalId = newId && newId !== Number(currentId) ? newId : Number(currentId);
+      res.json(producto);
+    } catch (error) {
+      console.error("Error al obtener producto con subproductos:", error);
+      res.status(500).json({ message: "Error interno del servidor", error });
+    }
+  },
+
+
+  editProductAvailable: async (req, res) => {
+    try {
+      const { id } = req.params;
+      const {
+        product_name,
+        category_id,
+        product_general_category,
+        min_stock,
+        max_stock,
+        alicuota,
+        subproducts = []
+      } = req.body;
+
       const min = min_stock !== undefined && min_stock !== null && min_stock !== '' ? parseInt(min_stock) : null;
       const max = max_stock !== undefined && max_stock !== null && max_stock !== '' ? parseInt(max_stock) : null;
       const alicuotaValue = alicuota !== undefined && alicuota !== null && alicuota !== '' ? parseFloat(alicuota) : null;
 
-      if (finalId !== Number(currentId)) {
-        const idExistente = await ProductsAvailable.findByPk(finalId);
-        if (idExistente) {
-          return res.status(400).json({ message: "El nuevo código de producto ya existe." });
-        }
-
-        await sequelize.transaction(async (t) => {
-          await ProductsAvailable.update({
-            id: finalId,
-            product_name,
-            category_id: category_id ? category_id : null,
-            product_general_category: product_general_category || null,
-            min_stock: min,
-            max_stock: max,
-            alicuota: alicuotaValue
-          }, {
-            where: { id: currentId },
-            transaction: t
-          });
-
-          await ProductSubproduct.update(
-            { parent_product_id: finalId },
-            { where: { parent_product_id: currentId }, transaction: t }
-          );
-        });
-
-      } else {
-        await ProductsAvailable.update({
+      // Actualizar producto
+      await db.ProductsAvailable.update(
+        {
           product_name,
           category_id: category_id ? category_id : null,
           product_general_category: product_general_category || null,
           min_stock: min,
           max_stock: max,
           alicuota: alicuotaValue
-        }, {
-          where: { id: currentId }
-        });
-      }
+        },
+        { where: { id } }
+      );
 
-      if (Array.isArray(subproducts)) {
-        await ProductSubproduct.destroy({ where: { parent_product_id: finalId } });
+      // Borrar subproductos previos
+      await db.ProductSubproduct.destroy({ where: { parent_product_id: id } });
 
-        const nuevos = subproducts.map(sp => ({
-          parent_product_id: finalId,
+      // Crear subproductos actualizados con unidad
+      if (Array.isArray(subproducts) && subproducts.length > 0) {
+        const nuevos = subproducts.map((sp) => ({
+          parent_product_id: id,
           subproduct_id: sp.subproductId,
-          quantity: sp.quantity
+          quantity: sp.quantity,
+          unit: sp.unit || "kg" // 👈 agregado
         }));
-
-        await ProductSubproduct.bulkCreate(nuevos);
+        await db.ProductSubproduct.bulkCreate(nuevos);
       }
 
-      return res.status(200).json({ message: "Producto y subproductos actualizados correctamente." });
-
+      res.json({ message: "Producto actualizado correctamente." });
     } catch (error) {
       console.error("Error al actualizar producto:", error);
-      return res.status(500).json({ message: "Error interno del servidor", error: error.message });
+      res.status(500).json({ message: "Error interno del servidor", error });
     }
   },
+
 
   deleteSubproduct: async (req, res) => {
     const { id } = req.params;

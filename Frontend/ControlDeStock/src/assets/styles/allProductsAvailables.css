@@ -2,13 +2,33 @@
   padding: 1rem;
 }
 
-.products-title {
-  font-size: 1.5rem;
-  font-weight: bold;
-  margin-bottom: 1rem;
+.products-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
 }
 
-/* Tabla base */
+.products-title-style {
+  font-size: 1.5rem;
+  font-weight: bold;
+  margin: 0;
+  color: #000;
+}
+
+.btn-nuevo {
+  background-color: #0077b6;
+  color: #fff;
+  padding: 8px 14px;
+  font-size: 14px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.05s ease;
+}
+.btn-nuevo:hover { background-color: #0284c7; }
+.btn-nuevo:active { transform: translateY(1px); }
+
 .products-table {
   width: 100%;
   border-collapse: collapse;
@@ -16,7 +36,6 @@
   font-family: sans-serif;
 }
 
-/* Encabezado */
 .products-table thead {
   background-color: #e0f0fc;
 }
@@ -29,7 +48,6 @@
   font-size: 0.95rem;
 }
 
-/* Acciones */
 .products-actions {
   display: flex;
   gap: 0.5rem;
@@ -49,19 +67,18 @@
   justify-content: center;
 }
 
-/* Colores de botones */
 .products-btn-view {
-  background-color: #22c55e; /* Verde */
+  background-color: #22c55e;
   color: white;
 }
 
 .products-btn-edit {
-  background-color: #0ea5e9; /* Celeste */
+  background-color: #0ea5e9;
   color: white;
 }
 
 .products-btn-delete {
-  background-color: #ef4444; /* Rojo */
+  background-color: #ef4444;
   color: white;
 }
 
@@ -74,4 +91,15 @@
   text-align: center;
   color: #6b7280;
   font-style: italic;
+}
+
+@media (max-width: 640px) {
+  .products-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+  .btn-nuevo {
+    width: 100%;
+  }
 }

@@ -87,7 +87,7 @@ const ProductionProcess = () => {
   useEffect(() => {
     const fetchComprobantesSinProcesoConTipo = async () => {
       try {
-        const res = await fetch(`http://localhost:3000/allproducts`);
+        const res = await fetch(`${API_URL}/allproducts`);
         const data = await res.json();
         const sinProceso = data.filter((p) => !p.production_process);
 
@@ -152,7 +152,7 @@ const ProductionProcess = () => {
         Swal.fire("Error", "No se encontró detalle para ese comprobante.", "error");
         return;
       }
-      const resInfo = await fetch(`http://localhost:3000/allproducts`);
+      const resInfo = await fetch(`${API_URL}/allproducts`);
       const allProducts = await resInfo.json();
       const remito = allProducts.find((p) => p.id === Number(id));
       let subproductosTotales = [];

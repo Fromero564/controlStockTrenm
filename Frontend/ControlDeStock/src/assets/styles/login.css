@@ -1,75 +1,141 @@
-.login-container {
-    height: 100vh; 
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-family: Arial, Helvetica, sans-serif;
-  }
-  
-  .form-container {
-    background: white;
-    padding: 20px;
-    border-radius: 10px;
-    box-shadow: 2px 2px 2px 3px rgba(0, 0, 0, 0.1);
-    width: 400px;
-    margin: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-  }
-  
-  .form-title {
-    text-align: left;
-    font-size: 18px;
-    font-weight: bold;
-    color: #333;
-  }
-  
-  .label {
-    font-size: 12px;
-    font-weight: bold;
-    color: #666;
-  }
-  
-  .input {
-    width: 95%;
-    padding: 10px;
-    font-size: 16px;
-    border: none;
-    border-radius: 5px;
-    background-color: #eee;
-    font-weight: bold;
-  }
-  
-  .input[type="password"] {
-    text-transform: none;
-  }
-  
-  .submit-button {
-    width: 100%;
-    background: #0077b6;
-    color: white;
-    border: none;
-    padding: 12px;
-    font-size: 16px;
-    font-weight: bold;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background 0.3s;
-  }
-  
-  .submit-button:hover {
-    background: #005f8a;
-  }
-.password-container {
-  position: relative;
+.loginv2-container {
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-family: Arial, Helvetica, sans-serif;
+  background: #f7fafc;
 }
 
-.toggle-password-icon {
+.loginv2-form {
+  background: #fff;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(16, 24, 40, .08);
+  width: 420px;
+  max-width: 92vw;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  border: 1px solid #eef2f7;
+}
+
+.loginv2-title {
+  text-align: left;
+  font-size: 18px;
+  font-weight: 800;
+  color: #0f2a43;
+  margin: 0 0 6px 0;
+  letter-spacing: .2px;
+}
+
+.loginv2-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #667085;
+  letter-spacing: .2px;
+}
+
+.loginv2-input {
+  width: 100%;
+  height: 44px;
+  padding: 10px 12px;
+  font-size: 16px;
+  border: 1px solid #e6eef6;
+  border-radius: 8px;
+  background: #f2f4f7;
+  color: #1f2f49;
+  font-weight: 600;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color .15s ease, background .15s ease;
+}
+
+.loginv2-input:focus {
+  border-color: #1075a5;
+  background: #fff;
+}
+
+.loginv2-password-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.loginv2-input--password {
+  padding-right: 44px;
+  /* espacio para el icono */
+}
+
+/* Icono ojo */
+.loginv2-password-toggle {
   position: absolute;
   top: 50%;
-  right: 12px;
+  right: 14px;
   transform: translateY(-50%);
-  cursor: pointer;
+  font-size: 18px;
   color: #555;
+  cursor: pointer;
+  line-height: 1;
+  user-select: none;
+}
+
+.loginv2-submit {
+  width: 100%;
+  background: #0a6fa3;
+  color: #fff;
+  border: none;
+  padding: 12px;
+  font-size: 16px;
+  font-weight: 800;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background .2s ease-in-out, transform .04s ease-in-out;
+}
+
+.loginv2-submit:hover {
+  background: #085c86;
+}
+
+.loginv2-submit:active {
+  transform: translateY(1px);
+}
+
+.loginv2-submit:disabled {
+  background: #b9c9d8;
+  cursor: not-allowed;
+}
+
+/* Mensajes auxiliares (opcional) */
+.loginv2-help {
+  font-size: 12px;
+  color: #667085;
+  margin-top: -6px;
+}
+
+.loginv2-error {
+  font-size: 12px;
+  color: #d92d20;
+  margin-top: -6px;
+}
+
+/* Responsive */
+@media (max-width:480px) {
+  .loginv2-form {
+    padding: 16px;
+    gap: 12px;
+  }
+
+  .loginv2-title {
+    font-size: 16px;
+  }
+
+  .loginv2-input {
+    height: 42px;
+    font-size: 15px;
+  }
+
+  .loginv2-submit {
+    padding: 11px;
+    font-size: 15px;
+  }
 }

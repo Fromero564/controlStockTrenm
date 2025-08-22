@@ -1,0 +1,144 @@
+.mlv-wrap {
+  width: min(1200px, 95%);
+  margin: 8px auto 40px;
+}
+
+.mlv-title {
+  font-size: 30px;
+  font-weight: 900;
+  color: #0d7bac;
+  margin: 6px 0 14px;
+  letter-spacing: .2px;
+}
+
+.mlv-card {
+  background: #fff;
+  border: 1px solid #e6eef8;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, .06);
+  padding: 18px;
+}
+
+.mlv-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px 18px;
+  margin-bottom: 12px;
+}
+
+.mlv-item {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.mlv-label {
+  font-size: 12px;
+  color: #235d9f;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .3px;
+}
+
+.mlv-value {
+  font-size: 16px;
+  font-weight: 800;
+  color: #1f2f49;
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mlv-subtitle {
+  margin: 14px 0 8px;
+  color: #0d7bac;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: .3px;
+  font-size: 16px;
+}
+
+.mlv-tablewrap {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid #e6eef8;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.mlv-table {
+  width: 100%;
+  /* ↑ subido para 5 columnas (Tipo, Cantidad, Peso, Cabezas, N° Romaneo/Código) */
+  min-width: 1000px;
+  border-collapse: collapse;
+}
+
+.mlv-table thead {
+  background: #f0f6ff;
+  border-bottom: 1px solid #e1ecfb;
+  color: #235d9f;
+}
+
+.mlv-table th,
+.mlv-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #f2f5fb;
+  text-align: left;
+  font-size: 14px;
+}
+
+.mlv-table tr:last-child td {
+  border-bottom: none;
+}
+
+/* números alineados a la derecha */
+.mlv-num {
+  text-align: right;
+}
+
+/* Observación */
+.mlv-observation {
+  border: 1px solid #e6eef8;
+  background: #f7f9fc;
+  border-radius: 10px;
+  padding: 12px;
+  color: #1f2f49;
+}
+
+/* Responsive */
+@media (max-width:1100px) {
+  .mlv-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width:820px) {
+  .mlv-title {
+    font-size: 26px;
+  }
+
+  .mlv-card {
+    padding: 16px;
+  }
+
+  .mlv-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px 14px;
+  }
+
+  /* también subimos el min-width en móviles para 5 columnas */
+  .mlv-table {
+    min-width: 900px;
+  }
+}
+
+@media (max-width:620px) {
+  .mlv-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .mlv-table {
+    min-width: 760px;
+  }
+}

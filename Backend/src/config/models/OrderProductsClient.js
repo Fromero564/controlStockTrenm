@@ -1,4 +1,4 @@
-// models/order_products_client.js
+
 
 module.exports = (sequelize, DataTypes) => {
     const OrderProductClient = sequelize.define("OrderProductClient", {

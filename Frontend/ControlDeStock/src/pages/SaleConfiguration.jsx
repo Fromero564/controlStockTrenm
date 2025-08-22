@@ -1,22 +1,16 @@
-
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import Navbar from "../components/Navbar.jsx";
 import { faEye, faPlus } from "@fortawesome/free-solid-svg-icons";
-import "../assets/styles/operatorpanel.css";
+import "../assets/styles/salespanel.css";
 
-const OperatorPanel = () => {
+const SaleConfiguration = () => {
 
     const navigate = useNavigate();
 
     const sections = [
-        { title: "INGRESOS", desc: "", viewPath: "/meat-load", newPath: "/provider-form", newText: "Nuevo ingreso" },
-        { title: "PROCESO PRODUCTIVO", desc: "",viewPath: "/list-production-process", newPath: "/production-process", newText: "Nuevo Proceso" },
-        { title: "STOCK", desc: "", viewPath: "/general-stock", newText: "Consultar stock" },
-        { title: "PROVEEDORES", desc: "", viewPath: "/provider-list", newPath: "/provider-load", newText: "Cargar" },
-
-        { title: "CONFIGURACION", desc: "", newPath: "/product-configuration", newText: "Agregar o modificar configuración" },
-
+        { title: "CONDICION DE VENTA", desc: "", viewPath: "/list-sell-condition", newPath: "/sale-condition-load", newText: "Nueva condicion de venta+" },
+        { title: "CONDION DE COBRO", desc: "", viewPath: "/list-payment-condition", newPath: "/payment-condition-load", newText: "Nueva condicion de cobro+" },
     ];
 
     return (
@@ -27,14 +21,13 @@ const OperatorPanel = () => {
                     ⬅ Volver
                 </button>
             </div>
-
-            <h2 className="title">Producción y stock</h2>
+            <h2 className="title">Configuracion de ventas</h2>
 
             <div className="grid-container">
                 {sections.map((section, index) => (
                     <div className="card" key={index}>
                         <h3>{section.title}</h3>
-                        <p>{section.desc}</p>
+                        {section.desc && <p>{section.desc}</p>}
                         <div className="buttons">
                             {section.viewPath && (
                                 <button className="btn view-btn" onClick={() => navigate(section.viewPath)}>
@@ -54,4 +47,4 @@ const OperatorPanel = () => {
     );
 };
 
-export default OperatorPanel;
+export default SaleConfiguration;

@@ -34,7 +34,7 @@ const ListSellers = () => {
 
     const goToPage = (page) => setCurrentPage(page);
 
-    // ---------- SweetAlert2 custom baja vendedor ----------
+  
     const handleDelete = (id, name) => {
         Swal.fire({
             title: "<strong>Dar de baja vendedor</strong>",
@@ -101,6 +101,11 @@ const ListSellers = () => {
                         Nuevo Vendedor <FontAwesomeIcon icon={faPlus} />
                     </button>
                 </div>
+                 <div style={{ margin: "20px" }}>
+                <button className="boton-volver" onClick={() => navigate(-1)}>
+                    ⬅ Volver
+                </button>
+            </div>
                 <div className="sellers-search-row">
                     <input
                         type="text"

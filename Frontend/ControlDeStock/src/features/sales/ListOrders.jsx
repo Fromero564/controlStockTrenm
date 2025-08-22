@@ -146,7 +146,6 @@ const ListOrders = () => {
 
   const handleEdit = (row) => navigate(`/sales-orders-new/${row.id}`);
 
-  // --- CAMBIO: eliminar realmente llamando a la API y bloqueando si tiene sell_order asociado
   const handleDelete = async (row) => {
     const { isConfirmed } = await Swal.fire({
       title: "¿Eliminar?",
@@ -169,7 +168,6 @@ const ListOrders = () => {
       }
       if (res.status === 404) {
         await Swal.fire("No encontrada", "El pedido no existe.", "info");
-        // quitamos igualmente por si quedó “huérfano” en la UI
         setOrders(prev => prev.filter(o => o.id !== row.id));
         return;
       }
@@ -199,15 +197,34 @@ const ListOrders = () => {
       <div className="oa-ellipsis" title={item.client_name}>{item.client_name}</div>
       <div className="oa-ellipsis" title="—">—</div>
       <div className="oa-actions">
-        <button className="oa-btn oa-btn-primary" onClick={() => handleGenerate(item)}>
-          Generar orden
-        </button>
-        <button className="oa-icon-btn oa-view" title="Ver" onClick={() => handleView(item)}>
+        {item?.order_check ? (
+          <button className="oa-btn oa-danger" disabled>
+            Orden generada
+          </button>
+        ) : (
+          <button className="oa-btn oa-btn-primary" onClick={() => handleGenerate(item)}>
+            Generar orden
+          </button>
+        )}
+
+        <button
+          className="oa-icon-btn oa-view"
+          title="Ver"
+          onClick={() => handleView(item)}
+        >
           <FontAwesomeIcon icon={faEye} />
         </button>
-        <button className="oa-icon-btn oa-edit" title="Editar" onClick={() => handleEdit(item)}>
+
+        <button
+          className="oa-icon-btn oa-edit"
+          title={item?.order_check ? "No se puede editar: ya generada" : "Editar"}
+          onClick={() => handleEdit(item)}
+          disabled={Boolean(item?.order_check)}
+          style={Boolean(item?.order_check) ? { opacity: 0.5, cursor: "not-allowed" } : undefined}
+        >
           <FontAwesomeIcon icon={faPen} />
         </button>
+
         <button
           className="oa-icon-btn oa-danger"
           title={item?.order_check ? "No se puede eliminar: ya generada" : "Eliminar"}

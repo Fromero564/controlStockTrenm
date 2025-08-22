@@ -1,0 +1,80 @@
+.cond-form-container {
+    width: min(640px, 92%);
+    margin: 8px auto 40px;
+    background: #fff;
+    border: 1px solid #e6eef6;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, .06);
+    padding: 18px;
+}
+
+.cond-form-title {
+    font-size: 26px;
+    font-weight: 900;
+    color: #0d7bac;
+    margin: 4px 0 14px;
+    letter-spacing: .2px;
+}
+
+.cond-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.cond-label {
+    font-weight: 800;
+    color: #2a5c92;
+    font-size: 12px;
+    letter-spacing: .2px;
+}
+
+.cond-input {
+    border: 1px solid #cfd9e7;
+    border-radius: 10px;
+    padding: .6rem .7rem;
+    background: #f6f8fb;
+    font-size: 14px;
+    outline: none;
+}
+
+.cond-form-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 12px;
+}
+
+.cond-btn-primary {
+    background: #1075a5;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: .6rem 1rem;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.cond-btn-primary:hover {
+    background: #0d6b98;
+}
+
+.cond-btn-secondary {
+    background: #fff;
+    color: #1f2f49;
+    border: 1px solid #e1e7f0;
+    border-radius: 10px;
+    padding: .6rem 1rem;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.cond-form-message {
+    width: min(640px, 92%);
+    margin: 8px auto;
+    background: #f7f9fc;
+    border: 1px solid #e6eef8;
+    color: #1f2f49;
+    border-radius: 10px;
+    padding: 10px 12px;
+}
