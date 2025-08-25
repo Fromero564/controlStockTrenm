@@ -1,0 +1,199 @@
+.ow {
+    padding: 16px;
+    background: #f6f8fb;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    color: #0b1726;
+}
+
+.ow-muted {
+    color: #7b8aa0;
+}
+
+.ow-topbar {
+    margin: 6px 4px 14px;
+}
+
+.ow-btn-back {
+    background: #e6eefc;
+    color: #1e40af;
+    border: 1px solid #c7d2fe;
+    padding: 8px 12px;
+    border-radius: 12px;
+    cursor: pointer;
+    font-weight: 700;
+}
+
+.ow-pageTitle {
+    margin: 0 0 12px 0;
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: .2px;
+    color: #0b1726;
+}
+
+.ow-headerCard {
+    background: #eef3fb;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 18px 20px;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, .05);
+    margin-bottom: 18px;
+}
+
+.ow-infoGrid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px 18px;
+}
+
+.ow-k {
+    font-size: 11px;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    margin-bottom: 4px;
+}
+
+.ow-v {
+    font-size: 14px;
+    font-weight: 800;
+    color: #0b1726;
+}
+
+@media (max-width: 1024px) {
+    .ow-infoGrid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 640px) {
+    .ow-infoGrid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.ow-card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    padding: 14px 16px 18px;
+    box-shadow: 0 2px 10px rgba(15, 23, 42, .06);
+    overflow-x: auto;
+}
+
+.ow-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 1040px;
+}
+
+.ow-table th,
+.ow-table td {
+    border: 1px solid #e5e7eb;
+    padding: 12px 10px;
+    text-align: center;
+    vertical-align: middle;
+}
+
+.ow-table th {
+    background: #eaf2ff;
+    color: #1e40af;
+    font-weight: 900;
+    font-size: 12px;
+    letter-spacing: .3px;
+}
+
+.ow-table tbody tr:nth-child(even) {
+    background: #fafafa;
+}
+
+.ow-code {
+    font-weight: 800;
+    color: #0b1726;
+}
+
+.ow-cut {
+    text-align: left;
+    font-weight: 700;
+}
+
+.ow-money {
+    font-weight: 800;
+    color: #0f766e;
+}
+
+.ow-number {
+    font-weight: 800;
+}
+
+.ow-pillInput,
+.ow-pillSelect {
+    display: inline-flex;
+    align-items: center;
+    background: #e9f1ff;
+    border: 1px solid #c7dafc;
+    border-radius: 10px;
+    height: 36px;
+    padding: 0 8px;
+}
+
+.ow-pillInput input,
+.ow-pillSelect select {
+    width: 100px;
+    font-size: 14px;
+    border: none;
+    outline: none;
+    background: transparent;
+    text-align: center;
+    color: #0b1726;
+}
+
+.ow-pillSelect select {
+    cursor: pointer;
+}
+
+.ow-comments {
+    margin: 16px 4px 8px;
+}
+
+.ow-textarea {
+    width: 100%;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 12px 14px;
+    font-size: 14px;
+    outline: none;
+    background: #f8fafc;
+    color: #0b1726;
+}
+
+.ow-textarea:focus {
+    border-color: #60a5fa;
+    box-shadow: 0 0 0 3px rgba(96, 165, 250, .2);
+    background: #ffffff;
+}
+
+.ow-actions {
+    margin-top: 16px;
+    display: flex;
+    gap: 10px;
+}
+
+.ow-btn-primary {
+    background: #1d4ed8;
+    color: #fff;
+    border: none;
+    padding: 12px 18px;
+    border-radius: 12px;
+    cursor: pointer;
+    font-weight: 900;
+    letter-spacing: .2px;
+}
+
+.ow-btn-primary:hover {
+    background: #1e40af;
+}
+
+.center {
+    text-align: center;
+}

@@ -46,6 +46,8 @@ import SaleConditionLoad from './features/sales/SaleConditionLoad.jsx';
 import ListSaleConditionLoad from './features/sales/ListSaleConditionLoad.jsx';
 import PaymentConditionLoad from './features/sales/PaymentConditionLoad.jsx';
 import ListPaymentConditionLoad from './features/sales/ListPaymentConditionLoad.jsx';
+import RoadmapOptions from './features/sales/RoadmapOptions.jsx';
+import OrderWeight from './features/sales/OrderWeight.jsx';
 
 
 
@@ -444,6 +446,22 @@ const router = createBrowserRouter([
   element: (
     <ProtectedRoute>
     <ListPaymentConditionLoad/>
+    </ProtectedRoute>
+  ),
+},
+{
+  path: "/roadmap-options",
+  element: (
+    <ProtectedRoute>
+    <RoadmapOptions/>
+    </ProtectedRoute>
+  ),
+},
+{
+  path: "/order-weight/:id",
+  element: (
+    <ProtectedRoute>
+    <OrderWeight/>
     </ProtectedRoute>
   ),
 },

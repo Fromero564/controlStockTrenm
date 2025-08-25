@@ -74,7 +74,7 @@ const SaleConditionLoad = () => {
         isEdit ? "Condición actualizada correctamente." : "Condición creada correctamente.",
         "success"
       );
-      navigate("/list-sale-condition");
+      navigate("/list-sell-condition");
     } catch (err) {
       console.error(err);
       Swal.fire("Error", "No se pudo completar la operación.", "error");

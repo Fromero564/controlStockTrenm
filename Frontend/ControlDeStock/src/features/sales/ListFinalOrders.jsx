@@ -94,8 +94,7 @@ const ListFinalOrders = () => {
   };
 
   const onWeigh = (id) => {
-    // acá tu navegación / acción para pesar
-    // por ejemplo: navigate(`/weigh-order/${id}`)
+  navigate(`/order-weight/${id}`)
   };
   const onView = (id) => { };
   const onPDF = (id) => { };

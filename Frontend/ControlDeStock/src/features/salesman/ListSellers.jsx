@@ -34,7 +34,6 @@ const ListSellers = () => {
 
     const goToPage = (page) => setCurrentPage(page);
 
-  
     const handleDelete = (id, name) => {
         Swal.fire({
             title: "<strong>Dar de baja vendedor</strong>",
@@ -101,11 +100,11 @@ const ListSellers = () => {
                         Nuevo Vendedor <FontAwesomeIcon icon={faPlus} />
                     </button>
                 </div>
-                 <div style={{ margin: "20px" }}>
-                <button className="boton-volver" onClick={() => navigate(-1)}>
-                    ⬅ Volver
-                </button>
-            </div>
+                <div style={{ margin: "20px" }}>
+                    <button className="boton-volver" onClick={() => navigate(-1)}>
+                        ⬅ Volver
+                    </button>
+                </div>
                 <div className="sellers-search-row">
                     <input
                         type="text"
@@ -130,13 +129,14 @@ const ListSellers = () => {
                                 <th>PROVINCIA</th>
                                 <th>LOCALIDAD</th>
                                 <th>DOMICILIO</th>
+                                <th>ESTADO</th>
                                 <th>ACCIONES</th>
                             </tr>
                         </thead>
                         <tbody>
                             {paginated.length === 0 && (
                                 <tr>
-                                    <td colSpan={6} style={{ textAlign: "center", color: "#aaa" }}>
+                                    <td colSpan={7} style={{ textAlign: "center", color: "#aaa" }}>
                                         No hay vendedores
                                     </td>
                                 </tr>
@@ -151,6 +151,9 @@ const ListSellers = () => {
                                         {seller.street} {seller.number}
                                         {seller.floor ? `, Piso ${seller.floor}` : ""}
                                         {seller.office ? `, ${seller.office}` : ""}
+                                    </td>
+                                    <td style={{ fontWeight: "bold", color: seller.status ? "green" : "red" }}>
+                                        {seller.status ? "ACTIVO" : "INACTIVO"}
                                     </td>
                                     <td>
                                         <button
@@ -173,7 +176,6 @@ const ListSellers = () => {
                         </tbody>
                     </table>
                 </div>
-                {/* Paginación */}
                 <div className="sellers-pagination-row">
                     <div>
                         <select

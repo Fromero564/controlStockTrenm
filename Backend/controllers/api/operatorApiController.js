@@ -819,8 +819,7 @@ const operatorApiController = {
                     return res.status(400).json({ mensaje: "Faltan campos obligatorios en al menos un producto." });
                 }
 
-                // ✅ No validamos duplicado por garrón: se permite repetir
-                // ✅ No enviamos 'id' (PK autoincremental)
+             
                 await meatIncome.create({
                     id_bill_suppliers: Supplierid,
                     products_name: tipo,
@@ -1559,50 +1558,54 @@ const operatorApiController = {
     },
 
     getSubproductsForProduct: async (req, res) => {
-        const { name } = req.params;
+  const { name } = req.params;
 
-        try {
-            console.log(" Buscando producto con nombre (sin case):", name);
+  try {
+    console.log(" Buscando producto con nombre (sin case):", name);
 
-            const product = await ProductsAvailable.findOne({
-                where: {
-                    product_name: {
-                        [Op.like]: `%${name}%`
-                    }
-                },
-                order: [
-                    [sequelize.literal(`CASE WHEN LOWER(product_name) = '${name.toLowerCase()}' THEN 0 ELSE 1 END`), 'ASC'],
-                    [sequelize.fn('LENGTH', col('product_name')), 'ASC']
-                ]
-            });
-
-            if (!product) {
-                console.log(" Producto no encontrado");
-                return res.status(404).json({ message: "Producto no encontrado" });
-            }
-            const subproducts = await ProductSubproduct.findAll({
-                where: { parent_product_id: product.id },
-                include: [
-                    {
-                        model: ProductsAvailable,
-                        as: "subProduct",
-                        attributes: ["product_name"]
-                    }
-                ]
-            });
-
-            const resultado = subproducts.map(sp => ({
-                nombre: sp.subProduct?.product_name || "SUBPRODUCTO SIN NOMBRE",
-                cantidadPorUnidad: parseFloat(sp.quantity)
-            }));
-
-
-            return res.status(200).json(resultado);
-        } catch (error) {
-            console.error(" Error al obtener subproductos:", error);
-            res.status(500).json({ message: "Error interno al obtener subproductos" });
+    const product = await ProductsAvailable.findOne({
+      where: {
+        product_name: {
+          [Op.like]: `%${name}%`
         }
-    },
+      },
+      order: [
+        // Prioriza coincidencia exacta (case-insensitive), luego el más corto
+        [sequelize.literal(`CASE WHEN LOWER(product_name) = ${sequelize.escape(name.toLowerCase())} THEN 0 ELSE 1 END`), 'ASC'],
+        [sequelize.fn('LENGTH', col('product_name')), 'ASC']
+      ]
+    });
+
+    if (!product) {
+      console.log(" Producto no encontrado");
+      return res.status(404).json({ message: "Producto no encontrado" });
+    }
+
+    const subproducts = await ProductSubproduct.findAll({
+      where: { parent_product_id: product.id },
+      attributes: ['quantity', 'unit'], 
+      include: [
+        {
+          model: ProductsAvailable,
+          as: "subProduct",
+          attributes: ["product_name"]
+        }
+      ]
+    });
+
+    const resultado = subproducts.map(sp => ({
+      nombre: sp.subProduct?.product_name || "SUBPRODUCTO SIN NOMBRE",
+      cantidadPorUnidad: parseFloat(sp.quantity),
+      unit: sp.unit || "unidad" // 👈 devolvemos la unidad (fallback a "unidad")
+    }));
+
+    return res.status(200).json(resultado);
+  } catch (error) {
+    console.error(" Error al obtener subproductos:", error);
+    res.status(500).json({ message: "Error interno al obtener subproductos" });
+  }
+},
+
     descontarStockSinRemito: async (req, res) => {
         try {
             const { product_name, quantity } = req.body;

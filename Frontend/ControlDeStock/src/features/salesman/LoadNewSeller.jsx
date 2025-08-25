@@ -8,7 +8,7 @@ const API_URL = import.meta.env.VITE_API_URL;
 
 const LoadNewSeller = () => {
     const navigate = useNavigate();
-    const { id } = useParams(); // Si viene id, estamos editando
+    const { id } = useParams();
 
     const [form, setForm] = useState({
         code: "",
@@ -19,16 +19,13 @@ const LoadNewSeller = () => {
         number: "",
         floor: "",
         office: "",
+        status: true
     });
 
-    const [provincias, setProvincias] = useState([]);
-    const [localidades, setLocalidades] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    // Si es nuevo, calcula el siguiente código; si es edición, carga el vendedor
     useEffect(() => {
         if (id) {
-            // Traer datos del vendedor para editar
             fetch(`${API_URL}/seller/${id}`)
                 .then(res => res.json())
                 .then(data => {
@@ -42,12 +39,12 @@ const LoadNewSeller = () => {
                             number: data.seller.number || "",
                             floor: data.seller.floor || "",
                             office: data.seller.office || "",
+                            status: data.seller.status === 1 || data.seller.status === true
                         });
                     }
                 })
                 .finally(() => setLoading(false));
         } else {
-            // Es nuevo: calcula el siguiente código
             fetch(`${API_URL}/all-sellers`)
                 .then(res => res.json())
                 .then(data => {
@@ -62,41 +59,10 @@ const LoadNewSeller = () => {
         }
     }, [id]);
 
-    // Provincias y localidades igual que antes
-    useEffect(() => {
-        fetch("https://apis.datos.gob.ar/georef/api/provincias")
-            .then(res => res.json())
-            .then(data => {
-                const provinciasOrdenadas = data.provincias
-                    .map(p => p.nombre)
-                    .sort((a, b) => a.localeCompare(b));
-                setProvincias(provinciasOrdenadas);
-            });
-    }, []);
-
-    useEffect(() => {
-        if (!form.province) {
-            setLocalidades([]);
-            return;
-        }
-        setLocalidades([]);
-        fetch(
-            `https://apis.datos.gob.ar/georef/api/localidades?provincia=${encodeURIComponent(form.province)}&max=1000`
-        )
-            .then(res => res.json())
-            .then(data => {
-                const localidadesOrdenadas = data.localidades
-                    .map(loc => loc.nombre)
-                    .sort((a, b) => a.localeCompare(b));
-                setLocalidades(localidadesOrdenadas);
-            });
-    }, [form.province]);
-
     const handleChange = (e) => {
         setForm({
             ...form,
-            [e.target.name]: e.target.value,
-            ...(e.target.name === "province" ? { city: "" } : {})
+            [e.target.name]: e.target.value
         });
     };
 
@@ -105,14 +71,12 @@ const LoadNewSeller = () => {
         try {
             let response;
             if (id) {
-                // EDITAR: PUT o PATCH
                 response = await fetch(`${API_URL}/update-seller/${id}`, {
                     method: "PUT",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(form),
                 });
             } else {
-                // NUEVO: POST
                 response = await fetch(`${API_URL}/create-salesman`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -176,32 +140,25 @@ const LoadNewSeller = () => {
                     <div className="seller-row">
                         <div className="seller-col">
                             <div className="seller-label">PROVINCIA</div>
-                            <select
+                            <input
+                                type="text"
                                 name="province"
-                                className="seller-select"
+                                className="seller-input"
+                                placeholder="Provincia"
                                 value={form.province}
                                 onChange={handleChange}
-                            >
-                                <option value="">Seleccione una provincia</option>
-                                {provincias.map((prov) => (
-                                    <option key={prov} value={prov}>{prov}</option>
-                                ))}
-                            </select>
+                            />
                         </div>
                         <div className="seller-col">
                             <div className="seller-label">LOCALIDAD</div>
-                            <select
+                            <input
+                                type="text"
                                 name="city"
-                                className="seller-select"
+                                className="seller-input"
+                                placeholder="Localidad"
                                 value={form.city}
                                 onChange={handleChange}
-                                disabled={!form.province}
-                            >
-                                <option value="">Seleccione una localidad</option>
-                                {localidades.map((loc) => (
-                                    <option key={loc} value={loc}>{loc}</option>
-                                ))}
-                            </select>
+                            />
                         </div>
                     </div>
                     <div className="seller-label" style={{ marginTop: "20px" }}>DOMICILIO</div>
@@ -252,6 +209,29 @@ const LoadNewSeller = () => {
                                 onChange={handleChange}
                             />
                         </div>
+                    </div>
+                    <div className="seller-label" style={{ marginTop: "20px" }}>ESTADO</div>
+                    <div className="seller-row">
+                        <label>
+                            <input
+                                type="radio"
+                                name="status"
+                                value="true"
+                                checked={form.status === true}
+                                onChange={() => setForm({ ...form, status: true })}
+                            />
+                            Activo
+                        </label>
+                        <label style={{ marginLeft: "15px" }}>
+                            <input
+                                type="radio"
+                                name="status"
+                                value="false"
+                                checked={form.status === false}
+                                onChange={() => setForm({ ...form, status: false })}
+                            />
+                            Inactivo
+                        </label>
                     </div>
                     <div className="seller-btn-row">
                         <button type="submit" className="seller-btn seller-btn-primary">

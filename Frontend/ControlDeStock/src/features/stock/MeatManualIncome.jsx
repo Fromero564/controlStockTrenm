@@ -19,7 +19,7 @@ const MeatManualIncome = () => {
   const [error, setError] = useState(null);
   const [opcionesProductos, setOpcionesProductos] = useState([]);
   const [saving, setSaving] = useState(false);
-  const [cortes, setCortes] = useState([]);
+
   const [cortesAgregados, setCortesAgregados] = useState([]);
   const [tares, setTares] = useState([]);
   const [tabActiva, setTabActiva] = useState("detallado");
@@ -138,82 +138,8 @@ const MeatManualIncome = () => {
     fetchCongelados();
   }, [data]);
 
-  //   useEffect(() => {
-  //   const fetchYComparar = async () => {
-  //     if (!data?.id) return;
-
-  //     try {
-  //       const response = await fetch(`${API_URL}/chargeUpdateBillDetails/${data.id}`);
-  //       if (!response.ok) throw new Error("Error al obtener datos de proveedor");
-
-  //       const result = await response.json();
-
-  //       // Comparar cortes
-  //       const cortesProvider = result.detalles.map(d => ({
-  //         tipo: d.tipo,
-  //         cantidad: Number(d.cantidad),
-  //         cabezas: Number(d.cabezas || 0),
-  //       }));
-
-  //       const cortesManuales = cortesAgregados.map(c => ({
-  //         tipo: c.tipo,
-  //         cantidad: Number(c.cantidad),
-  //         cabezas: Number(c.cabeza || 0),
-  //       }));
-
-  //       const congeladosProvider = result.congelados.map(c => ({
-  //         tipo: c.tipo,
-  //         cantidad: Number(c.cantidad),
-  //       }));
-
-  //       const congeladosLocales = congeladosAgregados.map(c => ({
-  //         tipo: c.tipo || c.product_name,
-  //         cantidad: Number(c.cantidad || c.product_quantity),
-  //       }));
-
-  //       const cortesIguales = JSON.stringify(cortesProvider) === JSON.stringify(cortesManuales);
-  //       const congeladosIguales = JSON.stringify(congeladosProvider) === JSON.stringify(congeladosLocales);
-
-  //       if (!cortesIguales || !congeladosIguales) {
-  //         Swal.fire({
-  //           title: "Atención",
-  //           icon: "warning",
-  //           text: "Los productos cargados manualmente no coinciden con los registrados en el proveedor.",
-  //           confirmButtonText: "Ok",
-  //         });
-  //       }
-
-  //     } catch (err) {
-  //       console.error("Error en la comparación de cortes:", err);
-  //     }
-  //   };
-
-  //   fetchYComparar();
-  // }, [data, cortesAgregados, congeladosAgregados]);
-
-  //   useEffect(() => {
-  //   const savedCortes = localStorage.getItem(`cortes_${remitoId}`);
-  //   if (savedCortes) {
-  //     try {
-  //       const parsed = JSON.parse(savedCortes);
-  //       setCortesAgregados(parsed);
-  //     } catch (err) {
-  //       console.error("Error parseando cortes:", err);
-  //     }
-  //   }
-
-  //   const savedCongelados = localStorage.getItem(`congelados_${remitoId}`);
-  //   if (savedCongelados) {
-  //     try {
-  //       const parsed = JSON.parse(savedCongelados);
-  //       setCongeladosAgregados(parsed);
-  //     } catch (err) {
-  //       console.error("Error parseando congelados:", err);
-  //     }
-  //   }
-  // }, [remitoId]);
-
-
+ 
+  
   useEffect(() => {
     const fetchData = async () => {
       try {

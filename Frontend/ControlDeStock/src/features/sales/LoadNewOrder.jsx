@@ -189,7 +189,7 @@ const LoadNewOrder = () => {
     }
   }, [clienteSeleccionado, saleConditionOptions, paymentConditionOptions]);
 
-  // cambios de corte
+  // cambios de corte (default de tipoMedida, pero editable)
   const handleCorteChange = (selected, idx) => {
     let autoPrecio = "";
     if (selected && listaSeleccionada) {
@@ -201,6 +201,15 @@ const LoadNewOrder = () => {
       );
       if (match) autoPrecio = String(match.precio_con_iva ?? "");
     }
+
+    const defaultTipo =
+      selected &&
+      selected.value?.category?.category_name === "PRINCIPAL"
+        ? "UN"
+        : selected
+        ? "KG"
+        : "";
+
     setProductos((prev) =>
       prev.map((it, i) =>
         i === idx
@@ -208,13 +217,8 @@ const LoadNewOrder = () => {
               ...it,
               corte: selected,
               codigo: selected ? selected.value.id : "",
-              tipoMedida:
-                selected &&
-                selected.value.category?.category_name === "PRINCIPAL"
-                  ? "UN"
-                  : selected
-                  ? "KG"
-                  : "",
+              // siempre seteo default al cambiar de corte; el usuario lo puede cambiar después
+              tipoMedida: defaultTipo,
               precio: autoPrecio || it.precio,
             }
           : it
@@ -227,6 +231,14 @@ const LoadNewOrder = () => {
       prev.map((it, i) => (i === idx ? { ...it, [field]: value } : it))
     );
   };
+
+  // cambio manual de tipo de medida
+  const handleTipoMedidaChange = (idx, value) => {
+    setProductos((prev) =>
+      prev.map((it, i) => (i === idx ? { ...it, tipoMedida: value } : it))
+    );
+  };
+
   const handleAddProduct = () =>
     setProductos((p) => [
       ...p,
@@ -309,17 +321,19 @@ const LoadNewOrder = () => {
             cortesOptions.find((opt) => opt.label === p.product_name) ||
             null;
 
+          const defaultTipo =
+            corteOpt &&
+            corteOpt.value?.category?.category_name === "PRINCIPAL"
+              ? "UN"
+              : corteOpt
+              ? "KG"
+              : "";
+
           return {
             corte: corteOpt,
             precio: p.precio != null ? String(p.precio) : "",
             cantidad: p.cantidad != null ? String(p.cantidad) : "",
-            tipoMedida:
-              corteOpt &&
-              corteOpt.value?.category?.category_name === "PRINCIPAL"
-                ? "UN"
-                : corteOpt
-                ? "KG"
-                : p.tipo_medida || "",
+            tipoMedida: p.tipo_medida || defaultTipo,
             codigo: corteOpt ? corteOpt.value.id : p.product_cod || "",
           };
         });
@@ -368,6 +382,8 @@ const LoadNewOrder = () => {
       ...p,
       precio: toNumber(p.precio),
       cantidad: toNumber(p.cantidad),
+      // además de mantener tipoMedida en el objeto, envío también tipo_medida por si el backend lo espera con guion bajo
+      tipo_medida: p.tipoMedida,
     }));
 
     const hayCero = productosNormalizados.some(
@@ -591,7 +607,20 @@ const LoadNewOrder = () => {
                       handleInputChange(idx, "cantidad", e.target.value.replace(",", "."))
                     }
                   />
-                  <input className="products-input" type="text" value={prod.tipoMedida} disabled />
+
+                  {/* TIPO DE MEDIDA editable */}
+                  <select
+                    className="products-input"
+                    value={prod.tipoMedida || ""}
+                    onChange={(e) => handleTipoMedidaChange(idx, e.target.value)}
+                  >
+                    <option value="" disabled>
+                      Seleccionar
+                    </option>
+                    <option value="KG">KG</option>
+                    <option value="UN">UN</option>
+                  </select>
+
                   <div className="row-actions">
                     {idx === productos.length - 1 && (
                       <button className="add-inline-btn" type="button" onClick={handleAddProduct} title="Agregar fila">

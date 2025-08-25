@@ -46,7 +46,8 @@ const saleApiController = {
                 street,
                 number,
                 floor,
-                office
+                office,
+                status
             } = req.body;
 
             const newSeller = await Seller.create({
@@ -57,7 +58,8 @@ const saleApiController = {
                 street,
                 number,
                 floor,
-                office
+                office,
+                status: status === true || status === "true" ? true : false
             });
 
             return res.status(201).json({
@@ -108,11 +110,16 @@ const saleApiController = {
         }
     },
 
-
     updateSeller: async (req, res) => {
         try {
             const { id } = req.params;
-            const [updated] = await Seller.update(req.body, {
+            const data = { ...req.body };
+
+            if (data.status !== undefined) {
+                data.status = data.status === true || data.status === "true" ? true : false;
+            }
+
+            const [updated] = await Seller.update(data, {
                 where: { id }
             });
 
@@ -128,7 +135,6 @@ const saleApiController = {
         }
     },
 
-
     getSellerById: async (req, res) => {
         try {
             const { id } = req.params;
@@ -142,6 +148,7 @@ const saleApiController = {
             return res.status(500).json({ ok: false, msg: "Error al obtener vendedor" });
         }
     },
+
     getAllOrders: async (req, res) => {
         try {
             const AllOrders = await NewOrder.findAll({});
@@ -151,6 +158,7 @@ const saleApiController = {
             return res.status(500).json({ ok: false, msg: "Error al obtener ordenes" });
         }
     },
+
     createOrder: async (req, res) => {
         try {
             const {
@@ -178,7 +186,6 @@ const saleApiController = {
                 observation_order
             });
 
-
             if (Array.isArray(products) && products.length > 0) {
                 const productsToSave = products.map(prod => ({
                     order_id: newOrder.id,
@@ -203,6 +210,7 @@ const saleApiController = {
             });
         }
     },
+
     createPriceList: async (req, res) => {
         try {
             const { name, clients, products } = req.body;
@@ -349,6 +357,13 @@ const saleApiController = {
     },
     generateSalesOrder: async (req, res) => {
         const { id } = req.params;
+
+        // Usá tu helper si ya lo tenés definido globalmente
+        const toNumber = (v) => {
+            const n = parseFloat(String(v ?? "").replace(",", "."));
+            return isNaN(n) ? 0 : n;
+        };
+
         const t = await sequelize.transaction();
         try {
             const header = await NewOrder.findByPk(id, { transaction: t });
@@ -361,6 +376,7 @@ const saleApiController = {
                 where: { order_id: id },
                 transaction: t
             });
+
             if (!lines.length) {
                 await t.rollback();
                 return res.status(400).json({ ok: false, msg: "La orden no tiene productos" });
@@ -375,19 +391,22 @@ const saleApiController = {
                 const requested = toNumber(ln.cantidad);
                 const price = toNumber(ln.precio);
 
+                // NOTA: seguimos consultando stock para validar, pero NO lo descontamos
                 let stockRow = null;
+
                 if (code != null) {
                     stockRow = await ProductStock.findOne({
                         where: { product_cod: code },
                         transaction: t,
-                        lock: t.LOCK.UPDATE
+                        // Podés quitar el lock si no vas a actualizar stock
+                        // lock: t.LOCK.UPDATE
                     });
                 }
                 if (!stockRow) {
                     stockRow = await ProductStock.findOne({
                         where: { product_name: name },
                         transaction: t,
-                        lock: t.LOCK.UPDATE
+                        // lock: t.LOCK.UPDATE
                     });
                 }
 
@@ -398,7 +417,9 @@ const saleApiController = {
                     continue;
                 }
 
+                // Si querés seguir “capando” al disponible, mantenemos Math.min
                 const sendQty = Math.min(requested, available);
+
                 prepared.push({ ln, stockRow, sendQty, price, code, name, available, requested });
             }
 
@@ -411,6 +432,7 @@ const saleApiController = {
                 });
             }
 
+            // Creamos las líneas de la orden de venta, PERO NO tocamos ProductStock
             for (const item of prepared) {
                 await ProductsSellOrder.create({
                     sell_order_id: Number(id),
@@ -420,8 +442,9 @@ const saleApiController = {
                     product_quantity: item.sendQty
                 }, { transaction: t });
 
-                item.stockRow.product_quantity = Math.max(0, toNumber(item.stockRow.product_quantity) - item.sendQty);
-                await item.stockRow.save({ transaction: t });
+                // ⛔️ Eliminado: NO descontamos stock
+                // item.stockRow.product_quantity = Math.max(0, toNumber(item.stockRow.product_quantity) - item.sendQty);
+                // await item.stockRow.save({ transaction: t });
             }
 
             // Marcar la orden como chequeada
@@ -448,6 +471,7 @@ const saleApiController = {
             return res.status(500).json({ ok: false, msg: "Error al generar la orden" });
         }
     },
+
     updateOrder: async (req, res) => {
         const { id } = req.params;
         const {
@@ -781,6 +805,76 @@ const saleApiController = {
                 .json({ ok: false, msg: "Error al eliminar la condición" });
         }
     },
+    getSellOrderProducts: async (req, res) => {
+        try {
+            const { id } = req.params;
+            if (!id) return res.status(400).json({ ok: false, msg: "Falta id" });
+
+            const rows = await ProductsSellOrder.findAll({
+                where: { sell_order_id: id },
+                order: [["id", "ASC"]],
+            });
+
+            return res.json({ ok: true, products: rows });
+        } catch (e) {
+            console.error(e);
+            return res.status(500).json({ ok: false, msg: "Error al traer productos de la orden" });
+        }
+    },
+
+
+    updateSellOrderProductQuantity: async (req, res) => {
+        try {
+            const { id } = req.params;
+            const { product_quantity } = req.body;
+
+            const qty = Number(product_quantity);
+            if (!id || isNaN(qty) || qty < 0) {
+                return res.status(400).json({ ok: false, msg: "Cantidad inválida" });
+            }
+
+            const [updated] = await ProductsSellOrder.update(
+                { product_quantity: qty },
+                { where: { id } }
+            );
+            if (!updated) return res.status(404).json({ ok: false, msg: "Registro no encontrado" });
+
+            const row = await ProductsSellOrder.findByPk(id);
+            return res.json({ ok: true, product: row, msg: "Cantidad actualizada" });
+        } catch (e) {
+            console.error(e);
+            return res.status(500).json({ ok: false, msg: "Error al actualizar cantidad" });
+        }
+    },
+
+
+    setOrderWeightChecked: async (req, res) => {
+        try {
+            const { id } = req.params;
+            const [updated] = await NewOrder.update(
+                { order_weight_check: true },
+                { where: { id } }
+            );
+            if (!updated) return res.status(404).json({ ok: false, msg: "Orden no encontrada" });
+            return res.json({ ok: true, msg: "Orden marcada como pesada" });
+        } catch (e) {
+            console.error(e);
+            return res.status(500).json({ ok: false, msg: "Error al marcar como pesada" });
+        }
+    },
+
+    getOrderHeaderForWeighing: async (req, res) => {
+        try {
+            const { id } = req.params;
+            const header = await NewOrder.findByPk(id);
+            if (!header) return res.status(404).json({ ok: false, msg: "Orden no encontrada" });
+            return res.json({ ok: true, header });
+        } catch (e) {
+            console.error(e);
+            return res.status(500).json({ ok: false, msg: "Error al obtener la orden" });
+        }
+    },
+
 
 
 

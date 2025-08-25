@@ -5,6 +5,33 @@ import Swal from "sweetalert2";
 import "../../assets/styles/loadNewClient.css";
 import Navbar from "../../components/Navbar.jsx";
 
+const PROVINCIAS_AR = [
+  "Ciudad Autónoma de Buenos Aires",
+  "Buenos Aires",
+  "Catamarca",
+  "Chaco",
+  "Chubut",
+  "Córdoba",
+  "Corrientes",
+  "Entre Ríos",
+  "Formosa",
+  "Jujuy",
+  "La Pampa",
+  "La Rioja",
+  "Mendoza",
+  "Misiones",
+  "Neuquén",
+  "Río Negro",
+  "Salta",
+  "San Juan",
+  "San Luis",
+  "Santa Cruz",
+  "Santa Fe",
+  "Santiago del Estero",
+  "Tierra del Fuego, Antártida e Islas del Atlántico Sur",
+  "Tucumán",
+];
+
 const LoadNewClient = () => {
   const navigate = useNavigate();
   const { id } = useParams();
@@ -15,10 +42,7 @@ const LoadNewClient = () => {
   const SALE_CONDITIONS_API = `${API_URL}/sale-conditions`;
 
   const [countries, setCountries] = useState([]);
-  const [provincias, setProvincias] = useState([]);
-  const [localidades, setLocalidades] = useState([]);
   const [sellerOptions, setSellerOptions] = useState([]);
-
   const [paymentConditionOptions, setPaymentConditionOptions] = useState([]);
   const [saleConditionOptions, setSaleConditionOptions] = useState([]);
 
@@ -40,7 +64,6 @@ const LoadNewClient = () => {
     paymentConditionId: null,
     saleConditionId: null,
 
-    // solo para preselección cuando el backend devuelve nombres
     paymentConditionName: "",
     saleConditionName: "",
   });
@@ -71,7 +94,6 @@ const LoadNewClient = () => {
           localidadCliente: data.client_location || "",
           estadoCliente: data.client_state ?? true,
           sellerId: data.client_seller ?? null,
-
           paymentConditionId: null,
           saleConditionId: null,
           paymentConditionName: data.client_payment_condition || "",
@@ -81,7 +103,7 @@ const LoadNewClient = () => {
     })();
   }, [id, API_URL]);
 
-  // Países
+  // Países (puede quedarse con la API de restcountries)
   useEffect(() => {
     (async () => {
       try {
@@ -94,7 +116,7 @@ const LoadNewClient = () => {
     })();
   }, []);
 
-  // Normalizar país si difiere por capitalización
+  // Normalizar país si viene tipeado distinto
   useEffect(() => {
     if (!countries.length || !formData.paisCliente) return;
     const match = countries.find(
@@ -105,50 +127,16 @@ const LoadNewClient = () => {
     }
   }, [countries, formData.paisCliente]);
 
-  // Provincias AR
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch("https://apis.datos.gob.ar/georef/api/provincias");
-        if (!res.ok) return;
-        const data = await res.json();
-        const list = data.provincias.map(p => p.nombre).sort((a, b) => a.localeCompare(b));
-        setProvincias(list);
-      } catch {}
-    })();
-  }, []);
-
-  // Localidades AR según provincia
-  useEffect(() => {
-    if (!esArgentina) {
-      setLocalidades([]);
-      return;
-    }
-    (async () => {
-      setLocalidades([]);
-      if (!formData.provinciaCliente) return;
-      try {
-        const res = await fetch(
-          `https://apis.datos.gob.ar/georef/api/localidades?provincia=${encodeURIComponent(
-            formData.provinciaCliente
-          )}&max=1000`
-        );
-        if (!res.ok) return;
-        const data = await res.json();
-        const list = data.localidades.map(l => l.nombre).sort((a, b) => a.localeCompare(b));
-        setLocalidades(list);
-      } catch {}
-    })();
-  }, [formData.provinciaCliente, esArgentina]);
-
-  // Vendedores
+  // Vendedores (solo activos)
   useEffect(() => {
     (async () => {
       try {
         const res = await fetch(SELLERS_API);
         if (!res.ok) return;
         const data = await res.json();
-        const opts = (data?.sellers || []).map(s => ({
+
+        const activos = (data?.sellers || []).filter(s => s.status === true);
+        const opts = activos.map(s => ({
           value: s.id,
           label: `${s.code} - ${s.name}`,
         }));
@@ -181,7 +169,7 @@ const LoadNewClient = () => {
     })();
   }, []);
 
-  // Preselección: mapear nombres guardados a IDs cuando las opciones estén listas
+  // Vincular IDs si estamos editando (cuando llegan las opciones)
   useEffect(() => {
     setFormData(p => {
       const pcId =
@@ -205,7 +193,6 @@ const LoadNewClient = () => {
     const { name, value } = e.target;
     if (name === "paisCliente") {
       setFormData({ ...formData, paisCliente: value, provinciaCliente: "", localidadCliente: "" });
-      if (value !== "Argentina") setLocalidades([]);
       return;
     }
     if (name === "provinciaCliente") {
@@ -244,7 +231,13 @@ const LoadNewClient = () => {
     for (const { field, label } of required) {
       const v = formData[field];
       if (!v || (typeof v === "string" && v.trim() === "")) {
-        Swal.fire({ icon: "warning", title: "Campo obligatorio", text: `Completá: ${label}`, timer: 2000, showConfirmButton: false });
+        Swal.fire({
+          icon: "warning",
+          title: "Campo obligatorio",
+          text: `Completá: ${label}`,
+          timer: 2000,
+          showConfirmButton: false
+        });
         return;
       }
     }
@@ -281,10 +274,22 @@ const LoadNewClient = () => {
         });
         navigate("/client-list");
       } else {
-        Swal.fire({ icon: "error", title: "Error", text: "No se pudo guardar.", timer: 2200, showConfirmButton: false });
+        Swal.fire({
+          icon: "error",
+          title: "Error",
+          text: "No se pudo guardar.",
+          timer: 2200,
+          showConfirmButton: false
+        });
       }
     } catch {
-      Swal.fire({ icon: "error", title: "Error de red", text: "No se pudo conectar con el servidor.", timer: 2200, showConfirmButton: false });
+      Swal.fire({
+        icon: "error",
+        title: "Error de red",
+        text: "No se pudo conectar con el servidor.",
+        timer: 2200,
+        showConfirmButton: false
+      });
     }
   };
 
@@ -301,7 +306,12 @@ const LoadNewClient = () => {
         <div className="form-grid">
           <div className="form-group-client">
             <label>Nombre</label>
-            <input type="text" name="nombreCliente" value={formData.nombreCliente} onChange={handleChange} />
+            <input
+              type="text"
+              name="nombreCliente"
+              value={formData.nombreCliente}
+              onChange={handleChange}
+            />
           </div>
 
           <div className="form-group-client">
@@ -315,7 +325,12 @@ const LoadNewClient = () => {
 
           <div className="form-group-client">
             <label>Número de Identificación</label>
-            <input type="number" name="numeroIdentidad" value={formData.numeroIdentidad} onChange={handleChange} />
+            <input
+              type="number"
+              name="numeroIdentidad"
+              value={formData.numeroIdentidad}
+              onChange={handleChange}
+            />
           </div>
 
           <div className="form-group-client">
@@ -336,17 +351,35 @@ const LoadNewClient = () => {
 
           <div className="form-group-client">
             <label>Email</label>
-            <input type="email" name="emailCliente" value={formData.emailCliente} onChange={handleChange} />
+            <input
+              type="email"
+              name="emailCliente"
+              value={formData.emailCliente}
+              onChange={handleChange}
+              autoComplete="email"
+            />
           </div>
 
           <div className="form-group-client">
             <label>Teléfono</label>
-            <input type="text" name="telefonoCliente" value={formData.telefonoCliente} onChange={handleChange} />
+            <input
+              type="text"
+              name="telefonoCliente"
+              value={formData.telefonoCliente}
+              onChange={handleChange}
+              autoComplete="tel"
+            />
           </div>
 
           <div className="form-group-client">
             <label>Domicilio</label>
-            <input type="text" name="domicilioCliente" value={formData.domicilioCliente} onChange={handleChange} />
+            <input
+              type="text"
+              name="domicilioCliente"
+              value={formData.domicilioCliente}
+              onChange={handleChange}
+              autoComplete="street-address"
+            />
           </div>
 
           <div className="form-group-client">
@@ -362,29 +395,42 @@ const LoadNewClient = () => {
           <div className="form-group-client">
             <label>Provincia</label>
             {esArgentina ? (
-              <select name="provinciaCliente" value={formData.provinciaCliente} onChange={handleChange}>
+              <select
+                name="provinciaCliente"
+                value={formData.provinciaCliente}
+                onChange={handleChange}
+              >
                 <option value="">Seleccione una provincia</option>
-                {provincias.map(prov => (
+                {PROVINCIAS_AR.map(prov => (
                   <option key={prov} value={prov}>{prov}</option>
                 ))}
               </select>
             ) : (
-              <input type="text" name="provinciaCliente" value={formData.provinciaCliente} onChange={handleChange} placeholder="Ingrese la provincia" />
+              <input
+                type="text"
+                name="provinciaCliente"
+                value={formData.provinciaCliente}
+                onChange={handleChange}
+                placeholder="Ingrese la provincia/estado"
+                autoComplete="address-level1"
+              />
             )}
           </div>
 
           <div className="form-group-client">
             <label>Localidad</label>
-            {esArgentina ? (
-              <select name="localidadCliente" value={formData.localidadCliente} onChange={handleChange}>
-                <option value="">Seleccione una localidad</option>
-                {localidades.map(loc => (
-                  <option key={loc} value={loc}>{loc}</option>
-                ))}
-              </select>
-            ) : (
-              <input type="text" name="localidadCliente" value={formData.localidadCliente} onChange={handleChange} placeholder="Ingrese la localidad" />
-            )}
+            {/* Autocompletar del navegador / libre */}
+            <input
+              type="text"
+              name="localidadCliente"
+              value={formData.localidadCliente}
+              onChange={handleChange}
+              placeholder="Ingrese la localidad"
+              autoComplete="address-level2"
+              list="localidad-sugerencias"
+            />
+            {/* Datalist vacío por defecto (podés llenarlo si querés agregar sugerencias propias) */}
+            <datalist id="localidad-sugerencias"></datalist>
           </div>
 
           <div className="form-group-client">
@@ -425,12 +471,24 @@ const LoadNewClient = () => {
           <label className="label-title">Activo</label>
           <div className="radio-toggle">
             <label className="radio-option">
-              <input type="radio" name="estadoCliente" value="true" checked={formData.estadoCliente === true} onChange={handleEstadoChange} />
+              <input
+                type="radio"
+                name="estadoCliente"
+                value="true"
+                checked={formData.estadoCliente === true}
+                onChange={handleEstadoChange}
+              />
               <span className="custom-radio"></span>
               <span className="radio-label">Sí</span>
             </label>
             <label className="radio-option">
-              <input type="radio" name="estadoCliente" value="false" checked={formData.estadoCliente === false} onChange={handleEstadoChange} />
+              <input
+                type="radio"
+                name="estadoCliente"
+                value="false"
+                checked={formData.estadoCliente === false}
+                onChange={handleEstadoChange}
+              />
               <span className="custom-radio"></span>
               <span className="radio-label">No</span>
             </label>

@@ -35,7 +35,6 @@ const LoadNewProduct = () => {
 
   const API_URL = import.meta.env.VITE_API_URL;
 
-
   useEffect(() => {
     const fetchAllProducts = async () => {
       try {
@@ -100,7 +99,6 @@ const LoadNewProduct = () => {
     fetchProducto();
   }, [id, API_URL]);
 
-
   const handleChange = (e) => {
     const { name, value } = e.target;
     setProductData((prev) => ({ ...prev, [name]: value }));
@@ -119,14 +117,14 @@ const LoadNewProduct = () => {
 
     const subproductosValidos = Array.isArray(subproductos)
       ? subproductos.filter(
-        (sp) =>
-          sp &&
-          typeof sp.subproductId === "string" &&
-          sp.subproductId.trim() !== "" &&
-          sp.quantity &&
-          !isNaN(Number(sp.quantity)) &&
-          Number(sp.quantity) > 0
-      )
+          (sp) =>
+            sp &&
+            typeof sp.subproductId === "string" &&
+            sp.subproductId.trim() !== "" &&
+            sp.quantity &&
+            !isNaN(Number(sp.quantity)) &&
+            Number(sp.quantity) > 0
+        )
       : [];
 
     const payload = {
@@ -167,7 +165,11 @@ const LoadNewProduct = () => {
         navigate("/all-products-availables");
       } else {
         const err = await res.json();
-        Swal.fire("Error", err.message || "Error al guardar el producto.", "error");
+        Swal.fire(
+          "Error",
+          err.message || "Error al guardar el producto.",
+          "error"
+        );
       }
     } catch (err) {
       console.error("Error en la solicitud:", err);
@@ -196,7 +198,6 @@ const LoadNewProduct = () => {
       value: p.id.toString(),
       label: p.product_name,
     }));
-
 
   const handleAddSubproducto = () => {
     if (
@@ -419,7 +420,7 @@ const LoadNewProduct = () => {
                 onChange={(e) => setUnidad(e.target.value)}
               >
                 <option value="kg">KG</option>
-                <option value="cantidad">UNIDAD</option>
+                <option value="unidad">UNIDAD</option>
               </select>
 
               {/* Input medio */}

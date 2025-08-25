@@ -118,6 +118,14 @@ const ProductionProcess = () => {
     fetchComprobantesSinProcesoConTipo();
   }, [API_URL]);
 
+  // Helper para mostrar unidad prolija  // <<
+  const labelUnidad = (u) => {            // <<
+    if (!u) return "unid.";               // <<
+    const v = String(u).toLowerCase();    // <<
+    if (["unidad", "unid", "u", "u."].includes(v)) return "unid."; // <<
+    return v; // "kg", etc                // <<
+  };                                       // <<
+
   const fetchSubproductos = async (tipoProducto, cantidad) => {
     try {
       const url = `${API_URL}/subproducts-by-name/${encodeURIComponent(tipoProducto)}`;
@@ -129,6 +137,7 @@ const ProductionProcess = () => {
         cantidadTotal: sub.cantidadPorUnidad * cantidad,
         cantidadPorUnidad: sub.cantidadPorUnidad,
         productoOrigen: tipoProducto,
+        unit: sub.unit || "unidad", // << trae unit del backend (fallback unidad)
       }));
     } catch (error) {
       console.error("Error al obtener subproductos:", error);
@@ -187,24 +196,26 @@ const ProductionProcess = () => {
     return acumulado;
   };
 
-  const subproductosTotales = () => {
-    const acumulado = {};
-    comprobantesAgregados.forEach(({ subproductos }) => {
-      subproductos.forEach(({ nombre, cantidadTotal, cantidadPorUnidad }) => {
-        if (!acumulado[nombre]) {
-          acumulado[nombre] = { cantidadTotal: 0, cantidadPorUnidad };
-        }
-        acumulado[nombre].cantidadTotal += cantidadTotal;
-      });
-    });
-    return acumulado;
-  };
+  // Conserva unit en el agrupado de subproductos  // <<
+  const subproductosTotales = () => {                     // <<
+    const acumulado = {};                                  // <<
+    comprobantesAgregados.forEach(({ subproductos }) => {   // <<
+      subproductos.forEach(({ nombre, cantidadTotal, cantidadPorUnidad, unit }) => { // <<
+        if (!acumulado[nombre]) {                          // <<
+          acumulado[nombre] = { cantidadTotal: 0, cantidadPorUnidad, unit: unit || "unidad" }; // <<
+        }                                                  // <<
+        acumulado[nombre].cantidadTotal += cantidadTotal;  // <<
+      });                                                  // <<
+    });                                                    // <<
+    return acumulado;                                      // <<
+  };                                                       // <<
 
+  // También conservar unit en productos sin remito         // <<
   const productosSinRemitoAgrupados = productosSinRemito.map((prod) => ({
     ...prod,
     subproductosAgrupados: Object.entries(
       (prod.subproductos || []).reduce((acc, s) => {
-        if (!acc[s.nombre]) acc[s.nombre] = { cantidadTotal: 0, cantidadPorUnidad: s.cantidadPorUnidad };
+        if (!acc[s.nombre]) acc[s.nombre] = { cantidadTotal: 0, cantidadPorUnidad: s.cantidadPorUnidad, unit: s.unit || "unidad" }; // <<
         acc[s.nombre].cantidadTotal += s.cantidadTotal;
         return acc;
       }, {})
@@ -215,10 +226,11 @@ const ProductionProcess = () => {
   const subproductosAgrupadosComprobantes = Object.entries(subproductosTotales());
   const subproductosAgrupadosSinRemito = productosSinRemitoAgrupados.flatMap((prod) => prod.subproductosAgrupados);
 
-  const subproductosCombinados = {};
-  [...subproductosAgrupadosComprobantes, ...subproductosAgrupadosSinRemito].forEach(([nombre, data]) => {
+  // Combina y mantiene unit                                      // <<
+  const subproductosCombinados = {};                               // <<
+  [...subproductosAgrupadosComprobantes, ...subproductosAgrupadosSinRemito].forEach(([nombre, data]) => { // <<
     if (!subproductosCombinados[nombre]) {
-      subproductosCombinados[nombre] = { cantidadTotal: 0, cantidadPorUnidad: data.cantidadPorUnidad };
+      subproductosCombinados[nombre] = { cantidadTotal: 0, cantidadPorUnidad: data.cantidadPorUnidad, unit: data.unit || "unidad" }; // <<
     }
     subproductosCombinados[nombre].cantidadTotal += data.cantidadTotal;
   });
@@ -511,13 +523,13 @@ const ProductionProcess = () => {
               <div className="pp-totales-box">
                 <div style={{ marginBottom: 8 }}>🟩 <b>Subproductos totales sumados:</b></div>
                 <ul>
-                  {Object.entries(subproductosCombinados).map(([nombre, { cantidadTotal, cantidadPorUnidad }]) => (
+                  {Object.entries(subproductosCombinados).map(([nombre, { cantidadTotal, cantidadPorUnidad, unit }]) => ( // <<
                     <li key={nombre}>
                       <span className="pp-tag-corte">{nombre}</span>
                       {" — "}
-                      {cantidadTotal} unidades
+                      {cantidadTotal} {labelUnidad(unit)} {/* << */}
                       <span style={{ fontSize: "0.95em", color: "#444", marginLeft: 4 }}>
-                        ({cantidadPorUnidad} x unidad)
+                        ({cantidadPorUnidad} {labelUnidad(unit)} por pieza) 
                       </span>
                     </li>
                   ))}
@@ -601,11 +613,11 @@ const ProductionProcess = () => {
                           </div>
                         </div>
                         <ul className="subproductos-list" style={{ marginTop: "6px" }}>
-                          {prod.subproductosAgrupados.map(([nombre, { cantidadTotal, cantidadPorUnidad }], i) => (
+                          {prod.subproductosAgrupados.map(([nombre, { cantidadTotal, cantidadPorUnidad, unit }], i) => ( // <<
                             <li key={i}>
                               <span className="subproducto-label">{nombre}</span>
                               <span className="subproducto-meta">
-                                {cantidadTotal} unidades ({cantidadPorUnidad} x unidad)
+                                {cantidadTotal} {labelUnidad(unit)} ({cantidadPorUnidad} x {labelUnidad(unit)}) {/* << */}
                               </span>
                             </li>
                           ))}
@@ -643,7 +655,7 @@ const ProductionProcess = () => {
                   />
                 </div>
                 <div>
-                  <label>CANTIDAD</label>
+                  <label>CANTIDAD(unidad/kg)</label>
                   <input type="number" name="cantidad" value={formData.cantidad} onChange={handleChange} min="0" required />
                 </div>
                 <div>

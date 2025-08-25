@@ -48,7 +48,13 @@ module.exports = (sequelize, dataTypes) => {
             type: dataTypes.DATE,
             allowNull: false,
             defaultValue: dataTypes.NOW,
+        },
+        status: {
+            type: dataTypes.BOOLEAN,
+            allowNull: false,
+            defaultValue: true
         }
+
     };
 
     let config = {

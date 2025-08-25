@@ -31,6 +31,10 @@ router.get("/sale-conditions/:id", apiSaleController.getSaleConditionById);
 router.get("/payment-conditions", apiSaleController.getAllPaymentConditions);
 //Api para ver una condicion de venta por ID
 router.get("/payment-conditions/:id", apiSaleController.getPaymentConditionById);
+//Api para productos de la tabla products_sell_order por orden
+router.get("/sell-order-products/:id", apiSaleController.getSellOrderProducts);
+//Buscar una orden para el header de pesaje
+router.get("/orders/:id/header", apiSaleController.getOrderHeaderForWeighing);
 
 
 //Api para crear Vendedores
@@ -67,6 +71,10 @@ router.put("/update-order/:id", apiSaleController.updateOrder);
 router.put("/sale-conditions/:id", apiSaleController.updateSaleCondition);
 //Api para modificar un metodo de pago 
 router.put("/payment-conditions/:id", apiSaleController.updatePaymentCondition);
+//Api para actualizar cantidad/peso de un renglón de products_sell_order
+router.put("/sell-order-products/:id", apiSaleController.updateSellOrderProductQuantity);
+//Api para marcar orden ya pesada
+router.put("/orders/:id/weight-check", apiSaleController.setOrderWeightChecked);
 
 
 
