@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 22-08-2025 a las 14:02:57
+-- Tiempo de generación: 27-08-2025 a las 16:59:21
 -- Versión del servidor: 10.4.28-MariaDB
 -- Versión de PHP: 8.2.4
 
@@ -83,6 +83,48 @@ CREATE TABLE `clients` (
   `client_seller` int(11) DEFAULT NULL,
   `client_sale_condition` varchar(255) NOT NULL,
   `client_payment_condition` varchar(255) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `cuts_detail`
+--
+
+CREATE TABLE `cuts_detail` (
+  `id` int(11) NOT NULL,
+  `receipt_number` int(11) NOT NULL,
+  `header_id` int(11) NOT NULL,
+  `sub_item` int(11) NOT NULL,
+  `lot_number` varchar(50) DEFAULT NULL,
+  `tare_weight` decimal(10,2) DEFAULT 0.00,
+  `gross_weight` decimal(10,2) DEFAULT 0.00,
+  `net_weight` decimal(10,2) DEFAULT 0.00,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `cuts_header`
+--
+
+CREATE TABLE `cuts_header` (
+  `id` int(11) NOT NULL,
+  `receipt_number` int(11) NOT NULL,
+  `product_code` varchar(50) NOT NULL,
+  `product_name` varchar(100) NOT NULL,
+  `unit_price` decimal(10,2) NOT NULL,
+  `qty_requested` int(11) NOT NULL,
+  `qty_weighed` int(11) DEFAULT 0,
+  `total_tare_weight` decimal(10,2) DEFAULT 0.00,
+  `total_gross_weight` decimal(10,2) DEFAULT 0.00,
+  `total_net_weight` decimal(10,2) DEFAULT 0.00,
+  `avg_weight` decimal(10,2) DEFAULT 0.00,
+  `qty_pending` int(11) DEFAULT 0,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -364,6 +406,7 @@ CREATE TABLE `sellers` (
   `number` varchar(16) DEFAULT NULL,
   `floor` varchar(16) DEFAULT NULL,
   `office` varchar(32) DEFAULT NULL,
+  `status` tinyint(1) NOT NULL DEFAULT 1,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -447,6 +490,19 @@ ALTER TABLE `bill_suppliers`
 -- Indices de la tabla `clients`
 --
 ALTER TABLE `clients`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indices de la tabla `cuts_detail`
+--
+ALTER TABLE `cuts_detail`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `header_id` (`header_id`);
+
+--
+-- Indices de la tabla `cuts_header`
+--
+ALTER TABLE `cuts_header`
   ADD PRIMARY KEY (`id`);
 
 --
@@ -614,6 +670,18 @@ ALTER TABLE `clients`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT de la tabla `cuts_detail`
+--
+ALTER TABLE `cuts_detail`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT de la tabla `cuts_header`
+--
+ALTER TABLE `cuts_header`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT de la tabla `meat_manual_income`
 --
 ALTER TABLE `meat_manual_income`
@@ -635,7 +703,7 @@ ALTER TABLE `order_products_client`
 -- AUTO_INCREMENT de la tabla `other_product_manual`
 --
 ALTER TABLE `other_product_manual`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT de la tabla `payment_conditions`
@@ -742,6 +810,12 @@ ALTER TABLE `warehouse_stock`
 --
 ALTER TABLE `bill_details`
   ADD CONSTRAINT `fk_bill_details_bill_supplier_id` FOREIGN KEY (`bill_supplier_id`) REFERENCES `bill_suppliers` (`id`) ON DELETE CASCADE;
+
+--
+-- Filtros para la tabla `cuts_detail`
+--
+ALTER TABLE `cuts_detail`
+  ADD CONSTRAINT `cuts_detail_ibfk_1` FOREIGN KEY (`header_id`) REFERENCES `cuts_header` (`id`) ON DELETE CASCADE;
 
 --
 -- Filtros para la tabla `meat_manual_income`

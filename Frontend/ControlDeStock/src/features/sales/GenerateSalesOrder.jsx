@@ -167,9 +167,9 @@ const GenerateSalesOrder = () => {
       });
 
       if (result.isConfirmed) {
-        navigate("/orders"); // ajustá si tu ruta de listado es otra
+        navigate("/list-final-orders"); 
       } else {
-        navigate("/sales-panel"); // ajustá si tu inicio es otro
+        navigate("/sales-panel"); 
       }
     } catch {
       await Swal.fire({

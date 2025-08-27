@@ -26,6 +26,8 @@ const PriceListProduct = db.PriceListProduct;
 const ProductsSellOrder = db.ProductsSellOrder;
 const SaleCondition = db.SaleCondition;
 const PaymentCondition = db.PaymentCondition;
+const CutsHeader = db.CutsHeader;
+const CutsDetail = db.CutsDetail;
 
 const toNumber = (v) => {
     if (v === null || v === undefined) return 0;
@@ -874,7 +876,111 @@ const saleApiController = {
             return res.status(500).json({ ok: false, msg: "Error al obtener la orden" });
         }
     },
+    saveOrderWeighing: async (req, res) => {
+        const { id } = req.params; // receipt_number = id de la orden
+        const { comment, items } = req.body;
 
+        if (!Array.isArray(items) || items.length === 0) {
+            return res.status(400).json({ ok: false, msg: "No hay ítems para guardar." });
+        }
+
+        const t = await sequelize.transaction();
+        try {
+            const order = await NewOrder.findByPk(id, { transaction: t });
+            if (!order) {
+                await t.rollback();
+                return res.status(404).json({ ok: false, msg: "Orden no encontrada." });
+            }
+
+            const createdHeaders = [];
+
+            for (const it of items) {
+                const unitPrice = Number(it.unit_price || 0);
+                const qtyRequested = Number(it.qty_requested || 0);
+
+                let totalTare = 0;
+                let totalGross = 0;
+                let totalNet = 0;
+                let weighedPieces = 0;
+
+                // calcular totales por detalles
+                for (const d of (it.details || [])) {
+                    const tare = Number(d.tare_weight || 0);
+                    const gross = Number(d.gross_weight || 0);
+                    const net = Math.max(0, gross - tare);
+                    totalTare += tare;
+                    totalGross += gross;
+                    totalNet += net;
+                    if (gross > 0 || tare > 0) weighedPieces += 1;
+                }
+
+                // Capón: sumar 2% al neto
+                const isCapon = !!it.is_capon;
+                const netPlus = isCapon ? totalNet * 0.02 : 0;
+                const totalNetAdj = Math.max(0, totalNet + netPlus);
+                const avg = weighedPieces > 0 ? totalNetAdj / weighedPieces : 0;
+                const pending = Math.max(0, qtyRequested - weighedPieces);
+
+                // header
+                const headerRow = await CutsHeader.create({
+                    receipt_number: Number(id),
+                    product_code: String(it.product_id ?? ""),
+                    product_name: String(it.product_name ?? ""),
+                    unit_price: unitPrice,
+                    qty_requested: qtyRequested,
+                    qty_weighed: weighedPieces,
+                    total_tare_weight: totalTare,
+                    total_gross_weight: totalGross,
+                    total_net_weight: totalNetAdj,
+                    avg_weight: avg,
+                    qty_pending: pending
+                }, { transaction: t });
+
+             
+                const toCreateDetails = (it.details || []).map((d, idx) => ({
+                    receipt_number: Number(id),
+                    header_id: headerRow.id,
+                    sub_item: idx + 1,
+                    lot_number: d.lot_number ?? null,
+                    tare_weight: Number(d.tare_weight || 0),
+                    gross_weight: Number(d.gross_weight || 0),
+                    net_weight: Math.max(0, Number(d.gross_weight || 0) - Number(d.tare_weight || 0)) * (isCapon ? 1.02 : 1)
+                }));
+                if (toCreateDetails.length) {
+                    await CutsDetail.bulkCreate(toCreateDetails, { transaction: t });
+                }
+
+                createdHeaders.push(headerRow);
+            }
+
+          
+            if (typeof comment === "string") {
+                await order.update({ observation_order: comment }, { transaction: t });
+            }
+
+            await t.commit();
+            return res.status(201).json({ ok: true, headers: createdHeaders });
+        } catch (e) {
+            console.error(e);
+            await t.rollback();
+            return res.status(500).json({ ok: false, msg: "Error al guardar pesaje." });
+        }
+    },
+
+
+    getOrderWeighing: async (req, res) => {
+        try {
+            const { id } = req.params;
+            const headers = await CutsHeader.findAll({
+                where: { receipt_number: id },
+                include: [{ model: CutsDetail, as: "details" }]
+            });
+            return res.json({ ok: true, headers });
+        } catch (e) {
+            console.error(e);
+            return res.status(500).json({ ok: false, msg: "Error al leer pesaje." });
+        }
+    },
 
 
 

@@ -35,8 +35,12 @@ router.get("/payment-conditions/:id", apiSaleController.getPaymentConditionById)
 router.get("/sell-order-products/:id", apiSaleController.getSellOrderProducts);
 //Buscar una orden para el header de pesaje
 router.get("/orders/:id/header", apiSaleController.getOrderHeaderForWeighing);
+//Leer datos guardados de la pesada del comprobante
+router.get("/orders/:id/weighings", apiSaleController.getOrderWeighing);
 
 
+//Api para cargar datos de pessada tanto general como de cada item de una orden de venta
+router.post("/orders/:id/weighings", apiSaleController.saveOrderWeighing);
 //Api para crear Vendedores
 router.post("/create-salesman",apiSaleController.createNewSeller);
 //Api para crear una nueva orden 
