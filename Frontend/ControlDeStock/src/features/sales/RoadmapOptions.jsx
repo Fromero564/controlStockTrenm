@@ -8,9 +8,10 @@ const RoadmapOptions = () => {
     const navigate = useNavigate();
 
     const sections = [
-        { title: "DESTINO", desc: "", viewPath: "/", newPath: "/", newText: "Agregar destino+" },
-        { title: "CAMION", desc: "", viewPath: "/",  newPath: "/", newText: "Agregar camión+" },
-        { title: "CHOFERES", desc: "", viewPath: "/", newPath: "/", newText: "Agregar chofer+" },
+       { title: "HOJAS DE RUTAS", desc: "", viewPath: "/", newPath: "/", newText: "Nueva hoja de ruta" },
+        { title: "DESTINO", desc: "", viewPath: "/", newPath: "/", newText: "Agregar destino" },
+        { title: "CAMION", desc: "", viewPath: "/",  newPath: "/", newText: "Agregar camión" },
+        { title: "CHOFERES", desc: "", viewPath: "/list-drivers", newPath: "/load-new-driver", newText: "Agregar chofer" },
      
     ];
 
@@ -18,7 +19,7 @@ const RoadmapOptions = () => {
         <div className="">
             <Navbar/>
             <div style={{ margin: "20px" }}>
-                <button className="boton-volver" onClick={() => navigate(-1)}>
+                <button className="boton-volver" onClick={() => navigate('/sales-panel')}>
                     ⬅ Volver
                 </button>
             </div>

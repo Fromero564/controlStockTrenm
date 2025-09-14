@@ -81,6 +81,7 @@ const ProviderForm = () => {
               .map((p) => ({
                 id: p.id,
                 nombre: p.product_name,
+                // Si no tiene categoría, guardamos vacío
                 categoria: p.category?.category_name || "",
               }))
           : [];
@@ -120,9 +121,9 @@ const ProviderForm = () => {
                 cantidad: Number(d.cantidad) || 0,
                 cabezas: Number(d.cabezas) || 0,
                 cod: prod?.id || "",
+                // Si no hay categoria, dejamos ""
                 categoria: prod?.categoria || "",
                 pesoRomaneo: Number(d.pesoRomaneo ?? d.peso ?? 0),
-                // si viene desde el backend:
                 identification_product: Number(d.identification_product ?? 0),
                 numeroRomaneo: Number(d.identification_product ?? 0),
               };
@@ -168,12 +169,22 @@ const ProviderForm = () => {
     setNuevoCongelado((prev) => ({ ...prev, [name]: value }));
   };
 
-  const agregarCorte = () => {
+  const agregarCorte = async () => {
     const seleccion = opciones.find((o) => o.value === nuevoCorte.tipo);
     if (!seleccion || !nuevoCorte.cantidad || !nuevoCorte.cabezas) return;
 
     const prodSel = cortes.find((c) => c.id === seleccion.value);
     if (!prodSel) return;
+
+    // ⚠️ Aviso si el producto no tiene categoría, pero permitimos continuar
+    if (!prodSel.categoria) {
+      await Swal.fire({
+        title: "Producto sin categoría",
+        text: "Este producto no tiene categoría. Se guardará sin categoría.",
+        icon: "info",
+        confirmButtonText: "Continuar",
+      });
+    }
 
     const nuevo = {
       idTemp: Date.now(),
@@ -182,10 +193,11 @@ const ProviderForm = () => {
       cantidad: Number(nuevoCorte.cantidad),
       cabezas: Number(nuevoCorte.cabezas),
       cod: seleccion.value,
-      categoria: prodSel.categoria,
+      // Guardamos vacío si no hay categoría
+      categoria: prodSel.categoria || "",
       pesoRomaneo: Number(nuevoCorte.pesoRomaneo) || 0,
-      identification_product: Number(nuevoCorte.numeroRomaneo) || 0, // ⬅
-      numeroRomaneo: Number(nuevoCorte.numeroRomaneo) || 0,         // para mostrar en UI
+      identification_product: Number(nuevoCorte.numeroRomaneo) || 0,
+      numeroRomaneo: Number(nuevoCorte.numeroRomaneo) || 0,
     };
 
     const next = [...cortesAgregados, nuevo];
@@ -201,7 +213,7 @@ const ProviderForm = () => {
     });
   };
 
-  const agregarCongelado = () => {
+  const agregarCongelado = async () => {
     if (!nuevoCongelado.tipo || !nuevoCongelado.cantidad) return;
 
     const existe = congeladosAgregados.some(
@@ -215,14 +227,25 @@ const ProviderForm = () => {
     const prod = cortes.find((p) => p.id === nuevoCongelado.tipo);
     if (!prod) return;
 
+    // ⚠️ Aviso si el producto no tiene categoría, pero permitimos continuar
+    if (!prod.categoria) {
+      await Swal.fire({
+        title: "Producto sin categoría",
+        text: "Este producto no tiene categoría. Se guardará sin categoría.",
+        icon: "info",
+        confirmButtonText: "Continuar",
+      });
+    }
+
     const item = {
       tipo: prod.nombre,
       cantidad: Number(nuevoCongelado.cantidad) || 0,
       unidades: Number(nuevoCongelado.unidades) || 0,
       cod: prod.id,
-      categoria: prod.categoria,
-      identification_product: Number(nuevoCongelado.codigo) || 0, // ⬅
-      codigo: Number(nuevoCongelado.codigo) || 0,                  // para mostrar en UI
+      // Guardamos vacío si no hay categoría
+      categoria: prod.categoria || "",
+      identification_product: Number(nuevoCongelado.codigo) || 0,
+      codigo: Number(nuevoCongelado.codigo) || 0,
     };
 
     const next = [...congeladosAgregados, item];
@@ -552,9 +575,9 @@ const ProviderForm = () => {
                   step="0.01"
                 />
               </div>
-             
+
               <div className="input-group">
-                <label>Nº ROMANEO</label>
+                <label>{tipoIngreso === "manual" ? "N° TROPA" : "Nº GARRON"}</label>
                 <input
                   type="number"
                   name="numeroRomaneo"
@@ -575,7 +598,7 @@ const ProviderForm = () => {
                 <span>Cantidad</span>
                 <span>Cabezas</span>
                 <span>Peso (kg)</span>
-                <span>N° Romaneo</span>
+                <span>{tipoIngreso === "manual" ? "N° Tropa" : "N° Garron"}</span>
                 <span></span>
               </div>
 
@@ -588,7 +611,6 @@ const ProviderForm = () => {
                     {corte.pesoRomaneo?.toFixed
                       ? corte.pesoRomaneo.toFixed(2)
                       : corte.pesoRomaneo}{" "}
-                    
                   </span>
                   <span className="pill">
                     {corte.numeroRomaneo ?? corte.identification_product ?? ""}

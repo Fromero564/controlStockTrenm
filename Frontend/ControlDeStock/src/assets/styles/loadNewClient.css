@@ -1,169 +1,199 @@
-.client-form-load {
-  background: white;
+/* Fondo y modal: espejo del diseño de vendedor */
+.client-bg {
+  min-height: 100vh;
+  background: #6d7476;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.client-modal {
+  background: #fff;
   border-radius: 10px;
-  padding: 30px;
-  max-width: 800px;
-  margin: 50px auto;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+  padding: 36px 38px 32px 38px;
+  min-width: 600px;
+  max-width: 830px;
+  width: 95vw;
+  box-shadow: 0 2px 18px rgba(0, 0, 0, 0.13);
+  display: flex;
+  flex-direction: column;
+  margin-top: 48px;
+  margin-bottom: 48px;
 }
 
-.title-cliente{
-  margin: 20px;
-}
-
-.client-form-load h2 {
-  margin-top: 0;
-  font-size: 24px;
-  margin-bottom: 20px;
-  text-align: center;
+.client-title {
+  font-size: 1.6rem;
   font-weight: bold;
+  margin-bottom: 6px;
+  letter-spacing: 0.01em;
 }
 
-.client-form-load .form-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+/* NUEVO: bloque “CÓDIGO” */
+.client-code {
+  font-size: 1rem;
+  margin: 2px 0 12px 0;
+  color: #444;
+}
+
+.client-code span {
+  opacity: 0.9;
+}
+
+.client-code b {
+  letter-spacing: 0.02em;
+}
+
+/* Form y tipografías */
+.client-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.client-label {
+  font-size: 0.98rem;
+  color: #888;
+  font-weight: 600;
+  margin-top: 14px;
+  margin-bottom: 5px;
+}
+
+.client-sub-label {
+  font-size: 0.92rem;
+  color: #8a8a8a;
+  margin-bottom: 4px;
+  margin-top: 10px;
+  font-weight: 500;
+}
+
+/* Filas a dos columnas */
+.client-row {
+  display: flex;
   gap: 20px;
+  margin-bottom: 0px;
+  flex-wrap: wrap;
 }
 
-.form-group-client {
+.client-col {
+  flex: 1 1 0;
+  min-width: 240px;
   display: flex;
   flex-direction: column;
 }
 
-.form-group-client label {
-  font-weight: 600;
-  margin-bottom: 5px;
-  font-size: 14px;
-}
-
-.form-group-client input,
-.form-group-client select {
-  width: 100%;
-  padding: 10px;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  background-color: #f1f1f1;
-  font-size: 14px;
-}
-
-.client-form-load .buttons {
-  display: flex;
-  justify-content: center;
-  gap: 20px;
-  margin-top: 30px;
-  grid-column: span 2;
-}
-
-.client-form-load button {
-  padding: 12px 24px;
+/* Inputs y selects nativos */
+.client-input,
+.client-select {
+  border-radius: 8px;
   border: none;
-  border-radius: 6px;
-  font-size: 16px;
-  cursor: pointer;
-  transition: all 0.2s ease-in-out;
-}
-
-.client-form-load button[type="submit"] {
-  background-color: #0077a8;
-  color: white;
-}
-
-.client-form-load button[type="submit"]:hover {
-  background-color: #005f87;
-}
-
-.client-form-load button[type="button"] {
-  background-color: white;
-  color: #0077a8;
-  border: 2px solid #0077a8;
-}
-
-.client-form-load button[type="button"]:hover {
-  background-color: #f0f8ff;
-}
-
-.form-group-fullwidth {
+  background: #e8e8e8;
+  padding: 17px 18px 15px 18px;
+  font-size: 1.08rem;
+  margin-bottom: 2px;
+  outline: none;
+  color: #262626;
   width: 100%;
-  margin-top: 20px;
+  box-sizing: border-box;
+  height: 56px;
 }
 
-/* --- RADIO BUTTONS PERSONALIZADOS --- */
-.radio-toggle {
-  width: 100%;
-  background-color: #f0f6fd;
-  padding: 16px 24px;
-  font-size: 16px;
-  border-radius: 12px;
-  display: flex;
-  justify-content: space-between;
-  gap: 40px;
+.client-input::placeholder {
+  color: #b8b8b8;
+  font-size: 1.06rem;
 }
 
-.radio-option {
-  display: flex;
-  align-items: center;
-  position: relative;
-  cursor: pointer;
+/* React-Select (usando classNamePrefix="rs") */
+.client-rs .rs__control {
+  background: #e8e8e8;
+  border: none;
+  border-radius: 8px;
+  min-height: 56px;
+  height: 56px;
+  box-shadow: none;
 }
 
-.radio-option input[type="radio"] {
+.client-rs .rs__value-container {
+  padding: 0 12px;
+}
+
+.client-rs .rs__placeholder {
+  color: #b8b8b8;
+}
+
+.client-rs .rs__single-value {
+  color: #262626;
+}
+
+.client-rs .rs__indicator-separator {
   display: none;
 }
 
-.custom-radio {
-  width: 20px;
-  height: 20px;
-  border: 2px solid #007bff;
-  border-radius: 50%;
-  display: inline-block;
-  margin-right: 10px;
-  position: relative;
-  transition: border-color 0.3s ease;
+.client-rs .rs__menu {
+  border-radius: 8px;
+  overflow: hidden;
 }
 
-.radio-option input[type="radio"]:checked + .custom-radio::after {
-  content: "";
-  width: 10px;
-  height: 10px;
-  background-color: #007bff;
-  border-radius: 50%;
-  position: absolute;
-  top: 4px;
-  left: 4px;
+.client-rs .rs__option--is-focused {
+  background: #f1faff;
 }
 
-.radio-label {
-  font-size: 16px;
-  color: #333;
+.client-rs .rs__control--is-focused {
+  box-shadow: 0 0 0 2px #047bb4;
 }
 
-.label-title {
-  display: block;
-  margin-bottom: 8px;
-  font-weight: 600;
-  font-size: 14px;
-  color: #333;
+/* Botonera */
+.client-btn-row {
+  display: flex;
+  gap: 18px;
+  margin-top: 28px;
 }
 
-/* --- RESPONSIVE DESIGN --- */
-@media (max-width: 768px) {
-  .client-form-load .form-grid {
-    grid-template-columns: 1fr;
+.client-btn {
+  padding: 16px 0;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  font-weight: 500;
+  width: 100%;
+  cursor: pointer;
+  border: none;
+  transition: all 0.13s;
+}
+
+.client-btn-primary {
+  background: #047bb4;
+  color: #fff;
+  border: none;
+}
+
+.client-btn-primary:hover {
+  background: #025c86;
+}
+
+.client-btn-outline {
+  background: #fff;
+  color: #047bb4;
+  border: 2px solid #047bb4;
+}
+
+.client-btn-outline:hover {
+  background: #f1faff;
+  color: #047bb4;
+  border: 2px solid #047bb4;
+}
+
+/* Responsivo */
+@media (max-width: 720px) {
+  .client-modal {
+    min-width: unset;
+    padding: 28px 22px;
   }
 
-  .client-form-load .buttons {
-    flex-direction: column;
-    align-items: stretch;
-    grid-column: span 1;
+  .client-row {
+    gap: 12px;
   }
 
-  
-  .client-form-load button {
-    width: 100%;
-  }
-
-  .radio-toggle {
-    flex-direction: column;
-    gap: 16px;
+  .client-col {
+    min-width: 100%;
   }
 }

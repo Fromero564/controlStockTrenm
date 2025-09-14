@@ -9,15 +9,15 @@ const SaleConfiguration = () => {
     const navigate = useNavigate();
 
     const sections = [
-        { title: "CONDICION DE VENTA", desc: "", viewPath: "/list-sell-condition", newPath: "/sale-condition-load", newText: "Nueva condicion de venta+" },
-        { title: "CONDION DE COBRO", desc: "", viewPath: "/list-payment-condition", newPath: "/payment-condition-load", newText: "Nueva condicion de cobro+" },
+        { title: "CONDICION DE VENTA", desc: "", viewPath: "/list-sell-condition", newPath: "/sale-condition-load", newText: "Nueva condicion de venta" },
+        { title: "CONDICION DE COBRO", desc: "", viewPath: "/list-payment-condition", newPath: "/payment-condition-load", newText: "Nueva condicion de cobro" },
     ];
 
     return (
         <div className="">
             <Navbar />
             <div style={{ margin: "20px" }}>
-                <button className="boton-volver" onClick={() => navigate(-1)}>
+                <button className="boton-volver" onClick={() => navigate('/sales-panel')}>
                     ⬅ Volver
                 </button>
             </div>

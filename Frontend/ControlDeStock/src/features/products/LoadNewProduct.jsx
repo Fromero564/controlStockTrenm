@@ -13,6 +13,7 @@ const LoadNewProduct = () => {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [categoriasDisponibles, setCategoriasDisponibles] = useState([]);
+  const [defaultCategoryId, setDefaultCategoryId] = useState(null); // id de "Sin categoría"
   const [allProducts, setAllProducts] = useState([]);
   const [subproductos, setSubproductos] = useState([]);
 
@@ -35,6 +36,15 @@ const LoadNewProduct = () => {
 
   const API_URL = import.meta.env.VITE_API_URL;
 
+  // Helper: normaliza y formatea cantidades al renderizar
+  const formatQuantity = (q, unit) => {
+    const n = Number(q);
+    if (Number.isNaN(n)) return q; // fallback
+    if (unit === "kg") return n.toFixed(2);
+    // unidad: entero sin decimales; si no, con 2 decimales
+    return Number.isInteger(n) ? String(n) : n.toFixed(2);
+  };
+
   useEffect(() => {
     const fetchAllProducts = async () => {
       try {
@@ -54,6 +64,21 @@ const LoadNewProduct = () => {
         const res = await fetch(`${API_URL}/all-product-categories`);
         const data = await res.json();
         setCategoriasDisponibles(data);
+
+        // Detectar "Sin categoría" con distintas variantes
+        const norm = (s) =>
+          (s || "")
+            .toString()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .toUpperCase()
+            .trim();
+
+        const defCat = data.find((c) => {
+          const n = norm(c.category_name);
+          return n === "SIN CATEGORIA" || n.includes("SIN CATEG");
+        });
+        if (defCat) setDefaultCategoryId(defCat.id);
       } catch (err) {
         console.error("Error al traer categorías:", err);
       }
@@ -71,21 +96,22 @@ const LoadNewProduct = () => {
 
         setProductData({
           codigo: data.id?.toString() || "",
-          nombre: data.product_name,
+          nombre: data.product_name || "",
           categoriaId: data.category_id?.toString() || "",
-          tipo: data.product_general_category,
+          tipo: data.product_general_category || "externo",
           min_stock: data.min_stock?.toString() || "",
           max_stock: data.max_stock?.toString() || "",
           alicuota: data.alicuota?.toString() || "",
         });
 
+        // Normalizar cantidades a Number
         if (Array.isArray(data.subproducts) && data.subproducts.length > 0) {
           const mapped = data.subproducts
-            .filter((sp) => sp && sp.subproduct_id && sp.quantity)
+            .filter((sp) => sp && sp.subproduct_id && sp.quantity != null)
             .map((sp) => ({
               id: sp.id?.toString() || "",
               subproductId: sp.subproduct_id?.toString() || "",
-              quantity: sp.quantity?.toString() || "",
+              quantity: Number(sp.quantity), // ← normalizado a número
               unit: sp.unit || "kg",
             }));
           setSubproductos(mapped);
@@ -109,40 +135,72 @@ const LoadNewProduct = () => {
     if (isSubmitting) return;
     setIsSubmitting(true);
 
-    if (!productData.nombre) {
-      Swal.fire("Atención", "El campo nombre es obligatorio.", "warning");
+    // Validaciones: solo lo NOT NULL en DB (nombre)
+    const missing = [];
+    if (!productData.nombre?.trim()) missing.push("Nombre del Producto");
+
+    if (missing.length) {
+      await Swal.fire({
+        icon: "warning",
+        title: "Campos obligatorios",
+        html: `Completá: <b>${missing.join(", ")}</b>`,
+        confirmButtonText: "Entendido",
+      });
       setIsSubmitting(false);
       return;
     }
 
+    // Confirmar flujo sin categoría
+    let categoryIdToSend = null;
+    if (productData.categoriaId) {
+      categoryIdToSend = parseInt(productData.categoriaId, 10);
+    } else {
+      const { isConfirmed } = await Swal.fire({
+        icon: "info",
+        title: "Producto sin categoría",
+        text: defaultCategoryId
+          ? 'Se guardará asignando la categoría "Sin categoría". ¿Deseás continuar?'
+          : "Se guardará sin categoría (NULL). ¿Deseás continuar?",
+        showCancelButton: true,
+        confirmButtonText: "Sí, continuar",
+        cancelButtonText: "Cancelar",
+      });
+      if (!isConfirmed) {
+        setIsSubmitting(false);
+        return;
+      }
+      categoryIdToSend = defaultCategoryId ? parseInt(defaultCategoryId, 10) : null;
+    }
+
+    // Limpiar subproductos inválidos + asegurar Números
     const subproductosValidos = Array.isArray(subproductos)
-      ? subproductos.filter(
-          (sp) =>
-            sp &&
-            typeof sp.subproductId === "string" &&
-            sp.subproductId.trim() !== "" &&
-            sp.quantity &&
-            !isNaN(Number(sp.quantity)) &&
-            Number(sp.quantity) > 0
-        )
+      ? subproductos
+          .filter(
+            (sp) =>
+              sp &&
+              typeof sp.subproductId === "string" &&
+              sp.subproductId.trim() !== "" &&
+              sp.quantity != null &&
+              !Number.isNaN(Number(sp.quantity)) &&
+              Number(sp.quantity) > 0
+          )
+          .map((sp) => ({
+            ...sp,
+            quantity: Number(sp.quantity), // asegurar número en payload
+          }))
       : [];
 
     const payload = {
-      product_name: productData.nombre,
-      category_id: productData.categoriaId
-        ? parseInt(productData.categoriaId)
-        : null,
+      product_name: productData.nombre.trim(),
+      category_id: categoryIdToSend, // id de "Sin categoría" o NULL
       product_general_category: productData.tipo,
-      min_stock:
-        productData.min_stock !== "" ? parseInt(productData.min_stock) : null,
-      max_stock:
-        productData.max_stock !== "" ? parseInt(productData.max_stock) : null,
-      alicuota:
-        productData.alicuota !== "" ? parseFloat(productData.alicuota) : null,
+      min_stock: productData.min_stock !== "" ? parseInt(productData.min_stock, 10) : null,
+      max_stock: productData.max_stock !== "" ? parseInt(productData.max_stock, 10) : null,
+      alicuota: productData.alicuota !== "" ? parseFloat(productData.alicuota) : null,
       subproducts: subproductosValidos,
     };
 
-    if (productData.codigo) payload.id = parseInt(productData.codigo);
+    if (productData.codigo) payload.id = parseInt(productData.codigo, 10);
 
     try {
       const url = id
@@ -157,19 +215,11 @@ const LoadNewProduct = () => {
       });
 
       if (res.ok) {
-        await Swal.fire(
-          "Éxito",
-          `Producto ${id ? "actualizado" : "creado"} correctamente.`,
-          "success"
-        );
+        await Swal.fire("Éxito", `Producto ${id ? "actualizado" : "creado"} correctamente.`, "success");
         navigate("/all-products-availables");
       } else {
-        const err = await res.json();
-        Swal.fire(
-          "Error",
-          err.message || "Error al guardar el producto.",
-          "error"
-        );
+        const err = await res.json().catch(() => ({}));
+        Swal.fire("Error", err.message || "Error al guardar el producto.", "error");
       }
     } catch (err) {
       console.error("Error en la solicitud:", err);
@@ -179,14 +229,10 @@ const LoadNewProduct = () => {
     }
   };
 
-  // --- Paginación subproductos ---
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentSubproductos = subproductos.slice(
-    indexOfFirstItem,
-    indexOfLastItem
-  );
-  const totalPages = Math.ceil(subproductos.length / itemsPerPage);
+  const currentSubproductos = subproductos.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(subproductos.length / itemsPerPage) || 1;
 
   const handlePageChange = (newPage) => {
     if (newPage > 0 && newPage <= totalPages) setCurrentPage(newPage);
@@ -203,29 +249,23 @@ const LoadNewProduct = () => {
     if (
       !selectedSubproducto ||
       !selectedSubproducto.value ||
-      !cantidad ||
-      isNaN(Number(cantidad)) ||
+      cantidad === "" ||
+      Number.isNaN(Number(cantidad)) ||
       Number(cantidad) <= 0
     ) {
-      Swal.fire(
-        "Atención",
-        "Debes seleccionar un subproducto, una cantidad válida y una unidad",
-        "warning"
-      );
+      Swal.fire("Atención", "Debes seleccionar un subproducto, una cantidad válida y una unidad", "warning");
       return;
     }
 
-    const existe = subproductos.some(
-      (sp) => sp.subproductId === selectedSubproducto.value
-    );
+    const existe = subproductos.some((sp) => sp.subproductId === selectedSubproducto.value);
     if (existe) {
       Swal.fire("Atención", "Ese subproducto ya fue agregado.", "warning");
       return;
     }
 
-    setSubproductos([
-      ...subproductos,
-      { subproductId: selectedSubproducto.value, quantity: cantidad, unit: unidad },
+    setSubproductos((prev) => [
+      ...prev,
+      { subproductId: selectedSubproducto.value, quantity: Number(cantidad), unit: unidad }, // quantity número
     ]);
     setSelectedSubproducto(null);
     setCantidad("");
@@ -276,7 +316,7 @@ const LoadNewProduct = () => {
       <Navbar />
 
       <div style={{ margin: "20px" }}>
-        <button className="boton-volver" onClick={() => navigate(-1)}>
+        <button className="boton-volver" onClick={() => navigate("/operator-panel")}>
           ⬅ Volver
         </button>
       </div>
@@ -285,7 +325,6 @@ const LoadNewProduct = () => {
         <h2>{id ? "Editar Producto" : "Cargar Nuevo Producto"}</h2>
 
         <form onSubmit={handleSubmit}>
-          {/* === DATOS DEL PRODUCTO === */}
           <div className="product-form-fields">
             <div className="form-group">
               <label>Código del Producto (opcional)</label>
@@ -298,24 +337,25 @@ const LoadNewProduct = () => {
               />
             </div>
 
-            <div className="form-group">
+            <div className="form-group name-row">
               <label>Nombre del Producto</label>
               <input
                 type="text"
                 name="nombre"
                 value={productData.nombre}
                 onChange={handleChange}
+                required
               />
             </div>
 
-            <div className="form-group span-2">
+            <div className="form-group">
               <label>Categoría</label>
               <select
                 name="categoriaId"
                 value={productData.categoriaId}
                 onChange={handleChange}
               >
-                <option value="">Seleccionar categoría</option>
+                <option value="">Sin categoría</option>
                 {categoriasDisponibles.map((cat) => (
                   <option key={cat.id} value={cat.id}>
                     {cat.category_name}
@@ -351,7 +391,7 @@ const LoadNewProduct = () => {
                 value={productData.alicuota}
                 onChange={handleChange}
               >
-                <option value="">Seleccionar alícuota</option>
+                <option value="">Sin alícuota</option>
                 <option value="10.5">ALICUOTA REDUCIDA 10,5%</option>
                 <option value="21">ALICUOTA NORMAL 21%</option>
                 <option value="27">ALICUOTA 27%</option>
@@ -397,11 +437,9 @@ const LoadNewProduct = () => {
             </div>
           </div>
 
-          {/* === SUBPRODUCTOS === */}
           <div className="product-form-subproducts">
             <h3>Agregar Subproducto</h3>
             <div className="subproduct-add-container">
-              {/* Buscador grande */}
               <div className="subproduct-search">
                 <Select
                   classNamePrefix="react-select"
@@ -413,7 +451,6 @@ const LoadNewProduct = () => {
                 />
               </div>
 
-              {/* Select chico */}
               <select
                 className="subproduct-unit"
                 value={unidad}
@@ -423,7 +460,6 @@ const LoadNewProduct = () => {
                 <option value="unidad">UNIDAD</option>
               </select>
 
-              {/* Input medio */}
               <input
                 type="number"
                 placeholder="Cantidad"
@@ -452,17 +488,14 @@ const LoadNewProduct = () => {
 
                     return (
                       <li key={globalIndex}>
-                        <span>
-                          {nombreProducto} ------- {item.quantity} {item.unit}
+                        <span className="subproduct-name">{nombreProducto}</span>
+                        <span className="subproduct-qty">
+                          {formatQuantity(item.quantity, item.unit)} {item.unit}
                         </span>
                         <FontAwesomeIcon
                           icon={faTrash}
                           onClick={() => eliminarSubproducto(globalIndex, item)}
-                          style={{
-                            cursor: "pointer",
-                            marginLeft: "10px",
-                            color: "#dc3545",
-                          }}
+                          style={{ cursor: "pointer", marginLeft: "10px", color: "#dc3545" }}
                         />
                       </li>
                     );
@@ -492,7 +525,6 @@ const LoadNewProduct = () => {
             )}
           </div>
 
-          {/* === BOTONES === */}
           <div className="form-buttons">
             <button type="submit" disabled={isSubmitting}>
               {isSubmitting ? "Guardando..." : id ? "Actualizar" : "Cargar"}

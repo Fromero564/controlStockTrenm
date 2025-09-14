@@ -138,8 +138,8 @@ const MeatManualIncome = () => {
     fetchCongelados();
   }, [data]);
 
- 
-  
+
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -641,14 +641,14 @@ const MeatManualIncome = () => {
     DropdownIndicator: () => null,
     IndicatorSeparator: () => null,
   };
-
-  const totalKgNeto = cortesAgregados.reduce(
-    (acc, item) => acc + item.pesoNeto,
-    0
-  );
+  const totalKgNeto =
+    cortesAgregados.reduce((acc, item) => acc + (Number(item.pesoNeto) || 0), 0) +
+    congeladosAgregados.reduce((acc, item) => acc + (Number(item.pesoNeto) || 0), 0);
 
   const pesoTotalRomaneo = data?.total_weight ?? 0;
+
   const diferenciaPeso = totalKgNeto - pesoTotalRomaneo;
+
   const porcentajeDiferencia =
     pesoTotalRomaneo > 0 ? (diferenciaPeso / pesoTotalRomaneo) * 100 : 0;
 
@@ -1370,9 +1370,10 @@ const MeatManualIncome = () => {
                   </thead>
                   <tbody>
                     {cortesAgregados.map((corte, index) => {
+                      // CAMBIO: merma como (neto - proveedor) / proveedor
                       const merma =
                         corte.pesoProveedor && corte.pesoNeto
-                          ? ((corte.pesoProveedor - corte.pesoNeto) /
+                          ? ((corte.pesoNeto - corte.pesoProveedor) /
                             corte.pesoProveedor) *
                           100
                           : 0;
@@ -1387,10 +1388,12 @@ const MeatManualIncome = () => {
                           <td>{Number(corte.pesoNeto || 0).toFixed(2)}</td>
                           <td
                             style={{
-                              color: Number(merma) > 0 ? "red" : "green",
+                              // CAMBIO: verde si ≥ 0, rojo si < 0
+                              color: Number(merma) < 0 ? "red" : "green",
                             }}
                           >
-                            {Number(merma || 0) > 0 ? '+' : ''}{Number(merma || 0).toFixed(2)}%
+                            {Number(merma || 0) > 0 ? "+" : ""}
+                            {Number(merma || 0).toFixed(2)}%
                           </td>
                         </tr>
                       );
@@ -1451,9 +1454,10 @@ const MeatManualIncome = () => {
                     </thead>
                     <tbody>
                       {Object.values(cortesAgrupados).map((corte, index) => {
+                        // CAMBIO: merma agrupada como (neto - proveedor) / proveedor
                         const merma =
                           corte.pesoProveedor > 0
-                            ? ((corte.pesoProveedor - corte.pesoNeto) /
+                            ? ((corte.pesoNeto - corte.pesoProveedor) /
                               corte.pesoProveedor) *
                             100
                             : 0;
@@ -1465,9 +1469,9 @@ const MeatManualIncome = () => {
                             <td>{corte.cabezas}</td>
                             <td>{corte.pesoNeto.toFixed(2)}</td>
                             <td
-                              style={{ color: merma > 0 ? "red" : "green" }}
+                              style={{ color: merma < 0 ? "red" : "green" }}
                             >
-                              {merma > 0 ? '+' : ''}{merma.toFixed(2)}%
+                              {merma > 0 ? "+" : ""}{merma.toFixed(2)}%
                             </td>
                           </tr>
                         );

@@ -27,7 +27,7 @@ module.exports = (sequelize, dataTypes) => {
         },
         product_category: {
             type: dataTypes.STRING(255),
-            allowNull: false,
+            allowNull: true,
 
         },
     };

@@ -1,0 +1,83 @@
+/* Fondo grisado tipo modal */
+.driver-overlay {
+  min-height: calc(100vh - 56px); /* resta altura de tu Navbar si aplica */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(39, 52, 62, 0.5);
+  padding: 24px;
+}
+
+/* Tarjeta central (parecida a tu screenshot) */
+.driver-card {
+  width: 100%;
+  max-width: 520px;
+  background: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+  padding: 20px;
+}
+
+.driver-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #263238;
+  margin: 0 0 14px 0;
+}
+
+.driver-field {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 14px;
+}
+
+.driver-field label {
+  font-size: 12px;
+  color: #6b7c85;
+  margin-bottom: 6px;
+}
+
+.driver-field input[type="text"] {
+  height: 38px;
+  border: 1px solid #dde5ea;
+  border-radius: 6px;
+  padding: 0 10px;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.driver-field input[type="text"]:focus {
+  border-color: #0b7ea4; /* azulcito */
+}
+
+.driver-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.btn-primary,
+.btn-secondary {
+  height: 38px;
+  padding: 0 18px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.btn-primary {
+  background: #0b7ea4;
+  color: #fff;
+}
+
+.btn-primary:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: #ffffff;
+  color: #0b7ea4;
+  border-color: #0b7ea4;
+}

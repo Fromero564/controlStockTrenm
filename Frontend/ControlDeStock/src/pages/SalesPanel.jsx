@@ -11,21 +11,21 @@ const SalesPanel = () => {
     const sections = [
         { title: "PEDIDOS", desc: "", viewPath: "/list-orders", newPath: "/sales-orders-new", newText: "Nuevo pedido" },
         { title: "ÓRDENES DE VENTA", desc: "", viewPath: "/list-final-orders", newText: "Nueva orden" },
-        { title: "REMITOS", desc: "", viewPath: "/remito-list", newPath: "/remito-new", newText: "Generar remito" },
+        { title: "REMITOS", desc: "", viewPath: "/list-final-remits", newPath: "", newText: "Generar remito" },
         { title: "VENDEDORES", desc: "", viewPath: "/seller-list", newPath: "/seller-new", newText: "Nuevo vendedor" },
         { title: "PREFACTURACIONES", desc: "", viewPath: "/prefact-list", newPath: "/prefact-new", newText: "Nueva prefacturación" },
         { title: "REPORTES", desc: "", viewPath: "/report-list", newPath: null, newText: null },
         { title: "CLIENTES", desc: "", viewPath: "/client-list", newPath: "/client-load", newText: "Cargar" },
-        { title: "HOJA DE RUTA", desc: "", newPath: "/roadmap-options", newText: "Opciones de hoja de ruta" },
+        { title: "HOJA DE RUTA", desc: "", newPath: "/roadmap-options", newText: "Nueva hoja de ruta " },
          { title: "LISTADO DE PRECIOS", desc: "", viewPath: "/price-list-general", newPath: "/new-price-list", newText: "Nueva lista de precios" },
-          { title: "CONFIGURACIÓN", desc: "", newPath: "/sale-configuration", newText: "Agregar configuracion+" },
+          { title: "CONFIGURACIÓN", desc: "", newPath: "/sale-configuration", newText: "Agregar configuracion" },
     ];
 
     return (
         <div className="">
             <Navbar />
             <div style={{ margin: "20px" }}>
-                <button className="boton-volver" onClick={() => navigate(-1)}>
+                <button className="boton-volver" onClick={() => navigate('/dashboard')}>
                     ⬅ Volver
                 </button>
             </div>

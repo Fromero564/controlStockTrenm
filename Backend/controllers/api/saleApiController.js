@@ -5,6 +5,8 @@ const { Op, fn, col, where } = require("sequelize");
 const moment = require("moment");
 const { stringify } = require("querystring");
 const OrderProductsClient = require("../../src/config/models/OrderProductsClient");
+const PDFDocument = require("pdfkit");
+
 
 const billSupplier = db.BillSupplier;
 const ProductSubproduct = db.ProductSubproduct;
@@ -28,6 +30,10 @@ const SaleCondition = db.SaleCondition;
 const PaymentCondition = db.PaymentCondition;
 const CutsHeader = db.CutsHeader;
 const CutsDetail = db.CutsDetail;
+const Driver = db.Driver;
+const FinalRemit = db.FinalRemit;
+const FinalRemitProduct = db.FinalRemitProduct;
+
 
 const toNumber = (v) => {
     if (v === null || v === undefined) return 0;
@@ -36,8 +42,324 @@ const toNumber = (v) => {
     return isNaN(n) ? 0 : n;
 };
 
+const toBool = (v) => {
+    if (v === true) return true;
+    if (v === false) return false;
+    if (typeof v === "string") return v.toLowerCase() === "true" || v === "1";
+    if (typeof v === "number") return v === 1;
+    return false;
+};
+
+
+
+function drawHeader(doc, remit) {
+  const left = 50;
+  const top = 60;
+
+  doc.font("Helvetica-Bold").fontSize(20).text("Remito", left, top);
+  doc.font("Helvetica").fontSize(10).text(`N° ${remit.receipt_number}`, left, top + 24);
+  doc.text(`Fecha: ${new Date(remit.date_order || remit.created_at || Date.now()).toLocaleDateString()}`, left, top + 38);
+
+  const col1W = 220;
+  const col2W = 200;
+  const col3W = 140;
+
+  const yBase = top + 62;
+
+  let x = left, y = yBase;
+  doc.font("Helvetica-Bold").text("CLIENTE", x, y); y += 14;
+  doc.font("Helvetica").text(remit.client_name || "-", x, y, { width: col1W }); y += 18;
+  doc.font("Helvetica-Bold").text("VENDEDOR", x, y); y += 14;
+  doc.font("Helvetica").text(remit.salesman_name || "-", x, y, { width: col1W });
+
+  x = left + col1W; y = yBase;
+  doc.font("Helvetica-Bold").text("LISTA DE PRECIO", x, y); y += 14;
+  doc.font("Helvetica").text(remit.price_list || "-", x, y, { width: col2W }); y += 18;
+  doc.font("Helvetica-Bold").text("COND. VENTA", x, y); y += 14;
+  doc.font("Helvetica").text(remit.sell_condition || "-", x, y, { width: col2W });
+
+  x = left + col1W + col2W; y = yBase;
+  doc.font("Helvetica-Bold").text("COND. COBRO", x, y); y += 14;
+  doc.font("Helvetica").text(remit.payment_condition || "-", x, y, { width: col3W }); y += 18;
+  doc.font("Helvetica-Bold").text("ORDEN DE VENTA", x, y, { width: col3W, lineBreak: false, ellipsis: true }); y += 14;
+  doc.font("Helvetica").text(String(remit.order_id ?? "-"), x, y, { width: col3W });
+
+  const lineY = yBase + 70;
+  doc.moveTo(left, lineY).lineTo(545, lineY).strokeColor("#cfd8e3").lineWidth(1).stroke();
+
+  return lineY + 12;
+}
+
+const nf = new Intl.NumberFormat("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const ni = new Intl.NumberFormat("es-AR", { maximumFractionDigits: 0 });
+function fmtMoney(v) { return nf.format(Number(v || 0)); }
+function fmtQty(v) { return ni.format(Number(v || 0)); }
+
+function drawTable(doc, items, startY = 210) {
+  const topY = startY + 10;
+
+  const left = doc.page.margins.left || 40;
+  const right = doc.page.margins.right || 40;
+  const availableWidth = doc.page.width - left - right;
+
+  const COLS = [
+    { key: "product_id",   title: "CÓDIGO",   width: 50,  align: "left"   },
+    { key: "product_name", title: "PRODUCTO", width: 155, align: "left"   },
+    { key: "unit_measure", title: "UNIDAD",   width: 45,  align: "center" },
+    { key: "qty",          title: "CANT.",    width: 55,  align: "right"  },
+    { key: "net_weight",   title: "P. NETO",  width: 60,  align: "right"  },
+    { key: "unit_price",   title: "P. UNIT",  width: 65,  align: "right"  },
+    { key: "total",        title: "P. TOTAL", width: 85,  align: "right"  },
+  ];
+  const sumWidths = COLS.reduce((a, c) => a + c.width, 0);
+  if (sumWidths !== Math.round(availableWidth)) {
+    COLS[COLS.length - 1].width += (availableWidth - sumWidths);
+  }
+
+  const rowHeight = 18;
+  const headerHeight = 22;
+  let y = topY;
+
+  doc.moveTo(left, y).lineTo(left + availableWidth, y).strokeColor("#cfcfd1").lineWidth(1).stroke();
+  y += 6;
+
+  doc.font("Helvetica-Bold").fontSize(10);
+  let x = left;
+  COLS.forEach(col => {
+    doc.text(col.title, x + 2, y, { width: col.width - 4, align: col.align, ellipsis: true, lineBreak: false });
+    x += col.width;
+  });
+  y += headerHeight - 8;
+
+  doc.moveTo(left, y).lineTo(left + availableWidth, y).strokeColor("#cfcfd1").lineWidth(1).stroke();
+  y += 6;
+
+  doc.font("Helvetica").fontSize(9);
+
+  let totalFinal = 0;
+  let totalItems = 0;
+
+  const drawHeaderIfPageBreak = () => {
+    doc.font("Helvetica").fontSize(9);
+    doc.moveDown(0.2);
+    let yy = doc.y;
+    yy = Math.max(yy, doc.page.margins.top + 120);
+    y = yy;
+
+    doc.moveTo(left, y).lineTo(left + availableWidth, y).strokeColor("#cfcfd1").lineWidth(1).stroke();
+    y += 6;
+    doc.font("Helvetica-Bold").fontSize(10);
+    let xx = left;
+    COLS.forEach(col => {
+      doc.text(col.title, xx + 2, y, { width: col.width - 4, align: col.align, ellipsis: true, lineBreak: false });
+      xx += col.width;
+    });
+    y += headerHeight - 8;
+
+    doc.moveTo(left, y).lineTo(left + availableWidth, y).strokeColor("#cfcfd1").lineWidth(1).stroke();
+    y += 6;
+    doc.font("Helvetica").fontSize(9);
+  };
+
+  const needPage = (nextY) => nextY > (doc.page.height - doc.page.margins.bottom - 120);
+
+  items.forEach((it) => {
+    const qty = Number(it.qty || 0);
+    const netWeight = Number(it.net_weight || 0);
+    const unitPrice = Number(it.unit_price || 0);
+    const total = (it.total != null) ? Number(it.total) : unitPrice * qty;
+
+    totalItems += qty;
+    totalFinal += total;
+
+    if (needPage(y + rowHeight)) {
+      doc.addPage();
+      drawHeaderIfPageBreak();
+    }
+
+    let xx = left;
+    const cells = [
+      String(it.product_id ?? ""),
+      String(it.product_name ?? ""),
+      String(it.unit_measure ?? ""),
+      fmtQty(qty),
+      nf.format(netWeight),
+      fmtMoney(unitPrice),
+      fmtMoney(total),
+    ];
+
+    cells.forEach((val, i) => {
+      const col = COLS[i];
+      doc.text(val, xx + 2, y, { width: col.width - 4, align: col.align, ellipsis: true });
+      xx += col.width;
+    });
+
+    y += rowHeight;
+
+    doc.moveTo(left, y).lineTo(left + availableWidth, y).strokeColor("#e6e6e8").lineWidth(0.5).stroke();
+  });
+
+  return { y: y + 20, totalFinal, totalItems };
+}
+
+function drawFooter(doc, remit, y, totalFinal, totalItems) {
+  const left = 50;
+
+  doc.font("Helvetica-Bold").fontSize(10);
+  doc.text(`TOTAL ÍTEMS: ${fmtQty(totalItems ?? remit.total_items ?? 0)}`, left, y);
+  y += 16;
+  doc.text(`TOTAL $: ${fmtMoney(totalFinal ?? remit.total_amount ?? 0)}`, left, y);
+
+  if (remit.note) {
+    y += 18;
+    doc.font("Helvetica-Bold").text("OBSERVACIONES", left, y);
+    y += 14;
+    doc.font("Helvetica").text(remit.note, left, y, { width: 360 });
+  }
+
+  const boxY = y + 24;
+  doc.roundedRect(370, boxY, 175, 70, 6).strokeColor("#b8c6d8").lineWidth(1).stroke();
+  doc.font("Helvetica").text("Recibí Conforme", 380, boxY + 8);
+}
+
+async function streamRemitPdfById(req, res) {
+  try {
+    const { id } = req.params;
+    const remit = await FinalRemit.findByPk(id);
+    if (!remit) return res.status(404).json({ ok: false, msg: "Remito no encontrado" });
+
+    const items = await FinalRemitProduct.findAll({
+      where: { final_remit_id: id },
+      order: [["id", "ASC"]],
+    });
+
+    const rows = items.map((i) => ({
+      product_id: i.product_id,
+      product_name: i.product_name,
+      unit_measure: i.unit_measure || "-",
+      qty: Number(i.qty || 0),
+      net_weight: Number(i.net_weight || 0),
+      unit_price: Number(i.unit_price || 0),
+      total: Number(i.unit_price || 0) * Number(i.qty || 0),
+    }));
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `inline; filename=remito_${remit.receipt_number}.pdf`);
+
+    const doc = new PDFDocument({ margin: 40, size: "A4" });
+    doc.pipe(res);
+
+    const startY = drawHeader(doc, remit.toJSON());
+    const { y: afterY, totalFinal, totalItems } = drawTable(doc, rows, startY);
+    drawFooter(doc, remit.toJSON(), afterY, totalFinal, totalItems);
+
+    doc.end();
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ ok: false, msg: "Error al generar PDF" });
+  }
+}
+
+async function buildRemitPreview(orderId) {
+  const order = await NewOrder.findByPk(orderId);
+  if (!order) throw new Error("Orden no encontrada");
+
+  const lines = await ProductsSellOrder.findAll({
+    where: { sell_order_id: orderId },
+    order: [["id", "ASC"]],
+  });
+
+  const items = [];
+  let totalItems = 0;
+  let totalAmount = 0;
+
+  for (const l of lines) {
+    const unit_price = Number(l.product_price || 0);
+
+    const priceRow = await PriceListProduct.findOne({
+      where: { product_id: String(l.product_id) },
+      order: [["id", "ASC"]],
+    });
+
+    const unit_measure = priceRow?.unidad_venta || null;
+
+    const headers = await CutsHeader.findAll({
+      where: { receipt_number: orderId, product_code: String(l.product_id) },
+      include: [{ model: CutsDetail, as: "details" }],
+      order: [["id", "ASC"]],
+    });
+
+    let units_count = 0;
+    let net_weight = 0;
+
+    for (const h of headers) {
+      for (const d of (h.details || [])) {
+        units_count += Number(d.units_count || 0);
+        net_weight += Number(d.net_weight || 0);
+      }
+    }
+
+    const qty = unit_measure === "KG" ? net_weight : units_count;
+
+    items.push({
+      product_id: l.product_id ?? null,
+      product_name: l.product_name,
+      unit_measure: unit_measure || "-",
+      qty,
+      net_weight,
+      unit_price,
+      total: unit_price * qty,
+    });
+
+    totalItems += Number(qty || 0);
+    totalAmount += unit_price * Number(qty || 0);
+  }
+
+  const header = {
+    receipt_number: order.id,
+    date_order: order.date_order,
+    client_name: order.client_name,
+    salesman_name: order.salesman_name,
+    price_list: order.price_list,
+    sell_condition: order.sell_condition,
+    payment_condition: order.payment_condition,
+    order_id: order.id,
+    total_items: totalItems,
+    total_amount: totalAmount,
+    note: order.observation_order || null,
+  };
+
+  return { header, items };
+}
+
+async function streamRemitPdfByOrder(req, res) {
+  try {
+    const { id } = req.params;
+
+    const { header, items } = await buildRemitPreview(id);
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `inline; filename=remito_${header.receipt_number}.pdf`);
+
+    const doc = new PDFDocument({ margin: 40, size: "A4" });
+    doc.pipe(res);
+
+    const startY = drawHeader(doc, header);
+    const { y: afterY, totalFinal, totalItems } = drawTable(doc, items, startY);
+    drawFooter(doc, { ...header, total_amount: totalFinal }, afterY, totalFinal, totalItems);
+
+    doc.end();
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ ok: false, msg: "Error al generar PDF" });
+  }
+}
+
+
 
 const saleApiController = {
+    getRemitPdf: streamRemitPdfById,
+    getRemitPdfByOrder: streamRemitPdfByOrder,
     createNewSeller: async (req, res) => {
         try {
             const {
@@ -576,10 +898,10 @@ const saleApiController = {
             const status = String(req.query.status || "all");
             const number = req.query.number ? Number(req.query.number) : null;
             const client = req.query.client ? String(req.query.client) : null;
-            const dateFrom = req.query.date_from || null;          // YYYY-MM-DD
+            const dateFrom = req.query.date_from || null;
             const dateTo = req.query.date_to || null;
 
-            // WHERE para NewOrder (encabezado)
+
             const whereHeader = {};
             if (status === "generated") whereHeader.order_check = true;
             if (status === "pending") whereHeader.order_check = false;
@@ -600,7 +922,6 @@ const saleApiController = {
                     "client_name",
                     "salesman_name",
                     "order_check",
-                    // usar un agregado para evitar problemas con ONLY_FULL_GROUP_BY
                     [fn("MAX", col("order_weight_check")), "order_weight_check"],
                     [fn("SUM", col("lines.product_quantity")), "total_items"],
                     [fn("SUM", literal("lines.product_price * lines.product_quantity")), "total_amount"],
@@ -631,7 +952,6 @@ const saleApiController = {
                 client_name: r.client_name,
                 salesman_name: r.salesman_name,
                 order_check: !!r.order_check,
-                // viene con alias => se obtiene con r.get("order_weight_check")
                 order_weight_check: !!Number(r.get("order_weight_check")),
                 total_items: Number(r.get("total_items") || 0),
                 total_amount: Number(r.get("total_amount") || 0),
@@ -877,7 +1197,7 @@ const saleApiController = {
         }
     },
     saveOrderWeighing: async (req, res) => {
-        const { id } = req.params; // receipt_number = id de la orden
+        const { id } = req.params;
         const { comment, items } = req.body;
 
         if (!Array.isArray(items) || items.length === 0) {
@@ -903,49 +1223,52 @@ const saleApiController = {
                 let totalNet = 0;
                 let weighedPieces = 0;
 
-                // calcular totales por detalles
                 for (const d of (it.details || [])) {
+                    const units = Number(d.units_count || 1);
                     const tare = Number(d.tare_weight || 0);
                     const gross = Number(d.gross_weight || 0);
                     const net = Math.max(0, gross - tare);
+
                     totalTare += tare;
                     totalGross += gross;
                     totalNet += net;
-                    if (gross > 0 || tare > 0) weighedPieces += 1;
+                    weighedPieces += Math.max(0, units);
                 }
 
-                // Capón: sumar 2% al neto
-                const isCapon = !!it.is_capon;
-                const netPlus = isCapon ? totalNet * 0.02 : 0;
-                const totalNetAdj = Math.max(0, totalNet + netPlus);
+                const totalNetAdj = totalNet;
                 const avg = weighedPieces > 0 ? totalNetAdj / weighedPieces : 0;
                 const pending = Math.max(0, qtyRequested - weighedPieces);
 
-                // header
-                const headerRow = await CutsHeader.create({
-                    receipt_number: Number(id),
-                    product_code: String(it.product_id ?? ""),
-                    product_name: String(it.product_name ?? ""),
-                    unit_price: unitPrice,
-                    qty_requested: qtyRequested,
-                    qty_weighed: weighedPieces,
-                    total_tare_weight: totalTare,
-                    total_gross_weight: totalGross,
-                    total_net_weight: totalNetAdj,
-                    avg_weight: avg,
-                    qty_pending: pending
-                }, { transaction: t });
+                const headerRow = await CutsHeader.create(
+                    {
+                        receipt_number: Number(id),
+                        product_code: String(it.product_id ?? ""),
+                        product_name: String(it.product_name ?? ""),
+                        unit_price: unitPrice,
+                        qty_requested: qtyRequested,
+                        qty_weighed: weighedPieces,
+                        total_tare_weight: totalTare,
+                        total_gross_weight: totalGross,
+                        total_net_weight: totalNetAdj,
+                        avg_weight: avg,
+                        qty_pending: pending,
+                    },
+                    { transaction: t }
+                );
 
-             
                 const toCreateDetails = (it.details || []).map((d, idx) => ({
                     receipt_number: Number(id),
                     header_id: headerRow.id,
                     sub_item: idx + 1,
+                    packaging_type: String((d.packaging_type ?? d.empaque ?? it.packaging_type) || "").trim(),
+                    units_count: Number(d.units_count || 1),
                     lot_number: d.lot_number ?? null,
                     tare_weight: Number(d.tare_weight || 0),
                     gross_weight: Number(d.gross_weight || 0),
-                    net_weight: Math.max(0, Number(d.gross_weight || 0) - Number(d.tare_weight || 0)) * (isCapon ? 1.02 : 1)
+                    net_weight: Math.max(0, Number(d.gross_weight || 0) - Number(d.tare_weight || 0)),
                 }));
+
+
                 if (toCreateDetails.length) {
                     await CutsDetail.bulkCreate(toCreateDetails, { transaction: t });
                 }
@@ -953,7 +1276,6 @@ const saleApiController = {
                 createdHeaders.push(headerRow);
             }
 
-          
             if (typeof comment === "string") {
                 await order.update({ observation_order: comment }, { transaction: t });
             }
@@ -966,6 +1288,8 @@ const saleApiController = {
             return res.status(500).json({ ok: false, msg: "Error al guardar pesaje." });
         }
     },
+
+
 
 
     getOrderWeighing: async (req, res) => {
@@ -981,6 +1305,286 @@ const saleApiController = {
             return res.status(500).json({ ok: false, msg: "Error al leer pesaje." });
         }
     },
+    createDriver: async (req, res) => {
+        try {
+            const { driver_name, driver_surname } = req.body;
+            const stateInput = (req.body.status !== undefined) ? req.body.status : req.body.driver_state;
+            const created = await Driver.create({
+                driver_name: (driver_name || "").trim(),
+                driver_surname: (driver_surname || "").trim(),
+                driver_state: stateInput === undefined ? true : toBool(stateInput)
+            });
+            const out = created.toJSON();
+            out.status = !!out.driver_state; // alias para el front
+            return res.status(201).json({ ok: true, driver: out });
+        } catch (e) {
+            console.error(e);
+            return res.status(500).json({ ok: false, msg: "Error al crear chofer" });
+        }
+    },
+
+    getDriverById: async (req, res) => {
+        try {
+            const { id } = req.params;
+            const row = await Driver.findByPk(id);
+            if (!row) return res.status(404).json({ ok: false, msg: "Chofer no encontrado" });
+            const out = row.toJSON();
+            out.status = !!out.driver_state; // alias para el front
+            return res.json({ ok: true, driver: out });
+        } catch (e) {
+            console.error(e);
+            return res.status(500).json({ ok: false, msg: "Error al obtener chofer" });
+        }
+    },
+
+    updateDriver: async (req, res) => {
+        try {
+            const { id } = req.params;
+            const stateInput = (req.body.status !== undefined) ? req.body.status : req.body.driver_state;
+            const data = {
+                driver_name: (req.body.driver_name || "").trim(),
+                driver_surname: (req.body.driver_surname || "").trim(),
+            };
+            if (stateInput !== undefined) data.driver_state = toBool(stateInput);
+
+            const [updated] = await Driver.update(data, { where: { id } });
+            if (!updated) return res.status(404).json({ ok: false, msg: "Chofer no encontrado" });
+
+            const row = await Driver.findByPk(id);
+            const out = row.toJSON();
+            out.status = !!out.driver_state; // alias para el front
+            return res.json({ ok: true, driver: out, msg: "Chofer actualizado" });
+        } catch (e) {
+            console.error(e);
+            return res.status(500).json({ ok: false, msg: "Error al actualizar chofer" });
+        }
+    },
+
+
+
+    getAllDrivers: async (_req, res) => {
+        try {
+            const rows = await Driver.findAll({ order: [["driver_name", "ASC"], ["driver_surname", "ASC"]] });
+            const list = rows.map(r => {
+                const o = r.toJSON();
+                o.status = !!o.driver_state;
+                return o;
+            });
+            return res.json({ ok: true, drivers: list });
+        } catch (e) {
+            console.error(e);
+            return res.status(500).json({ ok: false, msg: "Error al listar choferes" });
+        }
+    },
+
+
+    deleteDriver: async (req, res) => {
+        try {
+            const { id } = req.params;
+            const deleted = await Driver.destroy({ where: { id } });
+            if (!deleted) return res.status(404).json({ ok: false, msg: "Chofer no encontrado" });
+            return res.json({ ok: true, msg: "Chofer eliminado" });
+        } catch (e) {
+            console.error(e);
+            return res.status(500).json({ ok: false, msg: "Error al eliminar chofer" });
+        }
+    },
+
+
+
+    getRemitControlState: async (req, res) => {
+        try {
+            const { id } = req.params;
+
+
+            const order = await NewOrder.findByPk(id);
+            if (!order) return res.status(404).json({ ok: false, msg: "Orden no encontrada" });
+
+
+            const lines = await ProductsSellOrder.findAll({
+                where: { sell_order_id: id },
+                order: [["id", "ASC"]],
+            });
+
+
+            const items = [];
+            for (const l of lines) {
+
+                const priceRow = await PriceListProduct.findOne({
+                    where: { product_id: String(l.product_id) },
+                    order: [["id", "ASC"]],
+                });
+
+
+                const headerRows = await CutsHeader.findAll({
+                    where: { receipt_number: id, product_code: String(l.product_id) },
+                    include: [{ model: CutsDetail, as: "details" }],
+                    order: [["id", "ASC"]],
+                });
+
+                let units_count = 0;
+                let net_weight = 0;
+
+                for (const h of headerRows) {
+                    for (const d of (h.details || [])) {
+                        units_count += Number(d.units_count || 0);
+                        net_weight += Number(d.net_weight || 0);
+                    }
+                }
+
+                items.push({
+                    product_id: l.product_id,
+                    product_name: l.product_name,
+                    unidad_venta: priceRow?.unidad_venta || null,
+                    units_count,
+                    net_weight,
+                });
+            }
+
+            // Armamos el header que espera el front
+            const header = {
+                receipt_number: order.id,
+                date_order: order.date_order,
+                client_name: order.client_name,
+                salesman_name: order.salesman_name,
+                price_list: order.price_list,
+                sell_condition: order.sell_condition,
+                payment_condition: order.payment_condition,
+            };
+
+            return res.json({ ok: true, header, items });
+        } catch (e) {
+            console.error(e);
+            return res.status(500).json({ ok: false, msg: "Error en preview de remito" });
+        }
+    },
+
+    createRemitFromOrder: async (req, res) => {
+        const { id } = req.params;
+        const { generated_by, note } = req.body;
+
+        // 1) Validación simple
+        if (!['system', 'afip'].includes(String(generated_by))) {
+            return res.status(400).json({ ok: false, msg: "generated_by inválido" });
+        }
+
+        // 2) Chequeo de duplicado sin transacción
+        const existing = await FinalRemit.findOne({ where: { order_id: id } });
+        if (existing) {
+            return res.status(409).json({
+                ok: false,
+                msg: "La orden ya tiene un remito generado.",
+                remit_id: existing.id,
+            });
+        }
+
+        // 3) Transacción
+        const t = await sequelize.transaction();
+        try {
+            const order = await NewOrder.findByPk(id, { transaction: t });
+            if (!order) {
+                await t.rollback();
+                return res.status(404).json({ ok: false, msg: "Orden no encontrada" });
+            }
+
+            const lines = await ProductsSellOrder.findAll({
+                where: { sell_order_id: id },
+                order: [["id", "ASC"]],
+                transaction: t,
+            });
+
+            if (!lines.length) {
+                await t.rollback();
+                return res.status(400).json({ ok: false, msg: "La orden no tiene productos" });
+            }
+
+            const totalItems = lines.reduce(
+                (a, l) => a + Number(l.product_quantity || 0),
+                0
+            );
+            const totalAmount = lines.reduce(
+                (a, l) =>
+                    a + Number(l.product_quantity || 0) * Number(l.product_price || 0),
+                0
+            );
+
+            const remit = await FinalRemit.create(
+                {
+                    order_id: order.id,
+                    receipt_number: order.id,
+                    client_name: order.client_name,
+                    salesman_name: order.salesman_name,
+                    price_list: order.price_list,
+                    sell_condition: order.sell_condition,
+                    payment_condition: order.payment_condition,
+                    generated_by: String(generated_by),
+                    note: (note || "").trim(),
+                    total_items: totalItems,
+                    total_amount: totalAmount,
+                },
+                { transaction: t }
+            );
+
+            const detailRows = [];
+
+            for (const l of lines) {
+                const priceRow = await PriceListProduct.findOne({
+                    where: { product_id: String(l.product_id) },
+                    order: [["id", "ASC"]],
+                    transaction: t,
+                });
+
+                const headers = await CutsHeader.findAll({
+                    where: { receipt_number: id, product_code: String(l.product_id) },
+                    include: [{ model: CutsDetail, as: "details" }],
+                    transaction: t,
+                });
+
+                let units_count = 0;
+                let gross_weight = 0;
+                let net_weight = 0;
+
+                for (const h of headers) {
+                    for (const d of h.details || []) {
+                        units_count += Number(d.units_count || 0);
+                        gross_weight += Number(d.gross_weight || 0);
+                        net_weight += Number(d.net_weight || 0);
+                    }
+                }
+
+                const avg_weight = units_count > 0 ? net_weight / units_count : 0;
+                const unit_measure = priceRow?.unidad_venta || null;
+
+                // Si la unidad es KG, la cantidad del remito suele ser el peso neto;
+                // si es UN, la cantidad son las piezas pesadas.
+                const qty = unit_measure === "KG" ? net_weight : units_count;
+
+                detailRows.push({
+                    final_remit_id: remit.id,
+                    product_id: l.product_id ?? null,
+                    product_name: l.product_name,
+                    unit_price: Number(l.product_price || 0),
+                    qty,
+                    unit_measure,     // UN | KG
+                    gross_weight,
+                    net_weight,
+                    avg_weight,
+                });
+            }
+
+            if (detailRows.length) {
+                await FinalRemitProduct.bulkCreate(detailRows, { transaction: t });
+            }
+
+            await t.commit();
+            return res.status(201).json({ ok: true, remit_id: remit.id });
+        } catch (e) {
+            console.error(e);
+            await t.rollback();
+            return res.status(500).json({ ok: false, msg: "Error al crear remito" });
+        }
+    },
+
 
 
 

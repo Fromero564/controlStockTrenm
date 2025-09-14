@@ -48,6 +48,11 @@ import PaymentConditionLoad from './features/sales/PaymentConditionLoad.jsx';
 import ListPaymentConditionLoad from './features/sales/ListPaymentConditionLoad.jsx';
 import RoadmapOptions from './features/sales/RoadmapOptions.jsx';
 import OrderWeight from './features/sales/OrderWeight.jsx';
+import LoadNewDriver from './features/sales/transport/LoadNewDriver.jsx';
+import ListDrivers from './features/sales/transport/ListDrivers.jsx';
+import AvailableStockOrders from './components/AvailableStockOrders.jsx';
+import ListRemitFinalWeight from './features/sales/ListRemitFinalWeight.jsx';
+import RemitControlState from './features/sales/RemitControlState.jsx';
 
 
 
@@ -329,7 +334,7 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
-    {
+  {
     path: "/sales-orders-new/:id",
     element: (
       <ProtectedRoute>
@@ -357,111 +362,175 @@ const router = createBrowserRouter([
     path: "/seller-list",
     element: (
       <ProtectedRoute>
-        <ListSellers/>
+        <ListSellers />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/new-price-list",
+    element: (
+      <ProtectedRoute>
+        <LoadNewPriceList />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/production-process/details/:processNumber",
+    element: (
+      <ProtectedRoute>
+        <ProductionProcessDetails />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/list-orders",
+    element: (
+      <ProtectedRoute>
+        <ListOrders />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/generate-sales-order/:id",
+    element: (
+      <ProtectedRoute>
+        <GenerateSalesOrder />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/list-final-orders",
+    element: (
+      <ProtectedRoute>
+        <ListFinalOrders />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/meat-load-view/:id",
+    element: (
+      <ProtectedRoute>
+        <MeatLoadView />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/sale-condition-load",
+    element: (
+      <ProtectedRoute>
+        <SaleConditionLoad />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/payment-condition-load",
+    element: (
+      <ProtectedRoute>
+        <PaymentConditionLoad />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/sale-configuration",
+    element: (
+      <ProtectedRoute>
+        <SaleConfiguration />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/list-sell-condition",
+    element: (
+      <ProtectedRoute>
+        <ListSaleConditionLoad />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/list-payment-condition",
+    element: (
+      <ProtectedRoute>
+        <ListPaymentConditionLoad />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/roadmap-options",
+    element: (
+      <ProtectedRoute>
+        <RoadmapOptions />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/order-weight/:id",
+    element: (
+      <ProtectedRoute>
+        <OrderWeight />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/sale-condition-load/:id",
+    element: (
+      <ProtectedRoute>
+        <SaleConditionLoad />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/payment-condition-load/:id",
+    element: (
+      <ProtectedRoute>
+        <PaymentConditionLoad />
+      </ProtectedRoute>
+    ),
+  },
+    {
+    path: "/load-new-driver",
+    element: (
+      <ProtectedRoute>
+        <LoadNewDriver/>
+      </ProtectedRoute>
+    ),
+  },
+    {
+    path: "/load-new-driver/:id",
+    element: (
+      <ProtectedRoute>
+        <LoadNewDriver/>
       </ProtectedRoute>
     ),
   },
    {
-    path: "/new-price-list",
+    path: "/list-drivers",
     element: (
       <ProtectedRoute>
-        <LoadNewPriceList/>
+        <ListDrivers/>
+      </ProtectedRoute>
+    ),
+  },
+   {
+    path: "/list-final-remits",
+    element: (
+      <ProtectedRoute>
+        <ListRemitFinalWeight/>
+      </ProtectedRoute>
+    ),
+  },
+   {
+    path: "/remit-control-state/:id",
+    element: (
+      <ProtectedRoute>
+        <RemitControlState/>
       </ProtectedRoute>
     ),
   },
   {
-  path: "/production-process/details/:processNumber",
+  path: "/available-stock",
   element: (
     <ProtectedRoute>
-      <ProductionProcessDetails/>
-    </ProtectedRoute>
-  ),
-},
-  {
-  path: "/list-orders",
-  element: (
-    <ProtectedRoute>
-      <ListOrders/>
-    </ProtectedRoute>
-  ),
-},
-{
-  path: "/generate-sales-order/:id",
-  element: (
-    <ProtectedRoute>
-      <GenerateSalesOrder/>
-    </ProtectedRoute>
-  ),
-},
-{
-  path: "/list-final-orders",
-  element: (
-    <ProtectedRoute>
-      <ListFinalOrders/>
-    </ProtectedRoute>
-  ),
-},
-{
-  path: "/meat-load-view/:id",
-  element: (
-    <ProtectedRoute>
-    <MeatLoadView/>
-    </ProtectedRoute>
-  ),
-},
-{
-  path: "/sale-condition-load",
-  element: (
-    <ProtectedRoute>
-    <SaleConditionLoad/>
-    </ProtectedRoute>
-  ),
-},
-{
-  path: "/payment-condition-load",
-  element: (
-    <ProtectedRoute>
-    <PaymentConditionLoad/>
-    </ProtectedRoute>
-  ),
-},
-{
-  path: "/sale-configuration",
-  element: (
-    <ProtectedRoute>
-    <SaleConfiguration/>
-    </ProtectedRoute>
-  ),
-},
-{
-  path: "/list-sell-condition",
-  element: (
-    <ProtectedRoute>
-    <ListSaleConditionLoad/>
-    </ProtectedRoute>
-  ),
-},
-{
-  path: "/list-payment-condition",
-  element: (
-    <ProtectedRoute>
-    <ListPaymentConditionLoad/>
-    </ProtectedRoute>
-  ),
-},
-{
-  path: "/roadmap-options",
-  element: (
-    <ProtectedRoute>
-    <RoadmapOptions/>
-    </ProtectedRoute>
-  ),
-},
-{
-  path: "/order-weight/:id",
-  element: (
-    <ProtectedRoute>
-    <OrderWeight/>
+      <AvailableStockOrders/>
     </ProtectedRoute>
   ),
 },

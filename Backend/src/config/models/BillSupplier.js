@@ -59,6 +59,10 @@ module.exports = (sequelize, dataTypes) => {
             foreignKey: 'bill_supplier_id',
             as: 'billDetails'
         });
+        BillSupplier.hasOne(models.MeatIncomeManualWeight, {
+            foreignKey: "bill_supplier_id",
+            as: "manualWeight",
+        });
     };
 
     return BillSupplier;

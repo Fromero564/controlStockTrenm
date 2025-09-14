@@ -15,7 +15,6 @@ const ORDER_BY_ID_URL = (id) => `${API_URL}/get-order-by-id/${id}`;
 const ORDER_LINES_URL = (id) => `${API_URL}/get-all-products-by-order/${id}`;
 const UPDATE_URL = (id) => `${API_URL}/update-order/${id}`;
 
-// catálogos necesarios
 const PAYMENT_CONDITIONS_URL = `${API_URL}/payment-conditions`;
 const SALE_CONDITIONS_URL = `${API_URL}/sale-conditions`;
 
@@ -39,21 +38,17 @@ const LoadNewOrder = () => {
   const [nroComprobante, setNroComprobante] = useState("1");
   const [fecha, setFecha] = useState("");
 
-  // condición de venta (fetch + preselección)
   const [saleConditionOptions, setSaleConditionOptions] = useState([]);
   const [saleCondition, setSaleCondition] = useState(null);
 
-  // condición de cobro/pago (fetch + preselección)
   const [paymentConditionOptions, setPaymentConditionOptions] = useState([]);
   const [paymentCondition, setPaymentCondition] = useState(null);
 
-  // Listas de precio
   const [listasPrecio, setListasPrecio] = useState([]);
   const [listaPrecioOptions, setListaPrecioOptions] = useState([]);
   const [listaSeleccionada, setListaSeleccionada] = useState(null);
   const [verTodasLasListas, setVerTodasLasListas] = useState(false);
 
-  // Precios de productos por lista
   const [preciosListas, setPreciosListas] = useState([]);
 
   const [loading, setLoading] = useState(false);
@@ -64,7 +59,6 @@ const LoadNewOrder = () => {
     return isNaN(n) ? 0 : n;
   };
 
-  // autonumeración
   useEffect(() => {
     if (isEdit) return;
     fetch(ORDERS_URL)
@@ -78,7 +72,6 @@ const LoadNewOrder = () => {
       .catch(() => setNroComprobante("1"));
   }, [isEdit]);
 
-  // productos
   useEffect(() => {
     fetch(PRODUCTOS_URL)
       .then((r) => r.json())
@@ -87,7 +80,6 @@ const LoadNewOrder = () => {
       );
   }, []);
 
-  // clientes activos
   useEffect(() => {
     fetch(CLIENTES_URL)
       .then((r) => r.json())
@@ -101,7 +93,6 @@ const LoadNewOrder = () => {
       });
   }, []);
 
-  // vendedores
   useEffect(() => {
     fetch(VENDEDORES_URL)
       .then((r) => r.json())
@@ -114,7 +105,6 @@ const LoadNewOrder = () => {
       );
   }, []);
 
-  // catálogos: condiciones
   useEffect(() => {
     fetch(PAYMENT_CONDITIONS_URL)
       .then((r) => r.json())
@@ -140,7 +130,6 @@ const LoadNewOrder = () => {
       });
   }, []);
 
-  // listas precio + info
   useEffect(() => {
     fetch(`${API_URL}/all-price-list`).then((r) =>
       r.json().then(setListasPrecio)
@@ -152,7 +141,27 @@ const LoadNewOrder = () => {
     );
   }, []);
 
-  // opciones lista según cliente o "todas"
+  useEffect(() => {
+    if (!listaSeleccionada) return;
+    setProductos((prev) =>
+      prev.map((it) => {
+        const productId = it?.corte?.value?.id;
+        if (!productId) return it;
+        const match = preciosListas.find(
+          (plp) =>
+            String(plp.price_list_number) ===
+              String(listaSeleccionada.value.list_number) &&
+            String(plp.product_id) === String(productId)
+        );
+        if (match) {
+          const nuevoPrecio = match.precio_con_iva ?? match.precio ?? "";
+          return { ...it, precio: String(nuevoPrecio) };
+        }
+        return it;
+      })
+    );
+  }, [listaSeleccionada, preciosListas]);
+
   useEffect(() => {
     let opts = [];
     if (verTodasLasListas) {
@@ -166,7 +175,6 @@ const LoadNewOrder = () => {
     if (!isEdit) setListaSeleccionada(null);
   }, [listasPrecio, clienteSeleccionado, verTodasLasListas, isEdit]);
 
-  // al elegir cliente → preseleccionar condiciones si las tiene
   useEffect(() => {
     if (!clienteSeleccionado) {
       setSaleCondition(null);
@@ -174,7 +182,6 @@ const LoadNewOrder = () => {
       return;
     }
     const cli = clienteSeleccionado.value;
-
     if (cli?.client_sale_condition && saleConditionOptions.length) {
       const match = saleConditionOptions.find(
         (o) => o.label === cli.client_sale_condition
@@ -189,7 +196,6 @@ const LoadNewOrder = () => {
     }
   }, [clienteSeleccionado, saleConditionOptions, paymentConditionOptions]);
 
-  // cambios de corte (default de tipoMedida, pero editable)
   const handleCorteChange = (selected, idx) => {
     let autoPrecio = "";
     if (selected && listaSeleccionada) {
@@ -201,7 +207,6 @@ const LoadNewOrder = () => {
       );
       if (match) autoPrecio = String(match.precio_con_iva ?? "");
     }
-
     const defaultTipo =
       selected &&
       selected.value?.category?.category_name === "PRINCIPAL"
@@ -209,7 +214,6 @@ const LoadNewOrder = () => {
         : selected
         ? "KG"
         : "";
-
     setProductos((prev) =>
       prev.map((it, i) =>
         i === idx
@@ -217,7 +221,6 @@ const LoadNewOrder = () => {
               ...it,
               corte: selected,
               codigo: selected ? selected.value.id : "",
-              // siempre seteo default al cambiar de corte; el usuario lo puede cambiar después
               tipoMedida: defaultTipo,
               precio: autoPrecio || it.precio,
             }
@@ -232,7 +235,6 @@ const LoadNewOrder = () => {
     );
   };
 
-  // cambio manual de tipo de medida
   const handleTipoMedidaChange = (idx, value) => {
     setProductos((prev) =>
       prev.map((it, i) => (i === idx ? { ...it, tipoMedida: value } : it))
@@ -247,7 +249,6 @@ const LoadNewOrder = () => {
   const handleRemoveProduct = (idx) =>
     setProductos((p) => p.filter((_, i) => i !== idx));
 
-  // cargar pedido en edición
   const catalogosListos = useMemo(
     () =>
       cortesOptions.length &&
@@ -271,8 +272,6 @@ const LoadNewOrder = () => {
       if (!isEdit || !catalogosListos || cargadoPedido) return;
       try {
         setLoading(true);
-
-        // header
         const r = await fetch(ORDER_BY_ID_URL(id));
         if (!r.ok) {
           Swal.fire("Error", "No se encontró la orden.", "error");
@@ -280,37 +279,27 @@ const LoadNewOrder = () => {
           return;
         }
         const header = await r.json();
-
         setNroComprobante(String(header.id ?? id));
         if (header.date_order) setFecha(String(header.date_order).slice(0, 10));
-
         const cli =
           clientesOptions.find((c) => c.label === header.client_name) || null;
         setClienteSeleccionado(cli);
-
         const vend =
           vendedoresOptions.find((v) => v.label === header.salesman_name) ||
           null;
         setVendedorSeleccionado(vend);
-
         setVerTodasLasListas(true);
         const lp = listasPrecio.find((l) => l.name === header.price_list);
         setListaSeleccionada(lp ? { value: lp, label: lp.name } : null);
-
         setObservaciones(header.observation_order || "");
-
-        // preselecciones desde el pedido
         const sc = saleConditionOptions.find(
           (o) => o.label === header.sell_condition
         );
         setSaleCondition(sc || null);
-
         const pc = paymentConditionOptions.find(
           (o) => o.label === header.payment_condition
         );
         setPaymentCondition(pc || null);
-
-        // líneas
         const r2 = await fetch(ORDER_LINES_URL(id));
         const lines = r2.ok ? await r2.json() : [];
         const map = (lines || []).map((p) => {
@@ -320,7 +309,6 @@ const LoadNewOrder = () => {
             ) ||
             cortesOptions.find((opt) => opt.label === p.product_name) ||
             null;
-
           const defaultTipo =
             corteOpt &&
             corteOpt.value?.category?.category_name === "PRINCIPAL"
@@ -328,7 +316,6 @@ const LoadNewOrder = () => {
               : corteOpt
               ? "KG"
               : "";
-
           return {
             corte: corteOpt,
             precio: p.precio != null ? String(p.precio) : "",
@@ -346,13 +333,11 @@ const LoadNewOrder = () => {
       }
     };
     cargar();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isEdit, id, catalogosListos, cargadoPedido]);
+  }, [isEdit, id, catalogosListos, cargadoPedido, clientesOptions, vendedoresOptions, listasPrecio, saleConditionOptions, paymentConditionOptions, productos]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     const productosFiltrados = productos.filter((p) => p.corte);
-
     if (!clienteSeleccionado || !vendedorSeleccionado) {
       Swal.fire("Faltan datos", "Elegí cliente y vendedor.", "warning");
       return;
@@ -377,15 +362,12 @@ const LoadNewOrder = () => {
       Swal.fire("Faltan productos", "Agregá al menos un producto.", "warning");
       return;
     }
-
     const productosNormalizados = productosFiltrados.map((p) => ({
       ...p,
       precio: toNumber(p.precio),
       cantidad: toNumber(p.cantidad),
-      // además de mantener tipoMedida en el objeto, envío también tipo_medida por si el backend lo espera con guion bajo
       tipo_medida: p.tipoMedida,
     }));
-
     const hayCero = productosNormalizados.some(
       (p) => p.precio === 0 || p.cantidad === 0
     );
@@ -400,7 +382,6 @@ const LoadNewOrder = () => {
       });
       if (!isConfirmed) return;
     }
-
     const body = {
       date_order: fecha,
       client_name: clienteSeleccionado.label,
@@ -411,7 +392,6 @@ const LoadNewOrder = () => {
       observation_order: observaciones,
       products: productosNormalizados,
     };
-
     try {
       const res = await fetch(isEdit ? UPDATE_URL(id) : `${API_URL}/create-order`, {
         method: isEdit ? "PUT" : "POST",
@@ -466,31 +446,32 @@ const LoadNewOrder = () => {
 
               <div className="order-form-group">
                 <label>LISTA DE PRECIO</label>
-                <Select
-                  className="order-rs"
-                  classNamePrefix="rs"
-                  options={listaPrecioOptions}
-                  value={listaSeleccionada}
-                  onChange={setListaSeleccionada}
-                  placeholder={
-                    verTodasLasListas
-                      ? "Seleccionar lista"
-                      : clienteSeleccionado
-                      ? "Seleccionar lista del cliente"
-                      : "Elegí un cliente primero"
-                  }
-                  isDisabled={!verTodasLasListas && !clienteSeleccionado}
-                  isClearable
-                />
-                <div style={{ marginTop: 6, marginLeft: 3 }}>
-                  <label style={{ fontWeight: 400, fontSize: 14, display: "flex", alignItems: "center", gap: 8 }}>
+                <div className="inline-field">
+                  <div className="inline-grow">
+                    <Select
+                      className="order-rs"
+                      classNamePrefix="rs"
+                      options={listaPrecioOptions}
+                      value={listaSeleccionada}
+                      onChange={setListaSeleccionada}
+                      placeholder={
+                        verTodasLasListas
+                          ? "Seleccionar lista"
+                          : clienteSeleccionado
+                          ? "Seleccionar lista del cliente"
+                          : "Elegí un cliente primero"
+                      }
+                      isDisabled={!verTodasLasListas && !clienteSeleccionado}
+                      isClearable
+                    />
+                  </div>
+                  <label className="inline-check">
                     <input
                       type="checkbox"
                       checked={verTodasLasListas}
                       onChange={(e) => setVerTodasLasListas(e.target.checked)}
-                      style={{ accentColor: "#1172B8" }}
                     />
-                    Ver todas las listas de precios
+                    Ver todas las listas
                   </label>
                 </div>
               </div>
@@ -504,6 +485,7 @@ const LoadNewOrder = () => {
                   className="order-input"
                   value={fecha}
                   onChange={(e) => setFecha(e.target.value)}
+                  min={new Date().toISOString().split("T")[0]}
                 />
               </div>
 
@@ -562,7 +544,7 @@ const LoadNewOrder = () => {
                   isClearable
                 />
               </div>
-              <div className="order-form-group" />{/* columna vacía para mantener la grilla */}
+              <div className="order-form-group"></div>
             </div>
 
             <div className="products-box">
@@ -575,7 +557,6 @@ const LoadNewOrder = () => {
                 <div>TIPO DE MEDIDA</div>
                 <div></div>
               </div>
-
               {productos.map((prod, idx) => (
                 <div className="products-grid-row" key={idx}>
                   <input className="products-input" type="text" value={prod.codigo} disabled />
@@ -607,24 +588,19 @@ const LoadNewOrder = () => {
                       handleInputChange(idx, "cantidad", e.target.value.replace(",", "."))
                     }
                   />
-
-                  {/* TIPO DE MEDIDA editable */}
                   <select
                     className="products-input"
                     value={prod.tipoMedida || ""}
                     onChange={(e) => handleTipoMedidaChange(idx, e.target.value)}
                   >
-                    <option value="" disabled>
-                      Seleccionar
-                    </option>
+                    <option value="" disabled>Seleccionar</option>
                     <option value="KG">KG</option>
                     <option value="UN">UN</option>
                   </select>
-
                   <div className="row-actions">
                     {idx === productos.length - 1 && (
-                      <button className="add-inline-btn" type="button" onClick={handleAddProduct} title="Agregar fila">
-                        +
+                      <button className="add-inline-btn" type="button" onClick={handleAddProduct}>
+                        Agregar
                       </button>
                     )}
                     <button
@@ -632,7 +608,6 @@ const LoadNewOrder = () => {
                       type="button"
                       onClick={() => handleRemoveProduct(idx)}
                       style={{ visibility: productos.length > 1 ? "visible" : "hidden" }}
-                      title="Eliminar fila"
                     >
                       ×
                     </button>
@@ -641,7 +616,7 @@ const LoadNewOrder = () => {
               ))}
             </div>
 
-            <div style={{ marginTop: 18 }}>
+            <div className="comments-block">
               <label>COMENTARIOS</label>
               <textarea
                 className="order-input"

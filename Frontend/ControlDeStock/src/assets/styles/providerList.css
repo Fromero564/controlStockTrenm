@@ -1,78 +1,265 @@
-.container h1{
-  margin-top: 20px;
-  margin-bottom: 20px;
+.providers-root,
+.providers-container {
+  max-width: 100%;
+  overflow-x: hidden;
 }
+
+.topbar-wrap {
+  margin: 20px;
+}
+
+.container h1 {
+  margin: 0;
+}
+
+.title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 10px 0 6px 0;
+}
+
+.new-button {
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .2s ease;
+  border: 2px solid #0077b6;
+  background: #fff;
+  color: #0077b6;
+}
+
+.new-button:hover {
+  background: #0077b6;
+  color: #fff;
+}
+
+.search-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.search-row label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #444;
+}
+
+.search-controls {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.search-input {
+  padding: 10px 12px;
+  width: 280px;
+  border: 1px solid #dcdcdc;
+  background-color: #f2f2f2;
+  border-radius: 6px;
+  font-size: 0.95rem;
+}
+
+.search-button,
+.clear-button {
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .2s ease;
+  border: 2px solid #0077b6;
+  background: #fff;
+  color: #0077b6;
+}
+
+.clear-button {
+  border-color: #999;
+  color: #555;
+}
+
+.search-button:hover {
+  background: #0077b6;
+  color: #fff;
+}
+
+.clear-button:hover {
+  background: #555;
+  color: #fff;
+}
+
+.table-wrap {
+  width: 100%;
+  overflow-x: hidden;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.table thead th {
+  text-align: left;
+  padding: 10px;
+  border-bottom: 2px solid #cfe8fb;
+  background: #e7f3ff;
+  font-size: 0.9rem;
+}
+
+.table tbody td {
+  padding: 10px;
+  border-bottom: 1px solid #f2f2f2;
+  vertical-align: top;
+  word-break: break-word;
+  white-space: normal;
+}
+
+.col-id {
+  width: 7%;
+}
+
+.col-name {
+  width: 14%;
+}
+
+.col-type {
+  width: 7%;
+}
+
+.col-doc {
+  width: 12%;
+}
+
+.col-iva {
+  width: 10%;
+}
+
+.col-email {
+  width: 12%;
+}
+
+.col-phone {
+  width: 8%;
+}
+
+.col-address {
+  width: 12%;
+}
+
+.col-country {
+  width: 6%;
+}
+
+.col-province {
+  width: 8%;
+}
+
+.col-location {
+  width: 8%;
+}
+
+.col-actions {
+  width: 6%;
+  text-align: center;
+}
+
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.edit-button,
+.delete-button {
+  border: none;
+  background: #e9f2ff;
+  padding: 8px 10px;
+  margin-right: 6px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.delete-button {
+  background: #ffe9e9;
+}
+
+.edit-button:hover {
+  filter: brightness(0.95);
+}
+
+.delete-button:hover {
+  filter: brightness(0.95);
+}
+
 .pagination {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin-top: 20px;
-    font-size: 16px;
-    font-weight: bold;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 14px;
+  font-size: 16px;
+  font-weight: bold;
 }
 
 .pagination button {
-    background-color: #007bff;
-    color: white;
-    border: none;
-    padding: 8px 15px;
-    margin: 0 5px;
-    cursor: pointer;
-    border-radius: 5px;
-    transition: background 0.3s ease;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 8px 15px;
+  margin: 0 5px;
+  cursor: pointer;
+  border-radius: 5px;
+  transition: background 0.3s ease;
 }
 
 .pagination button:disabled {
-    background-color: #ccc;
-    cursor: not-allowed;
+  background-color: #ccc;
+  cursor: not-allowed;
 }
 
 .pagination button:hover:not(:disabled) {
-    background-color: #0056b3;
+  background-color: #0056b3;
 }
 
 .pagination span {
-    margin: 0 10px;
-    color: #333;
+  margin: 0 10px;
+  color: #333;
 }
-.search-section {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
+
+@media (max-width: 1100px) {
+  .col-iva {
+    display: none;
   }
-  
-  .search-section label {
-    font-size: 0.75rem;
-    font-weight: bold;
-    color: #666;
+
+  .col-country {
+    display: none;
   }
-  
-  .search-input {
-    padding: 0.75rem;
-    width: 200px;
-    border: none;
-    background-color: #e5e5e5;
-    border-radius: 6px;
-    font-size: 0.95rem;
+}
+
+@media (max-width: 900px) {
+
+  .col-type,
+  .col-doc {
+    display: none;
   }
-  
-  .search-button {
-    padding: 0.75rem 1.5rem;
-    border: 2px solid #0077b6;
-    background: white;
-    color: #0077b6;
-    font-weight: bold;
-    border-radius: 6px;
-  
-    cursor: pointer;
-    transition: all 0.2s ease;
+}
+
+@media (max-width: 700px) {
+
+  .col-province,
+  .col-location {
+    display: none;
   }
-  
-  .search-button:hover {
-    background-color: #0077b6;
-    color: white;
+
+  .col-address {
+    width: 20%;
   }
-  
-  .search-input-label{
-    display: flex;
-  }
+}
+
+.empty-cell {
+  text-align: center;
+  color: #777;
+  padding: 22px 8px;
+}

@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 27-08-2025 a las 16:59:21
+-- Tiempo de generación: 30-08-2025 a las 01:07:04
 -- Versión del servidor: 10.4.28-MariaDB
 -- Versión de PHP: 8.2.4
 
@@ -125,6 +125,20 @@ CREATE TABLE `cuts_header` (
   `qty_pending` int(11) DEFAULT 0,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `meat_income_manual_weight`
+--
+
+CREATE TABLE `meat_income_manual_weight` (
+  `id` int(11) NOT NULL,
+  `bill_supplier_id` int(11) NOT NULL,
+  `total_weight` decimal(10,2) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -506,6 +520,13 @@ ALTER TABLE `cuts_header`
   ADD PRIMARY KEY (`id`);
 
 --
+-- Indices de la tabla `meat_income_manual_weight`
+--
+ALTER TABLE `meat_income_manual_weight`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `bill_supplier_id` (`bill_supplier_id`);
+
+--
 -- Indices de la tabla `meat_manual_income`
 --
 ALTER TABLE `meat_manual_income`
@@ -682,6 +703,12 @@ ALTER TABLE `cuts_header`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT de la tabla `meat_income_manual_weight`
+--
+ALTER TABLE `meat_income_manual_weight`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT de la tabla `meat_manual_income`
 --
 ALTER TABLE `meat_manual_income`
@@ -816,6 +843,12 @@ ALTER TABLE `bill_details`
 --
 ALTER TABLE `cuts_detail`
   ADD CONSTRAINT `cuts_detail_ibfk_1` FOREIGN KEY (`header_id`) REFERENCES `cuts_header` (`id`) ON DELETE CASCADE;
+
+--
+-- Filtros para la tabla `meat_income_manual_weight`
+--
+ALTER TABLE `meat_income_manual_weight`
+  ADD CONSTRAINT `meat_income_manual_weight_ibfk_1` FOREIGN KEY (`bill_supplier_id`) REFERENCES `bill_suppliers` (`id`);
 
 --
 -- Filtros para la tabla `meat_manual_income`

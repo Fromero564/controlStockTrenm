@@ -1,202 +1,191 @@
 .product-form-container {
   width: 90%;
-  max-width: 1200px;
-  margin: 2rem auto;
-  padding: 2rem;
+  max-width: 960px;
+  margin: 1.5rem auto;
+  padding: 1.5rem;
   border: 1px solid #ddd;
-  border-radius: 12px;
-  background-color: #fdfdfd;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .05);
 }
 
-/* ==== FORM PRINCIPAL EN 2 COLUMNAS ==== */
+.product-form-container h2 {
+  font-size: 1.45rem;
+  margin-bottom: 1rem;
+  color: #222;
+  text-align: left;
+}
+
 .product-form-fields {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1.2rem 2rem; /* fila / columna */
+  grid-template-columns: 1fr;
+  gap: .65rem;
 }
+
 .product-form-fields .form-group {
-  display: flex;
-  flex-direction: column;
-}
-.product-form-fields .span-2 {
-  grid-column: 1 / -1; /* ocupa ambas columnas */
-}
-
-/* Subproductos debajo */
-.product-form-subproducts {
-  margin-top: 2rem;
+  display: grid;
+  grid-template-columns: 220px minmax(260px, 520px);
+  align-items: center;
+  column-gap: 14px;
 }
 
-/* Etiquetas */
+.product-form-fields .form-group.name-row {
+  grid-template-columns: 220px minmax(420px, 700px);
+}
+
 .product-form-container label {
-  display: block;
-  margin-bottom: 0.4rem;
-  font-weight: 600;
+  font-size: .95rem;
+  font-weight: 700;
   color: #333;
+  margin: 0;
 }
 
-/* Inputs y selects */
 .product-form-container input[type="text"],
 .product-form-container input[type="number"],
 .product-form-container select {
   width: 100%;
-  padding: 0.65rem;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  font-size: 1rem;
+  padding: .55rem .65rem;
+  border: 1px solid #cfcfcf;
+  border-radius: 6px;
+  font-size: .96rem;
   box-sizing: border-box;
-  transition: border 0.2s ease;
+  background: #fff;
+  transition: border-color .15s ease, box-shadow .15s ease;
 }
 
 .product-form-container input[type="text"]:focus,
 .product-form-container input[type="number"]:focus,
 .product-form-container select:focus {
-  border-color: #007bff;
+  border-color: #94bdf5;
   outline: none;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, .12);
 }
 
-/* Radio group */
+.product-form-container select[name="categoriaId"] {
+  max-width: 380px;
+}
+
+.product-form-container select[name="alicuota"] {
+  max-width: 320px;
+}
+
+.product-form-container input[name="codigo"] {
+  max-width: 260px;
+}
+
+.product-form-container input[name="min_stock"],
+.product-form-container input[name="max_stock"] {
+  max-width: 200px;
+}
+
+.product-form-fields .span-2 {
+  display: grid;
+  grid-template-columns: 220px minmax(260px, 520px);
+  align-items: center;
+  column-gap: 14px;
+}
+
 .radio-group {
-  margin: 0; /* ya tiene spacing por la grilla */
-  padding: 0.6rem 0.6rem 0.2rem 0.6rem;
+  grid-column: 2 / 3;
+  padding: .5rem .6rem;
   border: 1px dashed #e5e5e5;
-  border-radius: 8px;
+  border-radius: 6px;
   background: #fafafa;
 }
+
 .radio-group legend {
-  font-weight: bold;
-  margin-bottom: 0.5rem;
+  font-size: .9rem;
+  font-weight: 700;
+  margin-bottom: .35rem;
 }
+
 .radio-group label {
-  margin-right: 1.5rem;
-  font-weight: normal;
+  margin-right: 1rem;
+  font-weight: 400;
+  font-size: .92rem;
 }
 
-/* Botones */
-.product-form-container button {
-  padding: 0.6rem 1.2rem;
-  font-size: 1rem;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background-color 0.3s ease, transform 0.1s ease;
+.product-form-subproducts {
+  margin-top: 1.25rem;
 }
 
-/* Botón de submit */
-.product-form-container button[type="submit"] {
-  background-color: #007bff;
-  color: white;
-}
-.product-form-container button[type="submit"]:hover {
-  background-color: #0056b3;
-}
-.product-form-container button[type="submit"]:disabled {
-  background-color: #aaa;
-  cursor: not-allowed;
-}
-
-/* Botón cancelar */
-.product-form-container button[type="button"] {
-  background-color: #e2e2e2;
-  color: #333;
-}
-.product-form-container button[type="button"]:hover {
-  background-color: #d0d0d0;
-}
-
-/* Botones centrados */
-.form-buttons {
-  display: flex;
-  justify-content: center;
-  gap: 1rem;
-  margin-top: 2rem;
-}
-
-/* ----- Subproducto ----- */
 .subproduct-add-container {
-  display: flex;
-  align-items: center;
+  display: grid;
+  grid-template-columns: minmax(40%, 1fr) 120px minmax(140px, 1fr) 110px;
   gap: 10px;
+  align-items: center;
   margin-bottom: 1rem;
 }
-.subproduct-add-container .react-select__control {
-  flex: 1;
-  min-height: 38px !important;
-  height: 38px !important;
-  border-radius: 6px;
-  border: 1px solid #ccc;
-  font-size: 14px;
-}
-.subproduct-add-container input[type="number"] {
-  width: 80px;
-  height: 38px;
-  padding: 6px;
-  font-size: 14px;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  text-align: center;
-  margin: 0;
-}
-.subproduct-add-container button {
-  height: 38px;
-  padding: 0 14px;
-  background-color: #6c757d;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 14px;
-}
-.subproduct-add-container button:hover {
-  background-color: #5a6268;
+
+.subproduct-search {
+  width: 100%;
 }
 
-/* Lista de subproductos */
+.subproduct-search .react-select__control {
+  min-height: 36px;
+  height: 36px;
+}
+
+.subproduct-unit {
+  height: 36px;
+  padding: 0 8px;
+}
+
+.subproduct-qty {
+  height: 36px;
+  text-align: center;
+}
+
 .subproduct-list {
   list-style: none;
   padding-left: 0;
   margin-bottom: 1rem;
 }
+
 .subproduct-list li {
   display: flex;
-  justify-content: space-between;
   align-items: center;
   padding: 6px 0;
   font-size: 15px;
   border-bottom: 1px solid #eee;
   color: #333;
+  gap: 12px;
 }
-.subproduct-list li span {
+
+.subproduct-list li .subproduct-name {
   flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
+
+.subproduct-list li .subproduct-qty {
+  flex: 0 0 auto;
+  text-align: right;
+  min-width: 70px;
+}
+
 .subproduct-list li svg {
   cursor: pointer;
   color: #dc3545;
-  transition: transform 0.2s ease, color 0.2s ease;
+  transition: transform .2s ease, color .2s ease;
   font-size: 16px;
 }
+
 .subproduct-list li svg:hover {
   transform: scale(1.2);
   color: #b02a37;
 }
 
-/* Títulos */
-.product-form-container h2 {
-  font-size: 1.5rem;
-  margin-bottom: 1.5rem;
-  color: #222;
-}
 .product-form-container h3 {
-  margin-top: 2rem;
+  margin-top: 1.5rem;
   color: #444;
-  font-size: 1.15rem;
+  font-size: 1.05rem;
   border-bottom: 1px solid #ddd;
   padding-bottom: 4px;
-  margin-bottom: 1rem;
+  margin-bottom: .8rem;
 }
 
-/* Paginación */
 .pagination-controls {
   display: flex;
   justify-content: center;
@@ -204,64 +193,79 @@
   gap: 10px;
   margin-top: 10px;
 }
+
 .pagination-controls button {
   padding: 5px 10px;
   border: none;
   background-color: #ddd;
   border-radius: 4px;
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  transition: background-color .2s ease;
 }
+
 .pagination-controls button:hover:not(:disabled) {
   background-color: #bbb;
 }
+
 .pagination-controls button:disabled {
-  opacity: 0.5;
+  opacity: .5;
   cursor: not-allowed;
 }
 
-/* Responsive: 1 columna en pantallas chicas */
-@media (max-width: 800px) {
-  .product-form-fields {
-    grid-template-columns: 1fr;
+.form-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1.25rem;
+}
+
+.product-form-container button {
+  padding: .5rem 1rem;
+  font-size: .95rem;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color .2s ease;
+}
+
+.product-form-container button[type="submit"] {
+  background: #007bff;
+  color: #fff;
+}
+
+.product-form-container button[type="submit"]:hover {
+  background: #0056b3;
+}
+
+.product-form-container button[type="button"] {
+  background: #e2e2e2;
+  color: #333;
+}
+
+.product-form-container button[type="button"]:hover {
+  background: #d0d0d0;
+}
+
+@media (max-width: 820px) {
+  .subproduct-add-container {
+    grid-template-columns: 1fr 110px 1fr 100px;
   }
-  .product-form-fields .span-2 {
+}
+
+@media (max-width: 680px) {
+
+  .product-form-fields .form-group,
+  .product-form-fields .span-2,
+  .product-form-fields .form-group.name-row {
+    grid-template-columns: 1fr;
+    row-gap: 6px;
+  }
+
+  .radio-group {
     grid-column: auto;
   }
-  .product-form-container {
-    padding: 1rem;
-    width: 98%;
-  }
+
   .subproduct-add-container {
-    flex-direction: column;
-    gap: 6px;
-    align-items: stretch;
+    grid-template-columns: 1fr;
   }
-}
-
-/* === NUEVO: estilos específicos para buscador / unidad / cantidad === */
-.subproduct-search {
-  flex: 4; /* buscador más ancho */
-}
-
-.subproduct-unit {
-  flex: 1; /* más chico que buscador */
-  height: 38px;
-  padding: 4px;
-  font-size: 13px;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  background: white;
-  text-align: center;
-}
-
-.subproduct-qty {
-  width: 100px; 
-  height: 38px;
-  padding: 6px;
-  font-size: 14px;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  text-align: center;
-  margin: 0;
 }

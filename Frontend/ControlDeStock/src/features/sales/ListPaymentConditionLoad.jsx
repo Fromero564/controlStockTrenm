@@ -66,7 +66,7 @@ const ListPaymentConditionLoad = () => {
     <>
       <Navbar />
       <div style={{ margin: "20px" }}>
-        <button className="boton-volver" onClick={() => navigate("/product-configuration")}>
+        <button className="boton-volver" onClick={() => navigate("/sale-configuration")}>
           ⬅ Volver
         </button>
       </div>

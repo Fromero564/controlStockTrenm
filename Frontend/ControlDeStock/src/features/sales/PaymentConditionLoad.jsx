@@ -101,7 +101,7 @@ const PaymentConditionLoad = () => {
     <>
       <Navbar />
       <div style={{ margin: "20px" }}>
-        <button className="boton-volver" onClick={() => navigate(-1)}>⬅ Volver</button>
+        <button className="boton-volver" onClick={() => navigate('/sale-configuration')}>⬅ Volver</button>
       </div>
 
       <div className="pc-form-container">
@@ -114,7 +114,7 @@ const PaymentConditionLoad = () => {
             name="payment_condition"
             type="text"
             className="pc-input"
-            placeholder="Ej: 7 DÍAS FECHA FACT"
+
             value={name}
             onChange={(e) => setName(e.target.value)}
             required

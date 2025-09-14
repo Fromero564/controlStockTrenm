@@ -15,32 +15,64 @@ const formatDate = (iso) => {
   return `${dd}/${mm}/${yy}`;
 };
 
-// Estado basado en PESO (order_weight_check)
-const StatusBadge = ({ weighted }) => (
-  <span className={`lfo-badge ${weighted ? "weighted" : "pending"}`}>
-    {weighted ? "ORDEN YA PESADA" : "PENDIENTE"}
+const normalize = (v) => (v ?? "").toString().trim().toLowerCase();
+
+/** Devuelve "generated" | "pending" priorizando order_weight_check del backend */
+const getOrderStatus = (row) => {
+  // viene agregado como MAX(order_weight_check) desde el backend
+  // y lo convertimos a boolean ya en el controller
+  // (rows: data con order_weight_check normalizado) :contentReference[oaicite:0]{index=0}
+  if (row?.order_weight_check === true) return "generated";
+  if (row?.order_weight_check === false) return "pending";
+
+  const candidates = [
+    row.order_status,
+    row.status,
+    row.state,
+    row.estado,
+    row.estado_orden,
+    row.orderState,
+    row.order_generated,
+  ];
+
+  for (const c of candidates) {
+    if (typeof c === "boolean") return c ? "generated" : "pending";
+    if (typeof c === "number") return c ? "generated" : "pending";
+    const n = normalize(c);
+    if (["generada", "generated", "emitida", "cerrada", "1", "true", "sí", "si"].includes(n))
+      return "generated";
+    if (["pendiente", "pending", "abierta", "0", "false", ""].includes(n))
+      return "pending";
+  }
+  return "pending";
+};
+
+const OrderStatusBadge = ({ status }) => (
+  <span className={`status-badge ${status === "generated" ? "generated" : "pending"}`}>
+    {status === "generated" ? "PESADA" : "PENDIENTE"}
   </span>
 );
 
 const ListFinalOrders = () => {
   const navigate = useNavigate();
+
   const [rows, setRows] = useState([]);
-  const [total, setTotal] = useState(0);
-  const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
-  const [status, setStatus] = useState("all");
+
+  // Filtros
+  const [status, setStatus] = useState("all"); // all | generated | pending
   const [date, setDate] = useState("");
   const [number, setNumber] = useState("");
   const [client, setClient] = useState("");
+
+  // Paginación
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
 
+  // Query SOLO con filtros que van al backend (no mandamos "status")
   const queryString = useMemo(() => {
     const p = new URLSearchParams();
-    p.set("page", String(page));
-    p.set("pageSize", String(pageSize));
-    if (status !== "all") p.set("status", status);
     if (date) {
       p.set("date_from", date);
       p.set("date_to", date);
@@ -48,7 +80,7 @@ const ListFinalOrders = () => {
     if (number) p.set("number", number);
     if (client) p.set("client", client);
     return p.toString();
-  }, [page, pageSize, status, date, number, client]);
+  }, [date, number, client]);
 
   async function load() {
     setLoading(true);
@@ -60,50 +92,66 @@ const ListFinalOrders = () => {
         throw new Error(`HTTP ${res.status}: ${text.slice(0, 120)}`);
       }
       const data = await res.json();
-      if (Array.isArray(data)) {
-        setRows(data);
-        setTotal(data.length);
-        setTotalPages(1);
-      } else if (data?.ok) {
-        setRows(data.rows || []);
-        setTotal(data.total ?? (data.rows?.length || 0));
-        setTotalPages(data.totalPages || 1);
-      } else {
+      // El backend devuelve { ok, rows, ... } con order_weight_check ya normalizado a boolean. :contentReference[oaicite:1]{index=1}
+      if (Array.isArray(data)) setRows(data);
+      else if (data?.ok) setRows(data.rows || []);
+      else {
         setRows([]);
-        setTotal(0);
-        setTotalPages(1);
         setErrorMsg(data?.msg || "Error al cargar órdenes");
       }
     } catch (e) {
       setErrorMsg(e.message || "No se pudo conectar con el servidor");
       setRows([]);
-      setTotal(0);
-      setTotalPages(1);
     } finally {
       setLoading(false);
     }
   }
 
+  // Carga cuando cambian filtros que sí van al backend
   useEffect(() => {
     load();
+    setPage(1);
   }, [queryString]);
 
-  const onSearch = (e) => {
-    e.preventDefault();
+  // Volver a página 1 si cambia el filtro local o pageSize
+  useEffect(() => {
     setPage(1);
-  };
+  }, [status, pageSize]);
 
-  const onWeigh = (id) => {
-  navigate(`/order-weight/${id}`)
-  };
-  const onView = (id) => { };
-  const onPDF = (id) => { };
+  // Filtro local por estado
+  const filteredRows = useMemo(() => {
+    let arr = Array.isArray(rows) ? rows : [];
+    if (status !== "all") {
+      arr = arr.filter((r) => getOrderStatus(r) === status);
+    }
+    return arr;
+  }, [rows, status]);
+
+  // Paginación
+  const totalFiltered = filteredRows.length;
+  const totalPages = Math.max(1, Math.ceil(totalFiltered / pageSize));
+  const pageStart = (page - 1) * pageSize;
+  const pageRows = filteredRows.slice(pageStart, pageStart + pageSize);
 
   const goFirst = () => setPage(1);
   const goPrev = () => setPage((p) => Math.max(1, p - 1));
   const goNext = () => setPage((p) => Math.min(totalPages, p + 1));
   const goLast = () => setPage(totalPages);
-  const pages = Array.from({ length: totalPages }, (_, i) => i + 1).slice(Math.max(0, page - 3), Math.max(5, page + 2));
+  const pages = useMemo(() => {
+    const arr = Array.from({ length: totalPages }, (_, i) => i + 1);
+    const start = Math.max(0, Math.min(totalPages - 5, page - 3));
+    return arr.slice(start, start + 5);
+  }, [totalPages, page]);
+
+  const onSearch = (e) => {
+    e.preventDefault();
+    setPage(1);
+    load();
+  };
+
+  const onWeigh = (id) => navigate(`/order-weight/${id}`);
+  const onView = (_id) => {};
+  const onPDF = (_id) => {};
 
   return (
     <div className="lfo">
@@ -113,6 +161,7 @@ const ListFinalOrders = () => {
           ⬅ Volver
         </button>
       </div>
+
       <div className="lfo-container">
         <h1 className="lfo-title">ORDENES DE VENTA</h1>
 
@@ -120,63 +169,83 @@ const ListFinalOrders = () => {
           <div className="lfo-field">
             <label>ESTADO</label>
             <select value={status} onChange={(e) => setStatus(e.target.value)}>
-              <option value="all">TODOS</option>
-              <option value="pending">PENDIENTE</option>
-              <option value="generated">GENERADA</option>
+              <option value="all">Todos</option>
+              <option value="pending">Pendiente</option>
+              <option value="generated">Pesada</option>
             </select>
           </div>
+
           <div className="lfo-field">
             <label>FECHA</label>
             <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           </div>
+
           <div className="lfo-field">
-            <label>NÚMERO ORDEN</label>
-            <input type="number" placeholder="Número" value={number} onChange={(e) => setNumber(e.target.value)} />
+            <label>N° ORDEN</label>
+            <input
+              type="number"
+              value={number}
+              onChange={(e) => setNumber(e.target.value)}
+              placeholder="ID"
+              min="1"
+            />
           </div>
+
           <div className="lfo-field">
-            <label>DESTINO</label>
-            <input type="text" placeholder="Destino" value={client} onChange={(e) => setClient(e.target.value)} />
+            <label>CLIENTE</label>
+            <input
+              type="text"
+              value={client}
+              onChange={(e) => setClient(e.target.value)}
+              placeholder="Nombre del cliente"
+            />
           </div>
-          <button className="lfo-btn lfo-btn-outline" type="submit">Buscar</button>
+
+          <div className="lfo-actionsBar">
+            <button type="submit" className="lfo-btn lfo-btn-secondary">Buscar</button>
+          </div>
         </form>
 
-        <div className="lfo-card">
+        <div className="lfo-tableWrapper">
           <table className="lfo-table">
             <thead>
               <tr>
+                <th>ID</th>
                 <th>FECHA</th>
-                <th>NÚMERO ORDEN</th>
                 <th>CLIENTE</th>
-                <th>ESTADO PESO</th>
-                <th className="right">ACCIONES</th>
+                <th>VENDEDOR</th>
+                <th>ESTADO</th>
+                <th className="right">ACCIÓN</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={5} className="center muted">Cargando...</td></tr>
+                <tr><td colSpan={6} className="center">Cargando…</td></tr>
               ) : errorMsg ? (
-                <tr><td colSpan={5} className="center error">{errorMsg}</td></tr>
-              ) : rows.length === 0 ? (
-                <tr><td colSpan={5} className="center muted">Sin resultados.</td></tr>
+                <tr><td colSpan={6} className="center error">{errorMsg}</td></tr>
+              ) : pageRows.length === 0 ? (
+                <tr><td colSpan={6} className="center">Sin resultados</td></tr>
               ) : (
-                rows.map((r) => {
-                  const weighted = !!(r.order_weight_check); // true => ya pesada
+                pageRows.map((r) => {
                   const id = r.order_id ?? r.id;
+                  const orderStatus = getOrderStatus(r);
+                  const isWeighed = orderStatus === "generated";
                   return (
                     <tr key={id}>
-                      <td>{formatDate(r.date_order || r.created_at)}</td>
                       <td>{id}</td>
+                      <td>{formatDate(r.date_order)}</td>
                       <td>{r.client_name ?? r.cliente}</td>
-                      <td><StatusBadge weighted={weighted} /></td>
+                      <td>{r.salesman_name ?? r.vendedor}</td>
+                      <td><OrderStatusBadge status={orderStatus} /></td>
                       <td className="right">
                         <div className="lfo-actions">
                           <button
-                            className={`lfo-btn ${weighted ? "lfo-btn-disabled" : "lfo-btn-primary"}`}
-                            onClick={() => onWeigh(id)}
-                            disabled={weighted}
-                            title={weighted ? "La orden ya fue pesada" : "Pesar"}
+                            className={`lfo-btn ${isWeighed ? "lfo-btn-disabled" : "lfo-btn-primary"}`}
+                            onClick={() => !isWeighed && onWeigh(id)}
+                            title={isWeighed ? "La orden ya está pesada" : "Pesar"}
+                            disabled={isWeighed}
                           >
-                            Pesar
+                            {isWeighed ? "Pesada" : "Pesar"}
                           </button>
                           <button className="lfo-icon" onClick={() => onView(id)} title="Ver">👁</button>
                           <button className="lfo-icon" onClick={() => onPDF(id)} title="PDF">PDF</button>
@@ -193,16 +262,25 @@ const ListFinalOrders = () => {
         <div className="lfo-footer">
           <div className="lfo-showing">
             <span>Mostrar</span>
-            <select value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}>
-              {[5, 10, 20, 50, 100].map((n) => (<option key={n} value={n}>{n}</option>))}
+            <select value={pageSize} onChange={(e) => setPageSize(Number(e.target.value))}>
+              {[5, 10, 20, 50, 100].map((n) => (
+                <option key={n} value={n}>{n}</option>
+              ))}
             </select>
-            <span>de {total || "—"} registros por página</span>
+            <span>de {totalFiltered || "—"} registros por página</span>
           </div>
+
           <div className="lfo-pagination">
             <button onClick={goFirst} disabled={page === 1} className="lfo-pageBtn">««</button>
             <button onClick={goPrev} disabled={page === 1} className="lfo-pageBtn">«</button>
             {pages.map((p) => (
-              <button key={p} onClick={() => setPage(p)} className={`lfo-pageBtn ${p === page ? "active" : ""}`}>{p}</button>
+              <button
+                key={p}
+                onClick={() => setPage(p)}
+                className={`lfo-pageBtn ${p === page ? "active" : ""}`}
+              >
+                {p}
+              </button>
             ))}
             <button onClick={goNext} disabled={page === totalPages} className="lfo-pageBtn">»</button>
             <button onClick={goLast} disabled={page === totalPages} className="lfo-pageBtn">»»</button>

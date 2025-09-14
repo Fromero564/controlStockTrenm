@@ -37,10 +37,24 @@ router.get("/sell-order-products/:id", apiSaleController.getSellOrderProducts);
 router.get("/orders/:id/header", apiSaleController.getOrderHeaderForWeighing);
 //Leer datos guardados de la pesada del comprobante
 router.get("/orders/:id/weighings", apiSaleController.getOrderWeighing);
+//Api apra traer todos los choferes
+router.get("/drivers", apiSaleController.getAllDrivers);
+//Api para traer un chofer por id
+router.get("/drivers/:id", apiSaleController.getDriverById); 
+// Preview de remito a partir de una orden
+router.get("/remits/from-order/:id/preview", apiSaleController.getRemitControlState);
+router.get("/remits/:id/pdf", apiSaleController.getRemitPdf);       
+// (opcional) directo por order id:
+// routes/api/routerSaleApiController.js
+router.get("/remits/from-order/:id/pdf", apiSaleController.getRemitPdfByOrder);
+
+
 
 
 //Api para cargar datos de pessada tanto general como de cada item de una orden de venta
 router.post("/orders/:id/weighings", apiSaleController.saveOrderWeighing);
+//Api para cargar un chofer
+router.post("/drivers", apiSaleController.createDriver); 
 //Api para crear Vendedores
 router.post("/create-salesman",apiSaleController.createNewSeller);
 //Api para crear una nueva orden 
@@ -53,6 +67,8 @@ router.post("/generate-sales-order/:id", apiSaleController.generateSalesOrder);
 router.post("/sale-conditions",apiSaleController.createSaleCondition);
 //Api para crear un metodo de pago
 router.post("/payment-conditions", apiSaleController.createPaymentCondition);
+// Crear el remito final a partir de una orden
+router.post("/remits/from-order/:id", apiSaleController.createRemitFromOrder);
 
 
 //Api para eliminar un Vendedor
@@ -63,6 +79,8 @@ router.delete("/delete-order/:id", apiSaleController.deleteOrder);
 router.delete("/sale-conditions/:id", apiSaleController.deleteSaleCondition);
 //Api para eliminar un metodo de pago
 router.delete("/payment-conditions/:id", apiSaleController.deletePaymentCondition);
+//Api para eliminar un chofer
+router.delete("/drivers/:id", apiSaleController.deleteDriver);
 
 
 //Api para modificar un vendedor
@@ -79,6 +97,8 @@ router.put("/payment-conditions/:id", apiSaleController.updatePaymentCondition);
 router.put("/sell-order-products/:id", apiSaleController.updateSellOrderProductQuantity);
 //Api para marcar orden ya pesada
 router.put("/orders/:id/weight-check", apiSaleController.setOrderWeightChecked);
+//Api para editar un chofer
+router.put("/drivers/:id", apiSaleController.updateDriver);
 
 
 

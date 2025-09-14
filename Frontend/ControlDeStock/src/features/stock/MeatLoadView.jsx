@@ -97,7 +97,7 @@ const MeatLoadView = () => {
             </div>
 
             <h3 className="mlv-subtitle">
-              Detalle de Cortes declarados en Comprobante
+              Detalle de Cortes declarados en romaneo
             </h3>
             <div className="mlv-tablewrap">
               <table className="mlv-table">

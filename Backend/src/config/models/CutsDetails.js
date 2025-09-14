@@ -6,6 +6,8 @@ module.exports = (sequelize, dataTypes) => {
     receipt_number: { type: dataTypes.BIGINT(10), allowNull: false },
     header_id: { type: dataTypes.BIGINT(10).UNSIGNED, allowNull: false },
     sub_item: { type: dataTypes.INTEGER, allowNull: false },
+     packaging_type: { type: dataTypes.STRING(100), allowNull: true }, 
+    units_count: { type: dataTypes.INTEGER, allowNull: false, defaultValue: 1 },
     lot_number: { type: dataTypes.STRING(50), allowNull: true },
     tare_weight: { type: dataTypes.DECIMAL(10, 2), allowNull: false, defaultValue: 0 },
     gross_weight: { type: dataTypes.DECIMAL(10, 2), allowNull: false, defaultValue: 0 },

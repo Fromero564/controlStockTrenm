@@ -122,7 +122,7 @@ const SaleConditionLoad = () => {
     <>
       <Navbar />
       <div style={{ margin: "20px" }}>
-        <button className="boton-volver" onClick={() => navigate(-1)}>
+        <button className="boton-volver" onClick={() => navigate('/sale-configuration')}>
           ⬅ Volver
         </button>
       </div>
@@ -141,7 +141,7 @@ const SaleConditionLoad = () => {
             name="condition_name"
             type="text"
             className="cond-input"
-            placeholder="Ej: CUENTA CORRIENTE"
+           
             value={name}
             onChange={(e) => setName(e.target.value)}
             required

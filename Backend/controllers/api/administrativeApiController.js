@@ -873,56 +873,64 @@ const administrativeApiController = {
   },
 
 
-  editProductAvailable: async (req, res) => {
-    try {
-      const { id } = req.params;
-      const {
+editProductAvailable: async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      product_name,
+      category_id,
+      product_general_category,
+      min_stock,
+      max_stock,
+      alicuota,
+      subproducts = []
+    } = req.body;
+
+    const min = min_stock !== undefined && min_stock !== null && min_stock !== '' ? parseInt(min_stock) : null;
+    const max = max_stock !== undefined && max_stock !== null && max_stock !== '' ? parseInt(max_stock) : null;
+    const alicuotaValue = alicuota !== undefined && alicuota !== null && alicuota !== '' ? parseFloat(alicuota) : null;
+
+    await db.ProductsAvailable.update(
+      {
         product_name,
-        category_id,
-        product_general_category,
-        min_stock,
-        max_stock,
-        alicuota,
-        subproducts = []
-      } = req.body;
+        category_id: category_id ? category_id : null,
+        product_general_category: product_general_category || null,
+        min_stock: min,
+        max_stock: max,
+        alicuota: alicuotaValue
+      },
+      { where: { id } }
+    );
 
-      const min = min_stock !== undefined && min_stock !== null && min_stock !== '' ? parseInt(min_stock) : null;
-      const max = max_stock !== undefined && max_stock !== null && max_stock !== '' ? parseInt(max_stock) : null;
-      const alicuotaValue = alicuota !== undefined && alicuota !== null && alicuota !== '' ? parseFloat(alicuota) : null;
-
-      // Actualizar producto
-      await db.ProductsAvailable.update(
-        {
-          product_name,
-          category_id: category_id ? category_id : null,
-          product_general_category: product_general_category || null,
-          min_stock: min,
-          max_stock: max,
-          alicuota: alicuotaValue
-        },
-        { where: { id } }
-      );
-
-      // Borrar subproductos previos
-      await db.ProductSubproduct.destroy({ where: { parent_product_id: id } });
-
-      // Crear subproductos actualizados con unidad
-      if (Array.isArray(subproducts) && subproducts.length > 0) {
-        const nuevos = subproducts.map((sp) => ({
-          parent_product_id: id,
-          subproduct_id: sp.subproductId,
-          quantity: sp.quantity,
-          unit: sp.unit || "kg" // 👈 agregado
-        }));
-        await db.ProductSubproduct.bulkCreate(nuevos);
-      }
-
-      res.json({ message: "Producto actualizado correctamente." });
-    } catch (error) {
-      console.error("Error al actualizar producto:", error);
-      res.status(500).json({ message: "Error interno del servidor", error });
+    await db.ProductSubproduct.destroy({ where: { parent_product_id: id } });
+    if (Array.isArray(subproducts) && subproducts.length > 0) {
+      const nuevos = subproducts.map((sp) => ({
+        parent_product_id: id,
+        subproduct_id: sp.subproductId,
+        quantity: sp.quantity,
+        unit: sp.unit || "kg"
+      }));
+      await db.ProductSubproduct.bulkCreate(nuevos);
     }
-  },
+
+    let newCategoryName = "";
+    if (category_id) {
+      const cat = await db.ProductCategories.findByPk(category_id);
+      newCategoryName = cat && cat.category_name ? cat.category_name : "";
+    }
+
+    await db.ProductStock.update(
+      { product_category: newCategoryName },
+      { where: { product_cod: id } }
+    );
+
+    return res.json({ message: "Producto actualizado correctamente." });
+  } catch (error) {
+    console.error("Error al actualizar producto:", error);
+    return res.status(500).json({ message: "Error interno del servidor", error });
+  }
+},
+
 
 
   deleteSubproduct: async (req, res) => {

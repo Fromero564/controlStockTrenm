@@ -93,6 +93,11 @@ const ListSellers = () => {
     return (
         <div>
             <Navbar />
+                <div style={{ margin: "20px" }}>
+                    <button className="boton-volver" onClick={() => navigate('/sales-panel')}>
+                        ⬅ Volver
+                    </button>
+                </div>
             <div className="sellers-container">
                 <div className="sellers-header">
                     <h2 className="sellers-title">Vendedores</h2>
@@ -100,11 +105,7 @@ const ListSellers = () => {
                         Nuevo Vendedor <FontAwesomeIcon icon={faPlus} />
                     </button>
                 </div>
-                <div style={{ margin: "20px" }}>
-                    <button className="boton-volver" onClick={() => navigate(-1)}>
-                        ⬅ Volver
-                    </button>
-                </div>
+            
                 <div className="sellers-search-row">
                     <input
                         type="text"

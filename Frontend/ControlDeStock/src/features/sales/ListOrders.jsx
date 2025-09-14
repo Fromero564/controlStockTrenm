@@ -1,8 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import '../../assets/styles/listOrders.css';
+import { NavLink, useNavigate } from "react-router-dom";
+import "../../assets/styles/listOrders.css";
 import Navbar from "../../components/Navbar";
-import AvailableStockOrders from "../../components/AvailableStockOrders.jsx";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPen, faTrash, faEye, faFileExcel, faPlus, faSearch } from "@fortawesome/free-solid-svg-icons";
 import Swal from "sweetalert2";
@@ -13,7 +12,6 @@ const DELETE_ORDER_URL = (id) => `${API_URL}/delete-order/${id}`;
 
 const ListOrders = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("pedidos");
   const [orders, setOrders] = useState([]);
   const [filterDate, setFilterDate] = useState("");
   const [filterClient, setFilterClient] = useState("");
@@ -41,7 +39,6 @@ const ListOrders = () => {
 
   const normalize = (s) =>
     String(s ?? "").toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "");
-
   const getDestino = (o) => o.destination ?? o.destino ?? o.city ?? o._destino ?? "";
 
   const filtered = useMemo(() => {
@@ -113,25 +110,13 @@ const ListOrders = () => {
         return false;
       }
       if (res.status === 404) {
-        await Swal.fire({
-          icon: "error",
-          title: "No encontrada",
-          text: "No se encontró la orden.",
-        });
+        await Swal.fire({ icon: "error", title: "No encontrada", text: "No se encontró la orden." });
         return false;
       }
-      await Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: "No se pudo verificar el estado de la orden.",
-      });
+      await Swal.fire({ icon: "error", title: "Error", text: "No se pudo verificar el estado de la orden." });
       return false;
     } catch {
-      await Swal.fire({
-        icon: "error",
-        title: "Error de red",
-        text: "No se pudo conectar con el servidor.",
-      });
+      await Swal.fire({ icon: "error", title: "Error de red", text: "No se pudo conectar con el servidor." });
       return false;
     }
   };
@@ -141,9 +126,7 @@ const ListOrders = () => {
     if (!ok) return;
     navigate(`/generate-sales-order/${row.id}`);
   };
-
   const handleView = (row) => Swal.fire("Ver", `Pedido #${row.id}`, "info");
-
   const handleEdit = (row) => navigate(`/sales-orders-new/${row.id}`);
 
   const handleDelete = async (row) => {
@@ -168,14 +151,14 @@ const ListOrders = () => {
       }
       if (res.status === 404) {
         await Swal.fire("No encontrada", "El pedido no existe.", "info");
-        setOrders(prev => prev.filter(o => o.id !== row.id));
+        setOrders((prev) => prev.filter((o) => o.id !== row.id));
         return;
       }
       if (!res.ok) throw new Error();
 
       await Swal.fire("Eliminado", "Pedido eliminado correctamente.", "success");
-      setOrders(prev => prev.filter(o => o.id !== row.id));
-    } catch (e) {
+      setOrders((prev) => prev.filter((o) => o.id !== row.id));
+    } catch {
       await Swal.fire("Error", "No se pudo eliminar el pedido.", "error");
     } finally {
       setDeletingId(null);
@@ -198,23 +181,13 @@ const ListOrders = () => {
       <div className="oa-ellipsis" title="—">—</div>
       <div className="oa-actions">
         {item?.order_check ? (
-          <button className="oa-btn oa-danger" disabled>
-            Orden generada
-          </button>
+          <button className="oa-btn oa-danger" disabled>Orden generada</button>
         ) : (
-          <button className="oa-btn oa-btn-primary" onClick={() => handleGenerate(item)}>
-            Generar orden
-          </button>
+          <button className="oa-btn oa-btn-primary" onClick={() => handleGenerate(item)}>Generar orden</button>
         )}
-
-        <button
-          className="oa-icon-btn oa-view"
-          title="Ver"
-          onClick={() => handleView(item)}
-        >
+        <button className="oa-icon-btn oa-view" title="Ver" onClick={() => handleView(item)}>
           <FontAwesomeIcon icon={faEye} />
         </button>
-
         <button
           className="oa-icon-btn oa-edit"
           title={item?.order_check ? "No se puede editar: ya generada" : "Editar"}
@@ -224,7 +197,6 @@ const ListOrders = () => {
         >
           <FontAwesomeIcon icon={faPen} />
         </button>
-
         <button
           className="oa-icon-btn oa-danger"
           title={item?.order_check ? "No se puede eliminar: ya generada" : "Eliminar"}
@@ -238,17 +210,13 @@ const ListOrders = () => {
     </div>
   );
 
-  if (activeTab === "disponibilidad") {
-    return <AvailableStockOrders />;
-  }
-
   return (
     <div>
       <Navbar />
       <div className="oa-wrapper">
         <div className="oa-tabs">
-          <button className={`oa-tab ${activeTab === "pedidos" ? "active" : ""}`} onClick={() => setActiveTab("pedidos")}>Pedidos</button>
-          <button className={`oa-tab ${activeTab === "disponibilidad" ? "active" : ""}`} onClick={() => setActiveTab("disponibilidad")}>Disponibilidad</button>
+          <NavLink to="/list-orders" className={({isActive}) => `oa-tab ${isActive ? "active" : ""}`}>Pedidos</NavLink>
+          <NavLink to="/available-stock" className={({isActive}) => `oa-tab ${isActive ? "active" : ""}`}>Disponibilidad</NavLink>
         </div>
 
         <div className="oa-toolbar">
@@ -285,47 +253,43 @@ const ListOrders = () => {
         </div>
 
         <div className="oa-card">
-          {loading ? (
-            <div className="oa-loading">Cargando...</div>
-          ) : (
-            <>
-              <div className="oa-table">
-                <TableHeader />
-                {pageData.length === 0 ? (
-                  <div className="oa-empty">No hay registros</div>
-                ) : (
-                  pageData.map((it) => <Row key={it.id} item={it} />)
-                )}
-              </div>
+          <div className="oa-table">
+            <TableHeader />
+            {loading ? (
+              <div className="oa-empty">Cargando...</div>
+            ) : pageData.length === 0 ? (
+              <div className="oa-empty">No hay registros</div>
+            ) : (
+              pageData.map((it) => <Row key={it.id} item={it} />)
+            )}
+          </div>
 
-              <div className="oa-pagination">
-                <div className="oa-page-size">
-                  <span>Mostrar</span>
-                  <select value={pageSize} onChange={(e) => setPageSize(parseInt(e.target.value, 10))}>
-                    <option value={10}>10</option>
-                    <option value={25}>25</option>
-                    <option value={50}>50</option>
-                    <option value={100}>100</option>
-                  </select>
-                  <span>registros por página</span>
-                </div>
+          <div className="oa-pagination">
+            <div className="oa-page-size">
+              <span>Mostrar</span>
+              <select value={pageSize} onChange={(e) => setPageSize(parseInt(e.target.value, 10))}>
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+              <span>registros por página</span>
+            </div>
 
-                <div className="oa-pages">
-                  <button className="oa-page-btn" disabled={currentPage === 1} onClick={() => setPage(1)}>«</button>
-                  <button className="oa-page-btn" disabled={currentPage === 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>‹</button>
-                  {Array.from({ length: totalPages }, (_, i) => i + 1)
-                    .slice(Math.max(0, currentPage - 3), Math.max(0, currentPage - 3) + 5)
-                    .map((n) => (
-                      <button key={n} className={`oa-page-btn ${n === currentPage ? "active" : ""}`} onClick={() => setPage(n)}>
-                        {n}
-                      </button>
-                    ))}
-                  <button className="oa-page-btn" disabled={currentPage === totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>›</button>
-                  <button className="oa-page-btn" disabled={currentPage === totalPages} onClick={() => setPage(totalPages)}>»</button>
-                </div>
-              </div>
-            </>
-          )}
+            <div className="oa-pages">
+              <button className="oa-page-btn" disabled={currentPage === 1} onClick={() => setPage(1)}>«</button>
+              <button className="oa-page-btn" disabled={currentPage === 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>‹</button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .slice(Math.max(0, currentPage - 3), Math.max(0, currentPage - 3) + 5)
+                .map((n) => (
+                  <button key={n} className={`oa-page-btn ${n === currentPage ? "active" : ""}`} onClick={() => setPage(n)}>
+                    {n}
+                  </button>
+                ))}
+              <button className="oa-page-btn" disabled={currentPage === totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>›</button>
+              <button className="oa-page-btn" disabled={currentPage === totalPages} onClick={() => setPage(totalPages)}>»</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

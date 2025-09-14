@@ -56,18 +56,23 @@
     font-weight: 500;
 }
 
+/* Corrección: permitir quiebre de fila */
 .seller-row {
     display: flex;
     gap: 20px;
     margin-bottom: 0px;
+    flex-wrap: wrap;
 }
 
+/* Corrección: columnas flexibles y con ancho mínimo */
 .seller-col {
     flex: 1 1 0;
+    min-width: 240px;
     display: flex;
     flex-direction: column;
 }
 
+/* Corrección: inputs/selects no exceden el ancho del contenedor */
 .seller-input {
     border-radius: 8px;
     border: none;
@@ -77,6 +82,10 @@
     margin-bottom: 2px;
     outline: none;
     color: #262626;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    height: 56px;
 }
 
 .seller-input::placeholder {
@@ -122,6 +131,8 @@
     color: #047bb4;
     border: 2px solid #047bb4;
 }
+
+/* Clase opcional para selects si la usás */
 .seller-select {
     border-radius: 8px;
     border: none;
@@ -135,4 +146,9 @@
     box-sizing: border-box;
     height: 56px;
     appearance: none;
+}
+
+
+@media (max-width: 720px) {
+    .seller-col { min-width: 100%; }
 }

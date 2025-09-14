@@ -4,12 +4,38 @@ import Swal from "sweetalert2";
 import Navbar from "../../components/Navbar.jsx";
 import '../../assets/styles/loadNewProvider.css';
 
+// Provincias argentinas en JSON (incluye Ciudad Autónoma de Buenos Aires)
+const provinciasArgentina = [
+    "Buenos Aires",
+    "Ciudad Autónoma de Buenos Aires",
+    "Catamarca",
+    "Chaco",
+    "Chubut",
+    "Córdoba",
+    "Corrientes",
+    "Entre Ríos",
+    "Formosa",
+    "Jujuy",
+    "La Pampa",
+    "La Rioja",
+    "Mendoza",
+    "Misiones",
+    "Neuquén",
+    "Río Negro",
+    "Salta",
+    "San Juan",
+    "San Luis",
+    "Santa Cruz",
+    "Santa Fe",
+    "Santiago del Estero",
+    "Tierra del Fuego",
+    "Tucumán",
+];
+
 const LoadNewProvider = () => {
     const navigate = useNavigate();
     const { id } = useParams();
     const [countries, setCountries] = useState([]);
-    const [provincias, setProvincias] = useState([]);
-    const [localidades, setLocalidades] = useState([]);
 
     const API_URL = import.meta.env.VITE_API_URL;
     const [formData, setFormData] = useState({
@@ -28,53 +54,7 @@ const LoadNewProvider = () => {
 
     const esArgentina = formData.paisProveedor === "Argentina";
 
-    useEffect(() => {
-        if (!esArgentina) {
-            setLocalidades([]);
-            return;
-        }
-
-        const fetchLocalidades = async () => {
-            setLocalidades([]);
-
-            if (!formData.provinciaProveedor) return;
-
-            try {
-                const res = await fetch(`https://apis.datos.gob.ar/georef/api/localidades?provincia=${encodeURIComponent(formData.provinciaProveedor)}&max=1000`);
-                if (res.ok) {
-                    const data = await res.json();
-                    const nombresLocalidades = data.localidades
-                        .map(loc => loc.nombre)
-                        .sort((a, b) => a.localeCompare(b));
-                    setLocalidades(nombresLocalidades);
-                }
-            } catch (error) {
-                console.error("Error al obtener localidades:", error);
-            }
-        };
-
-        fetchLocalidades();
-    }, [formData.provinciaProveedor, esArgentina]);
-
-    useEffect(() => {
-        const fetchProvincias = async () => {
-            try {
-                const res = await fetch("https://apis.datos.gob.ar/georef/api/provincias");
-                if (res.ok) {
-                    const data = await res.json();
-                    const provinciasOrdenadas = data.provincias
-                        .map(p => p.nombre)
-                        .sort((a, b) => a.localeCompare(b));
-                    setProvincias(provinciasOrdenadas);
-                }
-            } catch (error) {
-                console.error("Error al obtener provincias:", error);
-            }
-        };
-
-        fetchProvincias();
-    }, []);
-
+    // Cargar países
     useEffect(() => {
         const fetchCountries = async () => {
             try {
@@ -94,6 +74,7 @@ const LoadNewProvider = () => {
         fetchCountries();
     }, []);
 
+    // Cargar proveedor si existe
     useEffect(() => {
         const fetchProveedor = async () => {
             if (id) {
@@ -133,18 +114,6 @@ const LoadNewProvider = () => {
                 ...formData,
                 paisProveedor: value,
                 provinciaProveedor: "",
-                localidadProveedor: "",
-            });
-            if (!esArg) {
-                setLocalidades([]);
-            }
-            return;
-        }
-
-        if (name === "provinciaProveedor") {
-            setFormData({
-                ...formData,
-                provinciaProveedor: value,
                 localidadProveedor: "",
             });
             return;
@@ -286,7 +255,7 @@ const LoadNewProvider = () => {
                         {esArgentina ? (
                             <select name="provinciaProveedor" id="provinciaProveedor" value={formData.provinciaProveedor} onChange={handleChange} required>
                                 <option value="">Seleccione una provincia</option>
-                                {provincias.map((provincia) => (
+                                {provinciasArgentina.map((provincia) => (
                                     <option key={provincia} value={provincia}>
                                         {provincia}
                                     </option>
@@ -307,26 +276,15 @@ const LoadNewProvider = () => {
 
                     <div className="form-group-provider">
                         <label htmlFor="localidadProveedor">Localidad</label>
-                        {esArgentina ? (
-                            <select name="localidadProveedor" id="localidadProveedor" value={formData.localidadProveedor} onChange={handleChange} required>
-                                <option value="">Seleccione una localidad</option>
-                                {localidades.map((loc) => (
-                                    <option key={loc} value={loc}>
-                                        {loc}
-                                    </option>
-                                ))}
-                            </select>
-                        ) : (
-                            <input
-                                type="text"
-                                name="localidadProveedor"
-                                id="localidadProveedor"
-                                value={formData.localidadProveedor}
-                                onChange={handleChange}
-                                placeholder="Ingrese la localidad"
-                                required
-                            />
-                        )}
+                        <input
+                            type="text"
+                            name="localidadProveedor"
+                            id="localidadProveedor"
+                            value={formData.localidadProveedor}
+                            onChange={handleChange}
+                            placeholder="Ingrese la localidad"
+                            required
+                        />
                     </div>
 
                     <div className="buttons">

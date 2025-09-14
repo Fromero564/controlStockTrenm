@@ -2,7 +2,7 @@ module.exports = (sequelize, DataTypes) => {
     let alias = "MeatIncome";
 
     let cols = {
-         id: {
+        id: {
             type: DataTypes.BIGINT(10).UNSIGNED,
             primaryKey: true,
             autoIncrement: true
@@ -47,8 +47,8 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.DECIMAL(8, 2),
             allowNull: false,
         },
-        decrease:{
-            type: DataTypes.INTEGER,
+        decrease: {
+            type: DataTypes.DECIMAL(8, 2),
             allowNull: true,
         },
     };
