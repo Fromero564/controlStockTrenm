@@ -1,10 +1,12 @@
+// src/views/remits/ListRemitFinalWeight.jsx
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../../components/Navbar";
 import "../../assets/styles/listRemitFinalWeight.css";
 
 const API_BASE = (import.meta.env.VITE_API_URL || "").replace(/\/+$/, "");
-const ENDPOINT = `${API_BASE}/final-orders`;
+const ENDPOINT_ORDERS = `${API_BASE}/final-orders`;
+const ENDPOINT_FINAL_REMIT = `${API_BASE}/final-remits`;
 
 const fmtDate = (iso) => {
   if (!iso) return "-";
@@ -27,7 +29,7 @@ export default function ListRemitFinalWeight() {
 
   const queryString = useMemo(() => {
     const p = new URLSearchParams();
-    p.set("status", "generated");
+    p.set("status", "generated"); // ← solo órdenes generadas (pendientes de remitar) :contentReference[oaicite:2]{index=2}
     if (date) {
       p.set("date_from", date);
       p.set("date_to", date);
@@ -37,15 +39,44 @@ export default function ListRemitFinalWeight() {
     return p.toString();
   }, [date, number, client]);
 
+  // Chequea si ya existe remito final para la orden (devuelve boolean)
+  const checkHasFinalRemit = async (orderId) => {
+    try {
+      // Supone que /final-remits?order_id=XX devuelve [] o [{...}]
+      const res = await fetch(`${ENDPOINT_FINAL_REMIT}?order_id=${orderId}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      if (Array.isArray(data)) return data.length > 0;
+      // Si la API devuelve objeto con rows:
+      if (data?.rows && Array.isArray(data.rows)) return data.rows.length > 0;
+      // Si la API devuelve un objeto con exists:
+      if (typeof data?.exists === "boolean") return data.exists;
+      return false;
+    } catch {
+      // En caso de error de red, por seguridad NO permitir duplicar:
+      return true;
+    }
+  };
+
   const load = async () => {
     setLoading(true);
     setErr("");
     try {
-      const res = await fetch(`${ENDPOINT}?${queryString}`);
+      const res = await fetch(`${ENDPOINT_ORDERS}?${queryString}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       const list = Array.isArray(data) ? data : data?.rows || [];
-      setRows(list);
+
+      // Anotar cada fila con hasRemit
+      const withFlags = await Promise.all(
+        list.map(async (r) => {
+          const orderId = r.order_id ?? r.id;
+          const hasRemit = await checkHasFinalRemit(orderId);
+          return { ...r, order_id: orderId, hasRemit };
+        })
+      );
+
+      setRows(withFlags);
     } catch (e) {
       setErr(e.message || "Error al cargar remitos");
       setRows([]);
@@ -56,12 +87,16 @@ export default function ListRemitFinalWeight() {
 
   useEffect(() => {
     load();
+  
   }, [queryString]);
 
-  // ✅ Navega a /remit-control-state/:id
   const onRemit = (orderId) => navigate(`/remit-control-state/${orderId}`);
-  const onView = (orderId) => navigate(`/order-weight/${orderId}`);
-  const onPDF = (orderId) => console.log("Generar PDF para orden", orderId);
+  const onView = (orderId) => navigate(`/remits/preview/${orderId}`);
+
+  const onPDF = (orderId) => {
+    window.open(`${API_BASE}/remits/from-order/${orderId}/pdf`, "_blank", "noopener");
+  };
+
 
   return (
     <div className="lrf">
@@ -143,29 +178,30 @@ export default function ListRemitFinalWeight() {
                   <td colSpan={4} className="text-center">No hay órdenes para remitar.</td>
                 </tr>
               ) : (
-                rows.map((r) => {
-                  const orderId = r.order_id ?? r.id;
-                  return (
-                    <tr key={orderId}>
-                      <td>{fmtDate(r.date_order)}</td>
-                      <td>{orderId}</td>
-                      <td>{r.client_name}</td>
-                      <td className="text-right">
-                        <div className="actions">
-                          <button className="btn-primary" onClick={() => onRemit(orderId)}>
+                rows.map((r) => (
+                  <tr key={r.order_id}>
+                    <td>{fmtDate(r.date_order)}</td>
+                    <td>{r.order_id}</td>
+                    <td>{r.client_name}</td>
+                    <td className="text-right">
+                      <div className="actions">
+                        {!r.hasRemit ? (
+                          <button className="btn-primary" onClick={() => onRemit(r.order_id)}>
                             Remitar
                           </button>
-                          <button className="btn-icon" title="Ver" onClick={() => onView(orderId)}>
-                            👁
-                          </button>
-                          <button className="btn-icon danger" title="PDF" onClick={() => onPDF(orderId)}>
-                            PDF
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
+                        ) : (
+                          <span style={{ opacity: 0.6, marginRight: 8 }}>Ya remitido</span>
+                        )}
+                        <button className="btn-icon" title="Ver" onClick={() => onView(r.order_id)}>
+                          👁
+                        </button>
+                        <button className="btn-icon danger" title="PDF" onClick={() => onPDF(r.order_id)}>
+                          PDF
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>

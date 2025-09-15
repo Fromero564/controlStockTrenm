@@ -47,8 +47,12 @@ router.get("/remits/:id/pdf", apiSaleController.getRemitPdf);
 // (opcional) directo por order id:
 // routes/api/routerSaleApiController.js
 router.get("/remits/from-order/:id/pdf", apiSaleController.getRemitPdfByOrder);
-
-
+//
+router.get('/remits/by-receipt/:receipt', apiSaleController.getRemitByReceipt);
+router.get("/destinations", apiSaleController.getAllDestinations);
+router.get("/destinations/:id", apiSaleController.getDestinationById);
+router.get("/trucks", apiSaleController.getAllTrucks);
+router.get("/trucks/:id", apiSaleController.getTruckById);
 
 
 //Api para cargar datos de pessada tanto general como de cada item de una orden de venta
@@ -69,7 +73,8 @@ router.post("/sale-conditions",apiSaleController.createSaleCondition);
 router.post("/payment-conditions", apiSaleController.createPaymentCondition);
 // Crear el remito final a partir de una orden
 router.post("/remits/from-order/:id", apiSaleController.createRemitFromOrder);
-
+router.post("/destinations", apiSaleController.createDestination);
+router.post("/trucks", apiSaleController.createTruck);
 
 //Api para eliminar un Vendedor
 router.delete("/delete-seller/:id", apiSaleController.deleteSeller);
@@ -81,6 +86,8 @@ router.delete("/sale-conditions/:id", apiSaleController.deleteSaleCondition);
 router.delete("/payment-conditions/:id", apiSaleController.deletePaymentCondition);
 //Api para eliminar un chofer
 router.delete("/drivers/:id", apiSaleController.deleteDriver);
+router.delete("/destinations/:id", apiSaleController.deleteDestination);
+router.delete("/trucks/:id", apiSaleController.deleteTruck);
 
 
 //Api para modificar un vendedor
@@ -99,6 +106,8 @@ router.put("/sell-order-products/:id", apiSaleController.updateSellOrderProductQ
 router.put("/orders/:id/weight-check", apiSaleController.setOrderWeightChecked);
 //Api para editar un chofer
 router.put("/drivers/:id", apiSaleController.updateDriver);
+router.put("/destinations/:id", apiSaleController.updateDestination);
+router.put("/trucks/:id", apiSaleController.updateTruck);
 
 
 

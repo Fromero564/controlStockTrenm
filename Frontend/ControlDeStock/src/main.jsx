@@ -53,6 +53,9 @@ import ListDrivers from './features/sales/transport/ListDrivers.jsx';
 import AvailableStockOrders from './components/AvailableStockOrders.jsx';
 import ListRemitFinalWeight from './features/sales/ListRemitFinalWeight.jsx';
 import RemitControlState from './features/sales/RemitControlState.jsx';
+import RemitPreview from './features/sales/RemitPreview.jsx';
+import ListDestination from './features/sales/transport/ListDestination.jsx';
+import ListTruck from './features/sales/transport/ListTruck.jsx';
 
 
 
@@ -471,6 +474,30 @@ const router = createBrowserRouter([
     ),
   },
   {
+    path: "/remits/preview/:id",
+    element: (
+      <ProtectedRoute>
+        <RemitPreview />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/list-destination",
+    element: (
+      <ProtectedRoute>
+        <ListDestination />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/trucks",
+    element: (
+      <ProtectedRoute>
+        <ListTruck/>
+      </ProtectedRoute>
+    ),
+  },
+  {
     path: "/sale-condition-load/:id",
     element: (
       <ProtectedRoute>
@@ -486,54 +513,54 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
-    {
+  {
     path: "/load-new-driver",
     element: (
       <ProtectedRoute>
-        <LoadNewDriver/>
-      </ProtectedRoute>
-    ),
-  },
-    {
-    path: "/load-new-driver/:id",
-    element: (
-      <ProtectedRoute>
-        <LoadNewDriver/>
-      </ProtectedRoute>
-    ),
-  },
-   {
-    path: "/list-drivers",
-    element: (
-      <ProtectedRoute>
-        <ListDrivers/>
-      </ProtectedRoute>
-    ),
-  },
-   {
-    path: "/list-final-remits",
-    element: (
-      <ProtectedRoute>
-        <ListRemitFinalWeight/>
-      </ProtectedRoute>
-    ),
-  },
-   {
-    path: "/remit-control-state/:id",
-    element: (
-      <ProtectedRoute>
-        <RemitControlState/>
+        <LoadNewDriver />
       </ProtectedRoute>
     ),
   },
   {
-  path: "/available-stock",
-  element: (
-    <ProtectedRoute>
-      <AvailableStockOrders/>
-    </ProtectedRoute>
-  ),
-},
+    path: "/load-new-driver/:id",
+    element: (
+      <ProtectedRoute>
+        <LoadNewDriver />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/list-drivers",
+    element: (
+      <ProtectedRoute>
+        <ListDrivers />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/list-final-remits",
+    element: (
+      <ProtectedRoute>
+        <ListRemitFinalWeight />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/remit-control-state/:id",
+    element: (
+      <ProtectedRoute>
+        <RemitControlState />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/available-stock",
+    element: (
+      <ProtectedRoute>
+        <AvailableStockOrders />
+      </ProtectedRoute>
+    ),
+  },
 ]);
 
 

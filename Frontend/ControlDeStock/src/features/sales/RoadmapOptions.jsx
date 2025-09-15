@@ -9,8 +9,8 @@ const RoadmapOptions = () => {
 
     const sections = [
        { title: "HOJAS DE RUTAS", desc: "", viewPath: "/", newPath: "/", newText: "Nueva hoja de ruta" },
-        { title: "DESTINO", desc: "", viewPath: "/", newPath: "/", newText: "Agregar destino" },
-        { title: "CAMION", desc: "", viewPath: "/",  newPath: "/", newText: "Agregar camión" },
+        { title: "DESTINO", desc: "", viewPath: "/list-destination", newPath: "", newText: "Agregar destino" },
+        { title: "CAMION", desc: "", viewPath: "/trucks",  newPath: "", newText: "Agregar camión" },
         { title: "CHOFERES", desc: "", viewPath: "/list-drivers", newPath: "/load-new-driver", newText: "Agregar chofer" },
      
     ];

@@ -1,3 +1,4 @@
+// src/views/orders/OrderWeight.jsx
 import { useEffect, useMemo, useState, useRef, Fragment } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Swal from "sweetalert2";
@@ -8,70 +9,103 @@ import { faTrash } from "@fortawesome/free-solid-svg-icons";
 
 const API_BASE = (import.meta.env.VITE_API_URL || "").replace(/\/+$/, "");
 
-
+// Helpers
 const isCaponLike = (name = "") => {
   const s = (name || "").toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "");
   return s.includes("capon") || s.includes("capo") || s.includes("media res capon");
 };
-
 const fmt = (v) => (v === 0 || v ? String(v) : "—");
 const n2 = (v) => Number(v || 0).toFixed(2);
-
-// Helpers
 const toDigits = (str) => String(str ?? "").replace(/[^\d]/g, "");
-const toNumberOr = (str, fallback = 0) => {
+const toNumberOr = (str, fb = 0) => {
   const n = Number(str);
-  return Number.isFinite(n) ? n : fallback;
+  return Number.isFinite(n) ? n : fb;
 };
 
 export default function OrderWeight() {
-  const { id } = useParams();
+  const { id } = useParams(); // ID de la orden
   const navigate = useNavigate();
 
+  // Encabezado
   const [header, setHeader] = useState(null);
   const [loadingHeader, setLoadingHeader] = useState(false);
 
+  // Líneas (productos de la orden)
   const [lines, setLines] = useState([]);
   const [loadingLines, setLoadingLines] = useState(false);
 
-  // Detalle por línea: { [lineId]: Array<{ cant: string|number, garron, tara, bruto }> }
+  // Detalle por línea: { [lineId]: Array<{ cant, garron, tara, bruto }> }
   const [draft, setDraft] = useState({});
-  // Empaque por línea (arriba)
+  // Empaque por línea
   const [pkgByLine, setPkgByLine] = useState({}); // { [lineId]: string }
-
-  // visibilidad del detalle por línea
+  // Visibilidad de detalle por línea
   const [open, setOpen] = useState({});
-  
+  // “Agregar filas”
   const [addQtyMap, setAddQtyMap] = useState({}); // { [lineId]: string }
 
+  // Taras disponibles
   const [tares, setTares] = useState([]);
+  // Comentarios
   const [comment, setComment] = useState("");
 
   // refs para auto-scroll al abrir el detalle
   const subRefs = useRef({});
-  // guard para NO autoagregar dos veces en StrictMode / dobles renders
+  // guard para NO autoagregar dos veces
   const autoAddedRef = useRef({}); // { [lineId]: boolean }
 
+  // -------- CARGA SOLO PARA PESAR ----------
   useEffect(() => {
-    const loadHeader = async () => {
+    const load = async () => {
       setLoadingHeader(true);
+      setLoadingLines(true);
       try {
-        const res = await fetch(`${API_BASE}/orders/${id}/header`);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
-        if (!data?.ok) throw new Error(data?.msg || "Error encabezado");
-        setHeader(data.header);
-        setComment(data.header?.observation_order || "");
+        const [hRes, pRes] = await Promise.all([
+          fetch(`${API_BASE}/orders/${id}/header`),
+          fetch(`${API_BASE}/sell-order-products/${id}`),
+        ]);
+
+        if (!hRes.ok) throw new Error(`Header HTTP ${hRes.status}`);
+        if (!pRes.ok) throw new Error(`Productos HTTP ${pRes.status}`);
+
+        const hData = await hRes.json();
+        const pData = await pRes.json();
+        if (!hData?.ok) throw new Error(hData?.msg || "Header inválido");
+        if (!pData?.ok) throw new Error(pData?.msg || "Productos inválidos");
+
+        setHeader(hData.header || null);
+        setComment(hData.header?.observation_order || "");
+
+        const rows = pData.products || [];
+        setLines(rows);
+
+        // Inicializaciones
+        const initOpen = {};
+        const initDraft = {};
+        const initAddQty = {};
+        const initPkg = {};
+        rows.forEach((ln) => {
+          initOpen[ln.id] = false;
+          initDraft[ln.id] = [];
+          initAddQty[ln.id] = "0";
+          initPkg[ln.id] = "";
+        });
+        setOpen(initOpen);
+        setDraft(initDraft);
+        setAddQtyMap(initAddQty);
+        setPkgByLine(initPkg);
+        autoAddedRef.current = {};
       } catch (e) {
         console.error(e);
-        Swal.fire("Error", "No se pudo obtener el encabezado.", "error");
+        Swal.fire("Error", e.message || "No se pudieron cargar los datos.", "error");
       } finally {
         setLoadingHeader(false);
+        setLoadingLines(false);
       }
     };
-    loadHeader();
+    load();
   }, [id]);
 
+  // Taras
   useEffect(() => {
     const loadTares = async () => {
       try {
@@ -87,119 +121,7 @@ export default function OrderWeight() {
     loadTares();
   }, []);
 
-  useEffect(() => {
-    const loadLines = async () => {
-      setLoadingLines(true);
-      try {
-        const res = await fetch(`${API_BASE}/sell-order-products/${id}`);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
-        if (!data?.ok) throw new Error(data?.msg || "Error productos");
-        const rows = data.products || [];
-        setLines(rows);
-
-        // Inicializaciones
-        const initOpen = {};
-        const initDraft = {};
-        const initAddQty = {};
-        const initPkg = {};
-        rows.forEach((ln) => {
-          initOpen[ln.id] = false;
-          initDraft[ln.id] = [];
-          initAddQty[ln.id] = "0"; // ⟵ por defecto 0 en “Agregar filas”
-          initPkg[ln.id] = "";     // empaque por línea
-        });
-        setOpen(initOpen);
-        setDraft(initDraft);
-        setAddQtyMap(initAddQty);
-        setPkgByLine(initPkg);
-
-        // reset de guards de auto-agregado
-        autoAddedRef.current = {};
-      } catch (e) {
-        console.error(e);
-        Swal.fire("Error", "No se pudieron cargar los productos.", "error");
-      } finally {
-        setLoadingLines(false);
-      }
-    };
-    loadLines();
-  }, [id]);
-
-  const addDetail = (lineId, count = 1) => {
-    setDraft((old) => {
-      const current = old[lineId] || [];
-      const line = lines.find((l) => l.id === lineId);
-      const solicitada = Number(line?.product_quantity || 0);
-
-      // piezas ya cargadas (sumando "cant" válidos)
-      const piezasActuales = current.reduce((acc, it) => {
-        const n = Number(it.cant);
-        return acc + (Number.isFinite(n) && n > 0 ? n : 0);
-      }, 0);
-      const pendiente = Math.max(0, solicitada - piezasActuales);
-      if (pendiente <= 0) return old;
-
-      const toAdd = Math.min(Math.max(1, Number(count || 1)), pendiente);
-
-      // Todas las filas nuevas con cant = "" (vacío) para que el usuario lo complete
-      const extra = Array.from({ length: toAdd }, () => ({
-        cant: "",   // ⟵ vacío
-        garron: "",
-        tara: 0,
-        bruto: "",
-      }));
-
-      return { ...old, [lineId]: [...current, ...extra] };
-    });
-  };
-
-  const removeDetail = (lineId, index) => {
-    setDraft((old) => {
-      const current = [...(old[lineId] || [])];
-      current.splice(index, 1);
-      return { ...old, [lineId]: current };
-    });
-  };
-
-  const setField = (lineId, index, field, value) => {
-    setDraft((old) => {
-      const arr = [...(old[lineId] || [])];
-      arr[index] = { ...(arr[index] || {}), [field]: value };
-      return { ...old, [lineId]: arr };
-    });
-  };
-
-  // CANT.: permite vacío. Si hay valor, lo clamp a [1, pendiente disponible]
-  const setCantSafe = (lineId, index, raw) => {
-    const str = toDigits(raw);
-    // vacío → se guarda vacío
-    if (str === "") {
-      setDraft((old) => {
-        const arr = [...(old[lineId] || [])];
-        arr[index] = { ...(arr[index] || {}), cant: "" };
-        return { ...old, [lineId]: arr };
-      });
-      return;
-    }
-
-    const line = lines.find((l) => l.id === lineId);
-    const solicitada = Number(line?.product_quantity || 0);
-
-    setDraft((old) => {
-      const arr = [...(old[lineId] || [])];
-      const others = arr.reduce((acc, it, i) => {
-        if (i === index) return acc;
-        const n = Number(it.cant);
-        return acc + (Number.isFinite(n) && n > 0 ? n : 0);
-      }, 0);
-      const maxForThis = Math.max(0, solicitada - others);
-      const val = Math.min(Math.max(Number(str), 1), Math.max(1, maxForThis));
-      arr[index] = { ...(arr[index] || {}), cant: String(val) };
-      return { ...old, [lineId]: arr };
-    });
-  };
-
+  // Cálculos por línea
   const computedByLine = useMemo(() => {
     const group = {};
     lines.forEach((ln) => {
@@ -247,6 +169,80 @@ export default function OrderWeight() {
     return group;
   }, [lines, draft]);
 
+  // -------- Handlers --------
+  const addDetail = (lineId, count = 1) => {
+    setDraft((old) => {
+      const current = old[lineId] || [];
+      const line = lines.find((l) => l.id === lineId);
+      const solicitada = Number(line?.product_quantity || 0);
+
+      // piezas ya cargadas (sumando "cant" válidos)
+      const piezasActuales = current.reduce((acc, it) => {
+        const n = Number(it.cant);
+        return acc + (Number.isFinite(n) && n > 0 ? n : 0);
+      }, 0);
+      const pendiente = Math.max(0, solicitada - piezasActuales);
+      if (pendiente <= 0) return old;
+
+      const toAdd = Math.min(Math.max(1, Number(count || 1)), pendiente);
+
+      // Filas nuevas con cant = "" (para completar)
+      const extra = Array.from({ length: toAdd }, () => ({
+        cant: "",
+        garron: "",
+        tara: 0,
+        bruto: "",
+      }));
+
+      return { ...old, [lineId]: [...current, ...extra] };
+    });
+  };
+
+  const removeDetail = (lineId, index) => {
+    setDraft((old) => {
+      const current = [...(old[lineId] || [])];
+      current.splice(index, 1);
+      return { ...old, [lineId]: current };
+    });
+  };
+
+  const setField = (lineId, index, field, value) => {
+    setDraft((old) => {
+      const arr = [...(old[lineId] || [])];
+      arr[index] = { ...(arr[index] || {}), [field]: value };
+      return { ...old, [lineId]: arr };
+    });
+  };
+
+  // CANT.: permite vacío. Si hay valor, lo clamp a [1, pendiente disponible]
+  const setCantSafe = (lineId, index, raw) => {
+    const str = toDigits(raw);
+    if (str === "") {
+      setDraft((old) => {
+        const arr = [...(old[lineId] || [])];
+        arr[index] = { ...(arr[index] || {}), cant: "" };
+        return { ...old, [lineId]: arr };
+      });
+      return;
+    }
+
+    const line = lines.find((l) => l.id === lineId);
+    const solicitada = Number(line?.product_quantity || 0);
+
+    setDraft((old) => {
+      const arr = [...(old[lineId] || [])];
+      const others = arr.reduce((acc, it, i) => {
+        if (i === index) return acc;
+        const n = Number(it.cant);
+        return acc + (Number.isFinite(n) && n > 0 ? n : 0);
+      }, 0);
+      const maxForThis = Math.max(0, solicitada - others);
+      const val = Math.min(Math.max(Number(str), 1), Math.max(1, maxForThis));
+      arr[index] = { ...(arr[index] || {}), cant: String(val) };
+      return { ...old, [lineId]: arr };
+    });
+  };
+
   // Abrir/cerrar: al abrir, autoagrega 1 fila si no hay y hace scroll al detalle
   const toggleOpen = (lineId) => {
     setOpen((o) => {
@@ -255,7 +251,7 @@ export default function OrderWeight() {
       if (willOpen) {
         if (!autoAddedRef.current[lineId]) {
           const hasRows = (draft[lineId] || []).length > 0;
-          if (!hasRows) addDetail(lineId, 1); // una fila vacía
+          if (!hasRows) addDetail(lineId, 1); // auto agrega 1
           autoAddedRef.current[lineId] = true;
         }
         setTimeout(() => {
@@ -276,7 +272,7 @@ export default function OrderWeight() {
       Swal.fire("Cantidad inválida", "Ingresá un número mayor a 0.", "warning");
       return;
     }
-    addDetail(ln.id, typed);       // addDetail ya limita por pendiente
+    addDetail(ln.id, typed); // addDetail ya limita por pendiente
     setAddQtyMap((m) => ({ ...m, [ln.id]: "0" })); // vuelve a 0
   };
 
@@ -297,7 +293,7 @@ export default function OrderWeight() {
         product_name: ln.product_name,
         unit_price: Number(ln.product_price || 0),
         qty_requested: Number(ln.product_quantity || 0),
-        packaging_type: String(pkgByLine[ln.id] || "").trim(), // empaque una sola vez por línea
+        packaging_type: String(pkgByLine[ln.id] || "").trim(), // empaque por línea
         is_capon_like: isCaponLike(ln.product_name),
         details,
       };
@@ -361,6 +357,7 @@ export default function OrderWeight() {
     }
   };
 
+  // ---------- Render ----------
   return (
     <div className="ow">
       <Navbar />
@@ -497,7 +494,7 @@ export default function OrderWeight() {
 
                         <td className="ow-number">{n2(comp.promedio)}</td>
 
-                        {/* PENDIENTE con estilos inline */}
+                        {/* PENDIENTE */}
                         <td>
                           <span
                             style={{
@@ -534,7 +531,7 @@ export default function OrderWeight() {
                               ref={(el) => (subRefs.current[ln.id] = el)}
                               style={{ overflow: "visible" }}
                             >
-                              {/* Barra “Agregar filas” centrada y con estilo */}
+                              {/* Barra “Agregar filas” */}
                               <div
                                 style={{
                                   display: "flex",
@@ -555,7 +552,7 @@ export default function OrderWeight() {
 
                                 <div className="ow-pillInput" style={{ width: 120 }}>
                                   <input
-                                    type="text" // sin spinner; tipeo libre
+                                    type="text"
                                     inputMode="numeric"
                                     placeholder="0"
                                     value={addQty}
@@ -587,6 +584,7 @@ export default function OrderWeight() {
                                 </span>
                               </div>
 
+                              {/* Subtabla (inputs habilitados) */}
                               <table className="ow-subtable">
                                 <thead>
                                   <tr>
@@ -634,12 +632,7 @@ export default function OrderWeight() {
                                               placeholder="0"
                                               value={String(d.garron ?? "")}
                                               onChange={(e) =>
-                                                setField(
-                                                  ln.id,
-                                                  idx,
-                                                  "garron",
-                                                  toDigits(e.target.value)
-                                                )
+                                                setField(ln.id, idx, "garron", toDigits(e.target.value))
                                               }
                                               style={{ textAlign: "center" }}
                                             />
@@ -733,6 +726,7 @@ export default function OrderWeight() {
               />
             </div>
 
+            {/* Acciones */}
             <div className="ow-actions">
               <button className="ow-btn-primary" onClick={finalize}>
                 Finalizar y guardar

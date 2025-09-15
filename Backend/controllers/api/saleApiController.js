@@ -7,7 +7,8 @@ const { stringify } = require("querystring");
 const OrderProductsClient = require("../../src/config/models/OrderProductsClient");
 const PDFDocument = require("pdfkit");
 
-
+const Truck = db.Truck;
+const Destination = db.Destination;
 const billSupplier = db.BillSupplier;
 const ProductSubproduct = db.ProductSubproduct;
 const meatIncome = db.MeatIncome;
@@ -53,41 +54,41 @@ const toBool = (v) => {
 
 
 function drawHeader(doc, remit) {
-  const left = 50;
-  const top = 60;
+    const left = 50;
+    const top = 60;
 
-  doc.font("Helvetica-Bold").fontSize(20).text("Remito", left, top);
-  doc.font("Helvetica").fontSize(10).text(`N° ${remit.receipt_number}`, left, top + 24);
-  doc.text(`Fecha: ${new Date(remit.date_order || remit.created_at || Date.now()).toLocaleDateString()}`, left, top + 38);
+    doc.font("Helvetica-Bold").fontSize(20).text("Remito", left, top);
+    doc.font("Helvetica").fontSize(10).text(`N° ${remit.receipt_number}`, left, top + 24);
+    doc.text(`Fecha: ${new Date(remit.date_order || remit.created_at || Date.now()).toLocaleDateString()}`, left, top + 38);
 
-  const col1W = 220;
-  const col2W = 200;
-  const col3W = 140;
+    const col1W = 220;
+    const col2W = 200;
+    const col3W = 140;
 
-  const yBase = top + 62;
+    const yBase = top + 62;
 
-  let x = left, y = yBase;
-  doc.font("Helvetica-Bold").text("CLIENTE", x, y); y += 14;
-  doc.font("Helvetica").text(remit.client_name || "-", x, y, { width: col1W }); y += 18;
-  doc.font("Helvetica-Bold").text("VENDEDOR", x, y); y += 14;
-  doc.font("Helvetica").text(remit.salesman_name || "-", x, y, { width: col1W });
+    let x = left, y = yBase;
+    doc.font("Helvetica-Bold").text("CLIENTE", x, y); y += 14;
+    doc.font("Helvetica").text(remit.client_name || "-", x, y, { width: col1W }); y += 18;
+    doc.font("Helvetica-Bold").text("VENDEDOR", x, y); y += 14;
+    doc.font("Helvetica").text(remit.salesman_name || "-", x, y, { width: col1W });
 
-  x = left + col1W; y = yBase;
-  doc.font("Helvetica-Bold").text("LISTA DE PRECIO", x, y); y += 14;
-  doc.font("Helvetica").text(remit.price_list || "-", x, y, { width: col2W }); y += 18;
-  doc.font("Helvetica-Bold").text("COND. VENTA", x, y); y += 14;
-  doc.font("Helvetica").text(remit.sell_condition || "-", x, y, { width: col2W });
+    x = left + col1W; y = yBase;
+    doc.font("Helvetica-Bold").text("LISTA DE PRECIO", x, y); y += 14;
+    doc.font("Helvetica").text(remit.price_list || "-", x, y, { width: col2W }); y += 18;
+    doc.font("Helvetica-Bold").text("COND. VENTA", x, y); y += 14;
+    doc.font("Helvetica").text(remit.sell_condition || "-", x, y, { width: col2W });
 
-  x = left + col1W + col2W; y = yBase;
-  doc.font("Helvetica-Bold").text("COND. COBRO", x, y); y += 14;
-  doc.font("Helvetica").text(remit.payment_condition || "-", x, y, { width: col3W }); y += 18;
-  doc.font("Helvetica-Bold").text("ORDEN DE VENTA", x, y, { width: col3W, lineBreak: false, ellipsis: true }); y += 14;
-  doc.font("Helvetica").text(String(remit.order_id ?? "-"), x, y, { width: col3W });
+    x = left + col1W + col2W; y = yBase;
+    doc.font("Helvetica-Bold").text("COND. COBRO", x, y); y += 14;
+    doc.font("Helvetica").text(remit.payment_condition || "-", x, y, { width: col3W }); y += 18;
+    doc.font("Helvetica-Bold").text("ORDEN DE VENTA", x, y, { width: col3W, lineBreak: false, ellipsis: true }); y += 14;
+    doc.font("Helvetica").text(String(remit.order_id ?? "-"), x, y, { width: col3W });
 
-  const lineY = yBase + 70;
-  doc.moveTo(left, lineY).lineTo(545, lineY).strokeColor("#cfd8e3").lineWidth(1).stroke();
+    const lineY = yBase + 70;
+    doc.moveTo(left, lineY).lineTo(545, lineY).strokeColor("#cfd8e3").lineWidth(1).stroke();
 
-  return lineY + 12;
+    return lineY + 12;
 }
 
 const nf = new Intl.NumberFormat("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -96,263 +97,263 @@ function fmtMoney(v) { return nf.format(Number(v || 0)); }
 function fmtQty(v) { return ni.format(Number(v || 0)); }
 
 function drawTable(doc, items, startY = 210) {
-  const topY = startY + 10;
+    const topY = startY + 10;
 
-  const left = doc.page.margins.left || 40;
-  const right = doc.page.margins.right || 40;
-  const availableWidth = doc.page.width - left - right;
+    const left = doc.page.margins.left || 40;
+    const right = doc.page.margins.right || 40;
+    const availableWidth = doc.page.width - left - right;
 
-  const COLS = [
-    { key: "product_id",   title: "CÓDIGO",   width: 50,  align: "left"   },
-    { key: "product_name", title: "PRODUCTO", width: 155, align: "left"   },
-    { key: "unit_measure", title: "UNIDAD",   width: 45,  align: "center" },
-    { key: "qty",          title: "CANT.",    width: 55,  align: "right"  },
-    { key: "net_weight",   title: "P. NETO",  width: 60,  align: "right"  },
-    { key: "unit_price",   title: "P. UNIT",  width: 65,  align: "right"  },
-    { key: "total",        title: "P. TOTAL", width: 85,  align: "right"  },
-  ];
-  const sumWidths = COLS.reduce((a, c) => a + c.width, 0);
-  if (sumWidths !== Math.round(availableWidth)) {
-    COLS[COLS.length - 1].width += (availableWidth - sumWidths);
-  }
+    const COLS = [
+        { key: "product_id", title: "CÓDIGO", width: 50, align: "left" },
+        { key: "product_name", title: "PRODUCTO", width: 155, align: "left" },
+        { key: "unit_measure", title: "UNIDAD", width: 45, align: "center" },
+        { key: "qty", title: "CANT.", width: 55, align: "right" },
+        { key: "net_weight", title: "P. NETO", width: 60, align: "right" },
+        { key: "unit_price", title: "P. UNIT", width: 65, align: "right" },
+        { key: "total", title: "P. TOTAL", width: 85, align: "right" },
+    ];
+    const sumWidths = COLS.reduce((a, c) => a + c.width, 0);
+    if (sumWidths !== Math.round(availableWidth)) {
+        COLS[COLS.length - 1].width += (availableWidth - sumWidths);
+    }
 
-  const rowHeight = 18;
-  const headerHeight = 22;
-  let y = topY;
-
-  doc.moveTo(left, y).lineTo(left + availableWidth, y).strokeColor("#cfcfd1").lineWidth(1).stroke();
-  y += 6;
-
-  doc.font("Helvetica-Bold").fontSize(10);
-  let x = left;
-  COLS.forEach(col => {
-    doc.text(col.title, x + 2, y, { width: col.width - 4, align: col.align, ellipsis: true, lineBreak: false });
-    x += col.width;
-  });
-  y += headerHeight - 8;
-
-  doc.moveTo(left, y).lineTo(left + availableWidth, y).strokeColor("#cfcfd1").lineWidth(1).stroke();
-  y += 6;
-
-  doc.font("Helvetica").fontSize(9);
-
-  let totalFinal = 0;
-  let totalItems = 0;
-
-  const drawHeaderIfPageBreak = () => {
-    doc.font("Helvetica").fontSize(9);
-    doc.moveDown(0.2);
-    let yy = doc.y;
-    yy = Math.max(yy, doc.page.margins.top + 120);
-    y = yy;
+    const rowHeight = 18;
+    const headerHeight = 22;
+    let y = topY;
 
     doc.moveTo(left, y).lineTo(left + availableWidth, y).strokeColor("#cfcfd1").lineWidth(1).stroke();
     y += 6;
+
     doc.font("Helvetica-Bold").fontSize(10);
-    let xx = left;
+    let x = left;
     COLS.forEach(col => {
-      doc.text(col.title, xx + 2, y, { width: col.width - 4, align: col.align, ellipsis: true, lineBreak: false });
-      xx += col.width;
+        doc.text(col.title, x + 2, y, { width: col.width - 4, align: col.align, ellipsis: true, lineBreak: false });
+        x += col.width;
     });
     y += headerHeight - 8;
 
     doc.moveTo(left, y).lineTo(left + availableWidth, y).strokeColor("#cfcfd1").lineWidth(1).stroke();
     y += 6;
+
     doc.font("Helvetica").fontSize(9);
-  };
 
-  const needPage = (nextY) => nextY > (doc.page.height - doc.page.margins.bottom - 120);
+    let totalFinal = 0;
+    let totalItems = 0;
 
-  items.forEach((it) => {
-    const qty = Number(it.qty || 0);
-    const netWeight = Number(it.net_weight || 0);
-    const unitPrice = Number(it.unit_price || 0);
-    const total = (it.total != null) ? Number(it.total) : unitPrice * qty;
+    const drawHeaderIfPageBreak = () => {
+        doc.font("Helvetica").fontSize(9);
+        doc.moveDown(0.2);
+        let yy = doc.y;
+        yy = Math.max(yy, doc.page.margins.top + 120);
+        y = yy;
 
-    totalItems += qty;
-    totalFinal += total;
+        doc.moveTo(left, y).lineTo(left + availableWidth, y).strokeColor("#cfcfd1").lineWidth(1).stroke();
+        y += 6;
+        doc.font("Helvetica-Bold").fontSize(10);
+        let xx = left;
+        COLS.forEach(col => {
+            doc.text(col.title, xx + 2, y, { width: col.width - 4, align: col.align, ellipsis: true, lineBreak: false });
+            xx += col.width;
+        });
+        y += headerHeight - 8;
 
-    if (needPage(y + rowHeight)) {
-      doc.addPage();
-      drawHeaderIfPageBreak();
-    }
+        doc.moveTo(left, y).lineTo(left + availableWidth, y).strokeColor("#cfcfd1").lineWidth(1).stroke();
+        y += 6;
+        doc.font("Helvetica").fontSize(9);
+    };
 
-    let xx = left;
-    const cells = [
-      String(it.product_id ?? ""),
-      String(it.product_name ?? ""),
-      String(it.unit_measure ?? ""),
-      fmtQty(qty),
-      nf.format(netWeight),
-      fmtMoney(unitPrice),
-      fmtMoney(total),
-    ];
+    const needPage = (nextY) => nextY > (doc.page.height - doc.page.margins.bottom - 120);
 
-    cells.forEach((val, i) => {
-      const col = COLS[i];
-      doc.text(val, xx + 2, y, { width: col.width - 4, align: col.align, ellipsis: true });
-      xx += col.width;
+    items.forEach((it) => {
+        const qty = Number(it.qty || 0);
+        const netWeight = Number(it.net_weight || 0);
+        const unitPrice = Number(it.unit_price || 0);
+        const total = (it.total != null) ? Number(it.total) : unitPrice * qty;
+
+        totalItems += qty;
+        totalFinal += total;
+
+        if (needPage(y + rowHeight)) {
+            doc.addPage();
+            drawHeaderIfPageBreak();
+        }
+
+        let xx = left;
+        const cells = [
+            String(it.product_id ?? ""),
+            String(it.product_name ?? ""),
+            String(it.unit_measure ?? ""),
+            fmtQty(qty),
+            nf.format(netWeight),
+            fmtMoney(unitPrice),
+            fmtMoney(total),
+        ];
+
+        cells.forEach((val, i) => {
+            const col = COLS[i];
+            doc.text(val, xx + 2, y, { width: col.width - 4, align: col.align, ellipsis: true });
+            xx += col.width;
+        });
+
+        y += rowHeight;
+
+        doc.moveTo(left, y).lineTo(left + availableWidth, y).strokeColor("#e6e6e8").lineWidth(0.5).stroke();
     });
 
-    y += rowHeight;
-
-    doc.moveTo(left, y).lineTo(left + availableWidth, y).strokeColor("#e6e6e8").lineWidth(0.5).stroke();
-  });
-
-  return { y: y + 20, totalFinal, totalItems };
+    return { y: y + 20, totalFinal, totalItems };
 }
 
 function drawFooter(doc, remit, y, totalFinal, totalItems) {
-  const left = 50;
+    const left = 50;
 
-  doc.font("Helvetica-Bold").fontSize(10);
-  doc.text(`TOTAL ÍTEMS: ${fmtQty(totalItems ?? remit.total_items ?? 0)}`, left, y);
-  y += 16;
-  doc.text(`TOTAL $: ${fmtMoney(totalFinal ?? remit.total_amount ?? 0)}`, left, y);
+    doc.font("Helvetica-Bold").fontSize(10);
+    doc.text(`TOTAL ÍTEMS: ${fmtQty(totalItems ?? remit.total_items ?? 0)}`, left, y);
+    y += 16;
+    doc.text(`TOTAL $: ${fmtMoney(totalFinal ?? remit.total_amount ?? 0)}`, left, y);
 
-  if (remit.note) {
-    y += 18;
-    doc.font("Helvetica-Bold").text("OBSERVACIONES", left, y);
-    y += 14;
-    doc.font("Helvetica").text(remit.note, left, y, { width: 360 });
-  }
+    if (remit.note) {
+        y += 18;
+        doc.font("Helvetica-Bold").text("OBSERVACIONES", left, y);
+        y += 14;
+        doc.font("Helvetica").text(remit.note, left, y, { width: 360 });
+    }
 
-  const boxY = y + 24;
-  doc.roundedRect(370, boxY, 175, 70, 6).strokeColor("#b8c6d8").lineWidth(1).stroke();
-  doc.font("Helvetica").text("Recibí Conforme", 380, boxY + 8);
+    const boxY = y + 24;
+    doc.roundedRect(370, boxY, 175, 70, 6).strokeColor("#b8c6d8").lineWidth(1).stroke();
+    doc.font("Helvetica").text("Recibí Conforme", 380, boxY + 8);
 }
 
 async function streamRemitPdfById(req, res) {
-  try {
-    const { id } = req.params;
-    const remit = await FinalRemit.findByPk(id);
-    if (!remit) return res.status(404).json({ ok: false, msg: "Remito no encontrado" });
+    try {
+        const { id } = req.params;
+        const remit = await FinalRemit.findByPk(id);
+        if (!remit) return res.status(404).json({ ok: false, msg: "Remito no encontrado" });
 
-    const items = await FinalRemitProduct.findAll({
-      where: { final_remit_id: id },
-      order: [["id", "ASC"]],
-    });
+        const items = await FinalRemitProduct.findAll({
+            where: { final_remit_id: id },
+            order: [["id", "ASC"]],
+        });
 
-    const rows = items.map((i) => ({
-      product_id: i.product_id,
-      product_name: i.product_name,
-      unit_measure: i.unit_measure || "-",
-      qty: Number(i.qty || 0),
-      net_weight: Number(i.net_weight || 0),
-      unit_price: Number(i.unit_price || 0),
-      total: Number(i.unit_price || 0) * Number(i.qty || 0),
-    }));
+        const rows = items.map((i) => ({
+            product_id: i.product_id,
+            product_name: i.product_name,
+            unit_measure: i.unit_measure || "-",
+            qty: Number(i.qty || 0),
+            net_weight: Number(i.net_weight || 0),
+            unit_price: Number(i.unit_price || 0),
+            total: Number(i.unit_price || 0) * Number(i.qty || 0),
+        }));
 
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `inline; filename=remito_${remit.receipt_number}.pdf`);
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader("Content-Disposition", `inline; filename=remito_${remit.receipt_number}.pdf`);
 
-    const doc = new PDFDocument({ margin: 40, size: "A4" });
-    doc.pipe(res);
+        const doc = new PDFDocument({ margin: 40, size: "A4" });
+        doc.pipe(res);
 
-    const startY = drawHeader(doc, remit.toJSON());
-    const { y: afterY, totalFinal, totalItems } = drawTable(doc, rows, startY);
-    drawFooter(doc, remit.toJSON(), afterY, totalFinal, totalItems);
+        const startY = drawHeader(doc, remit.toJSON());
+        const { y: afterY, totalFinal, totalItems } = drawTable(doc, rows, startY);
+        drawFooter(doc, remit.toJSON(), afterY, totalFinal, totalItems);
 
-    doc.end();
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ ok: false, msg: "Error al generar PDF" });
-  }
+        doc.end();
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ ok: false, msg: "Error al generar PDF" });
+    }
 }
 
 async function buildRemitPreview(orderId) {
-  const order = await NewOrder.findByPk(orderId);
-  if (!order) throw new Error("Orden no encontrada");
+    const order = await NewOrder.findByPk(orderId);
+    if (!order) throw new Error("Orden no encontrada");
 
-  const lines = await ProductsSellOrder.findAll({
-    where: { sell_order_id: orderId },
-    order: [["id", "ASC"]],
-  });
-
-  const items = [];
-  let totalItems = 0;
-  let totalAmount = 0;
-
-  for (const l of lines) {
-    const unit_price = Number(l.product_price || 0);
-
-    const priceRow = await PriceListProduct.findOne({
-      where: { product_id: String(l.product_id) },
-      order: [["id", "ASC"]],
+    const lines = await ProductsSellOrder.findAll({
+        where: { sell_order_id: orderId },
+        order: [["id", "ASC"]],
     });
 
-    const unit_measure = priceRow?.unidad_venta || null;
+    const items = [];
+    let totalItems = 0;
+    let totalAmount = 0;
 
-    const headers = await CutsHeader.findAll({
-      where: { receipt_number: orderId, product_code: String(l.product_id) },
-      include: [{ model: CutsDetail, as: "details" }],
-      order: [["id", "ASC"]],
-    });
+    for (const l of lines) {
+        const unit_price = Number(l.product_price || 0);
 
-    let units_count = 0;
-    let net_weight = 0;
+        const priceRow = await PriceListProduct.findOne({
+            where: { product_id: String(l.product_id) },
+            order: [["id", "ASC"]],
+        });
 
-    for (const h of headers) {
-      for (const d of (h.details || [])) {
-        units_count += Number(d.units_count || 0);
-        net_weight += Number(d.net_weight || 0);
-      }
+        const unit_measure = priceRow?.unidad_venta || null;
+
+        const headers = await CutsHeader.findAll({
+            where: { receipt_number: orderId, product_code: String(l.product_id) },
+            include: [{ model: CutsDetail, as: "details" }],
+            order: [["id", "ASC"]],
+        });
+
+        let units_count = 0;
+        let net_weight = 0;
+
+        for (const h of headers) {
+            for (const d of (h.details || [])) {
+                units_count += Number(d.units_count || 0);
+                net_weight += Number(d.net_weight || 0);
+            }
+        }
+
+        const qty = unit_measure === "KG" ? net_weight : units_count;
+
+        items.push({
+            product_id: l.product_id ?? null,
+            product_name: l.product_name,
+            unit_measure: unit_measure || "-",
+            qty,
+            net_weight,
+            unit_price,
+            total: unit_price * qty,
+        });
+
+        totalItems += Number(qty || 0);
+        totalAmount += unit_price * Number(qty || 0);
     }
 
-    const qty = unit_measure === "KG" ? net_weight : units_count;
+    const header = {
+        receipt_number: order.id,
+        date_order: order.date_order,
+        client_name: order.client_name,
+        salesman_name: order.salesman_name,
+        price_list: order.price_list,
+        sell_condition: order.sell_condition,
+        payment_condition: order.payment_condition,
+        order_id: order.id,
+        total_items: totalItems,
+        total_amount: totalAmount,
+        note: order.observation_order || null,
+    };
 
-    items.push({
-      product_id: l.product_id ?? null,
-      product_name: l.product_name,
-      unit_measure: unit_measure || "-",
-      qty,
-      net_weight,
-      unit_price,
-      total: unit_price * qty,
-    });
-
-    totalItems += Number(qty || 0);
-    totalAmount += unit_price * Number(qty || 0);
-  }
-
-  const header = {
-    receipt_number: order.id,
-    date_order: order.date_order,
-    client_name: order.client_name,
-    salesman_name: order.salesman_name,
-    price_list: order.price_list,
-    sell_condition: order.sell_condition,
-    payment_condition: order.payment_condition,
-    order_id: order.id,
-    total_items: totalItems,
-    total_amount: totalAmount,
-    note: order.observation_order || null,
-  };
-
-  return { header, items };
+    return { header, items };
 }
 
 async function streamRemitPdfByOrder(req, res) {
-  try {
-    const { id } = req.params;
+    try {
+        const { id } = req.params;
 
-    const { header, items } = await buildRemitPreview(id);
+        const { header, items } = await buildRemitPreview(id);
 
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `inline; filename=remito_${header.receipt_number}.pdf`);
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader("Content-Disposition", `inline; filename=remito_${header.receipt_number}.pdf`);
 
-    const doc = new PDFDocument({ margin: 40, size: "A4" });
-    doc.pipe(res);
+        const doc = new PDFDocument({ margin: 40, size: "A4" });
+        doc.pipe(res);
 
-    const startY = drawHeader(doc, header);
-    const { y: afterY, totalFinal, totalItems } = drawTable(doc, items, startY);
-    drawFooter(doc, { ...header, total_amount: totalFinal }, afterY, totalFinal, totalItems);
+        const startY = drawHeader(doc, header);
+        const { y: afterY, totalFinal, totalItems } = drawTable(doc, items, startY);
+        drawFooter(doc, { ...header, total_amount: totalFinal }, afterY, totalFinal, totalItems);
 
-    doc.end();
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ ok: false, msg: "Error al generar PDF" });
-  }
+        doc.end();
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ ok: false, msg: "Error al generar PDF" });
+    }
 }
 
 
@@ -1389,70 +1390,194 @@ const saleApiController = {
             return res.status(500).json({ ok: false, msg: "Error al eliminar chofer" });
         }
     },
+    // Lee header + items de un remito por N° de comprobante
+    getRemitByReceipt: async (req, res) => {
+        try {
+            const { receipt } = req.params; // número de comprobante
+
+            // 1) Headers que matchean el comprobante
+            const headers = await FinalRemit.findAll({
+                where: { receipt_number: receipt },
+                order: [["id", "DESC"]], // si hubiera más de uno, nos quedamos con el último
+            });
+
+            if (!headers.length) {
+                return res.status(404).json({ ok: false, msg: "No existe remito con ese comprobante" });
+            }
+
+            const h = headers[0]; // header elegido
+
+            // 2) Ítems del remito
+            const rows = await FinalRemitProduct.findAll({
+                where: { final_remit_id: h.id },
+                order: [["id", "ASC"]],
+            });
+
+            // 3) Salida normalizada (números casteados)
+            return res.json({
+                ok: true,
+                header: {
+                    id: h.id,
+                    order_id: h.order_id,
+                    receipt_number: h.receipt_number,
+                    client_name: h.client_name,
+                    salesman_name: h.salesman_name,
+                    price_list: h.price_list,
+                    sell_condition: h.sell_condition,
+                    payment_condition: h.payment_condition,
+                    generated_by: h.generated_by,
+                    note: h.note,
+                    total_items: Number(h.total_items || 0),
+                    total_amount: Number(h.total_amount || 0),
+                    created_at: h.created_at,
+                    updated_at: h.updated_at,
+                },
+                items: rows.map((i) => ({
+                    id: i.id,
+                    product_id: i.product_id,
+                    product_name: i.product_name,
+                    unit_price: Number(i.unit_price || 0),
+                    qty: Number(i.qty || 0),
+                    unit_measure: i.unit_measure || null,
+                    gross_weight: Number(i.gross_weight || 0),
+                    net_weight: Number(i.net_weight || 0),
+                    avg_weight: Number(i.avg_weight || 0),
+                    created_at: i.created_at,
+                    updated_at: i.updated_at,
+                })),
+            });
+        } catch (e) {
+            console.error(e);
+            return res.status(500).json({ ok: false, msg: "Error leyendo remito por comprobante" });
+        }
+    },
 
 
-
+    // Preview/estado de remito para una orden
     getRemitControlState: async (req, res) => {
         try {
             const { id } = req.params;
 
+            // 1) ¿Ya existe un remito para esta orden?
+            const existing = await FinalRemit.findOne({
+                where: { order_id: id },
+                include: [{ model: FinalRemitProduct, as: "items" }],
+                order: [[{ model: FinalRemitProduct, as: "items" }, "id", "ASC"]],
+            });
 
+            // Traemos siempre el header original de la orden para la fecha
             const order = await NewOrder.findByPk(id);
             if (!order) return res.status(404).json({ ok: false, msg: "Orden no encontrada" });
 
+            // 1.a) Si ya hay remito, devolvemos datos 100% desde final_* (solo lectura)
+            if (existing) {
+                // completar unidad cuando quedó NULL en final_remit_products
+                const items = await Promise.all(
+                    (existing.items || []).map(async (it) => {
+                        let unit_measure = it.unit_measure || null;
+                        if (!unit_measure) {
+                            const pl = await PriceListProduct.findOne({
+                                where: { product_id: String(it.product_id) },
+                                order: [["id", "ASC"]],
+                            });
+                            unit_measure = pl?.unidad_venta || null; // UN | KG
+                        }
+                        return {
+                            product_id: it.product_id ?? null,
+                            product_name: it.product_name,
+                            unit_price: Number(it.unit_price || 0),
+                            qty: Number(it.qty || 0),
+                            unit_measure,
+                            gross_weight: Number(it.gross_weight || 0),
+                            net_weight: Number(it.net_weight || 0),
+                            avg_weight: Number(it.avg_weight || 0),
+                        };
+                    })
+                );
 
+                const header = {
+                    receipt_number: existing.receipt_number,
+                    order_id: existing.order_id,
+                    date_order: order.date_order, // usamos la fecha de la orden
+                    client_name: existing.client_name,
+                    salesman_name: existing.salesman_name,
+                    price_list: existing.price_list,
+                    sell_condition: existing.sell_condition,
+                    payment_condition: existing.payment_condition,
+                    generated_by: existing.generated_by, // <- faltaba
+                    note: existing.note || null,
+                    total_items: Number(existing.total_items || 0),
+                    total_amount: Number(existing.total_amount || 0),
+                };
+
+                return res.json({
+                    ok: true,
+                    readonly: true,
+                    already_generated: true,
+                    header,
+                    items,
+                });
+            }
+
+            // 1.b) Si NO hay remito, armamos preview con pesadas (Cuts...)
             const lines = await ProductsSellOrder.findAll({
                 where: { sell_order_id: id },
                 order: [["id", "ASC"]],
             });
 
-
             const items = [];
             for (const l of lines) {
-
                 const priceRow = await PriceListProduct.findOne({
                     where: { product_id: String(l.product_id) },
                     order: [["id", "ASC"]],
                 });
 
-
-                const headerRows = await CutsHeader.findAll({
+                const headers = await CutsHeader.findAll({
                     where: { receipt_number: id, product_code: String(l.product_id) },
                     include: [{ model: CutsDetail, as: "details" }],
                     order: [["id", "ASC"]],
                 });
 
                 let units_count = 0;
+                let gross_weight = 0;
                 let net_weight = 0;
 
-                for (const h of headerRows) {
+                for (const h of headers) {
                     for (const d of (h.details || [])) {
                         units_count += Number(d.units_count || 0);
+                        gross_weight += Number(d.gross_weight || 0);
                         net_weight += Number(d.net_weight || 0);
                     }
                 }
 
+                const unit_measure = priceRow?.unidad_venta || null; // UN | KG
+                const qty = unit_measure === "KG" ? net_weight : units_count;
+
                 items.push({
-                    product_id: l.product_id,
+                    product_id: l.product_id ?? null,
                     product_name: l.product_name,
-                    unidad_venta: priceRow?.unidad_venta || null,
-                    units_count,
+                    unit_price: Number(l.product_price || 0),
+                    unit_measure,
+                    qty,
+                    gross_weight,
                     net_weight,
+                    avg_weight: units_count > 0 ? net_weight / units_count : 0,
                 });
             }
 
-            // Armamos el header que espera el front
             const header = {
                 receipt_number: order.id,
+                order_id: order.id,
                 date_order: order.date_order,
                 client_name: order.client_name,
                 salesman_name: order.salesman_name,
                 price_list: order.price_list,
                 sell_condition: order.sell_condition,
                 payment_condition: order.payment_condition,
+                note: order.observation_order || null,
             };
 
-            return res.json({ ok: true, header, items });
+            return res.json({ ok: true, readonly: false, header, items });
         } catch (e) {
             console.error(e);
             return res.status(500).json({ ok: false, msg: "Error en preview de remito" });
@@ -1584,9 +1709,239 @@ const saleApiController = {
             return res.status(500).json({ ok: false, msg: "Error al crear remito" });
         }
     },
+    // ===== DESTINOS =====
+    getAllDestinations: async (req, res) => {
+        try {
+            const q = (req.query.q || "").trim().toLowerCase();
+            const includeInactive = String(req.query.includeInactive || "0") === "1";
+
+            const where = {};
+            if (q) where.name = { [Op.like]: `%${q}%` };
+            if (!includeInactive) where.is_active = true;
+
+            const rows = await Destination.findAll({ where, order: [["name", "ASC"]] });
+
+            // el front acepta {data:[]} o []
+            return res.json({
+                ok: true, data: rows.map(r => ({
+                    id: r.id,
+                    name: r.name,
+                    is_active: !!r.is_active,
+                    created_at: r.created_at,
+                    updated_at: r.updated_at
+                }))
+            });
+        } catch (e) {
+            console.error(e);
+            return res.status(500).json({ ok: false, msg: "Error al listar destinos" });
+        }
+    },
+
+    getDestinationById: async (req, res) => {
+        try {
+            const row = await Destination.findByPk(req.params.id);
+            if (!row) return res.status(404).json({ ok: false, msg: "Destino no encontrado" });
+            return res.json({
+                ok: true,
+                destination: {
+                    id: row.id,
+                    name: row.name,
+                    is_active: !!row.is_active,
+                    created_at: row.created_at,
+                    updated_at: row.updated_at
+                }
+            });
+        } catch (e) {
+            console.error(e);
+            return res.status(500).json({ ok: false, msg: "Error al obtener destino" });
+        }
+    },
+
+    createDestination: async (req, res) => {
+        try {
+            const name = (req.body.name || "").trim();
+            if (!name) return res.status(400).json({ ok: false, msg: "El nombre es obligatorio" });
+
+            const dup = await Destination.findOne({ where: { name } });
+            if (dup) return res.status(409).json({ ok: false, msg: "Ya existe un destino con ese nombre" });
+
+            const created = await Destination.create({ name, is_active: true });
+            return res.status(201).json({
+                ok: true,
+                destination: {
+                    id: created.id,
+                    name: created.name,
+                    is_active: !!created.is_active,
+                    created_at: created.created_at,
+                    updated_at: created.updated_at
+                }
+            });
+        } catch (e) {
+            console.error(e);
+            return res.status(500).json({ ok: false, msg: "Error al crear destino" });
+        }
+    },
+
+    updateDestination: async (req, res) => {
+        try {
+            const { id } = req.params;
+            const data = {};
+            if (typeof req.body.name === "string") data.name = req.body.name.trim();
+            if (typeof req.body.is_active !== "undefined") data.is_active = !!req.body.is_active;
+
+            if (!data.name && typeof data.is_active === "undefined") {
+                return res.status(400).json({ ok: false, msg: "Sin cambios para aplicar" });
+            }
+
+            if (data.name) {
+                const dup = await Destination.findOne({ where: { name: data.name, id: { [Op.ne]: id } } });
+                if (dup) return res.status(409).json({ ok: false, msg: "Ya existe un destino con ese nombre" });
+            }
+
+            const [updated] = await Destination.update(data, { where: { id } });
+            if (!updated) return res.status(404).json({ ok: false, msg: "Destino no encontrado" });
+
+            const row = await Destination.findByPk(id);
+            return res.json({
+                ok: true,
+                destination: {
+                    id: row.id,
+                    name: row.name,
+                    is_active: !!row.is_active,
+                    created_at: row.created_at,
+                    updated_at: row.updated_at
+                },
+                msg: "Destino actualizado"
+            });
+        } catch (e) {
+            console.error(e);
+            return res.status(500).json({ ok: false, msg: "Error al actualizar destino" });
+        }
+    },
+
+    deleteDestination: async (req, res) => {
+        try {
+            const { id } = req.params;
+            const deleted = await Destination.destroy({ where: { id } });
+            if (!deleted) return res.status(404).json({ ok: false, msg: "Destino no encontrado" });
+            return res.json({ ok: true, msg: "Destino eliminado" });
+        } catch (e) {
+            console.error(e);
+            return res.status(500).json({ ok: false, msg: "Error al eliminar destino" });
+        }
+    },
 
 
 
+    getAllTrucks: async (req, res) => {
+        try {
+            const q = (req.query.q || "").trim().toLowerCase();
+            const includeInactive = String(req.query.includeInactive || "0") === "1";
+            const where = {};
+            if (q) {
+                where[Op.or] = [
+                    { brand: { [Op.like]: `%${q}%` } },
+                    { model: { [Op.like]: `%${q}%` } },
+                    { plate: { [Op.like]: `%${q}%` } },
+                ];
+            }
+            if (!includeInactive) where.is_active = true;
+
+            const rows = await Truck.findAll({ where, order: [["model", "ASC"]] });
+            return res.json({
+                ok: true, data: rows.map(r => ({
+                    id: r.id, brand: r.brand, model: r.model, plate: r.plate,
+                    is_active: !!r.is_active, created_at: r.created_at, updated_at: r.updated_at
+                }))
+            });
+        } catch (e) {
+            console.error(e);
+            return res.status(500).json({ ok: false, msg: "Error al listar camiones" });
+        }
+    },
+
+    getTruckById: async (req, res) => {
+        try {
+            const row = await Truck.findByPk(req.params.id);
+            if (!row) return res.status(404).json({ ok: false, msg: "Camión no encontrado" });
+            return res.json({
+                ok: true, truck: {
+                    id: row.id, brand: row.brand, model: row.model, plate: row.plate,
+                    is_active: !!row.is_active, created_at: row.created_at, updated_at: row.updated_at
+                }
+            });
+        } catch (e) {
+            console.error(e);
+            return res.status(500).json({ ok: false, msg: "Error al obtener camión" });
+        }
+    },
+
+    createTruck: async (req, res) => {
+        try {
+            const brand = (req.body.brand || "").trim();
+            const model = (req.body.model || "").trim();
+            const plate = (req.body.plate || "").trim().toUpperCase();
+            if (!brand || !model || !plate) return res.status(400).json({ ok: false, msg: "Datos incompletos" });
+
+            const dup = await Truck.findOne({ where: { plate } });
+            if (dup) return res.status(409).json({ ok: false, msg: "Ya existe un camión con esa patente" });
+
+            const created = await Truck.create({ brand, model, plate, is_active: true });
+            return res.status(201).json({
+                ok: true, truck: {
+                    id: created.id, brand: created.brand, model: created.model, plate: created.plate,
+                    is_active: !!created.is_active, created_at: created.created_at, updated_at: created.updated_at
+                }
+            });
+        } catch (e) {
+            console.error(e);
+            return res.status(500).json({ ok: false, msg: "Error al crear camión" });
+        }
+    },
+
+    updateTruck: async (req, res) => {
+        try {
+            const { id } = req.params;
+            const data = {};
+            if (typeof req.body.brand === "string") data.brand = req.body.brand.trim();
+            if (typeof req.body.model === "string") data.model = req.body.model.trim();
+            if (typeof req.body.plate === "string") data.plate = req.body.plate.trim().toUpperCase();
+            if (typeof req.body.is_active !== "undefined") data.is_active = !!req.body.is_active;
+
+            if (!Object.keys(data).length) return res.status(400).json({ ok: false, msg: "Sin cambios" });
+
+            if (data.plate) {
+                const dup = await Truck.findOne({ where: { plate: data.plate, id: { [Op.ne]: id } } });
+                if (dup) return res.status(409).json({ ok: false, msg: "Ya existe un camión con esa patente" });
+            }
+
+            const [updated] = await Truck.update(data, { where: { id } });
+            if (!updated) return res.status(404).json({ ok: false, msg: "Camión no encontrado" });
+
+            const row = await Truck.findByPk(id);
+            return res.json({
+                ok: true, truck: {
+                    id: row.id, brand: row.brand, model: row.model, plate: row.plate,
+                    is_active: !!row.is_active, created_at: row.created_at, updated_at: row.updated_at
+                }, msg: "Camión actualizado"
+            });
+        } catch (e) {
+            console.error(e);
+            return res.status(500).json({ ok: false, msg: "Error al actualizar camión" });
+        }
+    },
+
+    deleteTruck: async (req, res) => {
+        try {
+            const { id } = req.params;
+            const deleted = await Truck.destroy({ where: { id } });
+            if (!deleted) return res.status(404).json({ ok: false, msg: "Camión no encontrado" });
+            return res.json({ ok: true, msg: "Camión eliminado" });
+        } catch (e) {
+            console.error(e);
+            return res.status(500).json({ ok: false, msg: "Error al eliminar camión" });
+        }
+    },
 
 
 

@@ -1,0 +1,176 @@
+.tck-page {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 16px;
+}
+
+.tck-header h1 {
+    margin: 8px 0 12px;
+    font-size: 20px;
+    letter-spacing: .4px;
+}
+
+.tck-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 12px 0;
+    gap: 12px;
+}
+
+.tck-search {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.tck-card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.tck-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.tck-table thead tr {
+    background: #f3f6fb;
+}
+
+.tck-table th,
+.tck-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #eef1f5;
+}
+
+.tck-table th {
+    text-transform: uppercase;
+    font-size: 12px;
+    color: #5b6b7b;
+    letter-spacing: .3px;
+}
+
+.tck-table .center {
+    text-align: center;
+}
+
+.muted {
+    color: #758295;
+    text-align: center;
+    padding: 18px;
+}
+
+.tck-input {
+    height: 36px;
+    padding: 0 12px;
+    border: 1px solid #d7dce2;
+    border-radius: 8px;
+    outline: none;
+}
+
+.tck-input:focus {
+    border-color: #7aa7e8;
+    box-shadow: 0 0 0 2px rgba(43, 125, 255, .15);
+}
+
+.tck-btn {
+    height: 36px;
+    padding: 0 14px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.tck-btn:disabled {
+    opacity: .6;
+    cursor: not-allowed;
+}
+
+.tck-btn-primary {
+    background: #1e8bda;
+    color: #fff;
+}
+
+.tck-btn-primary:hover {
+    background: #1879be;
+}
+
+.tck-btn-light {
+    background: #f7f8fb;
+    border-color: #e5e7eb;
+}
+
+.tck-btn-light:hover {
+    background: #eef1f6;
+}
+
+.tck-mini {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    margin: 0 3px;
+    cursor: pointer;
+}
+
+.tck-mini-blue {
+    background: #e9f2ff;
+    color: #2b7dff;
+    border-color: #cfe2ff;
+}
+
+.tck-mini-blue:hover {
+    background: #dcebff;
+}
+
+.tck-mini-red {
+    background: #fde8e8;
+    color: #d12a2a;
+    border-color: #f5caca;
+}
+
+.tck-mini-red:hover {
+    background: #fbdada;
+}
+
+.tck-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(30, 41, 59, .55);
+    display: grid;
+    place-items: center;
+    z-index: 60;
+}
+
+.tck-modal-card {
+    width: 420px;
+    background: #fff;
+    border-radius: 10px;
+    padding: 14px;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 6px 30px rgba(0, 0, 0, .18);
+}
+
+.tck-modal-title {
+    font-weight: 700;
+    letter-spacing: .4px;
+    margin: 6px 2px 12px;
+}
+
+.tck-label {
+    display: block;
+    font-size: 12px;
+    color: #718096;
+    margin: 6px 2px;
+}
+
+.tck-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 12px;
+}
