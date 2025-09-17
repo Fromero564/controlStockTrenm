@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 15-09-2025 a las 14:27:03
+-- Tiempo de generación: 17-09-2025 a las 21:50:54
 -- Versión del servidor: 10.4.28-MariaDB
 -- Versión de PHP: 8.2.4
 
@@ -140,7 +140,9 @@ CREATE TABLE `cuts_detail` (
 INSERT INTO `cuts_detail` (`id`, `receipt_number`, `header_id`, `sub_item`, `packaging_type`, `units_count`, `lot_number`, `tare_weight`, `gross_weight`, `net_weight`, `created_at`, `updated_at`) VALUES
 (2, 2, 2, 1, 'Bolsa', 26, '10', 4.00, 1203.00, 1199.00, '2025-09-13 18:45:32', '2025-09-13 18:45:32'),
 (3, 4, 3, 1, 'Bolsa', 4, '130', 4.00, 1520.00, 1516.00, '2025-09-15 00:56:16', '2025-09-15 00:56:16'),
-(4, 4, 4, 1, 'bolsa', 3, '125', 6.00, 1252.00, 1246.00, '2025-09-15 00:56:16', '2025-09-15 00:56:16');
+(4, 4, 4, 1, 'bolsa', 3, '125', 6.00, 1252.00, 1246.00, '2025-09-15 00:56:16', '2025-09-15 00:56:16'),
+(5, 5, 5, 1, '', 1, '100', 4.00, 11200.00, 11196.00, '2025-09-17 12:30:42', '2025-09-17 12:30:42'),
+(6, 6, 6, 1, 'bolsa', 2, '134', 4.00, 1250.00, 1246.00, '2025-09-17 12:45:27', '2025-09-17 12:45:27');
 
 -- --------------------------------------------------------
 
@@ -172,7 +174,9 @@ CREATE TABLE `cuts_header` (
 INSERT INTO `cuts_header` (`id`, `receipt_number`, `product_code`, `product_name`, `unit_price`, `qty_requested`, `qty_weighed`, `total_tare_weight`, `total_gross_weight`, `total_net_weight`, `avg_weight`, `qty_pending`, `created_at`, `updated_at`) VALUES
 (2, 2, '105', 'Matambre', 1480.70, 26, 26, 4.00, 1203.00, 1199.00, 46.12, 0, '2025-09-13 18:45:32', '2025-09-13 18:45:32'),
 (3, 4, '105', 'Matambre', 1480.70, 4, 4, 4.00, 1520.00, 1516.00, 379.00, 0, '2025-09-15 00:56:16', '2025-09-15 00:56:16'),
-(4, 4, '1', 'Media Res Chancha', 1359.15, 3, 3, 6.00, 1252.00, 1246.00, 415.33, 0, '2025-09-15 00:56:16', '2025-09-15 00:56:16');
+(4, 4, '1', 'Media Res Chancha', 1359.15, 3, 3, 6.00, 1252.00, 1246.00, 415.33, 0, '2025-09-15 00:56:16', '2025-09-15 00:56:16'),
+(5, 5, '105', 'Matambre', 1480.70, 1, 1, 4.00, 11200.00, 11196.00, 11196.00, 0, '2025-09-17 12:30:42', '2025-09-17 12:30:42'),
+(6, 6, '105', 'Matambre', 1480.70, 2, 2, 4.00, 1250.00, 1246.00, 623.00, 0, '2025-09-17 12:45:27', '2025-09-17 12:45:27');
 
 -- --------------------------------------------------------
 
@@ -245,7 +249,8 @@ CREATE TABLE `final_remits` (
 --
 
 INSERT INTO `final_remits` (`id`, `order_id`, `receipt_number`, `client_name`, `salesman_name`, `price_list`, `sell_condition`, `payment_condition`, `generated_by`, `note`, `total_items`, `total_amount`, `created_at`, `updated_at`) VALUES
-(1, 2, 2, 'FERNANDO', 'German', 'Premiun', '7 DIAS HABILES', 'EFECTIVO', 'system', '', 26, 38498.20, '2025-09-13 22:04:46', '2025-09-13 22:04:46');
+(1, 2, 2, 'FERNANDO', 'German', 'Premiun', '7 DIAS HABILES', 'EFECTIVO', 'system', '', 26, 38498.20, '2025-09-13 22:04:46', '2025-09-13 22:04:46'),
+(2, 4, 4, 'FERNANDO', 'German', 'Premiun', '7 DIAS HABILES', 'EFECTIVO', 'system', '', 7, 10000.25, '2025-09-17 14:23:15', '2025-09-17 14:23:15');
 
 -- --------------------------------------------------------
 
@@ -273,7 +278,9 @@ CREATE TABLE `final_remit_products` (
 --
 
 INSERT INTO `final_remit_products` (`id`, `final_remit_id`, `product_id`, `product_name`, `unit_price`, `qty`, `unit_measure`, `gross_weight`, `net_weight`, `avg_weight`, `created_at`, `updated_at`) VALUES
-(1, 1, '105', 'Matambre', 1480.70, 26.00, NULL, 0.00, 0.00, 0.00, '2025-09-13 22:04:46', '2025-09-13 22:04:46');
+(1, 1, '105', 'Matambre', 1480.70, 26.00, NULL, 0.00, 0.00, 0.00, '2025-09-13 22:04:46', '2025-09-13 22:04:46'),
+(2, 2, '105', 'Matambre', 1480.70, 1516.00, 'KG', 1520.00, 1516.00, 379.00, '2025-09-17 14:23:15', '2025-09-17 14:23:15'),
+(3, 2, '1', 'Media Res Chancha', 1359.15, 3.00, 'UN', 1252.00, 1246.00, 415.33, '2025-09-17 14:23:15', '2025-09-17 14:23:15');
 
 -- --------------------------------------------------------
 
@@ -353,7 +360,9 @@ INSERT INTO `new_orders` (`id`, `date_order`, `client_name`, `salesman_name`, `p
 (1, '2025-09-04', 'FERNANDO', 'German', 'Premiun', '7 DIAS HABILES', 'EFECTIVO', '', 0, 0, '2025-09-04 00:06:30', '2025-09-04 00:06:30'),
 (2, '2025-09-04', 'FERNANDO', 'German', 'Premiun', '7 DIAS HABILES', 'EFECTIVO', '', 1, 1, '2025-09-04 00:11:17', '2025-09-13 18:45:35'),
 (3, '2025-09-04', 'FERNANDO', 'German', 'Premiun', '7 DIAS HABILES', 'EFECTIVO', '', 0, 0, '2025-09-04 00:14:18', '2025-09-04 00:14:18'),
-(4, '2025-09-16', 'FERNANDO', 'German', 'Premiun', '7 DIAS HABILES', 'EFECTIVO', '', 1, 1, '2025-09-15 00:28:33', '2025-09-15 00:56:20');
+(4, '2025-09-16', 'FERNANDO', 'German', 'Premiun', '7 DIAS HABILES', 'EFECTIVO', '', 1, 1, '2025-09-15 00:28:33', '2025-09-15 00:56:20'),
+(5, '2025-09-17', 'FERNANDO', 'Francisco', 'Premiun', '7 DIAS HABILES', 'EFECTIVO', '', 1, 1, '2025-09-17 12:27:14', '2025-09-17 12:30:48'),
+(6, '2025-09-17', 'FERNANDO', 'German', 'Premiun', '7 DIAS HABILES', 'EFECTIVO', '', 1, 1, '2025-09-17 12:37:26', '2025-09-17 12:45:30');
 
 -- --------------------------------------------------------
 
@@ -396,7 +405,9 @@ CREATE TABLE `order_products_client` (
 
 INSERT INTO `order_products_client` (`id`, `order_id`, `product_cod`, `product_name`, `precio`, `cantidad`, `tipo_medida`) VALUES
 (1, 4, '105', 'Matambre', 1480.70, 10.00, 'KG'),
-(2, 4, '1', 'Media Res Chancha', 1359.15, 3.00, 'UN');
+(2, 4, '1', 'Media Res Chancha', 1359.15, 3.00, 'UN'),
+(3, 5, '105', 'Matambre', 1480.70, 1.00, 'KG'),
+(4, 6, '105', 'Matambre', 1480.70, 2.00, 'KG');
 
 -- --------------------------------------------------------
 
@@ -588,7 +599,9 @@ CREATE TABLE `products_sell_order` (
 INSERT INTO `products_sell_order` (`id`, `sell_order_id`, `product_id`, `product_name`, `product_price`, `product_quantity`, `created_at`, `updated_at`) VALUES
 (1, 2, 105, 'Matambre', 1480.7, 26, '2025-09-04 00:22:51', '2025-09-04 00:22:51'),
 (2, 4, 105, 'Matambre', 1480.7, 4, '2025-09-15 00:31:06', '2025-09-15 00:31:06'),
-(3, 4, 1, 'Media Res Chancha', 1359.15, 3, '2025-09-15 00:31:06', '2025-09-15 00:31:06');
+(3, 4, 1, 'Media Res Chancha', 1359.15, 3, '2025-09-15 00:31:06', '2025-09-15 00:31:06'),
+(4, 5, 105, 'Matambre', 1480.7, 1, '2025-09-17 12:28:17', '2025-09-17 12:28:17'),
+(5, 6, 105, 'Matambre', 1480.7, 2, '2025-09-17 12:37:42', '2025-09-17 12:37:42');
 
 -- --------------------------------------------------------
 
@@ -685,6 +698,33 @@ CREATE TABLE `providers` (
 
 INSERT INTO `providers` (`id`, `provider_name`, `provider_type_id`, `provider_id_number`, `provider_iva_condition`, `provider_email`, `provider_phone`, `provider_adress`, `provider_country`, `provider_province`, `provider_location`) VALUES
 (1, 'EMPRESASOFT', 'CUIT', '202000', 'IVA RESPONSABLE INSCRIPTO', 'empresasoft@empresasoft', '24525', 'CALLE 123', 'ARGENTINA', 'BUENOS AIRES', 'SAN NICOLAS');
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `roadmap_info`
+--
+
+CREATE TABLE `roadmap_info` (
+  `id` int(11) NOT NULL,
+  `client_name` varchar(255) NOT NULL,
+  `delivery_date` date NOT NULL,
+  `truck_license_plate` varchar(20) NOT NULL,
+  `driver` varchar(255) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `roadmap_info_destinations`
+--
+
+CREATE TABLE `roadmap_info_destinations` (
+  `id` int(11) NOT NULL,
+  `roadmap_info_id` int(11) NOT NULL,
+  `destination` varchar(255) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -1001,6 +1041,19 @@ ALTER TABLE `providers`
   ADD PRIMARY KEY (`id`);
 
 --
+-- Indices de la tabla `roadmap_info`
+--
+ALTER TABLE `roadmap_info`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indices de la tabla `roadmap_info_destinations`
+--
+ALTER TABLE `roadmap_info_destinations`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `roadmap_info_id` (`roadmap_info_id`);
+
+--
 -- Indices de la tabla `sale_conditions`
 --
 ALTER TABLE `sale_conditions`
@@ -1071,13 +1124,13 @@ ALTER TABLE `clients`
 -- AUTO_INCREMENT de la tabla `cuts_detail`
 --
 ALTER TABLE `cuts_detail`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT de la tabla `cuts_header`
 --
 ALTER TABLE `cuts_header`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT de la tabla `destinations`
@@ -1095,13 +1148,13 @@ ALTER TABLE `drivers`
 -- AUTO_INCREMENT de la tabla `final_remits`
 --
 ALTER TABLE `final_remits`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT de la tabla `final_remit_products`
 --
 ALTER TABLE `final_remit_products`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT de la tabla `meat_income_manual_weight`
@@ -1119,13 +1172,13 @@ ALTER TABLE `meat_manual_income`
 -- AUTO_INCREMENT de la tabla `new_orders`
 --
 ALTER TABLE `new_orders`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT de la tabla `order_products_client`
 --
 ALTER TABLE `order_products_client`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT de la tabla `other_product_manual`
@@ -1167,7 +1220,7 @@ ALTER TABLE `process_number`
 -- AUTO_INCREMENT de la tabla `products_sell_order`
 --
 ALTER TABLE `products_sell_order`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT de la tabla `product_categories`
@@ -1192,6 +1245,18 @@ ALTER TABLE `product_subproducts`
 --
 ALTER TABLE `providers`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT de la tabla `roadmap_info`
+--
+ALTER TABLE `roadmap_info`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- AUTO_INCREMENT de la tabla `roadmap_info_destinations`
+--
+ALTER TABLE `roadmap_info_destinations`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT de la tabla `sale_conditions`
@@ -1293,6 +1358,12 @@ ALTER TABLE `product_stock`
 ALTER TABLE `product_subproducts`
   ADD CONSTRAINT `product_subproducts_ibfk_1` FOREIGN KEY (`parent_product_id`) REFERENCES `products_available` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `product_subproducts_ibfk_2` FOREIGN KEY (`subproduct_id`) REFERENCES `products_available` (`id`) ON DELETE CASCADE;
+
+--
+-- Filtros para la tabla `roadmap_info_destinations`
+--
+ALTER TABLE `roadmap_info_destinations`
+  ADD CONSTRAINT `roadmap_info_destinations_ibfk_1` FOREIGN KEY (`roadmap_info_id`) REFERENCES `roadmap_info` (`id`) ON DELETE CASCADE;
 
 --
 -- Filtros para la tabla `warehouse_stock`

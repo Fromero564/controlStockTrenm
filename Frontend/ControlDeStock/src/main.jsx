@@ -56,6 +56,8 @@ import RemitControlState from './features/sales/RemitControlState.jsx';
 import RemitPreview from './features/sales/RemitPreview.jsx';
 import ListDestination from './features/sales/transport/ListDestination.jsx';
 import ListTruck from './features/sales/transport/ListTruck.jsx';
+import RoadmapList from './features/sales/RoadmapList.jsx';
+import Roadmap from './features/sales/Roadmap.jsx';
 
 
 
@@ -553,11 +555,36 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
+
+  {
+    path: "/roadmap-list",
+    element: (
+      <ProtectedRoute>
+      <RoadmapList/>
+      </ProtectedRoute>
+    ),
+  },
   {
     path: "/available-stock",
     element: (
       <ProtectedRoute>
         <AvailableStockOrders />
+      </ProtectedRoute>
+    ),
+  },
+    {
+    path: "/new-roadmap",
+    element: (
+      <ProtectedRoute>
+        <Roadmap/>
+      </ProtectedRoute>
+    ),
+  },
+     {
+    path: "/new-roadmap/:id",
+    element: (
+      <ProtectedRoute>
+        <Roadmap/>
       </ProtectedRoute>
     ),
   },

@@ -6,13 +6,12 @@ import "../../assets/styles/listFinalOrders.css";
 const API_BASE = (import.meta.env.VITE_API_URL || "").replace(/\/+$/, "");
 const ENDPOINT = `${API_BASE}/final-orders`;
 
+// ✅ IMPORTANTE: date_order es un DATE (YYYY-MM-DD). Lo formateamos como string.
 const formatDate = (iso) => {
   if (!iso) return "-";
-  const d = new Date(iso);
-  const dd = String(d.getDate()).padStart(2, "0");
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const yy = String(d.getFullYear()).slice(-2);
-  return `${dd}/${mm}/${yy}`;
+  const [yyyy, mm, dd] = iso.split("-");
+  if (!yyyy || !mm || !dd) return "-";
+  return `${dd}/${mm}/${yyyy.slice(-2)}`;
 };
 
 const normalize = (v) => (v ?? "").toString().trim().toLowerCase();
@@ -21,7 +20,6 @@ const normalize = (v) => (v ?? "").toString().trim().toLowerCase();
 const getOrderStatus = (row) => {
   // viene agregado como MAX(order_weight_check) desde el backend
   // y lo convertimos a boolean ya en el controller
-  // (rows: data con order_weight_check normalizado) :contentReference[oaicite:0]{index=0}
   if (row?.order_weight_check === true) return "generated";
   if (row?.order_weight_check === false) return "pending";
 
@@ -92,7 +90,7 @@ const ListFinalOrders = () => {
         throw new Error(`HTTP ${res.status}: ${text.slice(0, 120)}`);
       }
       const data = await res.json();
-      // El backend devuelve { ok, rows, ... } con order_weight_check ya normalizado a boolean. :contentReference[oaicite:1]{index=1}
+      // El backend puede devolver array directo o { ok, rows }
       if (Array.isArray(data)) setRows(data);
       else if (data?.ok) setRows(data.rows || []);
       else {
@@ -157,7 +155,7 @@ const ListFinalOrders = () => {
     <div className="lfo">
       <Navbar />
       <div style={{ margin: "20px" }}>
-        <button className="boton-volver" onClick={() => navigate(-1)}>
+        <button className="boton-volver" onClick={() => navigate("/sales-panel")}>
           ⬅ Volver
         </button>
       </div>

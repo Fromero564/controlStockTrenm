@@ -53,6 +53,12 @@ router.get("/destinations", apiSaleController.getAllDestinations);
 router.get("/destinations/:id", apiSaleController.getDestinationById);
 router.get("/trucks", apiSaleController.getAllTrucks);
 router.get("/trucks/:id", apiSaleController.getTruckById);
+// Chequeo existencia de remito (header + detalle) para una orden
+router.get("/final-remits", apiSaleController.checkFinalRemitExists);
+// Opciones de remitos (select remoto con búsqueda)
+router.get("/remits/options", apiSaleController.listRemitsOptions);
+router.get("/roadmaps/:id", apiSaleController.getRoadmap);
+
 
 
 //Api para cargar datos de pessada tanto general como de cada item de una orden de venta
@@ -75,6 +81,7 @@ router.post("/payment-conditions", apiSaleController.createPaymentCondition);
 router.post("/remits/from-order/:id", apiSaleController.createRemitFromOrder);
 router.post("/destinations", apiSaleController.createDestination);
 router.post("/trucks", apiSaleController.createTruck);
+router.post("/roadmaps", apiSaleController.createRoadmap);
 
 //Api para eliminar un Vendedor
 router.delete("/delete-seller/:id", apiSaleController.deleteSeller);
@@ -108,7 +115,7 @@ router.put("/orders/:id/weight-check", apiSaleController.setOrderWeightChecked);
 router.put("/drivers/:id", apiSaleController.updateDriver);
 router.put("/destinations/:id", apiSaleController.updateDestination);
 router.put("/trucks/:id", apiSaleController.updateTruck);
-
+router.put("/roadmaps/:id", apiSaleController.updateRoadmap);
 
 
 

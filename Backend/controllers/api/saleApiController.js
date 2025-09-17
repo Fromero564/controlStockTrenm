@@ -34,6 +34,46 @@ const CutsDetail = db.CutsDetail;
 const Driver = db.Driver;
 const FinalRemit = db.FinalRemit;
 const FinalRemitProduct = db.FinalRemitProduct;
+const RoadmapInfo = db.RoadmapInfo;
+const RoadmapInfoDestination = db.RoadmapInfoDestination;
+const RoadmapInfoRemit = db.RoadmapInfoRemit;
+
+
+// controllers/api/saleApiController.js
+async function checkFinalRemitExists(req, res) {
+    try {
+        const orderId = Number(req.query.order_id);
+        if (!orderId) return res.status(400).json({ ok: false, msg: "order_id requerido" });
+
+        // 1) Busco el header de remito para esa orden
+        const header = await FinalRemit.findOne({
+            where: { order_id: orderId },
+            attributes: ["id"],
+            order: [["id", "DESC"]],
+        });
+
+        if (!header) return res.json({ ok: true, exists: false });
+
+        // 2) Reviso si tiene al menos un detalle
+        const itemsCount = await FinalRemitProduct.count({
+            where: { final_remit_id: header.id },
+        });
+
+        return res.json({ ok: true, exists: itemsCount > 0 });
+    } catch (e) {
+        console.error(e);
+        return res.status(500).json({ ok: false, msg: "Error verificando remito" });
+    }
+}
+
+
+// Cantidad pedida (sum(qty_requested)) para una orden+producto
+async function qtyRequestedOf(orderId, productId) {
+    const n = await CutsHeader.sum("qty_requested", {
+        where: { receipt_number: orderId, product_code: String(productId) },
+    });
+    return Number(n || 0);
+}
 
 
 const toNumber = (v) => {
@@ -52,6 +92,61 @@ const toBool = (v) => {
 };
 
 
+// Helper: devuelve DD/MM/YYYY sin corrimiento de zona horaria
+function toDDMMYYYY(value) {
+    if (!value) {
+        const d = new Date();
+        const dd = String(d.getDate()).padStart(2, "0");
+        const mm = String(d.getMonth() + 1).padStart(2, "0");
+        const yy = d.getFullYear();
+        return `${dd}/${mm}/${yy}`;
+    }
+
+    // 1) Si viene como string 'YYYY-MM-DD' o 'YYYY-MM-DDTHH:mm:ss...'
+    if (typeof value === "string") {
+        // intenta extraer el prefijo YYYY-MM-DD
+        const m = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (m) return `${m[3]}/${m[2]}/${m[1]}`;
+    }
+
+    // 2) Si viene como Date
+    if (value instanceof Date) {
+        // usar *UTC* para no depender del huso horario
+        const dd = String(value.getUTCDate()).padStart(2, "0");
+        const mm = String(value.getUTCMonth() + 1).padStart(2, "0");
+        const yy = value.getUTCFullYear();
+        return `${dd}/${mm}/${yy}`;
+    }
+
+    // 3) Si viene como número (timestamp)
+    const n = Number(value);
+    if (!Number.isNaN(n)) {
+        const d = new Date(n);
+        const dd = String(d.getUTCDate()).padStart(2, "0");
+        const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
+        const yy = d.getUTCFullYear();
+        return `${dd}/${mm}/${yy}`;
+    }
+
+    // 4) Último recurso: parsear con Date y formatear en UTC
+    const d = new Date(value);
+    if (!isNaN(d.getTime())) {
+        const dd = String(d.getUTCDate()).padStart(2, "0");
+        const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
+        const yy = d.getUTCFullYear();
+        return `${dd}/${mm}/${yy}`;
+    }
+
+    // fallback
+    return toDDMMYYYY(null);
+}
+
+
+
+const nf = new Intl.NumberFormat("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const ni = new Intl.NumberFormat("es-AR", { maximumFractionDigits: 0 });
+function fmtMoney(v) { return nf.format(Number(v || 0)); }
+function fmtQty(v) { return ni.format(Number(v || 0)); }
 
 function drawHeader(doc, remit) {
     const left = 50;
@@ -59,15 +154,25 @@ function drawHeader(doc, remit) {
 
     doc.font("Helvetica-Bold").fontSize(20).text("Remito", left, top);
     doc.font("Helvetica").fontSize(10).text(`N° ${remit.receipt_number}`, left, top + 24);
-    doc.text(`Fecha: ${new Date(remit.date_order || remit.created_at || Date.now()).toLocaleDateString()}`, left, top + 38);
 
-    const col1W = 220;
-    const col2W = 200;
-    const col3W = 140;
+    // Fecha segura: YYYY-MM-DD -> DD/MM/YYYY (sin timezone shift)
+    const raw = String(remit?.date_order || remit?.created_at || "");
+    const m = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    const shownDate = m ? `${m[3]}/${m[2]}/${m[1]}` : (() => {
+        const d = new Date();
+        const dd = String(d.getDate()).padStart(2, "0");
+        const mm = String(d.getMonth() + 1).padStart(2, "0");
+        const yy = d.getFullYear();
+        return `${dd}/${mm}/${yy}`;
+    })();
+    doc.text(`Fecha: ${shownDate}`, left, top + 38);
 
+    const col1W = 220, col2W = 200, col3W = 140;
     const yBase = top + 62;
 
-    let x = left, y = yBase;
+    let x = left;
+    let y = yBase;
+
     doc.font("Helvetica-Bold").text("CLIENTE", x, y); y += 14;
     doc.font("Helvetica").text(remit.client_name || "-", x, y, { width: col1W }); y += 18;
     doc.font("Helvetica-Bold").text("VENDEDOR", x, y); y += 14;
@@ -91,10 +196,7 @@ function drawHeader(doc, remit) {
     return lineY + 12;
 }
 
-const nf = new Intl.NumberFormat("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const ni = new Intl.NumberFormat("es-AR", { maximumFractionDigits: 0 });
-function fmtMoney(v) { return nf.format(Number(v || 0)); }
-function fmtQty(v) { return ni.format(Number(v || 0)); }
+
 
 function drawTable(doc, items, startY = 210) {
     const topY = startY + 10;
@@ -226,23 +328,60 @@ function drawFooter(doc, remit, y, totalFinal, totalItems) {
 async function streamRemitPdfById(req, res) {
     try {
         const { id } = req.params;
+
         const remit = await FinalRemit.findByPk(id);
         if (!remit) return res.status(404).json({ ok: false, msg: "Remito no encontrado" });
+
+        // Para la fecha del header (evita corrimiento y usa la fecha de la orden)
+        const order = await NewOrder.findByPk(remit.order_id);
 
         const items = await FinalRemitProduct.findAll({
             where: { final_remit_id: id },
             order: [["id", "ASC"]],
         });
 
-        const rows = items.map((i) => ({
-            product_id: i.product_id,
-            product_name: i.product_name,
-            unit_measure: i.unit_measure || "-",
-            qty: Number(i.qty || 0),
-            net_weight: Number(i.net_weight || 0),
-            unit_price: Number(i.unit_price || 0),
-            total: Number(i.unit_price || 0) * Number(i.qty || 0),
-        }));
+        // Construimos las filas usando qty_requested desde cuts_header
+        const rows = await Promise.all(
+            items.map(async (i) => {
+                // Fallback de unidad si quedó null en la tabla final
+                let unit_measure = i.unit_measure || null;
+                if (!unit_measure) {
+                    const pl = await PriceListProduct.findOne({
+                        where: { product_id: String(i.product_id) },
+                        order: [["id", "ASC"]],
+                    });
+                    unit_measure = pl?.unidad_venta || null; // "KG" | "UN" | null
+                }
+
+                // Cantidad a mostrar = sum(qty_requested) de cuts_header
+                const qtyRequested = await CutsHeader.sum("qty_requested", {
+                    where: { receipt_number: remit.order_id, product_code: String(i.product_id) },
+                });
+
+                const qty = Number(qtyRequested || 0);          // CANT. mostrada
+                const net = Number(i.net_weight || 0);          // P. NETO (kg)
+                const price = Number(i.unit_price || 0);
+                const unit = String(unit_measure || "-").toUpperCase();
+
+                const total = unit === "KG" ? price * net : price * qty;
+
+                return {
+                    product_id: i.product_id,
+                    product_name: i.product_name,
+                    unit_measure: unit_measure || "-",
+                    qty,                 // 👈 qty_requested
+                    net_weight: net,
+                    unit_price: price,
+                    total,
+                };
+            })
+        );
+
+        // Encabezado a usar en el PDF (incluye fecha de la orden)
+        const headerForPdf = {
+            ...remit.toJSON(),
+            date_order: order?.date_order || remit.created_at,
+        };
 
         res.setHeader("Content-Type", "application/pdf");
         res.setHeader("Content-Disposition", `inline; filename=remito_${remit.receipt_number}.pdf`);
@@ -250,16 +389,20 @@ async function streamRemitPdfById(req, res) {
         const doc = new PDFDocument({ margin: 40, size: "A4" });
         doc.pipe(res);
 
-        const startY = drawHeader(doc, remit.toJSON());
+        const startY = drawHeader(doc, headerForPdf);
         const { y: afterY, totalFinal, totalItems } = drawTable(doc, rows, startY);
-        drawFooter(doc, remit.toJSON(), afterY, totalFinal, totalItems);
+        drawFooter(doc, headerForPdf, afterY, totalFinal, totalItems);
 
         doc.end();
     } catch (e) {
         console.error(e);
-        res.status(500).json({ ok: false, msg: "Error al generar PDF" });
+        if (!res.headersSent) {
+            res.status(500).json({ ok: false, msg: "Error al generar PDF" });
+        }
     }
 }
+
+
 
 async function buildRemitPreview(orderId) {
     const order = await NewOrder.findByPk(orderId);
@@ -282,38 +425,44 @@ async function buildRemitPreview(orderId) {
             order: [["id", "ASC"]],
         });
 
-        const unit_measure = priceRow?.unidad_venta || null;
-
         const headers = await CutsHeader.findAll({
             where: { receipt_number: orderId, product_code: String(l.product_id) },
             include: [{ model: CutsDetail, as: "details" }],
             order: [["id", "ASC"]],
         });
 
+        let qty_requested_total = 0;
         let units_count = 0;
+        let gross_weight = 0;
         let net_weight = 0;
 
         for (const h of headers) {
+            qty_requested_total += Number(h.qty_requested || 0);
             for (const d of (h.details || [])) {
                 units_count += Number(d.units_count || 0);
+                gross_weight += Number(d.gross_weight || 0);
                 net_weight += Number(d.net_weight || 0);
             }
         }
 
-        const qty = unit_measure === "KG" ? net_weight : units_count;
+        const unit_measure = priceRow?.unidad_venta || null; // UN | KG
+        const qty = qty_requested_total; // <-- ahora CANT. = qty_requested
 
         items.push({
             product_id: l.product_id ?? null,
             product_name: l.product_name,
             unit_measure: unit_measure || "-",
             qty,
+            // peso neto sigue yendo a su propia columna
             net_weight,
             unit_price,
-            total: unit_price * qty,
+            total: unit_measure === "KG" ? unit_price * net_weight : unit_price * qty,
         });
 
         totalItems += Number(qty || 0);
-        totalAmount += unit_price * Number(qty || 0);
+        totalAmount += unit_measure === "KG"
+            ? unit_price * Number(net_weight || 0)
+            : unit_price * Number(qty || 0);
     }
 
     const header = {
@@ -332,6 +481,7 @@ async function buildRemitPreview(orderId) {
 
     return { header, items };
 }
+
 
 async function streamRemitPdfByOrder(req, res) {
     try {
@@ -361,6 +511,7 @@ async function streamRemitPdfByOrder(req, res) {
 const saleApiController = {
     getRemitPdf: streamRemitPdfById,
     getRemitPdfByOrder: streamRemitPdfByOrder,
+    checkFinalRemitExists,
     createNewSeller: async (req, res) => {
         try {
             const {
@@ -1453,27 +1604,38 @@ const saleApiController = {
     },
 
 
-    // Preview/estado de remito para una orden
+    // Preview/estado de remito para una orden (CANT. = sum(qty_requested))
     getRemitControlState: async (req, res) => {
         try {
-            const { id } = req.params;
+            const { id } = req.params; // orderId
 
-            // 1) ¿Ya existe un remito para esta orden?
+            // Helper: cantidad pedida para un producto en una orden
+            const qtyRequestedOf = async (orderId, productId) => {
+                const n = await CutsHeader.sum("qty_requested", {
+                    where: { receipt_number: orderId, product_code: String(productId) },
+                });
+                return Number(n || 0);
+            };
+
+            // ¿Ya existe un remito final para esta orden?
             const existing = await FinalRemit.findOne({
                 where: { order_id: id },
                 include: [{ model: FinalRemitProduct, as: "items" }],
                 order: [[{ model: FinalRemitProduct, as: "items" }, "id", "ASC"]],
             });
 
-            // Traemos siempre el header original de la orden para la fecha
+            // Tomamos la fecha original desde la orden
             const order = await NewOrder.findByPk(id);
             if (!order) return res.status(404).json({ ok: false, msg: "Orden no encontrada" });
 
-            // 1.a) Si ya hay remito, devolvemos datos 100% desde final_* (solo lectura)
+            // 1) Ya hay remito → mostrar items en solo lectura
             if (existing) {
-                // completar unidad cuando quedó NULL en final_remit_products
+                let totalItems = 0;
+                let totalAmount = 0;
+
                 const items = await Promise.all(
                     (existing.items || []).map(async (it) => {
+                        // unidad: preferir la guardada; si falta, buscar en la lista de precios
                         let unit_measure = it.unit_measure || null;
                         if (!unit_measure) {
                             const pl = await PriceListProduct.findOne({
@@ -1482,15 +1644,30 @@ const saleApiController = {
                             });
                             unit_measure = pl?.unidad_venta || null; // UN | KG
                         }
+
+                        // CANT. mostrada = qty_requested desde cuts_header
+                        const qtyDisplay = await qtyRequestedOf(existing.order_id, it.product_id);
+
+                        const unit = String(unit_measure || "-").toUpperCase();
+                        const net = Number(it.net_weight || 0);  // P. NETO real
+                        const u$ = Number(it.unit_price || 0);
+
+                        // Total: KG → $*kg ; UN → $*unidades (qty_requested)
+                        const lineTotal = unit === "KG" ? (u$ * net) : (u$ * qtyDisplay);
+
+                        totalItems += qtyDisplay;
+                        totalAmount += lineTotal;
+
                         return {
                             product_id: it.product_id ?? null,
                             product_name: it.product_name,
-                            unit_price: Number(it.unit_price || 0),
-                            qty: Number(it.qty || 0),
+                            unit_price: u$,
                             unit_measure,
+                            qty: qtyDisplay,                // 👈 mostrar qty_requested
                             gross_weight: Number(it.gross_weight || 0),
-                            net_weight: Number(it.net_weight || 0),
+                            net_weight: net,
                             avg_weight: Number(it.avg_weight || 0),
+                            total: lineTotal,
                         };
                     })
                 );
@@ -1504,10 +1681,10 @@ const saleApiController = {
                     price_list: existing.price_list,
                     sell_condition: existing.sell_condition,
                     payment_condition: existing.payment_condition,
-                    generated_by: existing.generated_by, // <- faltaba
+                    generated_by: existing.generated_by,
                     note: existing.note || null,
-                    total_items: Number(existing.total_items || 0),
-                    total_amount: Number(existing.total_amount || 0),
+                    total_items: totalItems,
+                    total_amount: totalAmount,
                 };
 
                 return res.json({
@@ -1519,50 +1696,69 @@ const saleApiController = {
                 });
             }
 
-            // 1.b) Si NO hay remito, armamos preview con pesadas (Cuts...)
+            // 2) No hay remito → armar PREVIEW desde cuts_* (también con qty_requested)
             const lines = await ProductsSellOrder.findAll({
                 where: { sell_order_id: id },
                 order: [["id", "ASC"]],
             });
 
             const items = [];
+            let totalItems = 0;
+            let totalAmount = 0;
+
             for (const l of lines) {
+                const unit_price = Number(l.product_price || 0);
+
                 const priceRow = await PriceListProduct.findOne({
                     where: { product_id: String(l.product_id) },
                     order: [["id", "ASC"]],
                 });
+                const unit_measure = priceRow?.unidad_venta || null; // "UN" | "KG" | null
+                const isKG = String(unit_measure || "").toUpperCase() === "KG";
 
+                // qty desde header; peso neto desde details
+                const qty = await qtyRequestedOf(id, l.product_id);
+
+                const detailAgg = await CutsDetail.findAll({
+                    include: [{
+                        model: CutsHeader,
+                        as: "header",
+                        where: { receipt_number: id, product_code: String(l.product_id) },
+                        attributes: [],
+                    }],
+                    attributes: [],
+                });
+                // si no querés otro query, podés sumar net_weight con un findAll + reduce como ya venías
+
+                // Para mantenerlo simple, sumamos con los headers+details clásicos:
                 const headers = await CutsHeader.findAll({
                     where: { receipt_number: id, product_code: String(l.product_id) },
                     include: [{ model: CutsDetail, as: "details" }],
                     order: [["id", "ASC"]],
                 });
-
-                let units_count = 0;
-                let gross_weight = 0;
-                let net_weight = 0;
-
+                let net_weight = 0, units_count = 0;
                 for (const h of headers) {
                     for (const d of (h.details || [])) {
                         units_count += Number(d.units_count || 0);
-                        gross_weight += Number(d.gross_weight || 0);
                         net_weight += Number(d.net_weight || 0);
                     }
                 }
 
-                const unit_measure = priceRow?.unidad_venta || null; // UN | KG
-                const qty = unit_measure === "KG" ? net_weight : units_count;
+                const lineTotal = isKG ? unit_price * net_weight : unit_price * qty;
 
                 items.push({
                     product_id: l.product_id ?? null,
                     product_name: l.product_name,
-                    unit_price: Number(l.product_price || 0),
+                    unit_price,
                     unit_measure,
-                    qty,
-                    gross_weight,
-                    net_weight,
+                    qty,                 // 👈 qty_requested
+                    net_weight,          // P. NETO
                     avg_weight: units_count > 0 ? net_weight / units_count : 0,
+                    total: lineTotal,
                 });
+
+                totalItems += qty;
+                totalAmount += lineTotal;
             }
 
             const header = {
@@ -1575,6 +1771,8 @@ const saleApiController = {
                 sell_condition: order.sell_condition,
                 payment_condition: order.payment_condition,
                 note: order.observation_order || null,
+                total_items: totalItems,
+                total_amount: totalAmount,
             };
 
             return res.json({ ok: true, readonly: false, header, items });
@@ -1584,131 +1782,128 @@ const saleApiController = {
         }
     },
 
+
+    // Generar (persistir) el remito final desde una orden
     createRemitFromOrder: async (req, res) => {
-        const { id } = req.params;
-        const { generated_by, note } = req.body;
-
-        // 1) Validación simple
-        if (!['system', 'afip'].includes(String(generated_by))) {
-            return res.status(400).json({ ok: false, msg: "generated_by inválido" });
-        }
-
-        // 2) Chequeo de duplicado sin transacción
-        const existing = await FinalRemit.findOne({ where: { order_id: id } });
-        if (existing) {
-            return res.status(409).json({
-                ok: false,
-                msg: "La orden ya tiene un remito generado.",
-                remit_id: existing.id,
-            });
-        }
-
-        // 3) Transacción
         const t = await sequelize.transaction();
         try {
+            const { id } = req.params;   // orderId
+            const note = (req.body?.note ?? null);
+
+            // Evitar duplicado
+            const exists = await FinalRemit.findOne({
+                where: { order_id: id },
+                transaction: t,
+                lock: t.LOCK.UPDATE,
+            });
+            if (exists) {
+                await t.rollback();
+                return res.status(400).json({ ok: false, msg: "La orden ya está remitada" });
+            }
+
             const order = await NewOrder.findByPk(id, { transaction: t });
             if (!order) {
                 await t.rollback();
                 return res.status(404).json({ ok: false, msg: "Orden no encontrada" });
             }
 
+            // Header
+            const remit = await FinalRemit.create({
+                order_id: order.id,
+                receipt_number: order.id,
+                client_name: order.client_name,
+                salesman_name: order.salesman_name,
+                price_list: order.price_list,
+                sell_condition: order.sell_condition,
+                payment_condition: order.payment_condition,
+                generated_by: "system",
+                note,
+                total_items: 0,
+                total_amount: 0,
+            }, { transaction: t });
+
+            // Detalle
             const lines = await ProductsSellOrder.findAll({
                 where: { sell_order_id: id },
                 order: [["id", "ASC"]],
                 transaction: t,
             });
 
-            if (!lines.length) {
-                await t.rollback();
-                return res.status(400).json({ ok: false, msg: "La orden no tiene productos" });
-            }
-
-            const totalItems = lines.reduce(
-                (a, l) => a + Number(l.product_quantity || 0),
-                0
-            );
-            const totalAmount = lines.reduce(
-                (a, l) =>
-                    a + Number(l.product_quantity || 0) * Number(l.product_price || 0),
-                0
-            );
-
-            const remit = await FinalRemit.create(
-                {
-                    order_id: order.id,
-                    receipt_number: order.id,
-                    client_name: order.client_name,
-                    salesman_name: order.salesman_name,
-                    price_list: order.price_list,
-                    sell_condition: order.sell_condition,
-                    payment_condition: order.payment_condition,
-                    generated_by: String(generated_by),
-                    note: (note || "").trim(),
-                    total_items: totalItems,
-                    total_amount: totalAmount,
-                },
-                { transaction: t }
-            );
-
             const detailRows = [];
+            let totalItems = 0;
+            let totalAmount = 0;
 
             for (const l of lines) {
+                const unit_price = Number(l.product_price || 0);
+
                 const priceRow = await PriceListProduct.findOne({
                     where: { product_id: String(l.product_id) },
                     order: [["id", "ASC"]],
                     transaction: t,
                 });
+                const unit_measure = priceRow?.unidad_venta || null;
+                const isKG = String(unit_measure || "").toUpperCase() === "KG";
 
                 const headers = await CutsHeader.findAll({
                     where: { receipt_number: id, product_code: String(l.product_id) },
                     include: [{ model: CutsDetail, as: "details" }],
+                    order: [["id", "ASC"]],
                     transaction: t,
                 });
 
-                let units_count = 0;
-                let gross_weight = 0;
+                let qty_requested_total = 0; // 👈 CANTIDAD a guardar
                 let net_weight = 0;
+                let gross_weight = 0;
+                let units_count = 0;
 
                 for (const h of headers) {
-                    for (const d of h.details || []) {
+                    qty_requested_total += Number(h.qty_requested || 0);
+                    for (const d of (h.details || [])) {
                         units_count += Number(d.units_count || 0);
                         gross_weight += Number(d.gross_weight || 0);
                         net_weight += Number(d.net_weight || 0);
                     }
                 }
 
+                const qty = qty_requested_total; // guardamos qty_requested
                 const avg_weight = units_count > 0 ? net_weight / units_count : 0;
-                const unit_measure = priceRow?.unidad_venta || null;
-
-                // Si la unidad es KG, la cantidad del remito suele ser el peso neto;
-                // si es UN, la cantidad son las piezas pesadas.
-                const qty = unit_measure === "KG" ? net_weight : units_count;
+                const lineTotal = isKG ? unit_price * net_weight : unit_price * qty;
 
                 detailRows.push({
                     final_remit_id: remit.id,
                     product_id: l.product_id ?? null,
                     product_name: l.product_name,
-                    unit_price: Number(l.product_price || 0),
-                    qty,
-                    unit_measure,     // UN | KG
+                    unit_price,
+                    qty,                 // CANT. = qty_requested_total
+                    unit_measure,        // "UN" | "KG"
                     gross_weight,
                     net_weight,
                     avg_weight,
                 });
+
+                totalItems += qty;
+                totalAmount += lineTotal;
             }
 
             if (detailRows.length) {
                 await FinalRemitProduct.bulkCreate(detailRows, { transaction: t });
             }
 
+            // Totales del header
+            await remit.update({
+                total_items: totalItems,
+                total_amount: totalAmount,
+            }, { transaction: t });
+
             await t.commit();
-            return res.status(201).json({ ok: true, remit_id: remit.id });
-        } catch (e) {
-            console.error(e);
-            await t.rollback();
-            return res.status(500).json({ ok: false, msg: "Error al crear remito" });
+            return res.json({ ok: true, remit_id: remit.id });
+        } catch (err) {
+            console.error("createRemitFromOrder error:", err);
+            try { await t.rollback(); } catch (_) { }
+            return res.status(500).json({ ok: false, msg: "Error al generar remito" });
         }
     },
+
     // ===== DESTINOS =====
     getAllDestinations: async (req, res) => {
         try {
@@ -1942,6 +2137,257 @@ const saleApiController = {
             return res.status(500).json({ ok: false, msg: "Error al eliminar camión" });
         }
     },
+    // Buscar remitos para el select con search remoto
+listRemitsOptions: async (req, res) => {
+    try {
+        const q = String(req.query.search || "").trim();
+        const limit = Math.min(50, Number(req.query.limit || 20));
+
+        const where = {};
+        if (q) {
+            where[Op.or] = [
+                { receipt_number: { [Op.like]: `%${q}%` } },
+                { client_name: { [Op.like]: `%${q}%` } },
+            ];
+        }
+
+        const rows = await db.FinalRemit.findAll({
+            where,
+            order: [["id", "DESC"]],
+            limit,
+        });
+
+        const options = rows.map(r => ({
+            value: r.id,
+            label: `N° ${r.receipt_number} — ${r.client_name}`,
+            receipt_number: r.receipt_number,
+            client_name: r.client_name,
+        }));
+
+        return res.json({ ok: true, options });
+    } catch (e) {
+        console.error(e);
+        return res.status(500).json({ ok: false, msg: "Error listando remitos" });
+    }
+},
+
+// Crear roadmap (asigna remitos, destinos, camión y chofer)
+// Crea un roadmap
+createRoadmap: async (req, res) => {
+  const t = await db.sequelize.transaction();
+  try {
+    const {
+      delivery_date,
+      remit_ids = [],          // [ids de final_remits]
+      destination_ids = [],    // [ids de destinations]
+      destination_names = [],  // [nombres libres opcionales]
+      truck_id,
+      driver_id
+    } = req.body || {};
+
+    // 1) Header base
+    const header = await db.RoadmapInfo.create({
+      client_name: "", // se rellena con el primer remito si existe
+      delivery_date: delivery_date || null,
+      truck_license_plate: "",
+      driver: ""
+    }, { transaction: t });
+
+    // 2) Completar client_name, patente y chofer
+    let clientName = header.client_name;
+    if (Array.isArray(remit_ids) && remit_ids.length) {
+      const first = await db.FinalRemit.findByPk(remit_ids[0], { transaction: t });
+      if (first) clientName = first.client_name || clientName;
+    }
+
+    let truck_plate = header.truck_license_plate;
+    if (truck_id) {
+      const tr = await db.Truck.findByPk(truck_id, { transaction: t });
+      truck_plate = tr?.license_plate || tr?.plate || tr?.truck_plate || truck_plate;
+    }
+
+    let driver_name = header.driver;
+    if (driver_id) {
+      const dr = await db.Driver.findByPk(driver_id, { transaction: t });
+      driver_name = [dr?.driver_name, dr?.driver_surname].filter(Boolean).join(" ").trim() || driver_name;
+    }
+
+    await header.update({
+      client_name: clientName,
+      truck_license_plate: truck_plate,
+      driver: driver_name
+    }, { transaction: t });
+
+    // 3) Destinos
+    const namesFromIds = destination_ids.length
+      ? (await db.Destination.findAll({
+          where: { id: destination_ids },
+          transaction: t
+        })).map(d => d.name || d.destination_name || d.destination)
+      : [];
+
+    const manualNames = (destination_names || []).map(s => String(s || "").trim()).filter(Boolean);
+
+    // unificar y evitar duplicados
+    const allNames = Array.from(new Set([...namesFromIds, ...manualNames]));
+
+    for (const nm of allNames) {
+      await db.sequelize.query(
+        "INSERT INTO roadmap_info_destinations (roadmap_info_id, destination) VALUES (?, ?)",
+        { replacements: [header.id, nm], transaction: t }
+      );
+    }
+
+    // 4) Relación con remitos (sin duplicados)
+    const uniqRemits = Array.from(new Set((remit_ids || []).map(Number).filter(Boolean)));
+    for (const rid of uniqRemits) {
+      await db.sequelize.query(
+        "INSERT INTO roadmap_info_remits (roadmap_info_id, final_remit_id) VALUES (?, ?)",
+        { replacements: [header.id, rid], transaction: t }
+      );
+    }
+
+    await t.commit();
+    return res.status(201).json({ ok: true, id: header.id, msg: "Roadmap creado" });
+  } catch (e) {
+    console.error(e);
+    try { await t.rollback(); } catch (_) {}
+    return res.status(500).json({ ok: false, msg: "Error al crear roadmap" });
+  }
+},
+
+// Traer roadmap para edición
+getRoadmap: async (req, res) => {
+    try {
+        const { id } = req.params;
+        const header = await db.RoadmapInfo.findByPk(id, {
+            include: [
+                { model: db.RoadmapInfoDestination, as: "destinations" },
+                { model: db.RoadmapInfoRemit, as: "remits", include: [{ model: db.FinalRemit, as: "finalRemit" }] },
+            ],
+        });
+        if (!header) return res.status(404).json({ ok: false, msg: "Roadmap no encontrado" });
+
+        const data = header.toJSON();
+        const remit_ids = (data.remits || []).map(r => r.final_remit_id);
+        const remit_options = (data.remits || []).map(r => ({
+            value: r.final_remit_id,
+            label: `N° ${r.finalRemit?.receipt_number || r.final_remit_id} — ${r.finalRemit?.client_name || ""}`,
+        }));
+        const destinations = (data.destinations || []).map(d => d.destination);
+
+        return res.json({
+            ok: true,
+            roadmap: {
+                id: data.id,
+                client_name: data.client_name,
+                delivery_date: data.delivery_date,
+                truck_license_plate: data.truck_license_plate,
+                driver: data.driver,
+                remit_ids,
+                remit_options,
+                destinations,
+            },
+        });
+    } catch (e) {
+        console.error(e);
+        return res.status(500).json({ ok: false, msg: "Error leyendo roadmap" });
+    }
+},
+
+// Actualiza un roadmap
+updateRoadmap: async (req, res) => {
+  const t = await db.sequelize.transaction();
+  try {
+    const { id } = req.params;
+    const {
+      delivery_date,
+      remit_ids = [],
+      destination_ids = [],
+      destination_names = [],
+      truck_id,
+      driver_id
+    } = req.body || {};
+
+    const header = await db.RoadmapInfo.findByPk(id, { transaction: t });
+    if (!header) {
+      await t.rollback();
+      return res.status(404).json({ ok: false, msg: "Roadmap no encontrado" });
+    }
+
+    // client_name desde primer remito
+    let clientName = header.client_name;
+    if (Array.isArray(remit_ids) && remit_ids.length) {
+      const first = await db.FinalRemit.findByPk(remit_ids[0], { transaction: t });
+      if (first) clientName = first.client_name || clientName;
+    }
+
+    // patente
+    let truck_plate = header.truck_license_plate;
+    if (truck_id) {
+      const tr = await db.Truck.findByPk(truck_id, { transaction: t });
+      truck_plate = tr?.license_plate || tr?.plate || tr?.truck_plate || truck_plate;
+    }
+
+    // chofer
+    let driver_name = header.driver;
+    if (driver_id) {
+      const dr = await db.Driver.findByPk(driver_id, { transaction: t });
+      driver_name = [dr?.driver_name, dr?.driver_surname].filter(Boolean).join(" ").trim() || driver_name;
+    }
+
+    await header.update({
+      client_name: clientName,
+      delivery_date: delivery_date || header.delivery_date,
+      truck_license_plate: truck_plate,
+      driver: driver_name
+    }, { transaction: t });
+
+    // reset destinos
+    await db.sequelize.query(
+      "DELETE FROM roadmap_info_destinations WHERE roadmap_info_id = ?",
+      { replacements: [id], transaction: t }
+    );
+
+    const namesFromIds = destination_ids.length
+      ? (await db.Destination.findAll({
+          where: { id: destination_ids },
+          transaction: t
+        })).map(d => d.name || d.destination_name || d.destination)
+      : [];
+
+    const manualNames = (destination_names || []).map(s => String(s || "").trim()).filter(Boolean);
+    const allNames = Array.from(new Set([...namesFromIds, ...manualNames]));
+
+    for (const nm of allNames) {
+      await db.sequelize.query(
+        "INSERT INTO roadmap_info_destinations (roadmap_info_id, destination) VALUES (?, ?)",
+        { replacements: [id, nm], transaction: t }
+      );
+    }
+
+    // reset remitos
+    await db.sequelize.query(
+      "DELETE FROM roadmap_info_remits WHERE roadmap_info_id = ?",
+      { replacements: [id], transaction: t }
+    );
+
+    const uniqRemits = Array.from(new Set((remit_ids || []).map(Number).filter(Boolean)));
+    for (const rid of uniqRemits) {
+      await db.sequelize.query(
+        "INSERT INTO roadmap_info_remits (roadmap_info_id, final_remit_id) VALUES (?, ?)",
+        { replacements: [id, rid], transaction: t }
+      );
+    }
+
+    await t.commit();
+    return res.json({ ok: true, msg: "Roadmap actualizado" });
+  } catch (e) {
+    console.error(e);
+    try { await t.rollback(); } catch (_) {}
+    return res.status(500).json({ ok: false, msg: "Error actualizando roadmap" });
+  }
+},
 
 
 

@@ -8,12 +8,11 @@ const API_BASE = (import.meta.env.VITE_API_URL || "").replace(/\/+$/, "");
 const ENDPOINT_ORDERS = `${API_BASE}/final-orders`;
 const ENDPOINT_FINAL_REMIT = `${API_BASE}/final-remits`;
 
+// ✅ date_order es DATE (YYYY-MM-DD). No usar new Date(iso).
 const fmtDate = (iso) => {
   if (!iso) return "-";
-  const d = new Date(iso);
-  const dd = String(d.getDate()).padStart(2, "0");
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const yyyy = d.getFullYear();
+  const [yyyy, mm, dd] = String(iso).split("-");
+  if (!yyyy || !mm || !dd) return "-";
   return `${dd}/${mm}/${yyyy}`;
 };
 
@@ -29,7 +28,7 @@ export default function ListRemitFinalWeight() {
 
   const queryString = useMemo(() => {
     const p = new URLSearchParams();
-    p.set("status", "generated"); // ← solo órdenes generadas (pendientes de remitar) :contentReference[oaicite:2]{index=2}
+    p.set("status", "generated"); // ← solo órdenes ya pesadas
     if (date) {
       p.set("date_from", date);
       p.set("date_to", date);
@@ -39,22 +38,21 @@ export default function ListRemitFinalWeight() {
     return p.toString();
   }, [date, number, client]);
 
-  // Chequea si ya existe remito final para la orden (devuelve boolean)
+  // 👉 Chequea existencia de remito con detalle (join) en backend
   const checkHasFinalRemit = async (orderId) => {
     try {
-      // Supone que /final-remits?order_id=XX devuelve [] o [{...}]
       const res = await fetch(`${ENDPOINT_FINAL_REMIT}?order_id=${orderId}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      if (Array.isArray(data)) return data.length > 0;
-      // Si la API devuelve objeto con rows:
-      if (data?.rows && Array.isArray(data.rows)) return data.rows.length > 0;
-      // Si la API devuelve un objeto con exists:
+      // backend responde { exists: boolean }
       if (typeof data?.exists === "boolean") return data.exists;
+      // compat:
+      if (Array.isArray(data)) return data.length > 0;
+      if (Array.isArray(data?.rows)) return data.rows.length > 0;
       return false;
     } catch {
-      // En caso de error de red, por seguridad NO permitir duplicar:
-      return true;
+      // ❗ Ante error de red, NO marcar remitido por defecto
+      return false;
     }
   };
 
@@ -67,7 +65,6 @@ export default function ListRemitFinalWeight() {
       const data = await res.json();
       const list = Array.isArray(data) ? data : data?.rows || [];
 
-      // Anotar cada fila con hasRemit
       const withFlags = await Promise.all(
         list.map(async (r) => {
           const orderId = r.order_id ?? r.id;
@@ -87,21 +84,17 @@ export default function ListRemitFinalWeight() {
 
   useEffect(() => {
     load();
-  
   }, [queryString]);
 
   const onRemit = (orderId) => navigate(`/remit-control-state/${orderId}`);
   const onView = (orderId) => navigate(`/remits/preview/${orderId}`);
-
   const onPDF = (orderId) => {
     window.open(`${API_BASE}/remits/from-order/${orderId}/pdf`, "_blank", "noopener");
   };
 
-
   return (
     <div className="lrf">
       <Navbar />
-
       <div className="lrf-back">
         <button className="boton-volver" onClick={() => navigate(-1)}>
           ⬅ Volver
@@ -148,9 +141,7 @@ export default function ListRemitFinalWeight() {
             />
           </div>
           <div className="filters-submit">
-            <button type="submit" className="btn-secondary">
-              Buscar
-            </button>
+            <button type="submit" className="btn-secondary">Buscar</button>
           </div>
         </form>
 
@@ -166,17 +157,11 @@ export default function ListRemitFinalWeight() {
             </thead>
             <tbody>
               {loading ? (
-                <tr>
-                  <td colSpan={4} className="text-center">Cargando…</td>
-                </tr>
+                <tr><td colSpan={4} className="text-center">Cargando…</td></tr>
               ) : err ? (
-                <tr>
-                  <td colSpan={4} className="text-center error">{err}</td>
-                </tr>
+                <tr><td colSpan={4} className="text-center error">{err}</td></tr>
               ) : rows.length === 0 ? (
-                <tr>
-                  <td colSpan={4} className="text-center">No hay órdenes para remitar.</td>
-                </tr>
+                <tr><td colSpan={4} className="text-center">No hay órdenes para remitar.</td></tr>
               ) : (
                 rows.map((r) => (
                   <tr key={r.order_id}>
@@ -192,12 +177,8 @@ export default function ListRemitFinalWeight() {
                         ) : (
                           <span style={{ opacity: 0.6, marginRight: 8 }}>Ya remitido</span>
                         )}
-                        <button className="btn-icon" title="Ver" onClick={() => onView(r.order_id)}>
-                          👁
-                        </button>
-                        <button className="btn-icon danger" title="PDF" onClick={() => onPDF(r.order_id)}>
-                          PDF
-                        </button>
+                        <button className="btn-icon" title="Ver" onClick={() => onView(r.order_id)}>👁</button>
+                        <button className="btn-icon danger" title="PDF" onClick={() => onPDF(r.order_id)}>PDF</button>
                       </div>
                     </td>
                   </tr>

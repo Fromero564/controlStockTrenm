@@ -1,0 +1,124 @@
+.rm-wrap {
+  max-width: 980px;
+  margin: 24px auto;
+  padding: 8px;
+}
+
+.rm-title {
+  font-size: 24px;
+  font-weight: 700;
+  margin: 8px 0 16px;
+  color: #0f172a;
+}
+
+.rm-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 18px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.rm-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: #334155;
+  margin: 10px 0 6px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.rm-input {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 14px;
+  outline: none;
+}
+
+.rm-input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.rm-select {
+  font-size: 14px;
+}
+
+.rm-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.rm-cell {
+  min-width: 0;
+}
+
+.rm-inline {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.rm-actions {
+  margin-top: 18px;
+  display: flex;
+  gap: 10px;
+}
+
+.rm-btn {
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 10px 14px;
+  background: #f8fafc;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.rm-btn:hover {
+  background: #eef2ff;
+}
+
+.rm-btn.primary {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #fff;
+}
+
+.rm-btn.primary:hover {
+  background: #1e40af;
+}
+
+/* react-select tweaks */
+.rs__control {
+  min-height: 42px;
+  border-color: #cbd5e1 !important;
+  border-radius: 10px !important;
+}
+
+.rs__control--is-focused {
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15) !important;
+  border-color: #2563eb !important;
+}
+
+.rs__multi-value {
+  background: #e2e8f0 !important;
+  border-radius: 8px !important;
+}
+
+.rs__multi-value__label {
+  color: #0f172a !important;
+}
+
+.rs__option--is-focused {
+  background: #eef2ff !important;
+}
+
+.rs__option--is-selected {
+  background: #2563eb !important;
+}
