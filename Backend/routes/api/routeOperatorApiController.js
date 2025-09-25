@@ -81,6 +81,7 @@ router.put("/updateBillSupplier/:id",apiOperatorController.updateBillSupplier);
 router.put("/observations-edit/:id",apiOperatorController.updateObservationMeatIncome);
 //Api para actualizar los cortes cargados en un remito
 router.put("/meat-income-edit/:id",apiOperatorController.editAddIncome);
+router.put("/stock/manual/:id", apiOperatorController.updateStockManual); 
 
 
 

@@ -738,7 +738,7 @@ const ProductionProcess = () => {
                   />
                 </div>
                 <div>
-                  <label>CANTIDAD(unidad/kg)</label>
+                  <label>CANTIDAD</label>
                   <input type="number" name="cantidad" value={formData.cantidad} onChange={handleChange} min="0" required />
                 </div>
                 <div>

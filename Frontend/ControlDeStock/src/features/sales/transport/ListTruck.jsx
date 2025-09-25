@@ -4,10 +4,12 @@ import { faPen, faTrash } from "@fortawesome/free-solid-svg-icons";
 import Navbar from "../../../components/Navbar";
 import Truck from "./Truck";
 import "../../../assets/styles/trucks.css";
+import { useNavigate } from "react-router-dom";
 
 const API_BASE = (import.meta.env.VITE_API_URL || "").replace(/\/+$/, "");
 
 export default function ListTruck() {
+  const navigate=useNavigate();
   const [q, setQ] = useState("");
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -73,6 +75,9 @@ export default function ListTruck() {
   return (
     <div className="tck">
       <Navbar />
+       <div style={{ margin: "20px" }}>
+        <button className="boton-volver" onClick={() => navigate('/roadmap-options')}>⬅ Volver</button>
+      </div>
 
       <div className="tck-page">
         <div className="tck-header"><h1>CAMIONES</h1></div>

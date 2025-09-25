@@ -13,7 +13,7 @@ const SalesPanel = () => {
         { title: "ÓRDENES DE VENTA", desc: "", viewPath: "/list-final-orders", newText: "Nueva orden" },
         { title: "REMITOS", desc: "", viewPath: "/list-final-remits", newPath: "", newText: "Generar remito" },
         { title: "VENDEDORES", desc: "", viewPath: "/seller-list", newPath: "/seller-new", newText: "Nuevo vendedor" },
-        { title: "PREFACTURACIONES", desc: "", viewPath: "/prefact-list", newPath: "/prefact-new", newText: "Nueva prefacturación" },
+        { title: "PREFACTURACIONES", desc: "", viewPath: "/pre-invoicing-list", newPath: "/prefact-new", newText: "Nueva prefacturación" },
         { title: "REPORTES", desc: "", viewPath: "/report-list", newPath: null, newText: null },
         { title: "CLIENTES", desc: "", viewPath: "/client-list", newPath: "/client-load", newText: "Cargar" },
         { title: "HOJA DE RUTA", desc: "", newPath: "/roadmap-options", newText: "Nueva hoja de ruta " },

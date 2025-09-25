@@ -316,7 +316,7 @@ const LoadNewProduct = () => {
       <Navbar />
 
       <div style={{ margin: "20px" }}>
-        <button className="boton-volver" onClick={() => navigate("/operator-panel")}>
+        <button className="boton-volver" onClick={() => navigate("/product-configuration")}>
           ⬅ Volver
         </button>
       </div>

@@ -362,7 +362,7 @@ export default function OrderWeight() {
     <div className="ow">
       <Navbar />
       <div className="ow-topbar">
-        <button className="ow-btn-back" onClick={() => navigate(-1)}>
+        <button className="ow-btn-back" onClick={() => navigate("/sales-panel")}>
           ⬅ Volver
         </button>
       </div>

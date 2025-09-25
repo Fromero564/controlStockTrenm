@@ -117,13 +117,15 @@ export default function LoadNewDriver() {
 
   const onCancel = () => {
     if (loading) return;
-    navigate(-1);
+    navigate("/roadmap-options");
   };
 
   return (
     <div>
       <Navbar />
+   
       <div className="driver-overlay">
+           
         <form className="driver-card" onSubmit={onSubmit}>
           <h2 className="driver-title">{isEdit ? "EDITAR CHOFER" : "NUEVO CHOFER"}</h2>
 

@@ -23,7 +23,7 @@ const OperatorPanel = () => {
         <div className="">
             <Navbar />
             <div style={{ margin: "20px" }}>
-                <button className="boton-volver" onClick={() => navigate(-1)}>
+                <button className="boton-volver" onClick={() => navigate("/dashboard")}>
                     ⬅ Volver
                 </button>
             </div>

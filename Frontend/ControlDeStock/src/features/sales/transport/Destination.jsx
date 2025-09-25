@@ -19,6 +19,7 @@ export default function Destination({ open, mode = "create", initial = {}, onCan
 
   return (
     <div className="dst-modal">
+       
       <div className="dst-modal-card">
         <div className="dst-modal-title">{mode === "edit" ? "EDITAR DESTINO" : "NUEVO DESTINO"}</div>
         <form onSubmit={handleSubmit}>

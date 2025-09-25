@@ -36,7 +36,9 @@ const FinalRemit = db.FinalRemit;
 const FinalRemitProduct = db.FinalRemitProduct;
 const RoadmapInfo = db.RoadmapInfo;
 const RoadmapInfoDestination = db.RoadmapInfoDestination;
-const RoadmapInfoRemit = db.RoadmapInfoRemit;
+const Preinvoice = db.Preinvoice;
+const PreinvoiceReturn = db.PreinvoiceReturn;
+
 
 
 // controllers/api/saleApiController.js
@@ -2138,258 +2140,1105 @@ const saleApiController = {
         }
     },
     // Buscar remitos para el select con search remoto
-listRemitsOptions: async (req, res) => {
-    try {
-        const q = String(req.query.search || "").trim();
-        const limit = Math.min(50, Number(req.query.limit || 20));
+    listRemitsOptions: async (req, res) => {
+        try {
+            const q = String(req.query.search || "").trim();
+            const limit = Math.min(50, Number(req.query.limit || 20));
 
-        const where = {};
-        if (q) {
-            where[Op.or] = [
-                { receipt_number: { [Op.like]: `%${q}%` } },
-                { client_name: { [Op.like]: `%${q}%` } },
-            ];
+            const where = {};
+            if (q) {
+                where[Op.or] = [
+                    { receipt_number: { [Op.like]: `%${q}%` } },
+                    { client_name: { [Op.like]: `%${q}%` } },
+                ];
+            }
+
+            const rows = await db.FinalRemit.findAll({
+                where,
+                order: [["id", "DESC"]],
+                limit,
+            });
+
+            const options = rows.map(r => ({
+                value: r.id,
+                label: `N° ${r.receipt_number} — ${r.client_name}`,
+                receipt_number: r.receipt_number,
+                client_name: r.client_name,
+            }));
+
+            return res.json({ ok: true, options });
+        } catch (e) {
+            console.error(e);
+            return res.status(500).json({ ok: false, msg: "Error listando remitos" });
+        }
+    },
+
+    createRoadmap: async (req, res) => {
+        const t = await sequelize.transaction();
+        try {
+            const {
+                delivery_date,
+                remit_ids = [],
+                destination_ids = [],
+                destination_names = [],
+                truck_id,
+                truck_license_plate,
+                driver_id,
+                driver,
+            } = req.body || {};
+
+            if (!delivery_date) { await t.rollback(); return res.status(400).json({ ok: false, msg: "delivery_date es obligatorio" }); }
+            if (!remit_ids.length) { await t.rollback(); return res.status(400).json({ ok: false, msg: "Seleccioná al menos un remito" }); }
+            if (!destination_ids.length && !destination_names.length) { await t.rollback(); return res.status(400).json({ ok: false, msg: "Seleccioná un destino" }); }
+
+            let plate = (truck_license_plate || "").trim();
+            if (!plate && truck_id) {
+                const tr = await Truck.findByPk(truck_id, { transaction: t });
+                plate = tr?.plate || tr?.license_plate || tr?.truck_plate || tr?.patente || null;
+            }
+
+            let driverName = (driver || "").trim();
+            if (!driverName && driver_id) {
+                const d = await Driver.findByPk(driver_id, { transaction: t });
+                driverName = [d?.driver_name, d?.driver_surname].filter(Boolean).join(" ").trim() || null;
+            }
+
+            const header = await RoadmapInfo.create({
+                delivery_date,
+                truck_license_plate: plate,
+                driver: driverName,
+            }, { transaction: t });
+
+            const namesFromIds = destination_ids.length
+                ? (await Destination.findAll({ where: { id: destination_ids }, transaction: t }))
+                    .map(d => d.name || d.destination_name || d.destination)
+                : [];
+            const manualNames = (destination_names || []).map(s => String(s || "").trim()).filter(Boolean);
+            const destNames = Array.from(new Set([...namesFromIds, ...manualNames])).filter(Boolean);
+
+            const uniqRemits = Array.from(new Set(remit_ids.map(Number).filter(Boolean)));
+            const createdRows = [];
+
+            for (const r of uniqRemits) {
+                const fr = await FinalRemit.findOne({
+                    where: { [Op.or]: [{ id: r }, { order_id: r }, { receipt_number: r }] },
+                    transaction: t
+                });
+                const client = fr?.client_name || "SIN ESPECIFICAR";
+
+                for (const nm of destNames) {
+                    const row = await RoadmapInfoDestination.create({
+                        roadmap_info_id: header.id,
+                        id_remit: r,
+                        client_name: client,
+                        destination: nm,
+                    }, { transaction: t });
+                    createdRows.push(row.id);
+                }
+            }
+
+            await t.commit();
+            return res.status(201).json({ ok: true, id: header.id, rows: createdRows, msg: "Roadmap creado" });
+        } catch (e) {
+            try { await t.rollback(); } catch { }
+            return res.status(500).json({ ok: false, msg: "Error al crear roadmap" });
+        }
+    },
+
+
+
+    getRoadmap: async (req, res) => {
+        try {
+            const { id } = req.params;
+
+            const header = await RoadmapInfo.findByPk(id);
+            if (!header) return res.status(404).json({ ok: false, msg: "Roadmap no encontrado" });
+
+            const rows = await RoadmapInfoDestination.findAll({
+                where: { roadmap_info_id: id },
+                order: [["id", "ASC"]],
+            });
+
+            // Opciones de remitos (N° + Cliente)
+            const remit_options = Array.from(
+                new Map(
+                    rows.map(r => [r.id_remit, {
+                        value: r.id_remit,
+                        label: `N° ${r.id_remit} — ${r.client_name || ""}`,
+                        receipt_number: r.id_remit,
+                        client_name: r.client_name || ""
+                    }])
+                ).values()
+            );
+
+            // Lista única de destinos y uno principal para el header
+            const destinations = Array.from(new Set(rows.map(r => r.destination).filter(Boolean)));
+            const destination_main = destinations[0] || null;
+
+            return res.json({
+                ok: true,
+                roadmap: {
+                    id: header.id,
+                    created_at: header.created_at,               // 👈 agregado
+                    delivery_date: header.delivery_date,
+                    truck_license_plate: header.truck_license_plate,
+                    driver: header.driver,
+                    destination_main,                             // 👈 agregado (para el header)
+                    destinations,                                 // por si mostrás varios
+                    remit_options                                  // para la grilla de remitos
+                },
+            });
+        } catch (e) {
+            console.error(e);
+            return res.status(500).json({ ok: false, msg: "Error leyendo roadmap" });
+        }
+    },
+
+
+
+    updateRoadmap: async (req, res) => {
+        const t = await sequelize.transaction();
+        try {
+            const { id } = req.params;
+            const {
+                delivery_date,
+                remit_ids = [],
+                destination_ids = [],
+                destination_names = [],
+                truck_id,
+                truck_license_plate,
+                driver_id,
+                driver,
+            } = req.body || {};
+
+            const header = await RoadmapInfo.findByPk(id, { transaction: t });
+            if (!header) { await t.rollback(); return res.status(404).json({ ok: false, msg: "Roadmap no encontrado" }); }
+
+            let plate = (truck_license_plate || header.truck_license_plate || "").trim();
+            if (!plate && truck_id) {
+                const tr = await Truck.findByPk(truck_id, { transaction: t });
+                plate = tr?.license_plate || tr?.plate || tr?.truck_plate || plate;
+            }
+
+            let driverName = (driver || header.driver || "").trim();
+            if (!driverName && driver_id) {
+                const d = await Driver.findByPk(driver_id, { transaction: t });
+                driverName = [d?.driver_name, d?.driver_surname].filter(Boolean).join(" ").trim() || driverName;
+            }
+
+            await header.update({
+                delivery_date: delivery_date || header.delivery_date,
+                truck_license_plate: plate || null,
+                driver: driverName || null,
+            }, { transaction: t });
+
+            await RoadmapInfoDestination.destroy({ where: { roadmap_info_id: id }, transaction: t });
+
+            const namesFromIds = destination_ids.length
+                ? (await Destination.findAll({ where: { id: destination_ids }, transaction: t }))
+                    .map(d => d.name || d.destination_name || d.destination)
+                : [];
+            const manualNames = (destination_names || []).map(s => String(s || "").trim()).filter(Boolean);
+            const destNames = Array.from(new Set([...namesFromIds, ...manualNames])).filter(Boolean);
+
+            const uniqRemits = Array.from(new Set(remit_ids.map(Number).filter(Boolean)));
+
+            for (const r of uniqRemits) {
+                const fr = await FinalRemit.findOne({
+                    where: { [Op.or]: [{ id: r }, { order_id: r }, { receipt_number: r }] },
+                    transaction: t
+                });
+                const client = fr?.client_name || "SIN ESPECIFICAR";
+
+                for (const nm of destNames) {
+                    await RoadmapInfoDestination.create({
+                        roadmap_info_id: id,
+                        id_remit: r,
+                        client_name: client,
+                        destination: nm,
+                    }, { transaction: t });
+                }
+            }
+
+            await t.commit();
+            return res.json({ ok: true, msg: "Roadmap actualizado" });
+        } catch (e) {
+            try { await t.rollback(); } catch { }
+            return res.status(500).json({ ok: false, msg: "Error actualizando roadmap" });
+        }
+    },
+
+    listRoadmaps: async (req, res) => {
+        try {
+            const { q = "", page = 1, size = 10 } = req.query;
+            const limit = Number(size);
+            const offset = (Number(page) - 1) * limit;
+
+            const { rows, count } = await RoadmapInfo.findAndCountAll({
+                include: [{ model: RoadmapInfoDestination, as: "destinations" }],
+                order: [["created_at", "DESC"]],
+                limit,
+                offset,
+            });
+
+            const data = rows.map(r => ({
+                id: r.id,
+                created_at: r.created_at,
+                delivery_date: r.delivery_date,
+                truck_license_plate: r.truck_license_plate,
+                driver: r.driver,
+                destination: r.destinations?.[0]?.destination || "-",
+                destinationsCount: r.destinations?.length || 0,
+            }));
+
+            return res.json({
+                ok: true,
+                data,
+                page: Number(page),
+                size: limit,
+                total: count,
+            });
+        } catch (e) {
+            console.error(e);
+            return res.status(500).json({ ok: false, msg: "Error listando roadmaps" });
+        }
+    },
+    listRoadmapDateGroups: async (req, res) => {
+        try {
+            const listRoadmap = await RoadmapInfo.findAll({});
+            return res.json(listRoadmap)
+
+        } catch (error) {
+            console.error(error);
+            return res.status(500).json({ ok: false, msg: "Error al listar prefacturaciones (roadmaps)." });
+        }
+    },
+    // Detalle de prefacturación por fechas (production_date = DATE(created_at), delivery_date)
+    getPreinvoiceDetail: async (req, res) => {
+        try {
+            const { Op, fn, col, where } = require("sequelize");
+            const production_date = String(req.query.production_date || "").slice(0, 10);
+            const delivery_date = String(req.query.delivery_date || "").slice(0, 10);
+
+            if (!production_date || !delivery_date) {
+                return res.status(400).json({ ok: false, msg: "Faltan production_date y delivery_date (YYYY-MM-DD)" });
+            }
+
+            // 1) Roadmaps que matchean fechas
+            const roadmaps = await RoadmapInfo.findAll({
+                where: {
+                    [Op.and]: [
+                        where(fn("DATE", col("created_at")), production_date),
+                        where(fn("DATE", col("delivery_date")), delivery_date)
+                    ]
+                },
+                order: [["id", "ASC"]],
+                attributes: ["id", "truck_license_plate", "driver", "delivery_date", "created_at"]
+            });
+
+            if (!roadmaps.length) {
+                return res.json({ ok: true, production_date, delivery_date, roadmaps: [] });
+            }
+
+            const roadmapIds = roadmaps.map(r => r.id);
+
+            // 2) Destinos de esos roadmaps (acá obtenemos los remitos finales por roadmap)
+            const destinations = await RoadmapInfoDestination.findAll({
+                where: { roadmap_info_id: { [Op.in]: roadmapIds } },
+                order: [["id", "ASC"]],
+                attributes: ["id", "roadmap_info_id", "id_remit", "client_name", "destination"]
+            });
+
+            // Agrupo destinos por roadmap_id
+            const destByRoadmap = new Map();
+            for (const d of destinations) {
+                const key = d.roadmap_info_id;
+                if (!destByRoadmap.has(key)) destByRoadmap.set(key, []);
+                destByRoadmap.get(key).push(d);
+            }
+
+            // 3) Traigo headers de remitos y luego todos sus items de una
+            const remitIds = destinations.map(d => d.id_remit).filter(Boolean);
+            const remits = remitIds.length
+                ? await FinalRemit.findAll({
+                    where: { id: { [Op.in]: remitIds } },
+                    attributes: [
+                        "id", "order_id", "receipt_number", "client_name", "salesman_name", "generated_by",
+                        "price_list", "sell_condition", "payment_condition", "total_items", "total_amount", "created_at"
+                    ],
+                    order: [["id", "ASC"]],
+                })
+                : [];
+
+            const products = remitIds.length
+                ? await FinalRemitProduct.findAll({
+                    where: { final_remit_id: { [Op.in]: remitIds } },
+                    order: [["id", "ASC"]],
+                    attributes: [
+                        "id", "final_remit_id", "product_id", "product_name",
+                        "unit_measure", "qty", "net_weight", "unit_price", "gross_weight", "avg_weight"
+                    ]
+                })
+                : [];
+
+            // Indexo para armar respuesta rápido
+            const remitById = new Map(remits.map(r => [r.id, r]));
+            const itemsByRemit = new Map();
+            for (const p of products) {
+                if (!itemsByRemit.has(p.final_remit_id)) itemsByRemit.set(p.final_remit_id, []);
+                itemsByRemit.get(p.final_remit_id).push({
+                    id: p.id,
+                    final_remit_item_id: p.id,
+                    product_id: p.product_id,
+                    product_name: p.product_name,
+                    unit_measure: p.unit_measure,
+                    qty: Number(p.qty || 0),
+                    net_weight: Number(p.net_weight || 0),
+                    unit_price: Number(p.unit_price || 0),
+                    gross_weight: Number(p.gross_weight || 0),
+                    avg_weight: Number(p.avg_weight || 0),
+                    total: Number(p.unit_price || 0) * (String(p.unit_measure || "").toUpperCase() === "KG"
+                        ? Number(p.net_weight || 0) : Number(p.qty || 0)),
+                });
+            }
+
+            // 4) Armo salida agrupada por roadmap (camión)
+            const out = roadmaps.map(r => {
+                const dests = destByRoadmap.get(r.id) || [];
+                const remitsForRoadmap = dests
+                    .map(d => {
+                        const h = remitById.get(d.id_remit);
+                        if (!h) return null;
+                        return {
+                            final_remit_id: h.id,
+                            receipt_number: h.receipt_number,
+                            order_id: h.order_id,
+                            client_name: h.client_name,
+                            salesman_name: h.salesman_name,
+                            generated_by: h.generated_by,
+                            price_list: h.price_list,
+                            sell_condition: h.sell_condition,
+                            payment_condition: h.payment_condition,
+                            destination: d.destination,
+                            total_items: Number(h.total_items || 0),
+                            total_amount: Number(h.total_amount || 0),
+                            items: itemsByRemit.get(h.id) || []
+                        };
+                    })
+                    .filter(Boolean);
+
+                return {
+                    roadmap_id: r.id,
+                    truck_license_plate: r.truck_license_plate,
+                    driver: r.driver,
+                    production_date: String(r.created_at).slice(0, 10),
+                    delivery_date: String(r.delivery_date).slice(0, 10),
+                    remits: remitsForRoadmap
+                };
+            });
+
+            return res.json({
+                ok: true,
+                production_date,
+                delivery_date,
+                roadmaps: out
+            });
+        } catch (e) {
+            console.error(e);
+            return res.status(500).json({ ok: false, msg: "Error al armar detalle de prefacturaciones" });
+        }
+    },
+  savePreinvoice: async (req, res) => {
+  const t = await sequelize.transaction();
+  try {
+    const items = Array.isArray(req.body?.items) ? req.body.items : [];
+    if (!items.length) {
+      await t.rollback();
+      return res.status(400).json({ ok: false, msg: "No hay ítems para guardar" });
+    }
+
+    const toInt = (v) => {
+      const n = parseInt(String(v ?? "").trim(), 10);
+      return Number.isFinite(n) ? n : null;
+    };
+
+    const results = [];
+
+    for (const it of items) {
+      const finalRemitItemId = toInt(it.item_id ?? it.final_remit_item_id ?? it.id);
+      if (!finalRemitItemId) {
+        await t.rollback();
+        return res.status(400).json({ ok: false, msg: "Falta item_id (final_remit_item_id)" });
+      }
+
+      let row = await Preinvoice.findOne({
+        where: { final_remit_item_id: finalRemitItemId },
+        transaction: t,
+      });
+
+      if (!row) {
+        // Descubro final_remit_id desde el ítem del remito
+        const frItem = await FinalRemitProduct.findOne({
+          where: { id: finalRemitItemId },
+          attributes: ["final_remit_id"],
+          transaction: t,
+        });
+        if (!frItem) {
+          await t.rollback();
+          return res.status(404).json({ ok: false, msg: `No existe final_remit_item_id=${finalRemitItemId}` });
         }
 
-        const rows = await db.FinalRemit.findAll({
-            where,
-            order: [["id", "DESC"]],
-            limit,
-        });
+        row = await Preinvoice.create(
+          {
+            final_remit_id: frItem.final_remit_id,
+            final_remit_item_id: finalRemitItemId,
+            received_units: Number(it.units_received ?? 0),
+            received_kg: Number(it.kg_received ?? 0),
+          },
+          { transaction: t }
+        );
+      } else {
+        row.received_units = Number(it.units_received ?? 0);
+        row.received_kg = Number(it.kg_received ?? 0);
+        await row.save({ transaction: t });
+      }
 
-        const options = rows.map(r => ({
-            value: r.id,
-            label: `N° ${r.receipt_number} — ${r.client_name}`,
-            receipt_number: r.receipt_number,
-            client_name: r.client_name,
-        }));
-
-        return res.json({ ok: true, options });
-    } catch (e) {
-        console.error(e);
-        return res.status(500).json({ ok: false, msg: "Error listando remitos" });
-    }
-},
-
-// Crear roadmap (asigna remitos, destinos, camión y chofer)
-// Crea un roadmap
-createRoadmap: async (req, res) => {
-  const t = await db.sequelize.transaction();
-  try {
-    const {
-      delivery_date,
-      remit_ids = [],          // [ids de final_remits]
-      destination_ids = [],    // [ids de destinations]
-      destination_names = [],  // [nombres libres opcionales]
-      truck_id,
-      driver_id
-    } = req.body || {};
-
-    // 1) Header base
-    const header = await db.RoadmapInfo.create({
-      client_name: "", // se rellena con el primer remito si existe
-      delivery_date: delivery_date || null,
-      truck_license_plate: "",
-      driver: ""
-    }, { transaction: t });
-
-    // 2) Completar client_name, patente y chofer
-    let clientName = header.client_name;
-    if (Array.isArray(remit_ids) && remit_ids.length) {
-      const first = await db.FinalRemit.findByPk(remit_ids[0], { transaction: t });
-      if (first) clientName = first.client_name || clientName;
-    }
-
-    let truck_plate = header.truck_license_plate;
-    if (truck_id) {
-      const tr = await db.Truck.findByPk(truck_id, { transaction: t });
-      truck_plate = tr?.license_plate || tr?.plate || tr?.truck_plate || truck_plate;
-    }
-
-    let driver_name = header.driver;
-    if (driver_id) {
-      const dr = await db.Driver.findByPk(driver_id, { transaction: t });
-      driver_name = [dr?.driver_name, dr?.driver_surname].filter(Boolean).join(" ").trim() || driver_name;
-    }
-
-    await header.update({
-      client_name: clientName,
-      truck_license_plate: truck_plate,
-      driver: driver_name
-    }, { transaction: t });
-
-    // 3) Destinos
-    const namesFromIds = destination_ids.length
-      ? (await db.Destination.findAll({
-          where: { id: destination_ids },
-          transaction: t
-        })).map(d => d.name || d.destination_name || d.destination)
-      : [];
-
-    const manualNames = (destination_names || []).map(s => String(s || "").trim()).filter(Boolean);
-
-    // unificar y evitar duplicados
-    const allNames = Array.from(new Set([...namesFromIds, ...manualNames]));
-
-    for (const nm of allNames) {
-      await db.sequelize.query(
-        "INSERT INTO roadmap_info_destinations (roadmap_info_id, destination) VALUES (?, ?)",
-        { replacements: [header.id, nm], transaction: t }
-      );
-    }
-
-    // 4) Relación con remitos (sin duplicados)
-    const uniqRemits = Array.from(new Set((remit_ids || []).map(Number).filter(Boolean)));
-    for (const rid of uniqRemits) {
-      await db.sequelize.query(
-        "INSERT INTO roadmap_info_remits (roadmap_info_id, final_remit_id) VALUES (?, ?)",
-        { replacements: [header.id, rid], transaction: t }
-      );
+      results.push({
+        item_id: row.final_remit_item_id,
+        units_received: row.received_units ?? 0,
+        kg_received: row.received_kg ?? 0,
+      });
     }
 
     await t.commit();
-    return res.status(201).json({ ok: true, id: header.id, msg: "Roadmap creado" });
+    return res.status(201).json({ ok: true, items: results, msg: "Prefacturación guardada" });
   } catch (e) {
     console.error(e);
-    try { await t.rollback(); } catch (_) {}
-    return res.status(500).json({ ok: false, msg: "Error al crear roadmap" });
+    await t.rollback();
+    return res.status(500).json({ ok: false, msg: "Error al guardar prefacturación" });
   }
 },
 
-// Traer roadmap para edición
-getRoadmap: async (req, res) => {
-    try {
-        const { id } = req.params;
-        const header = await db.RoadmapInfo.findByPk(id, {
-            include: [
-                { model: db.RoadmapInfoDestination, as: "destinations" },
-                { model: db.RoadmapInfoRemit, as: "remits", include: [{ model: db.FinalRemit, as: "finalRemit" }] },
-            ],
-        });
-        if (!header) return res.status(404).json({ ok: false, msg: "Roadmap no encontrado" });
+    readSavedPreinvoices: async (req, res) => {
+        try {
+            const production_date = String(req.query.production_date || "").slice(0, 10);
+            const delivery_date = String(req.query.delivery_date || "").slice(0, 10);
 
-        const data = header.toJSON();
-        const remit_ids = (data.remits || []).map(r => r.final_remit_id);
-        const remit_options = (data.remits || []).map(r => ({
-            value: r.final_remit_id,
-            label: `N° ${r.finalRemit?.receipt_number || r.final_remit_id} — ${r.finalRemit?.client_name || ""}`,
-        }));
-        const destinations = (data.destinations || []).map(d => d.destination);
+            if (!production_date || !delivery_date) {
+                return res.status(400).json({ ok: false, msg: "Faltan production_date y delivery_date (YYYY-MM-DD)" });
+            }
 
-        return res.json({
-            ok: true,
-            roadmap: {
-                id: data.id,
-                client_name: data.client_name,
-                delivery_date: data.delivery_date,
-                truck_license_plate: data.truck_license_plate,
-                driver: data.driver,
-                remit_ids,
-                remit_options,
-                destinations,
-            },
-        });
-    } catch (e) {
-        console.error(e);
-        return res.status(500).json({ ok: false, msg: "Error leyendo roadmap" });
+            // 1) Roadmaps matching fechas
+            const roadmaps = await RoadmapInfo.findAll({
+                where: {
+                    [Op.and]: [
+                        where(fn("DATE", col("created_at")), production_date),
+                        where(fn("DATE", col("delivery_date")), delivery_date),
+                    ],
+                },
+                attributes: ["id"],
+                order: [["id", "ASC"]],
+            });
+            if (!roadmaps.length) return res.json({ ok: true, items: [] });
+
+            const roadmapIds = roadmaps.map(r => r.id);
+
+            // 2) Destinos ⇒ remitos
+            const dests = await RoadmapInfoDestination.findAll({
+                where: { roadmap_info_id: { [Op.in]: roadmapIds } },
+                attributes: ["id_remit"],
+                order: [["id", "ASC"]],
+            });
+            const remitIds = dests.map(d => Number(d.id_remit)).filter(Boolean);
+            if (!remitIds.length) return res.json({ ok: true, items: [] });
+
+            // 3) Prefacturación ya guardada para esos remitos
+            const saved = await Preinvoice.findAll({
+                where: { final_remit_id: { [Op.in]: remitIds } },
+                attributes: ["final_remit_item_id", "received_units", "received_kg"],
+                order: [["id", "ASC"]],
+            });
+
+            const items = saved.map(p => ({
+                item_id: Number(p.final_remit_item_id),
+                units_received: Number(p.received_units || 0),
+                kg_received: Number(p.received_kg || 0),
+            }));
+
+            return res.json({ ok: true, items });
+        } catch (e) {
+            console.error(e);
+            return res.status(500).json({ ok: false, msg: "Error al leer prefacturación guardada" });
+        }
+    },
+
+
+    readPreinvoiceReturns: async (req, res) => {
+        try {
+            const production_date = String(req.query.production_date || "").slice(0, 10);
+            const delivery_date = String(req.query.delivery_date || "").slice(0, 10);
+
+            if (!production_date || !delivery_date) {
+                return res.status(400).json({ ok: false, msg: "Faltan production_date y delivery_date (YYYY-MM-DD)" });
+            }
+
+            // 1) Roadmaps matching fechas
+            const roadmaps = await RoadmapInfo.findAll({
+                where: {
+                    [Op.and]: [
+                        where(fn("DATE", col("created_at")), production_date),
+                        where(fn("DATE", col("delivery_date")), delivery_date),
+                    ],
+                },
+                attributes: ["id"],
+                order: [["id", "ASC"]],
+            });
+            if (!roadmaps.length) return res.json({ ok: true, items: [] });
+
+            const roadmapIds = roadmaps.map(r => r.id);
+
+            // 2) Destinos ⇒ remitos
+            const dests = await RoadmapInfoDestination.findAll({
+                where: { roadmap_info_id: { [Op.in]: roadmapIds } },
+                attributes: ["id_remit"],
+                order: [["id", "ASC"]],
+            });
+            const remitIds = dests.map(d => Number(d.id_remit)).filter(Boolean);
+            if (!remitIds.length) return res.json({ ok: true, items: [] });
+
+            // 3) Prefacturación con returns
+            const rows = await Preinvoice.findAll({
+                where: { final_remit_id: { [Op.in]: remitIds } },
+                attributes: ["id", "final_remit_item_id"],
+                include: [{ model: PreinvoiceReturn, as: "returns", required: false }],
+                order: [["id", "ASC"]],
+            });
+
+            const items = [];
+            for (const p of rows) {
+                for (const r of (p.returns || [])) {
+                    items.push({
+                        item_id: Number(p.final_remit_item_id),
+                        reason: r.reason === "STOCK" ? "stock" : "client",
+                        client_name: r.client_name || null,
+                        units_redirected: Number(r.units_redirected || 0),
+                        kg_redirected: Number(r.kg_redirected || 0),
+                        created_at: r.created_at,
+                        updated_at: r.updated_at,
+                    });
+                }
+            }
+
+            return res.json({ ok: true, items });
+        } catch (e) {
+            console.error(e);
+            return res.status(500).json({ ok: false, msg: "Error al leer devoluciones de prefacturación" });
+        }
+    },
+
+
+    // 4) Leer prefacturación simple por remit
+    readPreinvoice: async (req, res) => {
+        try {
+            const remitId = Number(req.params.remit_id);
+            if (!remitId) {
+                return res.status(400).json({ ok: false, msg: "Falta remit_id" });
+            }
+
+            const rows = await Preinvoice.findAll({
+                where: { final_remit_id: remitId },
+                order: [["id", "ASC"]],
+            });
+
+            return res.json({ ok: true, rows });
+        } catch (e) {
+            console.error(e);
+            return res.status(500).json({ ok: false, msg: "Error al leer prefacturación" });
+        }
+    },
+
+
+    savePreinvoiceRedirect: async (req, res) => {
+        const t = await sequelize.transaction();
+        try {
+            const {
+                final_remit_id,
+                item_id,
+                to,                 // 'client' | 'stock'
+                client_id = null,
+                client_name = null,
+                units = 0,
+                kg = 0,
+            } = req.body || {};
+
+            if (!item_id || !to) {
+                await t.rollback();
+                return res.status(400).json({ ok: false, msg: "Faltan item_id y/o destino (to)" });
+            }
+
+            // 1) Busco la fila de preinvoice a la que pertenece este item
+            const pre = await Preinvoice.findOne({
+                where: { final_remit_item_id: Number(item_id) },
+                transaction: t,
+            });
+
+            if (!pre) {
+                await t.rollback();
+                return res.status(404).json({ ok: false, msg: "No existe la prefacturación para ese item" });
+            }
+
+            // 2) Normalizo razón a lo que guarda DB
+            const reasonDB = to === "stock" ? "STOCK" : "REDIRECT";
+
+            // 3) Busco si ya existe la misma redirección (mismo destino/cliente)
+            const whereReturn = {
+                preinvoice_id: pre.id,
+                reason: reasonDB,
+                ...(reasonDB === "REDIRECT" ? { client_name: client_name || null } : {}),
+            };
+
+            const existing = await PreinvoiceReturn.findOne({ where: whereReturn, transaction: t });
+
+            // 4) Si llega 0 y 0 → borrar si existía
+            if (Number(units) === 0 && Number(kg) === 0) {
+                if (existing) await existing.destroy({ transaction: t });
+                await t.commit();
+                return res.json({ ok: true, msg: "Redirección eliminada" });
+            }
+
+            // 5) Upsert
+            if (existing) {
+                existing.client_id = client_id;
+                existing.client_name = client_name;
+                existing.units_redirected = Number(units);
+                existing.kg_redirected = Number(kg);
+                await existing.save({ transaction: t });
+            } else {
+                await PreinvoiceReturn.create(
+                    {
+                        preinvoice_id: pre.id,
+                        client_id,
+                        client_name,
+                        units_redirected: Number(units),
+                        kg_redirected: Number(kg),
+                        reason: reasonDB,
+                    },
+                    { transaction: t }
+                );
+            }
+
+            await t.commit();
+            return res.status(201).json({ ok: true, msg: "Redirección registrada" });
+        } catch (e) {
+            console.error(e);
+            await t.rollback();
+            return res.status(500).json({ ok: false, msg: "Error al registrar redirección" });
+        }
+    },
+
+// GET /preinvoices/saved?production_date=YYYY-MM-DD&delivery_date=YYYY-MM-DD
+readSavedPreinvoicesV2: async (req, res) => {
+  try {
+    const production_date = String(req.query.production_date || "").slice(0, 10);
+    const delivery_date   = String(req.query.delivery_date   || "").slice(0, 10);
+    if (!production_date || !delivery_date) {
+      return res.status(400).json({ ok: false, msg: "Faltan production_date y delivery_date (YYYY-MM-DD)" });
     }
+
+    const roadmaps = await RoadmapInfo.findAll({
+      where: {
+        [Op.and]: [
+          where(fn("DATE", col("created_at")), production_date),
+          where(fn("DATE", col("delivery_date")), delivery_date),
+        ],
+      },
+      attributes: ["id"],
+      order: [["id", "ASC"]],
+    });
+    if (!roadmaps.length) return res.json({ ok: true, items: [] });
+
+    const dests = await RoadmapInfoDestination.findAll({
+      where: { roadmap_info_id: { [Op.in]: roadmaps.map(r => r.id) } },
+      attributes: ["id_remit"],
+    });
+    const remitIds = dests.map(d => Number(d.id_remit)).filter(Boolean);
+    if (!remitIds.length) return res.json({ ok: true, items: [] });
+
+    const saved = await Preinvoice.findAll({
+      where: { final_remit_id: { [Op.in]: remitIds } },
+      attributes: ["final_remit_item_id", "received_units", "received_kg"],
+      order: [["id", "ASC"]],
+    });
+
+    const items = saved.map(p => ({
+      item_id: Number(p.final_remit_item_id),        // 👈 clave para mapear en el front
+      units_received: Number(p.received_units || 0),
+      kg_received: Number(p.received_kg || 0),
+    }));
+
+    return res.json({ ok: true, items });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ ok: false, msg: "Error al leer prefacturación guardada" });
+  }
 },
 
-// Actualiza un roadmap
-updateRoadmap: async (req, res) => {
-  const t = await db.sequelize.transaction();
+// GET /preinvoices/returns?production_date=YYYY-MM-DD&delivery_date=YYYY-MM-DD
+readPreinvoiceReturnsV2: async (req, res) => {
   try {
-    const { id } = req.params;
-    const {
-      delivery_date,
-      remit_ids = [],
-      destination_ids = [],
-      destination_names = [],
-      truck_id,
-      driver_id
-    } = req.body || {};
+    const production_date = String(req.query.production_date || "").slice(0, 10);
+    const delivery_date   = String(req.query.delivery_date   || "").slice(0, 10);
+    if (!production_date || !delivery_date) {
+      return res.status(400).json({ ok: false, msg: "Faltan production_date y delivery_date (YYYY-MM-DD)" });
+    }
 
-    const header = await db.RoadmapInfo.findByPk(id, { transaction: t });
-    if (!header) {
+    const roadmaps = await RoadmapInfo.findAll({
+      where: {
+        [Op.and]: [
+          where(fn("DATE", col("created_at")), production_date),
+          where(fn("DATE", col("delivery_date")), delivery_date),
+        ],
+      },
+      attributes: ["id"],
+      order: [["id", "ASC"]],
+    });
+    if (!roadmaps.length) return res.json({ ok: true, items: [] });
+
+    const dests = await RoadmapInfoDestination.findAll({
+      where: { roadmap_info_id: { [Op.in]: roadmaps.map(r => r.id) } },
+      attributes: ["id_remit"],
+    });
+    const remitIds = dests.map(d => Number(d.id_remit)).filter(Boolean);
+    if (!remitIds.length) return res.json({ ok: true, items: [] });
+
+    const rows = await Preinvoice.findAll({
+      where: { final_remit_id: { [Op.in]: remitIds } },
+      attributes: ["final_remit_item_id"],
+      include: [{ model: PreinvoiceReturn, as: "returns", required: false }],
+      order: [["id", "ASC"]],
+    });
+
+    const items = [];
+    for (const p of rows) {
+      for (const r of (p.returns || [])) {
+        items.push({
+          item_id: Number(p.final_remit_item_id),           // 👈 clave para mapear
+          reason: r.reason === "STOCK" ? "stock" : "client",
+          client_name: r.client_name || null,
+          units_redirected: Number(r.units_redirected || 0),
+          kg_redirected: Number(r.kg_redirected || 0),
+          created_at: r.created_at,
+          updated_at: r.updated_at,
+        });
+      }
+    }
+
+    return res.json({ ok: true, items });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ ok: false, msg: "Error al leer devoluciones" });
+  }
+},
+
+
+// GET /preinvoices/returns?production_date=YYYY-MM-DD&delivery_date=YYYY-MM-DD
+readPreinvoiceReturnsV2: async (req, res) => {
+  try {
+    const production_date = String(req.query.production_date || "").slice(0, 10);
+    const delivery_date   = String(req.query.delivery_date   || "").slice(0, 10);
+    if (!production_date || !delivery_date) {
+      return res.status(400).json({ ok: false, msg: "Faltan production_date y delivery_date (YYYY-MM-DD)" });
+    }
+
+    const roadmaps = await RoadmapInfo.findAll({
+      where: {
+        [Op.and]: [
+          where(fn("DATE", col("created_at")), production_date),
+          where(fn("DATE", col("delivery_date")), delivery_date),
+        ],
+      },
+      attributes: ["id"],
+      order: [["id", "ASC"]],
+    });
+    if (!roadmaps.length) return res.json({ ok: true, items: [] });
+
+    const dests = await RoadmapInfoDestination.findAll({
+      where: { roadmap_info_id: { [Op.in]: roadmaps.map(r => r.id) } },
+      attributes: ["id_remit"],
+    });
+    const remitIds = dests.map(d => Number(d.id_remit)).filter(Boolean);
+    if (!remitIds.length) return res.json({ ok: true, items: [] });
+
+    const rows = await Preinvoice.findAll({
+      where: { final_remit_id: { [Op.in]: remitIds } },
+      attributes: ["final_remit_item_id"],
+      include: [{ model: PreinvoiceReturn, as: "returns", required: false }],
+      order: [["id", "ASC"]],
+    });
+
+    const items = [];
+    for (const p of rows) {
+      for (const r of (p.returns || [])) {
+        items.push({
+          item_id: Number(p.final_remit_item_id),       // <— clave para mapear en el front
+          reason: r.reason === "STOCK" ? "stock" : "client",
+          client_name: r.client_name || null,
+          units_redirected: Number(r.units_redirected || 0),
+          kg_redirected: Number(r.kg_redirected || 0),
+          created_at: r.created_at,
+          updated_at: r.updated_at,
+        });
+      }
+    }
+
+    return res.json({ ok: true, items });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ ok: false, msg: "Error al leer devoluciones" });
+  }
+},
+
+// POST /preinvoices/redirect
+// body: { item_id, to:'client'|'stock', client_id?, client_name?, units, kg }
+savePreinvoiceRedirect: async (req, res) => {
+  const t = await sequelize.transaction();
+  try {
+    const { item_id, to, client_id = null, client_name = null, units = 0, kg = 0 } = req.body || {};
+    if (!item_id || !to) {
       await t.rollback();
-      return res.status(404).json({ ok: false, msg: "Roadmap no encontrado" });
+      return res.status(400).json({ ok: false, msg: "Faltan item_id y/o destino (to)" });
     }
 
-    // client_name desde primer remito
-    let clientName = header.client_name;
-    if (Array.isArray(remit_ids) && remit_ids.length) {
-      const first = await db.FinalRemit.findByPk(remit_ids[0], { transaction: t });
-      if (first) clientName = first.client_name || clientName;
+    const pre = await Preinvoice.findOne({
+      where: { final_remit_item_id: Number(item_id) },
+      transaction: t,
+    });
+    if (!pre) {
+      await t.rollback();
+      return res.status(404).json({ ok: false, msg: "No existe la prefacturación para ese item" });
     }
 
-    // patente
-    let truck_plate = header.truck_license_plate;
-    if (truck_id) {
-      const tr = await db.Truck.findByPk(truck_id, { transaction: t });
-      truck_plate = tr?.license_plate || tr?.plate || tr?.truck_plate || truck_plate;
+    const reasonDB = to === "stock" ? "STOCK" : "REDIRECT";
+    const whereReturn = {
+      preinvoice_id: pre.id,
+      reason: reasonDB,
+      ...(reasonDB === "REDIRECT" ? { client_name: client_name || null } : {}),
+    };
+
+    const existing = await PreinvoiceReturn.findOne({ where: whereReturn, transaction: t });
+
+    if (Number(units) === 0 && Number(kg) === 0) {
+      if (existing) await existing.destroy({ transaction: t });
+      await t.commit();
+      return res.json({ ok: true, msg: "Redirección eliminada" });
     }
 
-    // chofer
-    let driver_name = header.driver;
-    if (driver_id) {
-      const dr = await db.Driver.findByPk(driver_id, { transaction: t });
-      driver_name = [dr?.driver_name, dr?.driver_surname].filter(Boolean).join(" ").trim() || driver_name;
-    }
-
-    await header.update({
-      client_name: clientName,
-      delivery_date: delivery_date || header.delivery_date,
-      truck_license_plate: truck_plate,
-      driver: driver_name
-    }, { transaction: t });
-
-    // reset destinos
-    await db.sequelize.query(
-      "DELETE FROM roadmap_info_destinations WHERE roadmap_info_id = ?",
-      { replacements: [id], transaction: t }
-    );
-
-    const namesFromIds = destination_ids.length
-      ? (await db.Destination.findAll({
-          where: { id: destination_ids },
-          transaction: t
-        })).map(d => d.name || d.destination_name || d.destination)
-      : [];
-
-    const manualNames = (destination_names || []).map(s => String(s || "").trim()).filter(Boolean);
-    const allNames = Array.from(new Set([...namesFromIds, ...manualNames]));
-
-    for (const nm of allNames) {
-      await db.sequelize.query(
-        "INSERT INTO roadmap_info_destinations (roadmap_info_id, destination) VALUES (?, ?)",
-        { replacements: [id, nm], transaction: t }
-      );
-    }
-
-    // reset remitos
-    await db.sequelize.query(
-      "DELETE FROM roadmap_info_remits WHERE roadmap_info_id = ?",
-      { replacements: [id], transaction: t }
-    );
-
-    const uniqRemits = Array.from(new Set((remit_ids || []).map(Number).filter(Boolean)));
-    for (const rid of uniqRemits) {
-      await db.sequelize.query(
-        "INSERT INTO roadmap_info_remits (roadmap_info_id, final_remit_id) VALUES (?, ?)",
-        { replacements: [id, rid], transaction: t }
+    if (existing) {
+      existing.client_id = client_id;
+      existing.client_name = client_name;
+      existing.units_redirected = Number(units);
+      existing.kg_redirected = Number(kg);
+      await existing.save({ transaction: t });
+    } else {
+      await PreinvoiceReturn.create(
+        {
+          preinvoice_id: pre.id,
+          client_id,
+          client_name,
+          units_redirected: Number(units),
+          kg_redirected: Number(kg),
+          reason: reasonDB,
+        },
+        { transaction: t }
       );
     }
 
     await t.commit();
-    return res.json({ ok: true, msg: "Roadmap actualizado" });
+    return res.status(201).json({ ok: true, msg: "Redirección registrada" });
   } catch (e) {
     console.error(e);
-    try { await t.rollback(); } catch (_) {}
-    return res.status(500).json({ ok: false, msg: "Error actualizando roadmap" });
+    await t.rollback();
+    return res.status(500).json({ ok: false, msg: "Error al registrar redirección" });
+  }
+},
+// ───────── Listas de precios: traer por número
+getPriceListByNumber: async (req, res) => {
+  try {
+    const number = Number(req.params.number);
+    if (!number) return res.status(400).json({ ok:false, msg:"number requerido" });
+
+    const headers = await PriceList.findAll({
+      where: { list_number: number },
+      order: [["id","ASC"]],
+    });
+
+    const products = await PriceListProduct.findAll({
+      where: { price_list_number: number },
+      order: [["product_name","ASC"]],
+    });
+
+    const name = headers[0]?.name || null;
+    const clients = headers.map(h => h.client_id).filter(v => v !== null && v !== undefined);
+
+    return res.json({
+      ok: true,
+      header: { number, name, clients },
+      products,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ ok:false, msg:"Error al traer la lista" });
   }
 },
 
+// ───────── Listas de precios: comparar dos listas
+comparePriceLists: async (req, res) => {
+  try {
+    const a = Number(req.params.a);
+    const b = Number(req.params.b);
+    if (!a || !b) return res.status(400).json({ ok:false, msg:"Parámetros inválidos" });
 
+    const [ha, hb] = await Promise.all([
+      PriceList.findOne({ where:{ list_number:a } }),
+      PriceList.findOne({ where:{ list_number:b } }),
+    ]);
+
+    const [pa, pb] = await Promise.all([
+      PriceListProduct.findAll({ where:{ price_list_number:a } }),
+      PriceListProduct.findAll({ where:{ price_list_number:b } }),
+    ]);
+
+    // Unimos por product_id si existe; si no, por product_name
+    const keyOf = (p) => String(p.product_id ?? p.product_name);
+    const mapA = new Map(pa.map(p => [keyOf(p), p]));
+    const keys = new Set([...pa.map(keyOf), ...pb.map(keyOf)]);
+
+    const rows = [];
+    for (const k of keys) {
+      const A = mapA.get(k) || null;
+      const B = pb.find(x => keyOf(x) === k) || null;
+
+      const row = {
+        product_id: A?.product_id ?? B?.product_id ?? null,
+        product_name: A?.product_name ?? B?.product_name ?? "",
+        unidad_a: A?.unidad_venta || null,
+        unidad_b: B?.unidad_venta || null,
+        costo_a: A?.costo ?? null,
+        costo_b: B?.costo ?? null,
+        sin_iva_a: A?.precio_sin_iva ?? null,
+        sin_iva_b: B?.precio_sin_iva ?? null,
+        con_iva_a: A?.precio_con_iva ?? null,
+        con_iva_b: B?.precio_con_iva ?? null,
+      };
+
+      row.diff_unidad = (row.unidad_a || "") !== (row.unidad_b || "");
+      row.diff_costo  = Number(row.costo_a ?? -1)   !== Number(row.costo_b ?? -1);
+      row.diff_sin    = Number(row.sin_iva_a ?? -1) !== Number(row.sin_iva_b ?? -1);
+      row.diff_con    = Number(row.con_iva_a ?? -1) !== Number(row.con_iva_b ?? -1);
+
+      rows.push(row);
+    }
+
+    rows.sort((x,y) => String(x.product_name).localeCompare(String(y.product_name)));
+
+    return res.json({
+      ok:true,
+      a: { number:a, name: ha?.dataValues?.name || ha?.name || null },
+      b: { number:b, name: hb?.dataValues?.name || hb?.name || null },
+      rows,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ ok:false, msg:"Error al comparar listas" });
+  }
+},
+
+// ───────── Listas de precios: actualizar (nombre/clientes/productos)
+updatePriceList: async (req, res) => {
+  const t = await sequelize.transaction();
+  try {
+    const number = Number(req.params.number);
+    if (!number) {
+      await t.rollback();
+      return res.status(400).json({ ok:false, msg:"number requerido" });
+    }
+
+    const { name, clients, products } = req.body || {};
+
+    // 1) actualizar nombre y reasignar clientes (reemplazo completo)
+    if (name != null) {
+      await PriceList.update({ name }, { where: { list_number:number }, transaction:t });
+    }
+
+    if (Array.isArray(clients)) {
+      await PriceList.destroy({ where: { list_number:number }, transaction:t });
+      const rows = (clients.length ? clients : [null]).map(clientId => ({
+        list_number:number,
+        name: name ?? null,
+        client_id: clientId ?? null,
+      }));
+      await PriceList.bulkCreate(rows, { transaction:t });
+    }
+
+    // 2) reemplazar productos de la lista
+    if (Array.isArray(products)) {
+      await PriceListProduct.destroy({ where:{ price_list_number:number }, transaction:t });
+      const items = products.map(p => ({
+        price_list_number:number,
+        product_id: p.product_id ?? p.id,
+        product_name: p.product_name ?? p.name,
+        unidad_venta: p.unidad_venta ?? p.unidad ?? null,
+        costo: Number(p.costo ?? 0),
+        precio_sin_iva: Number(p.precio_sin_iva ?? p.sinIva ?? 0),
+        precio_con_iva: Number(p.precio_con_iva ?? p.conIva ?? 0),
+      }));
+      if (items.length) await PriceListProduct.bulkCreate(items, { transaction:t });
+    }
+
+    await t.commit();
+    return res.json({ ok:true, msg:"Lista actualizada" });
+  } catch (error) {
+    console.error(error);
+    await t.rollback();
+    return res.status(500).json({ ok:false, msg:"Error al actualizar la lista" });
+  }
+},
+
+bulkUpdatePriceLists: async (req, res) => {
+  const t = await sequelize.transaction();
+  try {
+    const { lists, target, mode, amount, round } = req.body || {};
+    if (!Array.isArray(lists) || lists.length === 0) {
+      await t.rollback();
+      return res.status(400).json({ ok:false, msg:"lists requerido" });
+    }
+    const validTarget = { costo: "costo", sin_iva: "precio_sin_iva", con_iva: "precio_con_iva" }[target];
+    if (!validTarget) {
+      await t.rollback();
+      return res.status(400).json({ ok:false, msg:"target inválido" });
+    }
+    const isPercent = mode === "percent";
+    const amt = Number(amount || 0);
+
+    for (const ln of lists) {
+      const rows = await PriceListProduct.findAll({ where: { price_list_number: ln }, transaction: t });
+      for (const r of rows) {
+        const curr = Number(r[validTarget] || 0);
+        const next = isPercent ? curr + (curr * amt) / 100 : curr + amt;
+        const val = round ? Math.round(next) : Number(next.toFixed(2));
+        r.set(validTarget, val);
+        await r.save({ transaction: t });
+      }
+    }
+
+    await t.commit();
+    return res.json({ ok:true, msg:"Actualizado" });
+  } catch (e) {
+    console.error(e);
+    await t.rollback();
+    return res.status(500).json({ ok:false, msg:"Error en actualización masiva" });
+  }
+},
 
 }
 

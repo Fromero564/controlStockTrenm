@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 17-09-2025 a las 21:50:54
+-- Tiempo de generación: 18-09-2025 a las 21:25:16
 -- Versión del servidor: 10.4.28-MariaDB
 -- Versión de PHP: 8.2.4
 
@@ -568,10 +568,10 @@ CREATE TABLE `products_available` (
 
 INSERT INTO `products_available` (`id`, `product_name`, `product_general_category`, `category_id`, `min_stock`, `max_stock`, `alicuota`) VALUES
 (1, 'Media Res Chancha', 'externo', 1, 1, 100, 21.00),
-(105, 'Matambre', 'propio', NULL, 1, 1999, 10.50),
+(105, 'Matambre', 'propio', NULL, 1, 200, 10.50),
 (106, 'Media Res Capon', 'externo', 1, 1, 100, 10.50),
 (107, 'Capon', 'externo', 1, 1, 100, 10.50),
-(108, 'Chinchulin', 'propio', NULL, 1, 100000, 10.50),
+(108, 'Chinchulin', 'propio', NULL, 25, 250, 10.50),
 (109, 'Patitas congeladas', 'ambos', 2, 1, 10000, 10.50),
 (110, 'Hamburguesas', 'externo', NULL, 1, 98, 10.50);
 
@@ -642,10 +642,10 @@ CREATE TABLE `product_stock` (
 --
 
 INSERT INTO `product_stock` (`id`, `product_name`, `product_quantity`, `product_cod`, `product_category`, `product_total_weight`) VALUES
-(1, 'Hamburguesas', 10, 110, NULL, 116),
+(1, 'Hamburguesas', 9, 110, NULL, 110),
 (2, 'Media Res Capon', 123, 106, 'PRINCIPAL', 137),
 (3, 'Chinchulin', 20, 108, NULL, 20),
-(4, 'Media Res Chancha', 16, 1, 'PRINCIPAL', 21599.5),
+(4, 'Media Res Chancha', 16, 1, 'PRINCIPAL', 10),
 (5, 'Matambre', 4, 105, NULL, 12401);
 
 -- --------------------------------------------------------
@@ -707,12 +707,18 @@ INSERT INTO `providers` (`id`, `provider_name`, `provider_type_id`, `provider_id
 
 CREATE TABLE `roadmap_info` (
   `id` int(11) NOT NULL,
-  `client_name` varchar(255) NOT NULL,
   `delivery_date` date NOT NULL,
   `truck_license_plate` varchar(20) NOT NULL,
   `driver` varchar(255) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Volcado de datos para la tabla `roadmap_info`
+--
+
+INSERT INTO `roadmap_info` (`id`, `delivery_date`, `truck_license_plate`, `driver`, `created_at`) VALUES
+(8, '2025-09-18', 'AA123ZZ', 'Juan Romero', '2025-09-18 11:26:58');
 
 -- --------------------------------------------------------
 
@@ -723,8 +729,18 @@ CREATE TABLE `roadmap_info` (
 CREATE TABLE `roadmap_info_destinations` (
   `id` int(11) NOT NULL,
   `roadmap_info_id` int(11) NOT NULL,
+  `id_remit` int(11) NOT NULL,
+  `client_name` varchar(255) NOT NULL,
   `destination` varchar(255) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Volcado de datos para la tabla `roadmap_info_destinations`
+--
+
+INSERT INTO `roadmap_info_destinations` (`id`, `roadmap_info_id`, `id_remit`, `client_name`, `destination`) VALUES
+(8, 8, 2, 'FERNANDO', 'CÓRDOBA'),
+(9, 8, 1, 'FERNANDO', 'CÓRDOBA');
 
 -- --------------------------------------------------------
 
@@ -1051,7 +1067,8 @@ ALTER TABLE `roadmap_info`
 --
 ALTER TABLE `roadmap_info_destinations`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `roadmap_info_id` (`roadmap_info_id`);
+  ADD KEY `idx_rmd_roadmap` (`roadmap_info_id`),
+  ADD KEY `idx_rmd_remit` (`id_remit`);
 
 --
 -- Indices de la tabla `sale_conditions`
@@ -1250,13 +1267,13 @@ ALTER TABLE `providers`
 -- AUTO_INCREMENT de la tabla `roadmap_info`
 --
 ALTER TABLE `roadmap_info`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- AUTO_INCREMENT de la tabla `roadmap_info_destinations`
 --
 ALTER TABLE `roadmap_info_destinations`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
 
 --
 -- AUTO_INCREMENT de la tabla `sale_conditions`

@@ -1,38 +1,34 @@
 module.exports = (sequelize, DataTypes) => {
-    let alias = "RoadmapInfoDestination";
-
-    let cols = {
+    const RoadmapInfoDestination = sequelize.define("RoadmapInfoDestination", {
         id: {
-            type: DataTypes.BIGINT(10).UNSIGNED,
-            primaryKey: true,
-            autoIncrement: true
+            type: DataTypes.BIGINT.UNSIGNED,
+            primaryKey: true, autoIncrement: true
         },
         roadmap_info_id: {
+            type: DataTypes.BIGINT.UNSIGNED,
+            allowNull: false
+        },
+        id_remit: {
             type: DataTypes.INTEGER,
-            allowNull: false,
-            references: {
-                model: "roadmap_info",
-                key: "id"
-            },
+            allowNull: false
+        },
+        client_name: {
+            type: DataTypes.STRING(255),
+            allowNull: false
         },
         destination: {
             type: DataTypes.STRING(255),
-            allowNull: false,
+            allowNull: false
         },
-    };
-
-    let config = {
+    }, {
         tableName: "roadmap_info_destinations",
         timestamps: false,
-    };
-
-    const RoadmapInfoDestination = sequelize.define(alias, cols, config);
+    });
 
     RoadmapInfoDestination.associate = (models) => {
         RoadmapInfoDestination.belongsTo(models.RoadmapInfo, {
             foreignKey: "roadmap_info_id",
             as: "roadmap",
-            onDelete: "CASCADE"
         });
     };
 

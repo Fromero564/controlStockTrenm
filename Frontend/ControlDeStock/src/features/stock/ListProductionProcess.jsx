@@ -139,7 +139,7 @@ const ListProductionProcess = () => {
       <Navbar />
 
       <div style={{ margin: "20px" }}>
-        <button className="boton-volver" onClick={() => navigate(-1)}>⬅ Volver</button>
+        <button className="boton-volver" onClick={() => navigate("/operator-panel")}>⬅ Volver</button>
       </div>
       <div className="production-process-search">
         <label>Número de proceso</label>

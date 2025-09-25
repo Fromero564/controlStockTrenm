@@ -58,6 +58,12 @@ import ListDestination from './features/sales/transport/ListDestination.jsx';
 import ListTruck from './features/sales/transport/ListTruck.jsx';
 import RoadmapList from './features/sales/RoadmapList.jsx';
 import Roadmap from './features/sales/Roadmap.jsx';
+import RoadmapDetail from './features/sales/RoadmapDetail.jsx';
+import AllPriceList from './features/sales/AllPriceList.jsx';
+import PreInvoiceList from './features/sales/pre-invoicing/PreInvoiceList.jsx';
+import PreInvoiceCharge from './features/sales/pre-invoicing/PreInvoiceCharge.jsx';
+import ComparePriceLists from './features/sales/ComparePriceLists.jsx';
+import BulkPriceListUpdate from './features/sales/BulkPriceListUpdate.jsx';
 
 
 
@@ -588,6 +594,62 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
+  {
+  path: "/roadmaps/:id/detail",
+  element: (
+    <ProtectedRoute>
+      <RoadmapDetail/>
+    </ProtectedRoute>
+  ),
+},
+{
+  path: "/price-list-general",
+  element: (
+    <ProtectedRoute>
+      <AllPriceList/>
+    </ProtectedRoute>
+  ),
+},
+{
+  path: "/pre-invoicing-list",
+  element: (
+    <ProtectedRoute>
+      <PreInvoiceList/>
+    </ProtectedRoute>
+  ),
+},
+{
+  path: "/pre-invoicing-detail/:prod/:del",
+  element: (
+    <ProtectedRoute>
+      <PreInvoiceCharge/>
+    </ProtectedRoute>
+  ),
+},
+{
+  path: "/compare-price-lists",
+  element: (
+    <ProtectedRoute>
+      <ComparePriceLists/>
+    </ProtectedRoute>
+  ),
+},
+{
+  path: "/edit-price-list",
+  element: (
+    <ProtectedRoute>
+      <LoadNewPriceList />
+    </ProtectedRoute>
+  ),
+},
+{
+  path: "/bulk-price-list-update",
+  element: (
+    <ProtectedRoute>
+      <BulkPriceListUpdate/>
+    </ProtectedRoute>
+  ),
+}
 ]);
 
 

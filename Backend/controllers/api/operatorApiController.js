@@ -635,7 +635,7 @@ const operatorApiController = {
                     return res.status(400).json({ message: "Faltan campos obligatorios o hay valores inválidos en algún corte." });
                 }
 
-               
+
                 let baseProduct = null;
                 let productName = null;
 
@@ -684,7 +684,7 @@ const operatorApiController = {
                         product_quantity: qty,
                         product_total_weight: net,
                         product_cod: baseProduct.id,
-                      
+
                         product_category: baseProduct.category?.category_name ?? null
                     }, { transaction: t });
                 }
@@ -693,7 +693,7 @@ const operatorApiController = {
                 totalNetAdded += net;
             }
 
-           
+
             const parentMap = {};
             for (const childName of Object.keys(childTotalsQty)) {
                 const subs = await ProductSubproduct.findAll({
@@ -711,7 +711,7 @@ const operatorApiController = {
                     if (!parent) continue;
                     const parentName = parent.product_name;
                     if (!parentMap[parentName]) parentMap[parentName] = {};
-                    parentMap[parentName][childName] = Number(sp.quantity) || 0; 
+                    parentMap[parentName][childName] = Number(sp.quantity) || 0;
                 }
             }
 
@@ -729,7 +729,7 @@ const operatorApiController = {
 
             const totalParentUnits = Object.values(parentUsage).reduce((a, b) => a + b, 0);
 
-        
+
             for (const [parentName, usedUnits] of Object.entries(parentUsage)) {
                 const weightShare = totalParentUnits > 0 ? Number((totalNetAdded * usedUnits / totalParentUnits).toFixed(2)) : 0;
                 const stockParent = await ProductStock.findOne({ where: { product_name: parentName }, transaction: t });
@@ -743,7 +743,7 @@ const operatorApiController = {
                 }
             }
 
-           
+
             for (const bill_id of bill_ids) {
                 if (Number(bill_id) > 0) {
                     await billSupplier.update(
@@ -875,7 +875,7 @@ const operatorApiController = {
                         product_quantity: cantidad,
                         product_total_weight: pesoNeto,
                         product_cod: cod,
-                        product_category: categoria|| null,
+                        product_category: categoria || null,
                     });
                 }
             }
@@ -954,7 +954,7 @@ const operatorApiController = {
                         product_quantity: cantidad,
                         product_total_weight: pesoNeto,
                         product_cod: cod,
-                        product_category: categoria|| null,
+                        product_category: categoria || null,
                     });
                 }
             }
@@ -1649,7 +1649,111 @@ const operatorApiController = {
             console.error("Error al descontar stock sin remito:", error);
             return res.status(500).json({ message: "Error interno del servidor", error: error.message });
         }
+    },
+ updateStockManual: async (req, res) => {
+    const t = await sequelize.transaction();
+    try {
+        const { id } = req.params;
+        const {
+            subtract_quantity,
+            min_stock,
+            max_stock,
+            product_total_weight
+        } = req.body || {};
+
+        // --- 1) localizar fila de stock ---
+        // prioridad: por ID numérico; fallback: por nombre/código
+        let stockRow = null;
+
+        if (!isNaN(Number(id))) {
+            stockRow = await ProductStock.findByPk(id, { transaction: t, lock: t.LOCK.UPDATE });
+        }
+        if (!stockRow) {
+            stockRow = await ProductStock.findOne({
+                where: {
+                    [db.Sequelize.Op.or]: [
+                        { product_cod: String(id) },
+                        { product_id: String(id) },
+                        { product_name: String(id) }
+                    ]
+                },
+                transaction: t,
+                lock: t.LOCK.UPDATE
+            });
+        }
+        if (!stockRow) {
+            await t.rollback();
+            return res.status(404).json({ ok: false, msg: "Producto de stock no encontrado" });
+        }
+
+        // --- 2) restar unidades del stock (si corresponde) ---
+        if (subtract_quantity != null) {
+            const sub = Math.max(0, Number(subtract_quantity));
+            const current = Number(stockRow.product_quantity || 0);
+            if (sub > current) {
+                await t.rollback();
+                return res.status(400).json({
+                    ok: false,
+                    msg: `No hay stock suficiente: actual ${current}, intenta restar ${sub}`
+                });
+            }
+            stockRow.product_quantity = current - sub;
+        }
+
+        // --- 3) corregir kg totales (opcional) ---
+        if (product_total_weight != null && product_total_weight !== "") {
+            stockRow.product_total_weight = Number(product_total_weight);
+        }
+
+        await stockRow.save({ transaction: t });
+
+        // --- 4) actualizar min/max en catálogo (ProductsAvailable) ---
+        // 🔧 FIX: matchear SOLO por product_name (products_available no tiene product_cod)
+        let catRow = null;
+        if (stockRow.product_name) {
+            catRow = await ProductsAvailable.findOne({
+                where: { product_name: stockRow.product_name },
+                transaction: t,
+                lock: t.LOCK.UPDATE
+            });
+        }
+
+        if (catRow && (min_stock != null || max_stock != null)) {
+            if (min_stock != null) catRow.min_stock = Number(min_stock);
+            if (max_stock != null) catRow.max_stock = Number(max_stock);
+            await catRow.save({ transaction: t });
+        }
+
+        await t.commit();
+
+        // respuesta unificada para refrescar el front
+        return res.json({
+            ok: true,
+            msg: "Ajuste aplicado correctamente",
+            stock: {
+                id: stockRow.id,
+                product_cod: stockRow.product_cod,
+                product_name: stockRow.product_name,
+                product_quantity: Number(stockRow.product_quantity || 0),
+                product_total_weight: Number(stockRow.product_total_weight || 0)
+            },
+            available: catRow
+                ? {
+                    id: catRow.id,
+                    product_cod: catRow.product_cod,     // si no existe en tu modelo, podés quitar esta línea
+                    product_name: catRow.product_name,
+                    min_stock: Number(catRow.min_stock || 0),
+                    max_stock: Number(catRow.max_stock || 0)
+                }
+                : null
+        });
+    } catch (e) {
+        console.error(e);
+        try { await t.rollback(); } catch { }
+        return res.status(500).json({ ok: false, msg: "Error en ajuste manual de stock" });
     }
+},
+
 
 
 
