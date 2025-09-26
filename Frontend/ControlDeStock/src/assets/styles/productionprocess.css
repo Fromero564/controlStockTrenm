@@ -240,10 +240,12 @@
   display: block;
 }
 
+/* Encabezado/filas de la tabla de cortes: primera columna (TIPO) más ancha */
 .pp-corte-encabezado,
 .pp-corte-mostrado {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: 2fr repeat(6, 1fr);
+  /* ← TIPO ocupa el doble */
   gap: 0.5rem;
   padding: 0.5rem;
   border-bottom: 1px solid #ccc;
@@ -277,26 +279,33 @@
   display: inline-block;
 }
 
+/* ---------- FORM ROW de carga (hacer TIPO más grande) ---------- */
 .pp-formulario-corte-wrapper {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: minmax(280px, 2.2fr) 0.9fr 1fr 1fr 1fr 1fr auto;
+  /* ← TIPO más ancho */
   gap: 1rem;
   align-items: end;
 }
 
-.pp-formulario-corte-wrapper>div,
-.pp-formulario-corte-wrapper>.pp-boton-agregar-wrapper {
-  display: flex;
-  flex-direction: column;
+/* Asegurar que el primer bloque (TIPO) no se achique de más */
+.pp-formulario-corte-wrapper>div:first-child {
+  min-width: 280px;
 }
 
 /* Apariencia de react-select similar a los inputs (unificada) */
+.pp-select-react {
+  width: 100%;
+}
+
 .pp-select-react .react-select__control {
   background-color: #f8f9fa;
   border: 1px solid #ccc;
   border-radius: 12px;
-  padding: 2px;
-  min-height: 40px;
+  padding: 4px 6px;
+  /* un poco más de aire */
+  min-height: 44px;
+  /* alto cómodo */
   box-shadow: none;
   transition: border-color 0.3s, box-shadow 0.3s;
 }
@@ -304,6 +313,10 @@
 .pp-select-react .react-select__control--is-focused {
   border-color: #0077b6;
   box-shadow: 0 0 0 2px rgba(0, 119, 182, 0.25);
+}
+
+.pp-select-react .react-select__value-container {
+  padding: 2px 8px;
 }
 
 .pp-select-react .react-select__single-value {
@@ -401,5 +414,18 @@
 
   .pp-field.pp-small {
     max-width: none;
+  }
+
+  /* En móviles el select ocupa todo el ancho disponible */
+  .pp-formulario-corte-wrapper {
+    grid-template-columns: 1fr;
+  }
+
+  .pp-formulario-corte-wrapper>div:first-child {
+    min-width: 100%;
+  }
+
+  .pp-select-react {
+    min-width: 100%;
   }
 }

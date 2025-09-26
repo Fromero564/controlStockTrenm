@@ -31,6 +31,14 @@ const LoadNewProduct = () => {
     alicuota: "",
   });
 
+  // Errores visuales por campo
+  const [errors, setErrors] = useState({
+    nombre: false,
+    alicuota: false,
+    min_stock: false,
+    max_stock: false,
+  });
+
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
@@ -128,6 +136,53 @@ const LoadNewProduct = () => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setProductData((prev) => ({ ...prev, [name]: value }));
+    // limpiar error del campo editado
+    setErrors((prev) => ({ ...prev, [name]: false }));
+  };
+
+  const validateRequired = () => {
+    const missing = [];
+    const nextErrors = { nombre: false, alicuota: false, min_stock: false, max_stock: false };
+
+    if (!productData.nombre?.trim()) {
+      missing.push("Nombre del producto");
+      nextErrors.nombre = true;
+    }
+    if (productData.alicuota === "" || productData.alicuota === null || productData.alicuota === undefined) {
+      missing.push("Alícuota");
+      nextErrors.alicuota = true;
+    }
+    if (productData.min_stock === "") {
+      missing.push("Stock mínimo");
+      nextErrors.min_stock = true;
+    }
+    if (productData.max_stock === "") {
+      missing.push("Stock máximo");
+      nextErrors.max_stock = true;
+    }
+
+    // Validaciones numéricas adicionales
+    const minVal = Number(productData.min_stock);
+    const maxVal = Number(productData.max_stock);
+
+    const numericIssues = [];
+    if (productData.min_stock !== "" && (Number.isNaN(minVal) || minVal < 0 || !Number.isInteger(minVal))) {
+      numericIssues.push("El stock mínimo debe ser un entero ≥ 0");
+      nextErrors.min_stock = true;
+    }
+    if (productData.max_stock !== "" && (Number.isNaN(maxVal) || maxVal < 0 || !Number.isInteger(maxVal))) {
+      numericIssues.push("El stock máximo debe ser un entero ≥ 0");
+      nextErrors.max_stock = true;
+    }
+    if (productData.min_stock !== "" && productData.max_stock !== "" && !Number.isNaN(minVal) && !Number.isNaN(maxVal) && minVal > maxVal) {
+      numericIssues.push("El stock mínimo no puede ser mayor que el stock máximo");
+      nextErrors.min_stock = true;
+      nextErrors.max_stock = true;
+    }
+
+    setErrors(nextErrors);
+
+    return { missing, numericIssues };
   };
 
   const handleSubmit = async (e) => {
@@ -135,17 +190,26 @@ const LoadNewProduct = () => {
     if (isSubmitting) return;
     setIsSubmitting(true);
 
-    // Validaciones: solo lo NOT NULL en DB (nombre)
-    const missing = [];
-    if (!productData.nombre?.trim()) missing.push("Nombre del Producto");
+    // Validaciones
+    const { missing, numericIssues } = validateRequired();
 
-    if (missing.length) {
+    if (missing.length || numericIssues.length) {
+      const listHtml = `
+        ${missing.length ? `<p><b>Campos obligatorios sin completar:</b></p><ul>${missing.map((m) => `<li>${m}</li>`).join("")}</ul>` : ""}
+        ${numericIssues.length ? `<p style="margin-top:8px"><b>Revisá estos valores:</b></p><ul>${numericIssues.map((m) => `<li>${m}</li>`).join("")}</ul>` : ""}
+      `;
       await Swal.fire({
         icon: "warning",
-        title: "Campos obligatorios",
-        html: `Completá: <b>${missing.join(", ")}</b>`,
+        title: "Revisá el formulario",
+        html: listHtml,
         confirmButtonText: "Entendido",
       });
+      // Llevar al primer error visible
+      setTimeout(() => {
+        const el = document.querySelector(".input-error");
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 0);
+
       setIsSubmitting(false);
       return;
     }
@@ -315,6 +379,19 @@ const LoadNewProduct = () => {
     <div>
       <Navbar />
 
+      {/* Estilos en línea para: 1) ocultar flechas de inputs number, 2) remarcar errores */}
+      <style>{`
+        /* Ocultar flechas en Chrome, Safari, Edge */
+        input[type=number]::-webkit-outer-spin-button,
+        input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        /* Ocultar flechas en Firefox */
+        input[type=number] { -moz-appearance: textfield; }
+        /* Borde rojo para inputs con error */
+        .input-error { border: 2px solid #dc3545 !important; outline: none; }
+        .input-error:focus { box-shadow: 0 0 0 3px rgba(220,53,69,.25); }
+        .label-error { color: #dc3545; }
+      `}</style>
+
       <div style={{ margin: "20px" }}>
         <button className="boton-volver" onClick={() => navigate("/product-configuration")}>
           ⬅ Volver
@@ -324,7 +401,7 @@ const LoadNewProduct = () => {
       <div className="product-form-container">
         <h2>{id ? "Editar Producto" : "Cargar Nuevo Producto"}</h2>
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} noValidate>
           <div className="product-form-fields">
             <div className="form-group">
               <label>Código del Producto (opcional)</label>
@@ -338,13 +415,13 @@ const LoadNewProduct = () => {
             </div>
 
             <div className="form-group name-row">
-              <label>Nombre del Producto</label>
+              <label className={errors.nombre ? "label-error" : undefined}>Nombre del Producto</label>
               <input
                 type="text"
                 name="nombre"
                 value={productData.nombre}
                 onChange={handleChange}
-                required
+                className={errors.nombre ? "input-error" : undefined}
               />
             </div>
 
@@ -365,33 +442,38 @@ const LoadNewProduct = () => {
             </div>
 
             <div className="form-group">
-              <label>Stock Mínimo</label>
+              <label className={errors.min_stock ? "label-error" : undefined}>Stock Mínimo</label>
               <input
                 type="number"
                 name="min_stock"
                 value={productData.min_stock}
                 onChange={handleChange}
+                className={errors.min_stock ? "input-error" : undefined}
+                inputMode="numeric"
               />
             </div>
 
             <div className="form-group">
-              <label>Stock Máximo</label>
+              <label className={errors.max_stock ? "label-error" : undefined}>Stock Máximo</label>
               <input
                 type="number"
                 name="max_stock"
                 value={productData.max_stock}
                 onChange={handleChange}
+                className={errors.max_stock ? "input-error" : undefined}
+                inputMode="numeric"
               />
             </div>
 
             <div className="form-group">
-              <label>Alícuota (%)</label>
+              <label className={errors.alicuota ? "label-error" : undefined}>Alícuota (%)</label>
               <select
                 name="alicuota"
                 value={productData.alicuota}
                 onChange={handleChange}
+                className={errors.alicuota ? "input-error" : undefined}
               >
-                <option value="">Sin alícuota</option>
+                <option value="">Seleccioná una alícuota</option>
                 <option value="10.5">ALICUOTA REDUCIDA 10,5%</option>
                 <option value="21">ALICUOTA NORMAL 21%</option>
                 <option value="27">ALICUOTA 27%</option>
@@ -466,6 +548,7 @@ const LoadNewProduct = () => {
                 value={cantidad}
                 onChange={(e) => setCantidad(e.target.value)}
                 className="subproduct-qty"
+                inputMode="decimal"
               />
 
               <button type="button" onClick={handleAddSubproducto}>

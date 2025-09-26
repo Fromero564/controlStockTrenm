@@ -61,6 +61,8 @@ const MeatLoadView = () => {
     if (id) fetchAll();
   }, [id]);
 
+  const esManual = remito?.tipo_ingreso === "manual";
+
   return (
     <div>
       <Navbar />
@@ -96,9 +98,7 @@ const MeatLoadView = () => {
               </div>
             </div>
 
-            <h3 className="mlv-subtitle">
-              Detalle de Cortes declarados en romaneo
-            </h3>
+            <h3 className="mlv-subtitle">Detalle de Cortes declarados</h3>
             <div className="mlv-tablewrap">
               <table className="mlv-table">
                 <thead>
@@ -107,7 +107,7 @@ const MeatLoadView = () => {
                     <th className="mlv-num">Cantidad</th>
                     <th className="mlv-num">Peso declarado (Kg)</th>
                     <th className="mlv-num">Cabezas</th>
-                    <th className="mlv-num">N° Romaneo / Código</th>
+                    <th className="mlv-num">{esManual ? "N° de Tropa" : "N° Romaneo / Código"}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -118,15 +118,16 @@ const MeatLoadView = () => {
                       c.peso_romaneo ??
                       c.peso_declarado ??
                       "—";
+                    const identificador = esManual
+                      ? (c.numero_tropa ?? c.identification_product ?? "—")
+                      : (c.identification_product ?? c.numero_tropa ?? "—");
                     return (
                       <tr key={c.id}>
                         <td>{c.tipo}</td>
                         <td className="mlv-num">{c.cantidad}</td>
                         <td className="mlv-num">{pesoDeclarado}</td>
                         <td className="mlv-num">{c.cabezas}</td>
-                        <td className="mlv-num">
-                          {c.identification_product ?? "—"}
-                        </td>
+                        <td className="mlv-num">{identificador}</td>
                       </tr>
                     );
                   })}
@@ -134,7 +135,7 @@ const MeatLoadView = () => {
               </table>
             </div>
 
-            {remito.tipo_ingreso === "manual" && cortesStock.length > 0 && (
+            {esManual && cortesStock.length > 0 && (
               <>
                 <h3 className="mlv-subtitle">Cortes Ingresados Manualmente</h3>
                 <div className="mlv-tablewrap">
@@ -205,9 +206,7 @@ const MeatLoadView = () => {
             )}
 
             <h3 className="mlv-subtitle">Observación</h3>
-            <div className="mlv-observation">
-              {observacion ? observacion : "—"}
-            </div>
+            <div className="mlv-observation">{observacion ? observacion : "—"}</div>
           </div>
         </div>
       )}
