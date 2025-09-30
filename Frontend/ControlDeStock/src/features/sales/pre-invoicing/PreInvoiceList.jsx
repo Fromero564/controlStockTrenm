@@ -137,6 +137,11 @@ export default function PreInvoiceList() {
     return (
         <div className="pv-wrap">
             <Navbar />
+              <div style={{ margin: "20px" }}>
+                <button className="boton-volver" onClick={() => navigate("/sales-panel")}>
+                    ⬅ Volver
+                </button>
+            </div>
             <div className="pv-container">
                 <h1 className="pv-title">PREFACTURACIONES</h1>
 

@@ -65,7 +65,7 @@ export default function RemitControlState() {
       }
 
       setAlreadyGenerated(true);
-      navigate(`/remits/list`);
+      navigate(`/list-final-remits`);
     } catch (e) {
       alert(e.message);
     }
@@ -111,7 +111,6 @@ export default function RemitControlState() {
               <tbody>
                 {items.map((it, idx) => {
                   const unit = (it.unit_measure || "-").toString().toUpperCase();
-                  // 👇 cantidad mostrada (piezas) si la unidad es KG; si no, qty
                   let qtyShown = Number(it.qty || 0);
                   if (unit === "KG") {
                     const net = Number(it.net_weight || 0);
@@ -151,12 +150,12 @@ export default function RemitControlState() {
                   <input
                     type="radio"
                     name="gen"
-                    value="afip"
-                    checked={mode === "afip"}
-                    onChange={() => setMode("afip")}
+                    value="arca"
+                    checked={mode === "arca"}
+                    onChange={() => setMode("arca")}
                     disabled={alreadyGenerated}
                   />{" "}
-                  Generar por AFIP
+                  Generar por ARCA
                 </label>
               </div>
             </div>

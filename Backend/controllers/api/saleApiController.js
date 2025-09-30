@@ -1785,126 +1785,162 @@ const saleApiController = {
     },
 
 
-    // Generar (persistir) el remito final desde una orden
-    createRemitFromOrder: async (req, res) => {
-        const t = await sequelize.transaction();
-        try {
-            const { id } = req.params;   // orderId
-            const note = (req.body?.note ?? null);
+createRemitFromOrder: async (req, res) => {
+    const t = await sequelize.transaction();
+    try {
+        const { id } = req.params;   
+        const note = (req.body?.note ?? null);
 
-            // Evitar duplicado
-            const exists = await FinalRemit.findOne({
-                where: { order_id: id },
+        // Evitar duplicado
+        const exists = await FinalRemit.findOne({
+            where: { order_id: id },
+            transaction: t,
+            lock: t.LOCK.UPDATE,
+        });
+        if (exists) {
+            await t.rollback();
+            return res.status(400).json({ ok: false, msg: "La orden ya está remitada" });
+        }
+
+        const order = await NewOrder.findByPk(id, { transaction: t });
+        if (!order) {
+            await t.rollback();
+            return res.status(404).json({ ok: false, msg: "Orden no encontrada" });
+        }
+
+        // Header
+        const remit = await FinalRemit.create({
+            order_id: order.id,
+            receipt_number: order.id,
+            client_name: order.client_name,
+            salesman_name: order.salesman_name,
+            price_list: order.price_list,
+            sell_condition: order.sell_condition,
+            payment_condition: order.payment_condition,
+            generated_by: "system",
+            note,
+            total_items: 0,
+            total_amount: 0,
+        }, { transaction: t });
+
+        // Detalle
+        const lines = await ProductsSellOrder.findAll({
+            where: { sell_order_id: id },
+            order: [["id", "ASC"]],
+            transaction: t,
+        });
+
+        const detailRows = [];
+        let totalItems = 0;
+        let totalAmount = 0;
+
+        for (const l of lines) {
+            const unit_price = Number(l.product_price || 0);
+
+            const priceRow = await PriceListProduct.findOne({
+                where: { product_id: String(l.product_id) },
+                order: [["id", "ASC"]],
                 transaction: t,
-                lock: t.LOCK.UPDATE,
             });
-            if (exists) {
-                await t.rollback();
-                return res.status(400).json({ ok: false, msg: "La orden ya está remitada" });
-            }
+            const unit_measure = priceRow?.unidad_venta || null;
+            const isKG = String(unit_measure || "").toUpperCase() === "KG";
 
-            const order = await NewOrder.findByPk(id, { transaction: t });
-            if (!order) {
-                await t.rollback();
-                return res.status(404).json({ ok: false, msg: "Orden no encontrada" });
-            }
-
-            // Header
-            const remit = await FinalRemit.create({
-                order_id: order.id,
-                receipt_number: order.id,
-                client_name: order.client_name,
-                salesman_name: order.salesman_name,
-                price_list: order.price_list,
-                sell_condition: order.sell_condition,
-                payment_condition: order.payment_condition,
-                generated_by: "system",
-                note,
-                total_items: 0,
-                total_amount: 0,
-            }, { transaction: t });
-
-            // Detalle
-            const lines = await ProductsSellOrder.findAll({
-                where: { sell_order_id: id },
+            const headers = await CutsHeader.findAll({
+                where: { receipt_number: id, product_code: String(l.product_id) },
+                include: [{ model: CutsDetail, as: "details" }],
                 order: [["id", "ASC"]],
                 transaction: t,
             });
 
-            const detailRows = [];
-            let totalItems = 0;
-            let totalAmount = 0;
+            let qty_requested_total = 0; 
+            let net_weight = 0;
+            let gross_weight = 0;
+            let units_count = 0;
 
-            for (const l of lines) {
-                const unit_price = Number(l.product_price || 0);
-
-                const priceRow = await PriceListProduct.findOne({
-                    where: { product_id: String(l.product_id) },
-                    order: [["id", "ASC"]],
-                    transaction: t,
-                });
-                const unit_measure = priceRow?.unidad_venta || null;
-                const isKG = String(unit_measure || "").toUpperCase() === "KG";
-
-                const headers = await CutsHeader.findAll({
-                    where: { receipt_number: id, product_code: String(l.product_id) },
-                    include: [{ model: CutsDetail, as: "details" }],
-                    order: [["id", "ASC"]],
-                    transaction: t,
-                });
-
-                let qty_requested_total = 0; // 👈 CANTIDAD a guardar
-                let net_weight = 0;
-                let gross_weight = 0;
-                let units_count = 0;
-
-                for (const h of headers) {
-                    qty_requested_total += Number(h.qty_requested || 0);
-                    for (const d of (h.details || [])) {
-                        units_count += Number(d.units_count || 0);
-                        gross_weight += Number(d.gross_weight || 0);
-                        net_weight += Number(d.net_weight || 0);
-                    }
+            for (const h of headers) {
+                qty_requested_total += Number(h.qty_requested || 0);
+                for (const d of (h.details || [])) {
+                    units_count += Number(d.units_count || 0);
+                    gross_weight += Number(d.gross_weight || 0);
+                    net_weight += Number(d.net_weight || 0);
                 }
+            }
 
-                const qty = qty_requested_total; // guardamos qty_requested
-                const avg_weight = units_count > 0 ? net_weight / units_count : 0;
-                const lineTotal = isKG ? unit_price * net_weight : unit_price * qty;
+            const qty = qty_requested_total;
+            const avg_weight = units_count > 0 ? net_weight / units_count : 0;
+            const lineTotal = isKG ? unit_price * net_weight : unit_price * qty;
 
-                detailRows.push({
-                    final_remit_id: remit.id,
-                    product_id: l.product_id ?? null,
-                    product_name: l.product_name,
-                    unit_price,
-                    qty,                 // CANT. = qty_requested_total
-                    unit_measure,        // "UN" | "KG"
-                    gross_weight,
-                    net_weight,
-                    avg_weight,
+            detailRows.push({
+                final_remit_id: remit.id,
+                product_id: l.product_id ?? null,
+                product_name: l.product_name,
+                unit_price,
+                qty,
+                unit_measure,
+                gross_weight,
+                net_weight,
+                avg_weight,
+            });
+
+            totalItems += qty;
+            totalAmount += lineTotal;
+
+            // 🔥 Actualizar stock
+            let stockRow = null;
+            if (l.product_id != null) {
+                stockRow = await ProductStock.findOne({
+                    where: { product_cod: String(l.product_id) },
+                    transaction: t,
+                    lock: t.LOCK.UPDATE,
                 });
-
-                totalItems += qty;
-                totalAmount += lineTotal;
+            }
+            if (!stockRow) {
+                stockRow = await ProductStock.findOne({
+                    where: { product_name: l.product_name },
+                    transaction: t,
+                    lock: t.LOCK.UPDATE,
+                });
             }
 
-            if (detailRows.length) {
-                await FinalRemitProduct.bulkCreate(detailRows, { transaction: t });
+            if (!stockRow) {
+                await t.rollback();
+                return res.status(400).json({
+                    ok: false,
+                    msg: `No existe stock para ${l.product_name} (id ${l.product_id ?? "-"})`,
+                });
             }
 
-            // Totales del header
-            await remit.update({
-                total_items: totalItems,
-                total_amount: totalAmount,
-            }, { transaction: t });
+            const currentQty = Number(stockRow.product_quantity || 0);
+            const currentKilos = Number(stockRow.product_total_weight || 0);
 
-            await t.commit();
-            return res.json({ ok: true, remit_id: remit.id });
-        } catch (err) {
-            console.error("createRemitFromOrder error:", err);
-            try { await t.rollback(); } catch (_) { }
-            return res.status(500).json({ ok: false, msg: "Error al generar remito" });
+            const newQty = Math.max(0, currentQty - qty);
+            const newKilos = Math.max(0, currentKilos - net_weight);
+
+            await stockRow.update(
+                { product_quantity: newQty, product_total_weight: newKilos },
+                { transaction: t }
+            );
         }
-    },
+
+        if (detailRows.length) {
+            await FinalRemitProduct.bulkCreate(detailRows, { transaction: t });
+        }
+
+        // Totales del header
+        await remit.update({
+            total_items: totalItems,
+            total_amount: totalAmount,
+        }, { transaction: t });
+
+        await t.commit();
+        return res.json({ ok: true, remit_id: remit.id });
+    } catch (err) {
+        console.error("createRemitFromOrder error:", err);
+        try { await t.rollback(); } catch (_) { }
+        return res.status(500).json({ ok: false, msg: "Error al generar remito" });
+    }
+},
+
 
     // ===== DESTINOS =====
     getAllDestinations: async (req, res) => {

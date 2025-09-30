@@ -310,11 +310,14 @@ export default function PreInvoiceCharge() {
   return (
     <div className="charge-wrap">
       <Navbar />
+        <div style={{ margin: "20px" }}>
+                <button className="boton-volver" onClick={() => navigate("/sales-panel")}>
+                    ⬅ Volver
+                </button>
+            </div>
       <div className="charge-container">
         <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "6px 0 14px" }}>
-          <button className="charge-btn charge-btn-outline" onClick={() => navigate(-1)}>
-            <FontAwesomeIcon icon={faArrowLeftLong} /> Volver
-          </button>
+       
           <h1 className="charge-title" style={{ margin: 0 }}>
             {title}
           </h1>
