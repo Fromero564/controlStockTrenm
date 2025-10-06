@@ -53,6 +53,21 @@ const LoadNewProduct = () => {
     return Number.isInteger(n) ? String(n) : n.toFixed(2);
   };
 
+  // Normaliza la alícuota proveniente del backend para que coincida con los <option value="">
+  // Acepta 10.5 / "10.50" / "10,5" / 21 / "0" / 0, etc. y devuelve "10.5", "21", "27" o "0"
+  const normalizeAlicuota = (val) => {
+    if (val === null || val === undefined || val === "") return "";
+    const s = String(val).trim().replace(",", ".");
+    const n = Number(s);
+    if (!Number.isFinite(n)) return "";
+    // Redondeo a 2 decimales y eliminación de ceros sobrantes
+    const fixed = Number(n.toFixed(2));
+    // Si es entero (21, 27, 0)
+    if (Number.isInteger(fixed)) return String(fixed);
+    // Si tiene decimales (10.5)
+    return String(parseFloat(fixed.toString()));
+  };
+
   useEffect(() => {
     const fetchAllProducts = async () => {
       try {
@@ -109,7 +124,8 @@ const LoadNewProduct = () => {
           tipo: data.product_general_category || "externo",
           min_stock: data.min_stock?.toString() || "",
           max_stock: data.max_stock?.toString() || "",
-          alicuota: data.alicuota?.toString() || "",
+          // 🔧 Normalización aquí:
+          alicuota: normalizeAlicuota(data.alicuota),
         });
 
         // Normalizar cantidades a Number
@@ -135,6 +151,7 @@ const LoadNewProduct = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    // Para alícuota, ya viene del <select> como string que coincide con los option.value
     setProductData((prev) => ({ ...prev, [name]: value }));
     // limpiar error del campo editado
     setErrors((prev) => ({ ...prev, [name]: false }));
@@ -239,19 +256,19 @@ const LoadNewProduct = () => {
     // Limpiar subproductos inválidos + asegurar Números
     const subproductosValidos = Array.isArray(subproductos)
       ? subproductos
-          .filter(
-            (sp) =>
-              sp &&
-              typeof sp.subproductId === "string" &&
-              sp.subproductId.trim() !== "" &&
-              sp.quantity != null &&
-              !Number.isNaN(Number(sp.quantity)) &&
-              Number(sp.quantity) > 0
-          )
-          .map((sp) => ({
-            ...sp,
-            quantity: Number(sp.quantity), // asegurar número en payload
-          }))
+        .filter(
+          (sp) =>
+            sp &&
+            typeof sp.subproductId === "string" &&
+            sp.subproductId.trim() !== "" &&
+            sp.quantity != null &&
+            !Number.isNaN(Number(sp.quantity)) &&
+            Number(sp.quantity) > 0
+        )
+        .map((sp) => ({
+          ...sp,
+          quantity: Number(sp.quantity), // asegurar número en payload
+        }))
       : [];
 
     const payload = {
@@ -379,7 +396,7 @@ const LoadNewProduct = () => {
     <div>
       <Navbar />
 
-      {/* Estilos en línea para: 1) ocultar flechas de inputs number, 2) remarcar errores */}
+      {/* Estilos en línea para: 1) ocultar flechas de inputs number, 2) remarcar errores, 3) asteriscos */}
       <style>{`
         /* Ocultar flechas en Chrome, Safari, Edge */
         input[type=number]::-webkit-outer-spin-button,
@@ -390,6 +407,8 @@ const LoadNewProduct = () => {
         .input-error { border: 2px solid #dc3545 !important; outline: none; }
         .input-error:focus { box-shadow: 0 0 0 3px rgba(220,53,69,.25); }
         .label-error { color: #dc3545; }
+        /* Asterisco de requerido */
+        .required-asterisk { color: #dc3545; margin-left: 4px; }
       `}</style>
 
       <div style={{ margin: "20px" }}>
@@ -415,7 +434,9 @@ const LoadNewProduct = () => {
             </div>
 
             <div className="form-group name-row">
-              <label className={errors.nombre ? "label-error" : undefined}>Nombre del Producto</label>
+              <label className={errors.nombre ? "label-error" : undefined}>
+                Nombre del Producto<span className="required-asterisk">*</span>
+              </label>
               <input
                 type="text"
                 name="nombre"
@@ -442,7 +463,9 @@ const LoadNewProduct = () => {
             </div>
 
             <div className="form-group">
-              <label className={errors.min_stock ? "label-error" : undefined}>Stock Mínimo</label>
+              <label className={errors.min_stock ? "label-error" : undefined}>
+                Stock Mínimo<span className="required-asterisk">*</span>
+              </label>
               <input
                 type="number"
                 name="min_stock"
@@ -454,7 +477,9 @@ const LoadNewProduct = () => {
             </div>
 
             <div className="form-group">
-              <label className={errors.max_stock ? "label-error" : undefined}>Stock Máximo</label>
+              <label className={errors.max_stock ? "label-error" : undefined}>
+                Stock Máximo<span className="required-asterisk">*</span>
+              </label>
               <input
                 type="number"
                 name="max_stock"
@@ -466,7 +491,9 @@ const LoadNewProduct = () => {
             </div>
 
             <div className="form-group">
-              <label className={errors.alicuota ? "label-error" : undefined}>Alícuota (%)</label>
+              <label className={errors.alicuota ? "label-error" : undefined}>
+                Alícuota (%)<span className="required-asterisk">*</span>
+              </label>
               <select
                 name="alicuota"
                 value={productData.alicuota}
@@ -544,7 +571,7 @@ const LoadNewProduct = () => {
 
               <input
                 type="number"
-                placeholder="Cantidad"
+                placeholder={unidad === "kg" ? "Peso" : "Cantidad"}
                 value={cantidad}
                 onChange={(e) => setCantidad(e.target.value)}
                 className="subproduct-qty"

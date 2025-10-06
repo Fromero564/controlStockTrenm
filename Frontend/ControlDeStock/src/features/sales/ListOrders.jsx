@@ -208,7 +208,7 @@ const ListOrders = () => {
   const TableHeader = () => (
     <div className="oa-table-head">
       <div>N°</div>
-      <div>FECHA</div>
+      <div>FECHA GENERACION</div>
       <div>CLIENTE</div>
       <div className="oa-col-actions">ACCIONES</div>
     </div>

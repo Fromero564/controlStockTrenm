@@ -219,34 +219,36 @@ const MeatManualIncome = () => {
     }));
   }, [formData.pesoProveedor, formData.pesoBruto, formData.tara]);
 
-  useEffect(() => {
-    const fetchProductos = async () => {
-      try {
-        const response = await fetch(`${API_URL}/product-name`);
-        if (!response.ok) throw new Error("Error al cargar los productos");
 
-        const data = await response.json();
+useEffect(() => {
+  const fetchProductos = async () => {
+    try {
+      const res = await fetch(`${API_URL}/product-name`);
+      if (!res.ok) throw new Error("Error al cargar productos");
+      const data = await res.json();
 
-        const opciones = data.map((producto) => ({
-          value: producto.product_name,
-          label: producto.product_name,
-          id: producto.id,
-          categoria: producto.category_id,
+      // Mismo criterio que ProviderForm: solo "externo" y "ambos"
+      const opciones = (Array.isArray(data) ? data : [])
+        .filter((p) =>
+          ["externo", "ambos"].includes(
+            (p.product_general_category || "").toLowerCase()
+          )
+        )
+        .map((p) => ({
+          value: p.product_name,           // lo que muestra el Select
+          label: p.product_name,
+          id: p.id,                        // cod del producto (lo usás como product_cod)
+          categoria: p.category?.category_name || "", // nombre de categoría
         }));
 
-        console.log("Datos de las opciones:", opciones)
+      setOpcionesProductos(opciones);
+    } catch (err) {
+      console.error("Error productos:", err);
+    }
+  };
 
-        setOpcionesProductos(opciones);
-      } catch (err) {
-        console.error("Error al obtener los productos:", err);
-        setError("Error al cargar los productos");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProductos();
-  }, []);
+  fetchProductos();
+}, [API_URL]);
 
 
 

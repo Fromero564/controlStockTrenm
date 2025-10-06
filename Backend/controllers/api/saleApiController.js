@@ -41,7 +41,25 @@ const PreinvoiceReturn = db.PreinvoiceReturn;
 
 
 
-// controllers/api/saleApiController.js
+async function packagingFor(orderId, productId) {
+    const headers = await CutsHeader.findAll({
+        where: { receipt_number: orderId, product_code: String(productId) },
+        include: [{ model: CutsDetail, as: "details" }],
+        order: [["id", "ASC"]],
+    });
+
+    const counts = {};
+    for (const h of headers) {
+        for (const d of (h.details || [])) {
+            const k = String((d.packaging_type || "").trim() || "-");
+            counts[k] = (counts[k] || 0) + 1;
+        }
+    }
+    let best = "-"; let bestN = -1;
+    Object.entries(counts).forEach(([k, n]) => { if (n > bestN) { best = k; bestN = n; } });
+    return best;
+}
+
 async function checkFinalRemitExists(req, res) {
     try {
         const orderId = Number(req.query.order_id);
@@ -201,313 +219,360 @@ function drawHeader(doc, remit) {
 
 
 function drawTable(doc, items, startY = 210) {
-    const topY = startY + 10;
+  const topY = startY + 10;
 
-    const left = doc.page.margins.left || 40;
-    const right = doc.page.margins.right || 40;
-    const availableWidth = doc.page.width - left - right;
+  const left = doc.page.margins.left || 40;
+  const right = doc.page.margins.right || 40;
+  const availableWidth = doc.page.width - left - right;
 
-    const COLS = [
-        { key: "product_id", title: "CÓDIGO", width: 50, align: "left" },
-        { key: "product_name", title: "PRODUCTO", width: 155, align: "left" },
-        { key: "unit_measure", title: "UNIDAD", width: 45, align: "center" },
-        { key: "qty", title: "CANT.", width: 55, align: "right" },
-        { key: "net_weight", title: "P. NETO", width: 60, align: "right" },
-        { key: "unit_price", title: "P. UNIT", width: 65, align: "right" },
-        { key: "total", title: "P. TOTAL", width: 85, align: "right" },
-    ];
-    const sumWidths = COLS.reduce((a, c) => a + c.width, 0);
-    if (sumWidths !== Math.round(availableWidth)) {
-        COLS[COLS.length - 1].width += (availableWidth - sumWidths);
-    }
+  const COLS = [
+    { key: "product_id",   title: "CÓDIGO",  width: 50,  align: "left"   },
+    { key: "product_name", title: "PRODUCTO",width: 135, align: "left"   },
+    { key: "packaging",    title: "EMPAQUE", width: 70,  align: "left"   }, // 👈 NUEVA
+    { key: "unit_measure", title: "UNIDAD",  width: 45,  align: "center" },
+    { key: "qty",          title: "CANT.",   width: 55,  align: "right"  },
+    { key: "net_weight",   title: "P. NETO", width: 60,  align: "right"  },
+    { key: "unit_price",   title: "P. UNIT", width: 65,  align: "right"  },
+    { key: "total",        title: "P. TOTAL",width: 65,  align: "right"  },
+  ];
+  const sumW = COLS.reduce((a,c)=>a+c.width,0);
+  if (sumW !== Math.round(availableWidth)) {
+    COLS[COLS.length-1].width += (availableWidth - sumW);
+  }
 
-    const rowHeight = 18;
-    const headerHeight = 22;
-    let y = topY;
+  const rowHeight = 18;
+  const headerHeight = 22;
+  let y = topY;
+
+  doc.moveTo(left, y).lineTo(left + availableWidth, y).strokeColor("#cfcfd1").lineWidth(1).stroke();
+  y += 6;
+
+  doc.font("Helvetica-Bold").fontSize(10);
+  let x = left;
+  COLS.forEach(col => {
+    doc.text(col.title, x + 2, y, { width: col.width - 4, align: col.align, ellipsis: true, lineBreak: false });
+    x += col.width;
+  });
+  y += headerHeight - 8;
+
+  doc.moveTo(left, y).lineTo(left + availableWidth, y).strokeColor("#cfcfd1").lineWidth(1).stroke();
+  y += 6;
+
+  doc.font("Helvetica").fontSize(9);
+
+  let totalFinal = 0;
+  let totalItems = 0; // líneas
+  let totalKg = 0;
+
+  const needPage = (nextY) => nextY > (doc.page.height - doc.page.margins.bottom - 120);
+
+  const redrawHeader = () => {
+    doc.font("Helvetica").fontSize(9);
+    let yy = Math.max(doc.y, doc.page.margins.top + 120);
+    y = yy;
 
     doc.moveTo(left, y).lineTo(left + availableWidth, y).strokeColor("#cfcfd1").lineWidth(1).stroke();
     y += 6;
-
     doc.font("Helvetica-Bold").fontSize(10);
-    let x = left;
+    let xx = left;
     COLS.forEach(col => {
-        doc.text(col.title, x + 2, y, { width: col.width - 4, align: col.align, ellipsis: true, lineBreak: false });
-        x += col.width;
+      doc.text(col.title, xx + 2, y, { width: col.width - 4, align: col.align, ellipsis: true, lineBreak: false });
+      xx += col.width;
     });
     y += headerHeight - 8;
-
     doc.moveTo(left, y).lineTo(left + availableWidth, y).strokeColor("#cfcfd1").lineWidth(1).stroke();
     y += 6;
-
     doc.font("Helvetica").fontSize(9);
+  };
 
-    let totalFinal = 0;
-    let totalItems = 0;
+  items.forEach((it) => {
+    const qty       = Number(it.qty || 0);
+    const netWeight = Number(it.net_weight || 0);
+    const unitPrice = Number(it.unit_price || 0);
+    const total     = (it.total != null) ? Number(it.total) : unitPrice * qty;
 
-    const drawHeaderIfPageBreak = () => {
-        doc.font("Helvetica").fontSize(9);
-        doc.moveDown(0.2);
-        let yy = doc.y;
-        yy = Math.max(yy, doc.page.margins.top + 120);
-        y = yy;
+    totalItems += 1;          // 👈 ítems = líneas
+    totalKg    += netWeight;
+    totalFinal += total;
 
-        doc.moveTo(left, y).lineTo(left + availableWidth, y).strokeColor("#cfcfd1").lineWidth(1).stroke();
-        y += 6;
-        doc.font("Helvetica-Bold").fontSize(10);
-        let xx = left;
-        COLS.forEach(col => {
-            doc.text(col.title, xx + 2, y, { width: col.width - 4, align: col.align, ellipsis: true, lineBreak: false });
-            xx += col.width;
-        });
-        y += headerHeight - 8;
+    if (needPage(y + rowHeight)) {
+      doc.addPage();
+      redrawHeader();
+    }
 
-        doc.moveTo(left, y).lineTo(left + availableWidth, y).strokeColor("#cfcfd1").lineWidth(1).stroke();
-        y += 6;
-        doc.font("Helvetica").fontSize(9);
-    };
+    let xx = left;
+    const cells = [
+      String(it.product_id ?? ""),
+      String(it.product_name ?? ""),
+      String(it.packaging ?? "-"),                  // 👈 NUEVO
+      String(it.unit_measure ?? ""),
+      fmtQty(qty),
+      nf.format(netWeight),
+      fmtMoney(unitPrice),
+      fmtMoney(total),
+    ];
 
-    const needPage = (nextY) => nextY > (doc.page.height - doc.page.margins.bottom - 120);
-
-    items.forEach((it) => {
-        const qty = Number(it.qty || 0);
-        const netWeight = Number(it.net_weight || 0);
-        const unitPrice = Number(it.unit_price || 0);
-        const total = (it.total != null) ? Number(it.total) : unitPrice * qty;
-
-        totalItems += qty;
-        totalFinal += total;
-
-        if (needPage(y + rowHeight)) {
-            doc.addPage();
-            drawHeaderIfPageBreak();
-        }
-
-        let xx = left;
-        const cells = [
-            String(it.product_id ?? ""),
-            String(it.product_name ?? ""),
-            String(it.unit_measure ?? ""),
-            fmtQty(qty),
-            nf.format(netWeight),
-            fmtMoney(unitPrice),
-            fmtMoney(total),
-        ];
-
-        cells.forEach((val, i) => {
-            const col = COLS[i];
-            doc.text(val, xx + 2, y, { width: col.width - 4, align: col.align, ellipsis: true });
-            xx += col.width;
-        });
-
-        y += rowHeight;
-
-        doc.moveTo(left, y).lineTo(left + availableWidth, y).strokeColor("#e6e6e8").lineWidth(0.5).stroke();
+    cells.forEach((val, i) => {
+      const col = COLS[i];
+      doc.text(val, xx + 2, y, { width: col.width - 4, align: col.align, ellipsis: true });
+      xx += col.width;
     });
 
-    return { y: y + 20, totalFinal, totalItems };
+    y += rowHeight;
+    doc.moveTo(left, y).lineTo(left + availableWidth, y).strokeColor("#e6e6e8").lineWidth(0.5).stroke();
+  });
+
+  return { y: y + 20, totalFinal, totalItems, totalKg };
 }
 
-function drawFooter(doc, remit, y, totalFinal, totalItems) {
-    const left = 50;
+function drawFooter(doc, remit, y, totalFinal, totalItems, totalKg) {
+  const left = 50;
 
-    doc.font("Helvetica-Bold").fontSize(10);
-    doc.text(`TOTAL ÍTEMS: ${fmtQty(totalItems ?? remit.total_items ?? 0)}`, left, y);
-    y += 16;
-    doc.text(`TOTAL $: ${fmtMoney(totalFinal ?? remit.total_amount ?? 0)}`, left, y);
+  doc.font("Helvetica-Bold").fontSize(10);
+  doc.text(`TOTAL ÍTEMS: ${fmtQty(totalItems ?? remit.total_items ?? 0)}`, left, y);
+  y += 16;
+  doc.text(`TOTAL KG: ${nf.format(totalKg ?? remit.total_kg ?? 0)}`, left, y); // 👈 nuevo
+  y += 16;
+  doc.text(`TOTAL $: ${fmtMoney(totalFinal ?? remit.total_amount ?? 0)}`, left, y);
 
-    if (remit.note) {
-        y += 18;
-        doc.font("Helvetica-Bold").text("OBSERVACIONES", left, y);
-        y += 14;
-        doc.font("Helvetica").text(remit.note, left, y, { width: 360 });
-    }
+  if (remit.note) {
+    y += 18;
+    doc.font("Helvetica-Bold").text("OBSERVACIONES", left, y);
+    y += 14;
+    doc.font("Helvetica").text(remit.note, left, y, { width: 360 });
+  }
 
-    const boxY = y + 24;
-    doc.roundedRect(370, boxY, 175, 70, 6).strokeColor("#b8c6d8").lineWidth(1).stroke();
-    doc.font("Helvetica").text("Recibí Conforme", 380, boxY + 8);
+  const boxY = y + 24;
+  doc
+    .roundedRect(370, boxY, 175, 70, 6)
+    .strokeColor("#b8c6d8")
+    .lineWidth(1)
+    .stroke();
+  doc.font("Helvetica").text("Recibí Conforme", 380, boxY + 8);
 }
+
+
+
 
 async function streamRemitPdfById(req, res) {
-    try {
-        const { id } = req.params;
+  try {
+    const { id } = req.params;
 
-        const remit = await FinalRemit.findByPk(id);
-        if (!remit) return res.status(404).json({ ok: false, msg: "Remito no encontrado" });
+    const remit = await FinalRemit.findByPk(id);
+    if (!remit) return res.status(404).json({ ok: false, msg: "Remito no encontrado" });
 
-        // Para la fecha del header (evita corrimiento y usa la fecha de la orden)
-        const order = await NewOrder.findByPk(remit.order_id);
+    // Fecha del header: usa la fecha de la orden si existe
+    const order = await NewOrder.findByPk(remit.order_id);
 
-        const items = await FinalRemitProduct.findAll({
-            where: { final_remit_id: id },
+    const items = await FinalRemitProduct.findAll({
+      where: { final_remit_id: id },
+      order: [["id", "ASC"]],
+    });
+
+    // Construimos las filas usando qty_requested desde cuts_header
+    const rows = await Promise.all(
+      items.map(async (i) => {
+        // Fallback de unidad si quedó null en la tabla final
+        let unit_measure = i.unit_measure || null;
+        if (!unit_measure) {
+          const pl = await PriceListProduct.findOne({
+            where: { product_id: String(i.product_id) },
             order: [["id", "ASC"]],
+          });
+          unit_measure = pl?.unidad_venta || null; // "KG" | "UN" | null
+        }
+
+        // Empaque sugerido (más frecuente en los details)
+        const pkg = await packagingFor(remit.order_id, i.product_id);
+
+        // Cantidad a mostrar = sum(qty_requested) de cuts_header
+        const qtyRequested = await CutsHeader.sum("qty_requested", {
+          where: { receipt_number: remit.order_id, product_code: String(i.product_id) },
         });
 
-        // Construimos las filas usando qty_requested desde cuts_header
-        const rows = await Promise.all(
-            items.map(async (i) => {
-                // Fallback de unidad si quedó null en la tabla final
-                let unit_measure = i.unit_measure || null;
-                if (!unit_measure) {
-                    const pl = await PriceListProduct.findOne({
-                        where: { product_id: String(i.product_id) },
-                        order: [["id", "ASC"]],
-                    });
-                    unit_measure = pl?.unidad_venta || null; // "KG" | "UN" | null
-                }
+        const qty   = Number(qtyRequested || 0);     // CANT. mostrada
+        const net   = Number(i.net_weight || 0);     // P. NETO (kg)
+        const price = Number(i.unit_price || 0);
+        const unit  = String(unit_measure || "-").toUpperCase();
 
-                // Cantidad a mostrar = sum(qty_requested) de cuts_header
-                const qtyRequested = await CutsHeader.sum("qty_requested", {
-                    where: { receipt_number: remit.order_id, product_code: String(i.product_id) },
-                });
+        const total = unit === "KG" ? price * net : price * qty;
 
-                const qty = Number(qtyRequested || 0);          // CANT. mostrada
-                const net = Number(i.net_weight || 0);          // P. NETO (kg)
-                const price = Number(i.unit_price || 0);
-                const unit = String(unit_measure || "-").toUpperCase();
-
-                const total = unit === "KG" ? price * net : price * qty;
-
-                return {
-                    product_id: i.product_id,
-                    product_name: i.product_name,
-                    unit_measure: unit_measure || "-",
-                    qty,                 // 👈 qty_requested
-                    net_weight: net,
-                    unit_price: price,
-                    total,
-                };
-            })
-        );
-
-        // Encabezado a usar en el PDF (incluye fecha de la orden)
-        const headerForPdf = {
-            ...remit.toJSON(),
-            date_order: order?.date_order || remit.created_at,
+        return {
+          product_id: i.product_id,
+          product_name: i.product_name,
+          packaging: pkg,                 // 👈 agregado
+          unit_measure: unit_measure || "-",
+          qty,
+          net_weight: net,
+          unit_price: price,
+          total,
         };
+      })
+    );
 
-        res.setHeader("Content-Type", "application/pdf");
-        res.setHeader("Content-Disposition", `inline; filename=remito_${remit.receipt_number}.pdf`);
+    // Encabezado a usar en el PDF (incluye fecha de la orden)
+    const headerForPdf = {
+      ...remit.toJSON(),
+      date_order: order?.date_order || remit.created_at,
+    };
 
-        const doc = new PDFDocument({ margin: 40, size: "A4" });
-        doc.pipe(res);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `inline; filename=remito_${remit.receipt_number}.pdf`);
 
-        const startY = drawHeader(doc, headerForPdf);
-        const { y: afterY, totalFinal, totalItems } = drawTable(doc, rows, startY);
-        drawFooter(doc, headerForPdf, afterY, totalFinal, totalItems);
+    const doc = new PDFDocument({ margin: 40, size: "A4" });
+    doc.pipe(res);
 
-        doc.end();
-    } catch (e) {
-        console.error(e);
-        if (!res.headersSent) {
-            res.status(500).json({ ok: false, msg: "Error al generar PDF" });
-        }
+    const startY = drawHeader(doc, headerForPdf);
+    const { y: afterY, totalFinal, totalItems, totalKg } = drawTable(doc, rows, startY); // 👈 ahora trae totalKg
+    drawFooter(doc, headerForPdf, afterY, totalFinal, totalItems, totalKg);               // 👈 lo pasamos al footer
+
+    doc.end();
+  } catch (e) {
+    console.error(e);
+    if (!res.headersSent) {
+      res.status(500).json({ ok: false, msg: "Error al generar PDF" });
     }
+  }
 }
 
 
 
 async function buildRemitPreview(orderId) {
-    const order = await NewOrder.findByPk(orderId);
-    if (!order) throw new Error("Orden no encontrada");
+  const order = await NewOrder.findByPk(orderId);
+  if (!order) throw new Error("Orden no encontrada");
 
-    const lines = await ProductsSellOrder.findAll({
-        where: { sell_order_id: orderId },
-        order: [["id", "ASC"]],
+  const lines = await ProductsSellOrder.findAll({
+    where: { sell_order_id: orderId },
+    order: [["id", "ASC"]],
+  });
+
+  const items = [];
+  let totalItems = 0;       // ahora cuenta líneas/productos
+  let totalAmount = 0;
+  let totalKg = 0;          // suma de net_weight
+
+  for (const l of lines) {
+    const fallbackPrice = Number(l.product_price || 0);
+
+    const priceRow = await PriceListProduct.findOne({
+      where: { product_id: String(l.product_id) },
+      order: [["id", "ASC"]],
     });
 
-    const items = [];
-    let totalItems = 0;
-    let totalAmount = 0;
+    const headers = await CutsHeader.findAll({
+      where: { receipt_number: orderId, product_code: String(l.product_id) },
+      include: [{ model: CutsDetail, as: "details" }],
+      order: [["id", "ASC"]],
+    });
 
-    for (const l of lines) {
-        const unit_price = Number(l.product_price || 0);
+    let qty_requested_total = 0;
+    let units_count = 0;
+    let gross_weight = 0;
+    let net_weight = 0;
 
-        const priceRow = await PriceListProduct.findOne({
-            where: { product_id: String(l.product_id) },
-            order: [["id", "ASC"]],
-        });
-
-        const headers = await CutsHeader.findAll({
-            where: { receipt_number: orderId, product_code: String(l.product_id) },
-            include: [{ model: CutsDetail, as: "details" }],
-            order: [["id", "ASC"]],
-        });
-
-        let qty_requested_total = 0;
-        let units_count = 0;
-        let gross_weight = 0;
-        let net_weight = 0;
-
-        for (const h of headers) {
-            qty_requested_total += Number(h.qty_requested || 0);
-            for (const d of (h.details || [])) {
-                units_count += Number(d.units_count || 0);
-                gross_weight += Number(d.gross_weight || 0);
-                net_weight += Number(d.net_weight || 0);
-            }
-        }
-
-        const unit_measure = priceRow?.unidad_venta || null; // UN | KG
-        const qty = qty_requested_total; // <-- ahora CANT. = qty_requested
-
-        items.push({
-            product_id: l.product_id ?? null,
-            product_name: l.product_name,
-            unit_measure: unit_measure || "-",
-            qty,
-            // peso neto sigue yendo a su propia columna
-            net_weight,
-            unit_price,
-            total: unit_measure === "KG" ? unit_price * net_weight : unit_price * qty,
-        });
-
-        totalItems += Number(qty || 0);
-        totalAmount += unit_measure === "KG"
-            ? unit_price * Number(net_weight || 0)
-            : unit_price * Number(qty || 0);
+    for (const h of headers) {
+      qty_requested_total += Number(h.qty_requested || 0);
+      for (const d of (h.details || [])) {
+        units_count += Number(d.units_count || 0);
+        gross_weight += Number(d.gross_weight || 0);
+        net_weight += Number(d.net_weight || 0);
+      }
     }
 
-    const header = {
-        receipt_number: order.id,
-        date_order: order.date_order,
-        client_name: order.client_name,
-        salesman_name: order.salesman_name,
-        price_list: order.price_list,
-        sell_condition: order.sell_condition,
-        payment_condition: order.payment_condition,
-        order_id: order.id,
-        total_items: totalItems,
-        total_amount: totalAmount,
-        note: order.observation_order || null,
-    };
+    let packaging = "-";
+    {
+      const counts = {};
+      for (const h of headers) {
+        for (const d of (h.details || [])) {
+          const k = String((d.packaging_type || "").trim() || "-");
+          counts[k] = (counts[k] || 0) + 1;
+        }
+      }
+      let bestN = -1;
+      for (const [k, n] of Object.entries(counts)) {
+        if (n > bestN) { packaging = k; bestN = n; }
+      }
+    }
 
-    return { header, items };
+    const unit_measure = priceRow?.unidad_venta || null; // "UN" | "KG"
+    const unit_price = Number(priceRow?.price ?? fallbackPrice);
+
+    const qty = qty_requested_total;
+
+    const lineTotal =
+      unit_measure === "KG"
+        ? unit_price * Number(net_weight || 0)
+        : unit_price * Number(qty || 0);
+
+    items.push({
+      product_id: l.product_id ?? null,
+      product_name: l.product_name,
+      packaging,                    
+      unit_measure: unit_measure || "-",
+      qty,
+      net_weight,                   // va a su propia columna
+      unit_price,
+      total: lineTotal,
+    });
+
+    totalItems += 1;       
+    totalAmount += lineTotal;
+    totalKg += Number(net_weight || 0);
+  }
+
+  const header = {
+    receipt_number: order.id,
+    date_order: order.date_order,
+    client_name: order.client_name,
+    salesman_name: order.salesman_name,
+    price_list: order.price_list,
+    sell_condition: order.sell_condition,
+    payment_condition: order.payment_condition,
+    order_id: order.id,
+    total_items: totalItems,     
+    total_amount: totalAmount,
+    total_kg: totalKg,          
+    note: order.observation_order || null,
+  };
+
+  return { header, items };
 }
+
 
 
 async function streamRemitPdfByOrder(req, res) {
-    try {
-        const { id } = req.params;
+  try {
+    const { id } = req.params;
 
-        const { header, items } = await buildRemitPreview(id);
+    const { header, items } = await buildRemitPreview(id);
 
-        res.setHeader("Content-Type", "application/pdf");
-        res.setHeader("Content-Disposition", `inline; filename=remito_${header.receipt_number}.pdf`);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `inline; filename=remito_${header.receipt_number}.pdf`);
 
-        const doc = new PDFDocument({ margin: 40, size: "A4" });
-        doc.pipe(res);
+    const doc = new PDFDocument({ margin: 40, size: "A4" });
+    doc.pipe(res);
 
-        const startY = drawHeader(doc, header);
-        const { y: afterY, totalFinal, totalItems } = drawTable(doc, items, startY);
-        drawFooter(doc, { ...header, total_amount: totalFinal }, afterY, totalFinal, totalItems);
+    const startY = drawHeader(doc, header);
 
-        doc.end();
-    } catch (e) {
-        console.error(e);
-        res.status(500).json({ ok: false, msg: "Error al generar PDF" });
-    }
+    // 👇 ahora obtenemos totalKg desde drawTable
+    const { y: afterY, totalFinal, totalItems, totalKg } = drawTable(doc, items, startY);
+
+    // 👇 pasamos totalKg al footer y total_amount actualizado
+    drawFooter(
+      doc,
+      { ...header, total_amount: totalFinal, total_kg: totalKg },
+      afterY,
+      totalFinal,
+      totalItems,
+      totalKg
+    );
+
+    doc.end();
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ ok: false, msg: "Error al generar PDF" });
+  }
 }
-
 
 
 const saleApiController = {
@@ -1785,161 +1850,161 @@ const saleApiController = {
     },
 
 
-createRemitFromOrder: async (req, res) => {
-    const t = await sequelize.transaction();
-    try {
-        const { id } = req.params;   
-        const note = (req.body?.note ?? null);
+    createRemitFromOrder: async (req, res) => {
+        const t = await sequelize.transaction();
+        try {
+            const { id } = req.params;
+            const note = (req.body?.note ?? null);
 
-        // Evitar duplicado
-        const exists = await FinalRemit.findOne({
-            where: { order_id: id },
-            transaction: t,
-            lock: t.LOCK.UPDATE,
-        });
-        if (exists) {
-            await t.rollback();
-            return res.status(400).json({ ok: false, msg: "La orden ya está remitada" });
-        }
-
-        const order = await NewOrder.findByPk(id, { transaction: t });
-        if (!order) {
-            await t.rollback();
-            return res.status(404).json({ ok: false, msg: "Orden no encontrada" });
-        }
-
-        // Header
-        const remit = await FinalRemit.create({
-            order_id: order.id,
-            receipt_number: order.id,
-            client_name: order.client_name,
-            salesman_name: order.salesman_name,
-            price_list: order.price_list,
-            sell_condition: order.sell_condition,
-            payment_condition: order.payment_condition,
-            generated_by: "system",
-            note,
-            total_items: 0,
-            total_amount: 0,
-        }, { transaction: t });
-
-        // Detalle
-        const lines = await ProductsSellOrder.findAll({
-            where: { sell_order_id: id },
-            order: [["id", "ASC"]],
-            transaction: t,
-        });
-
-        const detailRows = [];
-        let totalItems = 0;
-        let totalAmount = 0;
-
-        for (const l of lines) {
-            const unit_price = Number(l.product_price || 0);
-
-            const priceRow = await PriceListProduct.findOne({
-                where: { product_id: String(l.product_id) },
-                order: [["id", "ASC"]],
+            // Evitar duplicado
+            const exists = await FinalRemit.findOne({
+                where: { order_id: id },
                 transaction: t,
+                lock: t.LOCK.UPDATE,
             });
-            const unit_measure = priceRow?.unidad_venta || null;
-            const isKG = String(unit_measure || "").toUpperCase() === "KG";
-
-            const headers = await CutsHeader.findAll({
-                where: { receipt_number: id, product_code: String(l.product_id) },
-                include: [{ model: CutsDetail, as: "details" }],
-                order: [["id", "ASC"]],
-                transaction: t,
-            });
-
-            let qty_requested_total = 0; 
-            let net_weight = 0;
-            let gross_weight = 0;
-            let units_count = 0;
-
-            for (const h of headers) {
-                qty_requested_total += Number(h.qty_requested || 0);
-                for (const d of (h.details || [])) {
-                    units_count += Number(d.units_count || 0);
-                    gross_weight += Number(d.gross_weight || 0);
-                    net_weight += Number(d.net_weight || 0);
-                }
-            }
-
-            const qty = qty_requested_total;
-            const avg_weight = units_count > 0 ? net_weight / units_count : 0;
-            const lineTotal = isKG ? unit_price * net_weight : unit_price * qty;
-
-            detailRows.push({
-                final_remit_id: remit.id,
-                product_id: l.product_id ?? null,
-                product_name: l.product_name,
-                unit_price,
-                qty,
-                unit_measure,
-                gross_weight,
-                net_weight,
-                avg_weight,
-            });
-
-            totalItems += qty;
-            totalAmount += lineTotal;
-
-            // 🔥 Actualizar stock
-            let stockRow = null;
-            if (l.product_id != null) {
-                stockRow = await ProductStock.findOne({
-                    where: { product_cod: String(l.product_id) },
-                    transaction: t,
-                    lock: t.LOCK.UPDATE,
-                });
-            }
-            if (!stockRow) {
-                stockRow = await ProductStock.findOne({
-                    where: { product_name: l.product_name },
-                    transaction: t,
-                    lock: t.LOCK.UPDATE,
-                });
-            }
-
-            if (!stockRow) {
+            if (exists) {
                 await t.rollback();
-                return res.status(400).json({
-                    ok: false,
-                    msg: `No existe stock para ${l.product_name} (id ${l.product_id ?? "-"})`,
-                });
+                return res.status(400).json({ ok: false, msg: "La orden ya está remitada" });
             }
 
-            const currentQty = Number(stockRow.product_quantity || 0);
-            const currentKilos = Number(stockRow.product_total_weight || 0);
+            const order = await NewOrder.findByPk(id, { transaction: t });
+            if (!order) {
+                await t.rollback();
+                return res.status(404).json({ ok: false, msg: "Orden no encontrada" });
+            }
 
-            const newQty = Math.max(0, currentQty - qty);
-            const newKilos = Math.max(0, currentKilos - net_weight);
+            // Header
+            const remit = await FinalRemit.create({
+                order_id: order.id,
+                receipt_number: order.id,
+                client_name: order.client_name,
+                salesman_name: order.salesman_name,
+                price_list: order.price_list,
+                sell_condition: order.sell_condition,
+                payment_condition: order.payment_condition,
+                generated_by: "system",
+                note,
+                total_items: 0,
+                total_amount: 0,
+            }, { transaction: t });
 
-            await stockRow.update(
-                { product_quantity: newQty, product_total_weight: newKilos },
-                { transaction: t }
-            );
+            // Detalle
+            const lines = await ProductsSellOrder.findAll({
+                where: { sell_order_id: id },
+                order: [["id", "ASC"]],
+                transaction: t,
+            });
+
+            const detailRows = [];
+            let totalItems = 0;
+            let totalAmount = 0;
+
+            for (const l of lines) {
+                const unit_price = Number(l.product_price || 0);
+
+                const priceRow = await PriceListProduct.findOne({
+                    where: { product_id: String(l.product_id) },
+                    order: [["id", "ASC"]],
+                    transaction: t,
+                });
+                const unit_measure = priceRow?.unidad_venta || null;
+                const isKG = String(unit_measure || "").toUpperCase() === "KG";
+
+                const headers = await CutsHeader.findAll({
+                    where: { receipt_number: id, product_code: String(l.product_id) },
+                    include: [{ model: CutsDetail, as: "details" }],
+                    order: [["id", "ASC"]],
+                    transaction: t,
+                });
+
+                let qty_requested_total = 0;
+                let net_weight = 0;
+                let gross_weight = 0;
+                let units_count = 0;
+
+                for (const h of headers) {
+                    qty_requested_total += Number(h.qty_requested || 0);
+                    for (const d of (h.details || [])) {
+                        units_count += Number(d.units_count || 0);
+                        gross_weight += Number(d.gross_weight || 0);
+                        net_weight += Number(d.net_weight || 0);
+                    }
+                }
+
+                const qty = qty_requested_total;
+                const avg_weight = units_count > 0 ? net_weight / units_count : 0;
+                const lineTotal = isKG ? unit_price * net_weight : unit_price * qty;
+
+                detailRows.push({
+                    final_remit_id: remit.id,
+                    product_id: l.product_id ?? null,
+                    product_name: l.product_name,
+                    unit_price,
+                    qty,
+                    unit_measure,
+                    gross_weight,
+                    net_weight,
+                    avg_weight,
+                });
+
+                totalItems += qty;
+                totalAmount += lineTotal;
+
+                // 🔥 Actualizar stock
+                let stockRow = null;
+                if (l.product_id != null) {
+                    stockRow = await ProductStock.findOne({
+                        where: { product_cod: String(l.product_id) },
+                        transaction: t,
+                        lock: t.LOCK.UPDATE,
+                    });
+                }
+                if (!stockRow) {
+                    stockRow = await ProductStock.findOne({
+                        where: { product_name: l.product_name },
+                        transaction: t,
+                        lock: t.LOCK.UPDATE,
+                    });
+                }
+
+                if (!stockRow) {
+                    await t.rollback();
+                    return res.status(400).json({
+                        ok: false,
+                        msg: `No existe stock para ${l.product_name} (id ${l.product_id ?? "-"})`,
+                    });
+                }
+
+                const currentQty = Number(stockRow.product_quantity || 0);
+                const currentKilos = Number(stockRow.product_total_weight || 0);
+
+                const newQty = Math.max(0, currentQty - qty);
+                const newKilos = Math.max(0, currentKilos - net_weight);
+
+                await stockRow.update(
+                    { product_quantity: newQty, product_total_weight: newKilos },
+                    { transaction: t }
+                );
+            }
+
+            if (detailRows.length) {
+                await FinalRemitProduct.bulkCreate(detailRows, { transaction: t });
+            }
+
+            // Totales del header
+            await remit.update({
+                total_items: totalItems,
+                total_amount: totalAmount,
+            }, { transaction: t });
+
+            await t.commit();
+            return res.json({ ok: true, remit_id: remit.id });
+        } catch (err) {
+            console.error("createRemitFromOrder error:", err);
+            try { await t.rollback(); } catch (_) { }
+            return res.status(500).json({ ok: false, msg: "Error al generar remito" });
         }
-
-        if (detailRows.length) {
-            await FinalRemitProduct.bulkCreate(detailRows, { transaction: t });
-        }
-
-        // Totales del header
-        await remit.update({
-            total_items: totalItems,
-            total_amount: totalAmount,
-        }, { transaction: t });
-
-        await t.commit();
-        return res.json({ ok: true, remit_id: remit.id });
-    } catch (err) {
-        console.error("createRemitFromOrder error:", err);
-        try { await t.rollback(); } catch (_) { }
-        return res.status(500).json({ ok: false, msg: "Error al generar remito" });
-    }
-},
+    },
 
 
     // ===== DESTINOS =====
@@ -2584,76 +2649,76 @@ createRemitFromOrder: async (req, res) => {
             return res.status(500).json({ ok: false, msg: "Error al armar detalle de prefacturaciones" });
         }
     },
-  savePreinvoice: async (req, res) => {
-  const t = await sequelize.transaction();
-  try {
-    const items = Array.isArray(req.body?.items) ? req.body.items : [];
-    if (!items.length) {
-      await t.rollback();
-      return res.status(400).json({ ok: false, msg: "No hay ítems para guardar" });
-    }
+    savePreinvoice: async (req, res) => {
+        const t = await sequelize.transaction();
+        try {
+            const items = Array.isArray(req.body?.items) ? req.body.items : [];
+            if (!items.length) {
+                await t.rollback();
+                return res.status(400).json({ ok: false, msg: "No hay ítems para guardar" });
+            }
 
-    const toInt = (v) => {
-      const n = parseInt(String(v ?? "").trim(), 10);
-      return Number.isFinite(n) ? n : null;
-    };
+            const toInt = (v) => {
+                const n = parseInt(String(v ?? "").trim(), 10);
+                return Number.isFinite(n) ? n : null;
+            };
 
-    const results = [];
+            const results = [];
 
-    for (const it of items) {
-      const finalRemitItemId = toInt(it.item_id ?? it.final_remit_item_id ?? it.id);
-      if (!finalRemitItemId) {
-        await t.rollback();
-        return res.status(400).json({ ok: false, msg: "Falta item_id (final_remit_item_id)" });
-      }
+            for (const it of items) {
+                const finalRemitItemId = toInt(it.item_id ?? it.final_remit_item_id ?? it.id);
+                if (!finalRemitItemId) {
+                    await t.rollback();
+                    return res.status(400).json({ ok: false, msg: "Falta item_id (final_remit_item_id)" });
+                }
 
-      let row = await Preinvoice.findOne({
-        where: { final_remit_item_id: finalRemitItemId },
-        transaction: t,
-      });
+                let row = await Preinvoice.findOne({
+                    where: { final_remit_item_id: finalRemitItemId },
+                    transaction: t,
+                });
 
-      if (!row) {
-        // Descubro final_remit_id desde el ítem del remito
-        const frItem = await FinalRemitProduct.findOne({
-          where: { id: finalRemitItemId },
-          attributes: ["final_remit_id"],
-          transaction: t,
-        });
-        if (!frItem) {
-          await t.rollback();
-          return res.status(404).json({ ok: false, msg: `No existe final_remit_item_id=${finalRemitItemId}` });
+                if (!row) {
+                    // Descubro final_remit_id desde el ítem del remito
+                    const frItem = await FinalRemitProduct.findOne({
+                        where: { id: finalRemitItemId },
+                        attributes: ["final_remit_id"],
+                        transaction: t,
+                    });
+                    if (!frItem) {
+                        await t.rollback();
+                        return res.status(404).json({ ok: false, msg: `No existe final_remit_item_id=${finalRemitItemId}` });
+                    }
+
+                    row = await Preinvoice.create(
+                        {
+                            final_remit_id: frItem.final_remit_id,
+                            final_remit_item_id: finalRemitItemId,
+                            received_units: Number(it.units_received ?? 0),
+                            received_kg: Number(it.kg_received ?? 0),
+                        },
+                        { transaction: t }
+                    );
+                } else {
+                    row.received_units = Number(it.units_received ?? 0);
+                    row.received_kg = Number(it.kg_received ?? 0);
+                    await row.save({ transaction: t });
+                }
+
+                results.push({
+                    item_id: row.final_remit_item_id,
+                    units_received: row.received_units ?? 0,
+                    kg_received: row.received_kg ?? 0,
+                });
+            }
+
+            await t.commit();
+            return res.status(201).json({ ok: true, items: results, msg: "Prefacturación guardada" });
+        } catch (e) {
+            console.error(e);
+            await t.rollback();
+            return res.status(500).json({ ok: false, msg: "Error al guardar prefacturación" });
         }
-
-        row = await Preinvoice.create(
-          {
-            final_remit_id: frItem.final_remit_id,
-            final_remit_item_id: finalRemitItemId,
-            received_units: Number(it.units_received ?? 0),
-            received_kg: Number(it.kg_received ?? 0),
-          },
-          { transaction: t }
-        );
-      } else {
-        row.received_units = Number(it.units_received ?? 0);
-        row.received_kg = Number(it.kg_received ?? 0);
-        await row.save({ transaction: t });
-      }
-
-      results.push({
-        item_id: row.final_remit_item_id,
-        units_received: row.received_units ?? 0,
-        kg_received: row.received_kg ?? 0,
-      });
-    }
-
-    await t.commit();
-    return res.status(201).json({ ok: true, items: results, msg: "Prefacturación guardada" });
-  } catch (e) {
-    console.error(e);
-    await t.rollback();
-    return res.status(500).json({ ok: false, msg: "Error al guardar prefacturación" });
-  }
-},
+    },
 
     readSavedPreinvoices: async (req, res) => {
         try {
@@ -2872,409 +2937,409 @@ createRemitFromOrder: async (req, res) => {
         }
     },
 
-// GET /preinvoices/saved?production_date=YYYY-MM-DD&delivery_date=YYYY-MM-DD
-readSavedPreinvoicesV2: async (req, res) => {
-  try {
-    const production_date = String(req.query.production_date || "").slice(0, 10);
-    const delivery_date   = String(req.query.delivery_date   || "").slice(0, 10);
-    if (!production_date || !delivery_date) {
-      return res.status(400).json({ ok: false, msg: "Faltan production_date y delivery_date (YYYY-MM-DD)" });
-    }
+    // GET /preinvoices/saved?production_date=YYYY-MM-DD&delivery_date=YYYY-MM-DD
+    readSavedPreinvoicesV2: async (req, res) => {
+        try {
+            const production_date = String(req.query.production_date || "").slice(0, 10);
+            const delivery_date = String(req.query.delivery_date || "").slice(0, 10);
+            if (!production_date || !delivery_date) {
+                return res.status(400).json({ ok: false, msg: "Faltan production_date y delivery_date (YYYY-MM-DD)" });
+            }
 
-    const roadmaps = await RoadmapInfo.findAll({
-      where: {
-        [Op.and]: [
-          where(fn("DATE", col("created_at")), production_date),
-          where(fn("DATE", col("delivery_date")), delivery_date),
-        ],
-      },
-      attributes: ["id"],
-      order: [["id", "ASC"]],
-    });
-    if (!roadmaps.length) return res.json({ ok: true, items: [] });
+            const roadmaps = await RoadmapInfo.findAll({
+                where: {
+                    [Op.and]: [
+                        where(fn("DATE", col("created_at")), production_date),
+                        where(fn("DATE", col("delivery_date")), delivery_date),
+                    ],
+                },
+                attributes: ["id"],
+                order: [["id", "ASC"]],
+            });
+            if (!roadmaps.length) return res.json({ ok: true, items: [] });
 
-    const dests = await RoadmapInfoDestination.findAll({
-      where: { roadmap_info_id: { [Op.in]: roadmaps.map(r => r.id) } },
-      attributes: ["id_remit"],
-    });
-    const remitIds = dests.map(d => Number(d.id_remit)).filter(Boolean);
-    if (!remitIds.length) return res.json({ ok: true, items: [] });
+            const dests = await RoadmapInfoDestination.findAll({
+                where: { roadmap_info_id: { [Op.in]: roadmaps.map(r => r.id) } },
+                attributes: ["id_remit"],
+            });
+            const remitIds = dests.map(d => Number(d.id_remit)).filter(Boolean);
+            if (!remitIds.length) return res.json({ ok: true, items: [] });
 
-    const saved = await Preinvoice.findAll({
-      where: { final_remit_id: { [Op.in]: remitIds } },
-      attributes: ["final_remit_item_id", "received_units", "received_kg"],
-      order: [["id", "ASC"]],
-    });
+            const saved = await Preinvoice.findAll({
+                where: { final_remit_id: { [Op.in]: remitIds } },
+                attributes: ["final_remit_item_id", "received_units", "received_kg"],
+                order: [["id", "ASC"]],
+            });
 
-    const items = saved.map(p => ({
-      item_id: Number(p.final_remit_item_id),        // 👈 clave para mapear en el front
-      units_received: Number(p.received_units || 0),
-      kg_received: Number(p.received_kg || 0),
-    }));
+            const items = saved.map(p => ({
+                item_id: Number(p.final_remit_item_id),        // 👈 clave para mapear en el front
+                units_received: Number(p.received_units || 0),
+                kg_received: Number(p.received_kg || 0),
+            }));
 
-    return res.json({ ok: true, items });
-  } catch (e) {
-    console.error(e);
-    return res.status(500).json({ ok: false, msg: "Error al leer prefacturación guardada" });
-  }
-},
+            return res.json({ ok: true, items });
+        } catch (e) {
+            console.error(e);
+            return res.status(500).json({ ok: false, msg: "Error al leer prefacturación guardada" });
+        }
+    },
 
-// GET /preinvoices/returns?production_date=YYYY-MM-DD&delivery_date=YYYY-MM-DD
-readPreinvoiceReturnsV2: async (req, res) => {
-  try {
-    const production_date = String(req.query.production_date || "").slice(0, 10);
-    const delivery_date   = String(req.query.delivery_date   || "").slice(0, 10);
-    if (!production_date || !delivery_date) {
-      return res.status(400).json({ ok: false, msg: "Faltan production_date y delivery_date (YYYY-MM-DD)" });
-    }
+    // GET /preinvoices/returns?production_date=YYYY-MM-DD&delivery_date=YYYY-MM-DD
+    readPreinvoiceReturnsV2: async (req, res) => {
+        try {
+            const production_date = String(req.query.production_date || "").slice(0, 10);
+            const delivery_date = String(req.query.delivery_date || "").slice(0, 10);
+            if (!production_date || !delivery_date) {
+                return res.status(400).json({ ok: false, msg: "Faltan production_date y delivery_date (YYYY-MM-DD)" });
+            }
 
-    const roadmaps = await RoadmapInfo.findAll({
-      where: {
-        [Op.and]: [
-          where(fn("DATE", col("created_at")), production_date),
-          where(fn("DATE", col("delivery_date")), delivery_date),
-        ],
-      },
-      attributes: ["id"],
-      order: [["id", "ASC"]],
-    });
-    if (!roadmaps.length) return res.json({ ok: true, items: [] });
+            const roadmaps = await RoadmapInfo.findAll({
+                where: {
+                    [Op.and]: [
+                        where(fn("DATE", col("created_at")), production_date),
+                        where(fn("DATE", col("delivery_date")), delivery_date),
+                    ],
+                },
+                attributes: ["id"],
+                order: [["id", "ASC"]],
+            });
+            if (!roadmaps.length) return res.json({ ok: true, items: [] });
 
-    const dests = await RoadmapInfoDestination.findAll({
-      where: { roadmap_info_id: { [Op.in]: roadmaps.map(r => r.id) } },
-      attributes: ["id_remit"],
-    });
-    const remitIds = dests.map(d => Number(d.id_remit)).filter(Boolean);
-    if (!remitIds.length) return res.json({ ok: true, items: [] });
+            const dests = await RoadmapInfoDestination.findAll({
+                where: { roadmap_info_id: { [Op.in]: roadmaps.map(r => r.id) } },
+                attributes: ["id_remit"],
+            });
+            const remitIds = dests.map(d => Number(d.id_remit)).filter(Boolean);
+            if (!remitIds.length) return res.json({ ok: true, items: [] });
 
-    const rows = await Preinvoice.findAll({
-      where: { final_remit_id: { [Op.in]: remitIds } },
-      attributes: ["final_remit_item_id"],
-      include: [{ model: PreinvoiceReturn, as: "returns", required: false }],
-      order: [["id", "ASC"]],
-    });
+            const rows = await Preinvoice.findAll({
+                where: { final_remit_id: { [Op.in]: remitIds } },
+                attributes: ["final_remit_item_id"],
+                include: [{ model: PreinvoiceReturn, as: "returns", required: false }],
+                order: [["id", "ASC"]],
+            });
 
-    const items = [];
-    for (const p of rows) {
-      for (const r of (p.returns || [])) {
-        items.push({
-          item_id: Number(p.final_remit_item_id),           // 👈 clave para mapear
-          reason: r.reason === "STOCK" ? "stock" : "client",
-          client_name: r.client_name || null,
-          units_redirected: Number(r.units_redirected || 0),
-          kg_redirected: Number(r.kg_redirected || 0),
-          created_at: r.created_at,
-          updated_at: r.updated_at,
-        });
-      }
-    }
+            const items = [];
+            for (const p of rows) {
+                for (const r of (p.returns || [])) {
+                    items.push({
+                        item_id: Number(p.final_remit_item_id),           // 👈 clave para mapear
+                        reason: r.reason === "STOCK" ? "stock" : "client",
+                        client_name: r.client_name || null,
+                        units_redirected: Number(r.units_redirected || 0),
+                        kg_redirected: Number(r.kg_redirected || 0),
+                        created_at: r.created_at,
+                        updated_at: r.updated_at,
+                    });
+                }
+            }
 
-    return res.json({ ok: true, items });
-  } catch (e) {
-    console.error(e);
-    return res.status(500).json({ ok: false, msg: "Error al leer devoluciones" });
-  }
-},
+            return res.json({ ok: true, items });
+        } catch (e) {
+            console.error(e);
+            return res.status(500).json({ ok: false, msg: "Error al leer devoluciones" });
+        }
+    },
 
 
-// GET /preinvoices/returns?production_date=YYYY-MM-DD&delivery_date=YYYY-MM-DD
-readPreinvoiceReturnsV2: async (req, res) => {
-  try {
-    const production_date = String(req.query.production_date || "").slice(0, 10);
-    const delivery_date   = String(req.query.delivery_date   || "").slice(0, 10);
-    if (!production_date || !delivery_date) {
-      return res.status(400).json({ ok: false, msg: "Faltan production_date y delivery_date (YYYY-MM-DD)" });
-    }
+    // GET /preinvoices/returns?production_date=YYYY-MM-DD&delivery_date=YYYY-MM-DD
+    readPreinvoiceReturnsV2: async (req, res) => {
+        try {
+            const production_date = String(req.query.production_date || "").slice(0, 10);
+            const delivery_date = String(req.query.delivery_date || "").slice(0, 10);
+            if (!production_date || !delivery_date) {
+                return res.status(400).json({ ok: false, msg: "Faltan production_date y delivery_date (YYYY-MM-DD)" });
+            }
 
-    const roadmaps = await RoadmapInfo.findAll({
-      where: {
-        [Op.and]: [
-          where(fn("DATE", col("created_at")), production_date),
-          where(fn("DATE", col("delivery_date")), delivery_date),
-        ],
-      },
-      attributes: ["id"],
-      order: [["id", "ASC"]],
-    });
-    if (!roadmaps.length) return res.json({ ok: true, items: [] });
+            const roadmaps = await RoadmapInfo.findAll({
+                where: {
+                    [Op.and]: [
+                        where(fn("DATE", col("created_at")), production_date),
+                        where(fn("DATE", col("delivery_date")), delivery_date),
+                    ],
+                },
+                attributes: ["id"],
+                order: [["id", "ASC"]],
+            });
+            if (!roadmaps.length) return res.json({ ok: true, items: [] });
 
-    const dests = await RoadmapInfoDestination.findAll({
-      where: { roadmap_info_id: { [Op.in]: roadmaps.map(r => r.id) } },
-      attributes: ["id_remit"],
-    });
-    const remitIds = dests.map(d => Number(d.id_remit)).filter(Boolean);
-    if (!remitIds.length) return res.json({ ok: true, items: [] });
+            const dests = await RoadmapInfoDestination.findAll({
+                where: { roadmap_info_id: { [Op.in]: roadmaps.map(r => r.id) } },
+                attributes: ["id_remit"],
+            });
+            const remitIds = dests.map(d => Number(d.id_remit)).filter(Boolean);
+            if (!remitIds.length) return res.json({ ok: true, items: [] });
 
-    const rows = await Preinvoice.findAll({
-      where: { final_remit_id: { [Op.in]: remitIds } },
-      attributes: ["final_remit_item_id"],
-      include: [{ model: PreinvoiceReturn, as: "returns", required: false }],
-      order: [["id", "ASC"]],
-    });
+            const rows = await Preinvoice.findAll({
+                where: { final_remit_id: { [Op.in]: remitIds } },
+                attributes: ["final_remit_item_id"],
+                include: [{ model: PreinvoiceReturn, as: "returns", required: false }],
+                order: [["id", "ASC"]],
+            });
 
-    const items = [];
-    for (const p of rows) {
-      for (const r of (p.returns || [])) {
-        items.push({
-          item_id: Number(p.final_remit_item_id),       // <— clave para mapear en el front
-          reason: r.reason === "STOCK" ? "stock" : "client",
-          client_name: r.client_name || null,
-          units_redirected: Number(r.units_redirected || 0),
-          kg_redirected: Number(r.kg_redirected || 0),
-          created_at: r.created_at,
-          updated_at: r.updated_at,
-        });
-      }
-    }
+            const items = [];
+            for (const p of rows) {
+                for (const r of (p.returns || [])) {
+                    items.push({
+                        item_id: Number(p.final_remit_item_id),       // <— clave para mapear en el front
+                        reason: r.reason === "STOCK" ? "stock" : "client",
+                        client_name: r.client_name || null,
+                        units_redirected: Number(r.units_redirected || 0),
+                        kg_redirected: Number(r.kg_redirected || 0),
+                        created_at: r.created_at,
+                        updated_at: r.updated_at,
+                    });
+                }
+            }
 
-    return res.json({ ok: true, items });
-  } catch (e) {
-    console.error(e);
-    return res.status(500).json({ ok: false, msg: "Error al leer devoluciones" });
-  }
-},
+            return res.json({ ok: true, items });
+        } catch (e) {
+            console.error(e);
+            return res.status(500).json({ ok: false, msg: "Error al leer devoluciones" });
+        }
+    },
 
-// POST /preinvoices/redirect
-// body: { item_id, to:'client'|'stock', client_id?, client_name?, units, kg }
-savePreinvoiceRedirect: async (req, res) => {
-  const t = await sequelize.transaction();
-  try {
-    const { item_id, to, client_id = null, client_name = null, units = 0, kg = 0 } = req.body || {};
-    if (!item_id || !to) {
-      await t.rollback();
-      return res.status(400).json({ ok: false, msg: "Faltan item_id y/o destino (to)" });
-    }
+    // POST /preinvoices/redirect
+    // body: { item_id, to:'client'|'stock', client_id?, client_name?, units, kg }
+    savePreinvoiceRedirect: async (req, res) => {
+        const t = await sequelize.transaction();
+        try {
+            const { item_id, to, client_id = null, client_name = null, units = 0, kg = 0 } = req.body || {};
+            if (!item_id || !to) {
+                await t.rollback();
+                return res.status(400).json({ ok: false, msg: "Faltan item_id y/o destino (to)" });
+            }
 
-    const pre = await Preinvoice.findOne({
-      where: { final_remit_item_id: Number(item_id) },
-      transaction: t,
-    });
-    if (!pre) {
-      await t.rollback();
-      return res.status(404).json({ ok: false, msg: "No existe la prefacturación para ese item" });
-    }
+            const pre = await Preinvoice.findOne({
+                where: { final_remit_item_id: Number(item_id) },
+                transaction: t,
+            });
+            if (!pre) {
+                await t.rollback();
+                return res.status(404).json({ ok: false, msg: "No existe la prefacturación para ese item" });
+            }
 
-    const reasonDB = to === "stock" ? "STOCK" : "REDIRECT";
-    const whereReturn = {
-      preinvoice_id: pre.id,
-      reason: reasonDB,
-      ...(reasonDB === "REDIRECT" ? { client_name: client_name || null } : {}),
-    };
+            const reasonDB = to === "stock" ? "STOCK" : "REDIRECT";
+            const whereReturn = {
+                preinvoice_id: pre.id,
+                reason: reasonDB,
+                ...(reasonDB === "REDIRECT" ? { client_name: client_name || null } : {}),
+            };
 
-    const existing = await PreinvoiceReturn.findOne({ where: whereReturn, transaction: t });
+            const existing = await PreinvoiceReturn.findOne({ where: whereReturn, transaction: t });
 
-    if (Number(units) === 0 && Number(kg) === 0) {
-      if (existing) await existing.destroy({ transaction: t });
-      await t.commit();
-      return res.json({ ok: true, msg: "Redirección eliminada" });
-    }
+            if (Number(units) === 0 && Number(kg) === 0) {
+                if (existing) await existing.destroy({ transaction: t });
+                await t.commit();
+                return res.json({ ok: true, msg: "Redirección eliminada" });
+            }
 
-    if (existing) {
-      existing.client_id = client_id;
-      existing.client_name = client_name;
-      existing.units_redirected = Number(units);
-      existing.kg_redirected = Number(kg);
-      await existing.save({ transaction: t });
-    } else {
-      await PreinvoiceReturn.create(
-        {
-          preinvoice_id: pre.id,
-          client_id,
-          client_name,
-          units_redirected: Number(units),
-          kg_redirected: Number(kg),
-          reason: reasonDB,
-        },
-        { transaction: t }
-      );
-    }
+            if (existing) {
+                existing.client_id = client_id;
+                existing.client_name = client_name;
+                existing.units_redirected = Number(units);
+                existing.kg_redirected = Number(kg);
+                await existing.save({ transaction: t });
+            } else {
+                await PreinvoiceReturn.create(
+                    {
+                        preinvoice_id: pre.id,
+                        client_id,
+                        client_name,
+                        units_redirected: Number(units),
+                        kg_redirected: Number(kg),
+                        reason: reasonDB,
+                    },
+                    { transaction: t }
+                );
+            }
 
-    await t.commit();
-    return res.status(201).json({ ok: true, msg: "Redirección registrada" });
-  } catch (e) {
-    console.error(e);
-    await t.rollback();
-    return res.status(500).json({ ok: false, msg: "Error al registrar redirección" });
-  }
-},
-// ───────── Listas de precios: traer por número
-getPriceListByNumber: async (req, res) => {
-  try {
-    const number = Number(req.params.number);
-    if (!number) return res.status(400).json({ ok:false, msg:"number requerido" });
+            await t.commit();
+            return res.status(201).json({ ok: true, msg: "Redirección registrada" });
+        } catch (e) {
+            console.error(e);
+            await t.rollback();
+            return res.status(500).json({ ok: false, msg: "Error al registrar redirección" });
+        }
+    },
+    // ───────── Listas de precios: traer por número
+    getPriceListByNumber: async (req, res) => {
+        try {
+            const number = Number(req.params.number);
+            if (!number) return res.status(400).json({ ok: false, msg: "number requerido" });
 
-    const headers = await PriceList.findAll({
-      where: { list_number: number },
-      order: [["id","ASC"]],
-    });
+            const headers = await PriceList.findAll({
+                where: { list_number: number },
+                order: [["id", "ASC"]],
+            });
 
-    const products = await PriceListProduct.findAll({
-      where: { price_list_number: number },
-      order: [["product_name","ASC"]],
-    });
+            const products = await PriceListProduct.findAll({
+                where: { price_list_number: number },
+                order: [["product_name", "ASC"]],
+            });
 
-    const name = headers[0]?.name || null;
-    const clients = headers.map(h => h.client_id).filter(v => v !== null && v !== undefined);
+            const name = headers[0]?.name || null;
+            const clients = headers.map(h => h.client_id).filter(v => v !== null && v !== undefined);
 
-    return res.json({
-      ok: true,
-      header: { number, name, clients },
-      products,
-    });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ ok:false, msg:"Error al traer la lista" });
-  }
-},
+            return res.json({
+                ok: true,
+                header: { number, name, clients },
+                products,
+            });
+        } catch (error) {
+            console.error(error);
+            return res.status(500).json({ ok: false, msg: "Error al traer la lista" });
+        }
+    },
 
-// ───────── Listas de precios: comparar dos listas
-comparePriceLists: async (req, res) => {
-  try {
-    const a = Number(req.params.a);
-    const b = Number(req.params.b);
-    if (!a || !b) return res.status(400).json({ ok:false, msg:"Parámetros inválidos" });
+    // ───────── Listas de precios: comparar dos listas
+    comparePriceLists: async (req, res) => {
+        try {
+            const a = Number(req.params.a);
+            const b = Number(req.params.b);
+            if (!a || !b) return res.status(400).json({ ok: false, msg: "Parámetros inválidos" });
 
-    const [ha, hb] = await Promise.all([
-      PriceList.findOne({ where:{ list_number:a } }),
-      PriceList.findOne({ where:{ list_number:b } }),
-    ]);
+            const [ha, hb] = await Promise.all([
+                PriceList.findOne({ where: { list_number: a } }),
+                PriceList.findOne({ where: { list_number: b } }),
+            ]);
 
-    const [pa, pb] = await Promise.all([
-      PriceListProduct.findAll({ where:{ price_list_number:a } }),
-      PriceListProduct.findAll({ where:{ price_list_number:b } }),
-    ]);
+            const [pa, pb] = await Promise.all([
+                PriceListProduct.findAll({ where: { price_list_number: a } }),
+                PriceListProduct.findAll({ where: { price_list_number: b } }),
+            ]);
 
-    // Unimos por product_id si existe; si no, por product_name
-    const keyOf = (p) => String(p.product_id ?? p.product_name);
-    const mapA = new Map(pa.map(p => [keyOf(p), p]));
-    const keys = new Set([...pa.map(keyOf), ...pb.map(keyOf)]);
+            // Unimos por product_id si existe; si no, por product_name
+            const keyOf = (p) => String(p.product_id ?? p.product_name);
+            const mapA = new Map(pa.map(p => [keyOf(p), p]));
+            const keys = new Set([...pa.map(keyOf), ...pb.map(keyOf)]);
 
-    const rows = [];
-    for (const k of keys) {
-      const A = mapA.get(k) || null;
-      const B = pb.find(x => keyOf(x) === k) || null;
+            const rows = [];
+            for (const k of keys) {
+                const A = mapA.get(k) || null;
+                const B = pb.find(x => keyOf(x) === k) || null;
 
-      const row = {
-        product_id: A?.product_id ?? B?.product_id ?? null,
-        product_name: A?.product_name ?? B?.product_name ?? "",
-        unidad_a: A?.unidad_venta || null,
-        unidad_b: B?.unidad_venta || null,
-        costo_a: A?.costo ?? null,
-        costo_b: B?.costo ?? null,
-        sin_iva_a: A?.precio_sin_iva ?? null,
-        sin_iva_b: B?.precio_sin_iva ?? null,
-        con_iva_a: A?.precio_con_iva ?? null,
-        con_iva_b: B?.precio_con_iva ?? null,
-      };
+                const row = {
+                    product_id: A?.product_id ?? B?.product_id ?? null,
+                    product_name: A?.product_name ?? B?.product_name ?? "",
+                    unidad_a: A?.unidad_venta || null,
+                    unidad_b: B?.unidad_venta || null,
+                    costo_a: A?.costo ?? null,
+                    costo_b: B?.costo ?? null,
+                    sin_iva_a: A?.precio_sin_iva ?? null,
+                    sin_iva_b: B?.precio_sin_iva ?? null,
+                    con_iva_a: A?.precio_con_iva ?? null,
+                    con_iva_b: B?.precio_con_iva ?? null,
+                };
 
-      row.diff_unidad = (row.unidad_a || "") !== (row.unidad_b || "");
-      row.diff_costo  = Number(row.costo_a ?? -1)   !== Number(row.costo_b ?? -1);
-      row.diff_sin    = Number(row.sin_iva_a ?? -1) !== Number(row.sin_iva_b ?? -1);
-      row.diff_con    = Number(row.con_iva_a ?? -1) !== Number(row.con_iva_b ?? -1);
+                row.diff_unidad = (row.unidad_a || "") !== (row.unidad_b || "");
+                row.diff_costo = Number(row.costo_a ?? -1) !== Number(row.costo_b ?? -1);
+                row.diff_sin = Number(row.sin_iva_a ?? -1) !== Number(row.sin_iva_b ?? -1);
+                row.diff_con = Number(row.con_iva_a ?? -1) !== Number(row.con_iva_b ?? -1);
 
-      rows.push(row);
-    }
+                rows.push(row);
+            }
 
-    rows.sort((x,y) => String(x.product_name).localeCompare(String(y.product_name)));
+            rows.sort((x, y) => String(x.product_name).localeCompare(String(y.product_name)));
 
-    return res.json({
-      ok:true,
-      a: { number:a, name: ha?.dataValues?.name || ha?.name || null },
-      b: { number:b, name: hb?.dataValues?.name || hb?.name || null },
-      rows,
-    });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ ok:false, msg:"Error al comparar listas" });
-  }
-},
+            return res.json({
+                ok: true,
+                a: { number: a, name: ha?.dataValues?.name || ha?.name || null },
+                b: { number: b, name: hb?.dataValues?.name || hb?.name || null },
+                rows,
+            });
+        } catch (error) {
+            console.error(error);
+            return res.status(500).json({ ok: false, msg: "Error al comparar listas" });
+        }
+    },
 
-// ───────── Listas de precios: actualizar (nombre/clientes/productos)
-updatePriceList: async (req, res) => {
-  const t = await sequelize.transaction();
-  try {
-    const number = Number(req.params.number);
-    if (!number) {
-      await t.rollback();
-      return res.status(400).json({ ok:false, msg:"number requerido" });
-    }
+    // ───────── Listas de precios: actualizar (nombre/clientes/productos)
+    updatePriceList: async (req, res) => {
+        const t = await sequelize.transaction();
+        try {
+            const number = Number(req.params.number);
+            if (!number) {
+                await t.rollback();
+                return res.status(400).json({ ok: false, msg: "number requerido" });
+            }
 
-    const { name, clients, products } = req.body || {};
+            const { name, clients, products } = req.body || {};
 
-    // 1) actualizar nombre y reasignar clientes (reemplazo completo)
-    if (name != null) {
-      await PriceList.update({ name }, { where: { list_number:number }, transaction:t });
-    }
+            // 1) actualizar nombre y reasignar clientes (reemplazo completo)
+            if (name != null) {
+                await PriceList.update({ name }, { where: { list_number: number }, transaction: t });
+            }
 
-    if (Array.isArray(clients)) {
-      await PriceList.destroy({ where: { list_number:number }, transaction:t });
-      const rows = (clients.length ? clients : [null]).map(clientId => ({
-        list_number:number,
-        name: name ?? null,
-        client_id: clientId ?? null,
-      }));
-      await PriceList.bulkCreate(rows, { transaction:t });
-    }
+            if (Array.isArray(clients)) {
+                await PriceList.destroy({ where: { list_number: number }, transaction: t });
+                const rows = (clients.length ? clients : [null]).map(clientId => ({
+                    list_number: number,
+                    name: name ?? null,
+                    client_id: clientId ?? null,
+                }));
+                await PriceList.bulkCreate(rows, { transaction: t });
+            }
 
-    // 2) reemplazar productos de la lista
-    if (Array.isArray(products)) {
-      await PriceListProduct.destroy({ where:{ price_list_number:number }, transaction:t });
-      const items = products.map(p => ({
-        price_list_number:number,
-        product_id: p.product_id ?? p.id,
-        product_name: p.product_name ?? p.name,
-        unidad_venta: p.unidad_venta ?? p.unidad ?? null,
-        costo: Number(p.costo ?? 0),
-        precio_sin_iva: Number(p.precio_sin_iva ?? p.sinIva ?? 0),
-        precio_con_iva: Number(p.precio_con_iva ?? p.conIva ?? 0),
-      }));
-      if (items.length) await PriceListProduct.bulkCreate(items, { transaction:t });
-    }
+            // 2) reemplazar productos de la lista
+            if (Array.isArray(products)) {
+                await PriceListProduct.destroy({ where: { price_list_number: number }, transaction: t });
+                const items = products.map(p => ({
+                    price_list_number: number,
+                    product_id: p.product_id ?? p.id,
+                    product_name: p.product_name ?? p.name,
+                    unidad_venta: p.unidad_venta ?? p.unidad ?? null,
+                    costo: Number(p.costo ?? 0),
+                    precio_sin_iva: Number(p.precio_sin_iva ?? p.sinIva ?? 0),
+                    precio_con_iva: Number(p.precio_con_iva ?? p.conIva ?? 0),
+                }));
+                if (items.length) await PriceListProduct.bulkCreate(items, { transaction: t });
+            }
 
-    await t.commit();
-    return res.json({ ok:true, msg:"Lista actualizada" });
-  } catch (error) {
-    console.error(error);
-    await t.rollback();
-    return res.status(500).json({ ok:false, msg:"Error al actualizar la lista" });
-  }
-},
+            await t.commit();
+            return res.json({ ok: true, msg: "Lista actualizada" });
+        } catch (error) {
+            console.error(error);
+            await t.rollback();
+            return res.status(500).json({ ok: false, msg: "Error al actualizar la lista" });
+        }
+    },
 
-bulkUpdatePriceLists: async (req, res) => {
-  const t = await sequelize.transaction();
-  try {
-    const { lists, target, mode, amount, round } = req.body || {};
-    if (!Array.isArray(lists) || lists.length === 0) {
-      await t.rollback();
-      return res.status(400).json({ ok:false, msg:"lists requerido" });
-    }
-    const validTarget = { costo: "costo", sin_iva: "precio_sin_iva", con_iva: "precio_con_iva" }[target];
-    if (!validTarget) {
-      await t.rollback();
-      return res.status(400).json({ ok:false, msg:"target inválido" });
-    }
-    const isPercent = mode === "percent";
-    const amt = Number(amount || 0);
+    bulkUpdatePriceLists: async (req, res) => {
+        const t = await sequelize.transaction();
+        try {
+            const { lists, target, mode, amount, round } = req.body || {};
+            if (!Array.isArray(lists) || lists.length === 0) {
+                await t.rollback();
+                return res.status(400).json({ ok: false, msg: "lists requerido" });
+            }
+            const validTarget = { costo: "costo", sin_iva: "precio_sin_iva", con_iva: "precio_con_iva" }[target];
+            if (!validTarget) {
+                await t.rollback();
+                return res.status(400).json({ ok: false, msg: "target inválido" });
+            }
+            const isPercent = mode === "percent";
+            const amt = Number(amount || 0);
 
-    for (const ln of lists) {
-      const rows = await PriceListProduct.findAll({ where: { price_list_number: ln }, transaction: t });
-      for (const r of rows) {
-        const curr = Number(r[validTarget] || 0);
-        const next = isPercent ? curr + (curr * amt) / 100 : curr + amt;
-        const val = round ? Math.round(next) : Number(next.toFixed(2));
-        r.set(validTarget, val);
-        await r.save({ transaction: t });
-      }
-    }
+            for (const ln of lists) {
+                const rows = await PriceListProduct.findAll({ where: { price_list_number: ln }, transaction: t });
+                for (const r of rows) {
+                    const curr = Number(r[validTarget] || 0);
+                    const next = isPercent ? curr + (curr * amt) / 100 : curr + amt;
+                    const val = round ? Math.round(next) : Number(next.toFixed(2));
+                    r.set(validTarget, val);
+                    await r.save({ transaction: t });
+                }
+            }
 
-    await t.commit();
-    return res.json({ ok:true, msg:"Actualizado" });
-  } catch (e) {
-    console.error(e);
-    await t.rollback();
-    return res.status(500).json({ ok:false, msg:"Error en actualización masiva" });
-  }
-},
+            await t.commit();
+            return res.json({ ok: true, msg: "Actualizado" });
+        } catch (e) {
+            console.error(e);
+            await t.rollback();
+            return res.status(500).json({ ok: false, msg: "Error en actualización masiva" });
+        }
+    },
 
 }
 

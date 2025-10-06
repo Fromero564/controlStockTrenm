@@ -56,12 +56,19 @@ export default function Roadmap() {
 
   const mapTruck = (t) => ({
     value: t.id,
-    label: t.plate || t.license_plate || t.truck_plate || t.patente || String(t.id),
+    label:
+      t.plate ||
+      t.license_plate ||
+      t.truck_plate ||
+      t.patente ||
+      String(t.id),
   });
 
   const mapDriver = (p) => ({
     value: p.id,
-    label: [p.driver_name, p.driver_surname].filter(Boolean).join(" ").trim() || String(p.id),
+    label:
+      [p.driver_name, p.driver_surname].filter(Boolean).join(" ").trim() ||
+      String(p.id),
   });
 
   useEffect(() => {
@@ -100,7 +107,9 @@ export default function Roadmap() {
         }
 
         if (r.roadmap?.truck_license_plate) {
-          const tHit = trucksArr.find((t) => t.label === r.roadmap.truck_license_plate);
+          const tHit = trucksArr.find(
+            (t) => t.label === r.roadmap.truck_license_plate
+          );
           if (tHit) setTruckSel(tHit);
         }
 
@@ -131,7 +140,9 @@ export default function Roadmap() {
     if (one?.header?.id) {
       const opt = {
         value: one.header.id,
-        label: `N° ${one.header.receipt_number} — ${one.header.client_name || ""}`,
+        label: `N° ${one.header.receipt_number} — ${
+          one.header.client_name || ""
+        }`,
       };
       return chosen.has(opt.value) ? [] : [opt];
     }
@@ -157,6 +168,14 @@ export default function Roadmap() {
       Swal.fire("Falta la fecha", "Elegí la fecha de reparto", "warning");
       return;
     }
+
+    // Validación extra para bloquear fechas pasadas
+    const today = new Date().toISOString().split("T")[0];
+    if (deliveryDate < today) {
+      Swal.fire("Fecha inválida", "No podés seleccionar una fecha pasada", "error");
+      return;
+    }
+
     if (!remits.length) {
       Swal.fire("Faltan remitos", "Agregá al menos un remito", "warning");
       return;
@@ -168,7 +187,9 @@ export default function Roadmap() {
 
     setSaving(true);
     try {
-      const res = isEdit ? await jput(`/roadmaps/${id}`, payload) : await jpost("/roadmaps", payload);
+      const res = isEdit
+        ? await jput(`/roadmaps/${id}`, payload)
+        : await jpost("/roadmaps", payload);
       setSaving(false);
 
       if (res?.ok) {
@@ -181,7 +202,11 @@ export default function Roadmap() {
             : "Hoja de ruta fue creado correctamente");
         Swal.fire("Éxito", msgOk, "success").then(() => navigate(-1));
       } else {
-        Swal.fire("Error", res?.msg || "Hubo un problema al guardar el roadmap", "error");
+        Swal.fire(
+          "Error",
+          res?.msg || "Hubo un problema al guardar el roadmap",
+          "error"
+        );
       }
     } catch (e) {
       setSaving(false);
@@ -232,6 +257,7 @@ export default function Roadmap() {
                 className="rm-input"
                 value={deliveryDate}
                 onChange={(e) => setDeliveryDate(e.target.value)}
+                min={new Date().toISOString().split("T")[0]} // bloquea fechas pasadas
               />
             </div>
 
@@ -265,10 +291,14 @@ export default function Roadmap() {
           </div>
 
           <div className="rm-actions">
-            <button className="rm-btn primary" disabled={saving} onClick={onSave}>
+            <button
+              className="rm-btn primary"
+              disabled={saving}
+              onClick={onSave}
+            >
               {saving ? "Guardando…" : isEdit ? "Guardar cambios" : "Asignar pedido"}
             </button>
-            <button className="rm-btn" onClick={() => navigate(-1)}>
+            <button className="rm-btn" onClick={() => navigate("/roadmap-options")}>
               Cancelar
             </button>
           </div>

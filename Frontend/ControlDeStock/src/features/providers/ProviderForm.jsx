@@ -73,17 +73,17 @@ const ProviderForm = () => {
         const data = await response.json();
         const productos = Array.isArray(data)
           ? data
-              .filter((p) =>
-                ["externo", "ambos"].includes(
-                  p.product_general_category?.toLowerCase()
-                )
+            .filter((p) =>
+              ["externo", "ambos"].includes(
+                p.product_general_category?.toLowerCase()
               )
-              .map((p) => ({
-                id: p.id,
-                nombre: p.product_name,
-                // Si no tiene categoría, guardamos vacío
-                categoria: p.category?.category_name || "",
-              }))
+            )
+            .map((p) => ({
+              id: p.id,
+              nombre: p.product_name,
+              // Si no tiene categoría, guardamos vacío
+              categoria: p.category?.category_name || "",
+            }))
           : [];
         setCortes(productos);
       } catch (e) {
@@ -158,6 +158,12 @@ const ProviderForm = () => {
       fetchData();
     }
   }, [id, cortes, API_URL]);
+  useEffect(() => {
+    if (mostrarCongelados) {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }, [mostrarCongelados]);
+
 
   const handleCorteChange = (e) => {
     const { name, value } = e.target;
@@ -176,7 +182,7 @@ const ProviderForm = () => {
     const prodSel = cortes.find((c) => c.id === seleccion.value);
     if (!prodSel) return;
 
-    // ⚠️ Aviso si el producto no tiene categoría, pero permitimos continuar
+
     if (!prodSel.categoria) {
       await Swal.fire({
         title: "Producto sin categoría",
@@ -227,7 +233,6 @@ const ProviderForm = () => {
     const prod = cortes.find((p) => p.id === nuevoCongelado.tipo);
     if (!prod) return;
 
-    // ⚠️ Aviso si el producto no tiene categoría, pero permitimos continuar
     if (!prod.categoria) {
       await Swal.fire({
         title: "Producto sin categoría",
@@ -531,136 +536,9 @@ const ProviderForm = () => {
             </label>
           </div>
 
-          {/* CORTES */}
-          <div className="cortes-section">
-            <div className="corte-card">
-              <div className="input-group">
-                <label>TIPO</label>
-                <Select
-                  options={opciones}
-                  value={opciones.find((o) => o.value === nuevoCorte.tipo) || null}
-                  onChange={(s) =>
-                    setNuevoCorte({ ...nuevoCorte, tipo: s?.value || "" })
-                  }
-                  placeholder="Producto"
-                  isClearable
-                />
-              </div>
-              <div className="input-group">
-                <label>CANTIDAD</label>
-                <input
-                  type="number"
-                  name="cantidad"
-                  value={nuevoCorte.cantidad}
-                  onChange={handleCorteChange}
-                />
-              </div>
-              <div className="input-group">
-                <label>CABEZAS</label>
-                <input
-                  type="number"
-                  name="cabezas"
-                  value={nuevoCorte.cabezas}
-                  onChange={handleCorteChange}
-                />
-              </div>
-              <div className="input-group">
-                <label>PESO ROMANEO (kg)</label>
-                <input
-                  type="number"
-                  name="pesoRomaneo"
-                  value={nuevoCorte.pesoRomaneo}
-                  onChange={handleCorteChange}
-                  min="0"
-                  step="0.01"
-                />
-              </div>
-
-              <div className="input-group">
-                <label>{tipoIngreso === "manual" ? "N° TROPA" : "Nº GARRON"}</label>
-                <input
-                  type="number"
-                  name="numeroRomaneo"
-                  value={nuevoCorte.numeroRomaneo}
-                  onChange={handleCorteChange}
-                  min="0"
-                />
-              </div>
-
-              <button type="button" onClick={agregarCorte} className="btn-add">
-                Agregar
-              </button>
-            </div>
-
-            <div className="cortes-list">
-              <div className="row-header">
-                <span>Producto</span>
-                <span>Cantidad</span>
-                <span>Cabezas</span>
-                <span>Peso (kg)</span>
-                <span>{tipoIngreso === "manual" ? "N° Tropa" : "N° Garron"}</span>
-                <span></span>
-              </div>
-
-              {cortesEnPagina.map((corte) => (
-                <div className="corte-row" key={corte.id || corte.idTemp}>
-                  <span className="pill">{corte.nombre}</span>
-                  <span className="pill">{corte.cantidad}</span>
-                  <span className="pill">{corte.cabezas}</span>
-                  <span className="pill">
-                    {corte.pesoRomaneo?.toFixed
-                      ? corte.pesoRomaneo.toFixed(2)
-                      : corte.pesoRomaneo}{" "}
-                  </span>
-                  <span className="pill">
-                    {corte.numeroRomaneo ?? corte.identification_product ?? ""}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => eliminarCorte(corte.id || corte.idTemp)}
-                    className="pill pill-danger"
-                    title="Eliminar"
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-
-              {cortesAgregados.length > cortesPorPagina && (
-                <div className="pager">
-                  <button
-                    onClick={() =>
-                      setPaginaCortes((p) => Math.max(1, p - 1))
-                    }
-                    disabled={paginaCortes <= 1}
-                  >
-                    Anterior
-                  </button>
-                  <span>
-                    Página {paginaCortes} de {totalPaginasCortes}
-                  </span>
-                  <button
-                    onClick={() =>
-                      setPaginaCortes((p) =>
-                        Math.min(totalPaginasCortes, p + 1)
-                      )
-                    }
-                    disabled={paginaCortes >= totalPaginasCortes}
-                  >
-                    Siguiente
-                  </button>
-                </div>
-              )}
-            </div>
-
-            <div className="totales-linea">
-              <b>Cantidad de unidades: {totalUnidadesCortes}</b>
-              <b>Cantidad de cargas: {totalCargasCortes}</b>
-              <b>Peso romaneo total: {totalPesoRomaneoCortes.toFixed(2)} kg</b>
-            </div>
-          </div>
-
-          {/* CONGELADOS */}
+          {/* =========================
+               CONGELADOS AHORA ARRIBA
+              ========================= */}
           {mostrarCongelados && (
             <div className="cortes-section">
               <h4>OTROS PRODUCTOS</h4>
@@ -789,6 +667,135 @@ const ProviderForm = () => {
               </div>
             </div>
           )}
+
+          {/* CORTES (queda debajo) */}
+          <div className="cortes-section">
+            <div className="corte-card">
+              <div className="input-group">
+                <label>TIPO</label>
+                <Select
+                  options={opciones}
+                  value={opciones.find((o) => o.value === nuevoCorte.tipo) || null}
+                  onChange={(s) =>
+                    setNuevoCorte({ ...nuevoCorte, tipo: s?.value || "" })
+                  }
+                  placeholder="Producto"
+                  isClearable
+                />
+              </div>
+              <div className="input-group">
+                <label>CANTIDAD</label>
+                <input
+                  type="number"
+                  name="cantidad"
+                  value={nuevoCorte.cantidad}
+                  onChange={handleCorteChange}
+                />
+              </div>
+              <div className="input-group">
+                <label>CABEZAS</label>
+                <input
+                  type="number"
+                  name="cabezas"
+                  value={nuevoCorte.cabezas}
+                  onChange={handleCorteChange}
+                />
+              </div>
+              <div className="input-group">
+                <label>PESO ROMANEO (kg)</label>
+                <input
+                  type="number"
+                  name="pesoRomaneo"
+                  value={nuevoCorte.pesoRomaneo}
+                  onChange={handleCorteChange}
+                  min="0"
+                  step="0.01"
+                />
+              </div>
+
+              <div className="input-group">
+                <label>{tipoIngreso === "manual" ? "N° TROPA" : "Nº GARRON"}</label>
+                <input
+                  type="number"
+                  name="numeroRomaneo"
+                  value={nuevoCorte.numeroRomaneo}
+                  onChange={handleCorteChange}
+                  min="0"
+                />
+              </div>
+
+              <button type="button" onClick={agregarCorte} className="btn-add">
+                Agregar
+              </button>
+            </div>
+
+            <div className="cortes-list">
+              <div className="row-header">
+                <span>Producto</span>
+                <span>Cantidad</span>
+                <span>Cabezas</span>
+                <span>Peso (kg)</span>
+                <span>{tipoIngreso === "manual" ? "N° Tropa" : "N° Garron"}</span>
+                <span></span>
+              </div>
+
+              {cortesEnPagina.map((corte) => (
+                <div className="corte-row" key={corte.id || corte.idTemp}>
+                  <span className="pill">{corte.nombre}</span>
+                  <span className="pill">{corte.cantidad}</span>
+                  <span className="pill">{corte.cabezas}</span>
+                  <span className="pill">
+                    {corte.pesoRomaneo?.toFixed
+                      ? corte.pesoRomaneo.toFixed(2)
+                      : corte.pesoRomaneo}{" "}
+                  </span>
+                  <span className="pill">
+                    {corte.numeroRomaneo ?? corte.identification_product ?? ""}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => eliminarCorte(corte.id || corte.idTemp)}
+                    className="pill pill-danger"
+                    title="Eliminar"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+
+              {cortesAgregados.length > cortesPorPagina && (
+                <div className="pager">
+                  <button
+                    onClick={() =>
+                      setPaginaCortes((p) => Math.max(1, p - 1))
+                    }
+                    disabled={paginaCortes <= 1}
+                  >
+                    Anterior
+                  </button>
+                  <span>
+                    Página {paginaCortes} de {totalPaginasCortes}
+                  </span>
+                  <button
+                    onClick={() =>
+                      setPaginaCortes((p) =>
+                        Math.min(totalPaginasCortes, p + 1)
+                      )
+                    }
+                    disabled={paginaCortes >= totalPaginasCortes}
+                  >
+                    Siguiente
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="totales-linea">
+              <b>Cantidad de unidades: {totalUnidadesCortes}</b>
+              <b>Cantidad de cargas: {totalCargasCortes}</b>
+              <b>Peso romaneo total: {totalPesoRomaneoCortes.toFixed(2)} kg</b>
+            </div>
+          </div>
 
           <div className="button-container">
             <button type="submit" className="button-primary">

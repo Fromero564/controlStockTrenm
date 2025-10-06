@@ -60,7 +60,7 @@ export default function RoadmapList() {
   const [rows, setRows] = useState([]);
 
   const columns = useMemo(
-    () => ["FECH CREACIÓN", "FECH REPARTO", "DESTINO", "CHOFER", "PATENTE", "ACCIONES"],
+    () => ["FECHA CREACIÓN", "FECHA REPARTO", "DESTINO", "CHOFER", "PATENTE", "ACCIONES"],
     []
   );
 

@@ -44,6 +44,8 @@ router.get("/all-products-stock",apiOperatorController.getProductStock);
 // router.get("/product/:id", operatorApiController.getProductById);
 //Api para traer todas las categorias
 router.get("/all-product-categories",operatorApiController.getAllProductCatagories);
+router.get("/bill-details-readonly/:id", apiOperatorController.billDetailsReadonly);
+router.get("/bill-details/:id", apiOperatorController.billDetails);
 
 
 //Api para crear nuevas categorias

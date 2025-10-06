@@ -1755,6 +1755,72 @@ const operatorApiController = {
 },
 
 
+ billDetailsReadonly:async (req, res) => {
+  try {
+    const id = req.params.id;
+    const bill = await billSupplier.findOne({ where: { id } });
+
+    if (!bill) return res.status(404).json({ message: "Comprobante no encontrado" });
+
+    if (bill.income_state === "manual") {
+      // Leer de meat_manual_income
+      const rows = await meatIncome.findAll({ where: { id_bill_suppliers: id } });
+      const data = rows.map(r => ({
+        type: r.products_name,                 // nombre del producto
+        quantity: Number(r.products_quantity||0)
+      }));
+      return res.json(data);
+    } else {
+      // Leer de bill_details (romaneo)
+      const rows = await billDetail.findAll({ where: { bill_supplier_id: id } });
+      const data = rows.map(r => ({
+        type: r.type,
+        quantity: Number(r.quantity||0)
+      }));
+      return res.json(data);
+    }
+  } catch (err) {
+    console.error("billDetailsReadonly error:", err);
+    return res.status(500).json({ message: "Error interno del servidor" });
+  }
+},
+
+billDetails:async (req, res) => {
+  try {
+    const id = req.params.id;
+    const bill = await billSupplier.findOne({ where: { id } });
+
+    if (!bill) return res.status(404).json({ message: "Comprobante no encontrado" });
+
+    if (bill.income_state === "manual") {
+      // meat_manual_income
+      const rows = await meatIncome.findAll({ where: { id_bill_suppliers: id } });
+      const data = rows.map(r => ({
+        id: r.id,
+        type: r.products_name,
+        quantity: Number(r.products_quantity||0),
+        heads: Number(r.product_head||0),
+        weight: Number(r.net_weight||0)
+      }));
+      return res.json(data);
+    } else {
+      // bill_details (romaneo)
+      const rows = await billDetail.findAll({ where: { bill_supplier_id: id } });
+      const data = rows.map(r => ({
+        id: r.id,
+        type: r.type,
+        quantity: Number(r.quantity||0),
+        heads: Number(r.heads||0),
+        weight: Number(r.weight||0)
+      }));
+      return res.json(data);
+    }
+  } catch (err) {
+    console.error("billDetails error:", err);
+    return res.status(500).json({ message: "Error interno del servidor" });
+  }
+},
+
 
 
 

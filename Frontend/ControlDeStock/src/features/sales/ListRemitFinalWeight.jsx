@@ -38,7 +38,7 @@ export default function ListRemitFinalWeight() {
     return p.toString();
   }, [date, number, client]);
 
-  // 👉 Chequea existencia de remito con detalle (join) en backend
+ 
   const checkHasFinalRemit = async (orderId) => {
     try {
       const res = await fetch(`${ENDPOINT_FINAL_REMIT}?order_id=${orderId}`);
