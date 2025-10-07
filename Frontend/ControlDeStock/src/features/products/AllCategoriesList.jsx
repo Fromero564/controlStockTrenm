@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import Navbar from "../../components/Navbar";
 import "../../assets/styles/allCategoriesList.css";
+// 👇 importo el css de alltares para reutilizar el estilo del botón
+import "../../assets/styles/alltares.css";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPen, faTimes } from "@fortawesome/free-solid-svg-icons";
+import { faPen, faTimes, faPlus } from "@fortawesome/free-solid-svg-icons";
 import Swal from "sweetalert2";
 import { useNavigate } from "react-router-dom";
 
@@ -28,49 +30,70 @@ const AllCategoriesList = () => {
     fetchCategorias();
   }, []);
 
- const eliminarCategoria = async (id) => {
-  const resultado = await Swal.fire({
-    title: "¿Eliminar categoría?",
-    text: "Esta acción no se puede deshacer.",
-    icon: "warning",
-    showCancelButton: true,
-    confirmButtonColor: "#d33",
-    cancelButtonColor: "#3085d6",
-    confirmButtonText: "Sí, eliminar",
-    cancelButtonText: "Cancelar",
-  });
-
-  if (!resultado.isConfirmed) return;
-
-  try {
-    const res = await fetch(`${API_URL}/deleteCategory/${id}`, {
-      method: "DELETE",
+  const eliminarCategoria = async (id) => {
+    const resultado = await Swal.fire({
+      title: "¿Eliminar categoría?",
+      text: "Esta acción no se puede deshacer.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#3085d6",
+      confirmButtonText: "Sí, eliminar",
+      cancelButtonText: "Cancelar",
     });
 
-    const data = await res.json();
+    if (!resultado.isConfirmed) return;
 
-    if (!res.ok) {
-     
-      throw new Error(data?.mensaje || "No se pudo eliminar la categoría");
+    try {
+      const res = await fetch(`${API_URL}/deleteCategory/${id}`, {
+        method: "DELETE",
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data?.mensaje || "No se pudo eliminar la categoría");
+      }
+
+      setCategorias((prev) => prev.filter((cat) => cat.id !== id));
+
+      await Swal.fire(
+        "Eliminado",
+        data?.mensaje || "Categoría eliminada correctamente.",
+        "success"
+      );
+    } catch (err) {
+      console.error("Error al eliminar categoría:", err);
+      Swal.fire(
+        "Error",
+        err.message || "Ocurrió un error al eliminar la categoría.",
+        "error"
+      );
     }
-
-    setCategorias((prev) => prev.filter((cat) => cat.id !== id));
-
-    await Swal.fire("Eliminado", data?.mensaje || "Categoría eliminada correctamente.", "success");
-  } catch (err) {
-    console.error("Error al eliminar categoría:", err);
-    Swal.fire("Error", err.message || "Ocurrió un error al eliminar la categoría.", "error");
-  }
-};
+  };
 
   return (
     <div>
       <Navbar />
       <div style={{ margin: "20px" }}>
-                <button className="boton-volver" onClick={() => navigate("/product-configuration")}>
-                    ⬅ Volver
-                </button>
-            </div>
+        <button
+          className="boton-volver"
+          onClick={() => navigate("/product-configuration")}
+        >
+          ⬅ Volver
+        </button>
+      </div>
+
+      {/* Botón con el MISMO estilo que en Alltares */}
+      <div style={{ marginLeft: "20px", marginBottom: "12px" }}>
+        <button
+          className="new-button"
+          onClick={() => navigate("/category-load")}
+        >
+          Cargar categorías <FontAwesomeIcon icon={faPlus} />
+        </button>
+      </div>
+
       <div className="categories-container">
         <h1 className="categories-title">Categorías de Productos</h1>
 

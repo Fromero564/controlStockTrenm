@@ -18,6 +18,7 @@ const OtherProductManual = db.OtherProductManual;
 const ProductCategories = db.ProductCategories
 const ProcessNumber = db.ProcessNumber;
 const MeatIncomeManualWeight = db.MeatIncomeManualWeight;
+const ProductionProcessSubproduction = db.ProductionProcessSubproduction;
 
 const operatorApiController = {
     getAllOtherProductsManual: async (req, res) => {
@@ -596,171 +597,226 @@ const operatorApiController = {
         }
     },
 
-    uploadProductsProcess: async (req, res) => {
-        let t;
-        try {
-            const { cortes, bill_ids } = req.body;
+ uploadProductsProcess: async (req, res) => {
+  let t;
+  try {
+    // 👇 1) ahora también recibimos subproduction
+    const { cortes, bill_ids, subproduction = [] } = req.body;
 
-            if (!Array.isArray(cortes) || cortes.length === 0 || !Array.isArray(bill_ids) || bill_ids.length === 0) {
-                return res.status(400).json({ message: "Faltan cortes o comprobantes para asociar." });
-            }
+    if (
+      !Array.isArray(cortes) || cortes.length === 0 ||
+      !Array.isArray(bill_ids) || bill_ids.length === 0
+    ) {
+      return res.status(400).json({ message: "Faltan cortes o comprobantes para asociar." });
+    }
 
-            t = await sequelize.transaction();
+    t = await sequelize.transaction();
 
-            const ultimoProceso = await ProcessNumber.findOne({ order: [['process_number', 'DESC']] });
-            const nuevoProcessNumber = ultimoProceso ? ultimoProceso.process_number + 1 : 1;
+    const ultimoProceso = await ProcessNumber.findOne({ order: [["process_number", "DESC"]] });
+    const nuevoProcessNumber = ultimoProceso ? ultimoProceso.process_number + 1 : 1;
 
-            for (const bill_id of bill_ids) {
-                await ProcessNumber.create({ process_number: nuevoProcessNumber, bill_id }, { transaction: t });
-            }
+    for (const bill_id of bill_ids) {
+      await ProcessNumber.create({ process_number: nuevoProcessNumber, bill_id }, { transaction: t });
+    }
 
-            const childTotalsQty = {};
-            let totalNetAdded = 0;
+    const childTotalsQty = {};
+    let totalNetAdded = 0;
 
-            for (const corte of cortes) {
-                let { type, average, quantity, gross_weight, tares, net_weight } = corte;
-                const avg = Number(average);
-                const qty = Number(quantity);
-                const gross = Number(gross_weight);
-                const tare = Number(tares);
-                const net = Number(net_weight);
+    for (const corte of cortes) {
+      let { type, average, quantity, gross_weight, tares, net_weight } = corte;
+      const avg = Number(average);
+      const qty = Number(quantity);
+      const gross = Number(gross_weight);
+      const tare = Number(tares);
+      const net = Number(net_weight);
 
-                if (
-                    type == null ||
-                    Number.isNaN(avg) || Number.isNaN(qty) ||
-                    Number.isNaN(gross) || Number.isNaN(tare) ||
-                    Number.isNaN(net)
-                ) {
-                    await t.rollback();
-                    return res.status(400).json({ message: "Faltan campos obligatorios o hay valores inválidos en algún corte." });
-                }
+      if (
+        type == null ||
+        Number.isNaN(avg) || Number.isNaN(qty) ||
+        Number.isNaN(gross) || Number.isNaN(tare) ||
+        Number.isNaN(net)
+      ) {
+        await t.rollback();
+        return res.status(400).json({ message: "Faltan campos obligatorios o hay valores inválidos en algún corte." });
+      }
 
+      let baseProduct = null;
+      let productName = null;
 
-                let baseProduct = null;
-                let productName = null;
-
-                if (!Number.isNaN(Number(type))) {
-                    baseProduct = await ProductsAvailable.findByPk(type, {
-                        include: [{ model: ProductCategories, as: "category", attributes: ["category_name"] }],
-                        transaction: t
-                    });
-                    if (!baseProduct) {
-                        await t.rollback();
-                        return res.status(400).json({ message: `No se encontró ningún producto con ID ${type}` });
-                    }
-                    productName = baseProduct.product_name;
-                } else {
-                    baseProduct = await ProductsAvailable.findOne({
-                        where: { product_name: type },
-                        include: [{ model: ProductCategories, as: "category", attributes: ["category_name"] }],
-                        transaction: t
-                    });
-                    if (!baseProduct) {
-                        await t.rollback();
-                        return res.status(400).json({ message: `No se pudo identificar el producto "${type}".` });
-                    }
-                    productName = baseProduct.product_name;
-                }
-
-                await ProcessMeat.create({
-                    type: productName,
-                    average: avg,
-                    quantity: qty,
-                    gross_weight: gross,
-                    tares: tare,
-                    net_weight: net,
-                    process_number: nuevoProcessNumber
-                }, { transaction: t });
-
-                const existingChild = await ProductStock.findOne({ where: { product_name: productName }, transaction: t });
-                if (existingChild) {
-                    await existingChild.increment(
-                        { product_quantity: qty, product_total_weight: net },
-                        { transaction: t }
-                    );
-                } else {
-                    await ProductStock.create({
-                        product_name: productName,
-                        product_quantity: qty,
-                        product_total_weight: net,
-                        product_cod: baseProduct.id,
-
-                        product_category: baseProduct.category?.category_name ?? null
-                    }, { transaction: t });
-                }
-
-                childTotalsQty[productName] = (childTotalsQty[productName] || 0) + qty;
-                totalNetAdded += net;
-            }
-
-
-            const parentMap = {};
-            for (const childName of Object.keys(childTotalsQty)) {
-                const subs = await ProductSubproduct.findAll({
-                    include: [
-                        { model: ProductsAvailable, as: "subProduct", attributes: [], where: { product_name: childName } }
-                    ],
-                    transaction: t
-                });
-
-                for (const sp of subs) {
-                    const parent = await ProductsAvailable.findByPk(sp.parent_product_id, {
-                        attributes: ['product_name'],
-                        transaction: t
-                    });
-                    if (!parent) continue;
-                    const parentName = parent.product_name;
-                    if (!parentMap[parentName]) parentMap[parentName] = {};
-                    parentMap[parentName][childName] = Number(sp.quantity) || 0;
-                }
-            }
-
-            const parentUsage = {};
-            for (const parentName of Object.keys(parentMap)) {
-                let required = 0;
-                for (const [childName, perParent] of Object.entries(parentMap[parentName])) {
-                    if (perParent > 0) {
-                        const need = Math.ceil((childTotalsQty[childName] || 0) / perParent);
-                        if (need > required) required = need;
-                    }
-                }
-                if (required > 0) parentUsage[parentName] = required;
-            }
-
-            const totalParentUnits = Object.values(parentUsage).reduce((a, b) => a + b, 0);
-
-
-            for (const [parentName, usedUnits] of Object.entries(parentUsage)) {
-                const weightShare = totalParentUnits > 0 ? Number((totalNetAdded * usedUnits / totalParentUnits).toFixed(2)) : 0;
-                const stockParent = await ProductStock.findOne({ where: { product_name: parentName }, transaction: t });
-                if (stockParent) {
-                    const newQty = Math.max(0, Number(stockParent.product_quantity || 0) - usedUnits);
-                    const newWeight = Math.max(0, Number(stockParent.product_total_weight || 0) - weightShare);
-                    await stockParent.update(
-                        { product_quantity: newQty, product_total_weight: newWeight },
-                        { transaction: t }
-                    );
-                }
-            }
-
-
-            for (const bill_id of bill_ids) {
-                if (Number(bill_id) > 0) {
-                    await billSupplier.update(
-                        { production_process: true },
-                        { where: { id: bill_id }, transaction: t }
-                    );
-                }
-            }
-
-            await t.commit();
-            return res.status(201).json({ message: "Cortes y proceso guardados, stock ajustado.", process_number: nuevoProcessNumber });
-        } catch (error) {
-            if (t) { try { await t.rollback(); } catch { } }
-            console.error("uploadProductsProcess error:", error);
-            return res.status(500).json({ message: "Error interno del servidor", error: error.message });
+      if (!Number.isNaN(Number(type))) {
+        baseProduct = await ProductsAvailable.findByPk(type, {
+          include: [{ model: ProductCategories, as: "category", attributes: ["category_name"] }],
+          transaction: t,
+        });
+        if (!baseProduct) {
+          await t.rollback();
+          return res.status(400).json({ message: `No se encontró ningún producto con ID ${type}` });
         }
-    },
+        productName = baseProduct.product_name;
+      } else {
+        baseProduct = await ProductsAvailable.findOne({
+          where: { product_name: type },
+          include: [{ model: ProductCategories, as: "category", attributes: ["category_name"] }],
+          transaction: t,
+        });
+        if (!baseProduct) {
+          await t.rollback();
+          return res.status(400).json({ message: `No se pudo identificar el producto "${type}".` });
+        }
+        productName = baseProduct.product_name;
+      }
+
+      await ProcessMeat.create(
+        {
+          type: productName,
+          average: avg,
+          quantity: qty,
+          gross_weight: gross,
+          tares: tare,
+          net_weight: net,
+          process_number: nuevoProcessNumber,
+        },
+        { transaction: t }
+      );
+
+      const existingChild = await ProductStock.findOne({ where: { product_name: productName }, transaction: t });
+      if (existingChild) {
+        await existingChild.increment(
+          { product_quantity: qty, product_total_weight: net },
+          { transaction: t }
+        );
+      } else {
+        await ProductStock.create(
+          {
+            product_name: productName,
+            product_quantity: qty,
+            product_total_weight: net,
+            product_cod: baseProduct.id,
+            product_category: baseProduct.category?.category_name ?? null,
+          },
+          { transaction: t }
+        );
+      }
+
+      childTotalsQty[productName] = (childTotalsQty[productName] || 0) + qty;
+      totalNetAdded += net;
+    }
+
+    const parentMap = {};
+    for (const childName of Object.keys(childTotalsQty)) {
+      const subs = await ProductSubproduct.findAll({
+        include: [{ model: ProductsAvailable, as: "subProduct", attributes: [], where: { product_name: childName } }],
+        transaction: t,
+      });
+
+      for (const sp of subs) {
+        const parent = await ProductsAvailable.findByPk(sp.parent_product_id, {
+          attributes: ["product_name"],
+          transaction: t,
+        });
+        if (!parent) continue;
+        const parentName = parent.product_name;
+        if (!parentMap[parentName]) parentMap[parentName] = {};
+        parentMap[parentName][childName] = Number(sp.quantity) || 0;
+      }
+    }
+
+    const parentUsage = {};
+    for (const parentName of Object.keys(parentMap)) {
+      let required = 0;
+      for (const [childName, perParent] of Object.entries(parentMap[parentName])) {
+        if (perParent > 0) {
+          const need = Math.ceil((childTotalsQty[childName] || 0) / perParent);
+          if (need > required) required = need;
+        }
+      }
+      if (required > 0) parentUsage[parentName] = required;
+    }
+
+    const totalParentUnits = Object.values(parentUsage).reduce((a, b) => a + b, 0);
+
+    for (const [parentName, usedUnits] of Object.entries(parentUsage)) {
+      const weightShare =
+        totalParentUnits > 0 ? Number(((totalNetAdded * usedUnits) / totalParentUnits).toFixed(2)) : 0;
+      const stockParent = await ProductStock.findOne({ where: { product_name: parentName }, transaction: t });
+      if (stockParent) {
+        const newQty = Math.max(0, Number(stockParent.product_quantity || 0) - usedUnits);
+        const newWeight = Math.max(0, Number(stockParent.product_total_weight || 0) - weightShare);
+        await stockParent.update(
+          { product_quantity: newQty, product_total_weight: newWeight },
+          { transaction: t }
+        );
+      }
+    }
+
+    for (const bill_id of bill_ids) {
+      if (Number(bill_id) > 0) {
+        await billSupplier.update(
+          { production_process: true },
+          { where: { id: bill_id }, transaction: t }
+        );
+      }
+    }
+
+    // 👇 2) NUEVO: guardar subproducción (solo persistencia, sin tocar stock)
+    if (Array.isArray(subproduction) && subproduction.length) {
+      // Acepta tanto {cut_name, quantity} como {tipo|producto, cantidad}
+      const rows = subproduction
+        .map((s) => ({
+          process_number: nuevoProcessNumber,
+          cut_name: String(s.cut_name || s.tipo || s.producto || "").trim(),
+          quantity: Number(s.quantity ?? s.cantidad ?? 0),
+        }))
+        .filter((r) => r.cut_name && !Number.isNaN(r.quantity));
+
+      if (rows.length) {
+        await ProductionProcessSubproduction.bulkCreate(rows, { transaction: t });
+      }
+    }
+
+    await t.commit();
+    return res
+      .status(201)
+      .json({ message: "Cortes y proceso guardados, stock ajustado.", process_number: nuevoProcessNumber });
+  } catch (error) {
+    if (t) {
+      try {
+        await t.rollback();
+      } catch {}
+    }
+    console.error("uploadProductsProcess error:", error);
+    return res.status(500).json({ message: "Error interno del servidor", error: error.message });
+  }
+},
+getAllSubproduction :async (req, res) => {
+  try {
+    const {
+      process_number,                 // opcional: filtra por proceso
+      limit,                          // opcional: paginado
+      offset,                         // opcional: paginado
+      order = "desc",                 // opcional: orden por id
+    } = req.query;
+
+    const where = {};
+    if (process_number != null && process_number !== "") {
+      where.process_number = Number(process_number);
+    }
+
+    const rows = await ProductionProcessSubproduction.findAll({
+      where,
+      order: [["id", String(order).toUpperCase() === "ASC" ? "ASC" : "DESC"]],
+      ...(limit ? { limit: Number(limit) } : {}),
+      ...(offset ? { offset: Number(offset) } : {}),
+    });
+
+    return res.json(rows);
+  } catch (err) {
+    console.error("getAllSubproduction error:", err);
+    return res.status(500).json({ ok: false, message: "Error al obtener subproducción" });
+  }
+},
+
+
 
 
 

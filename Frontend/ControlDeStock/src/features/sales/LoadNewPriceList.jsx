@@ -24,15 +24,10 @@ function calcularPrecioSinIVA(precioConIVA, alicuota) {
   return +((conIva / (1 + ali / 100)).toFixed(2));
 }
 
-const unidadOptions = [
-  { value: "UN", label: "Unidad (Pieza)" },
-  { value: "KG", label: "Kilogramo (kg)" },
-];
-
 const LoadNewPriceList = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const preload = location.state?.payload || null; // si venimos desde "Editar"
+  const preload = location.state?.payload || null;   // si venimos desde editar
   const listNumber = location.state?.listNumber || null;
   const editing = Boolean(preload || listNumber);
 
@@ -45,12 +40,14 @@ const LoadNewPriceList = () => {
   const [pagina, setPagina] = useState(1);
   const [busqueda, setBusqueda] = useState("");
 
+  // Carga clientes
   useEffect(() => {
     const loadClientes = async () => {
       const r = await fetch(CLIENTES_URL, { credentials: "include" });
       const data = await r.json();
       const opts = data.map((c) => ({ value: c.id, label: c.client_name }));
       setClientesOptions(opts);
+
       if (editing) {
         let clients = preload?.header?.clients;
         if (!clients && listNumber) {
@@ -67,30 +64,39 @@ const LoadNewPriceList = () => {
     loadClientes();
   }, [editing, listNumber, preload]);
 
+  // Carga productos
   useEffect(() => {
     const loadProductos = async () => {
       const r = await fetch(PRODUCTOS_URL, { credentials: "include" });
       const data = await r.json();
       setProductos(data);
+
       const preciosIniciales = {};
       const checksIniciales = {};
       data.forEach((p) => {
         const unidadDefault = p?.category?.category_name === "PRINCIPAL" ? "UN" : "KG";
-        preciosIniciales[p.id] = { costo: 0, sinIva: 0, conIva: 0, alicuota: Number(p?.alicuota ?? 0), unidad: unidadDefault };
+        preciosIniciales[p.id] = {
+          costo: 0,
+          sinIva: 0,
+          conIva: 0,
+          alicuota: Number(p?.alicuota ?? 0),
+          unidad: unidadDefault,
+        };
         checksIniciales[p.id] = true;
       });
       setPrecios(preciosIniciales);
       setCheckedProducts(checksIniciales);
+
       if (editing) {
-        if (preload?.products?.length) {
-          applyExisting(preload);
-        } else if (listNumber) {
+        if (preload?.products?.length) applyExisting(preload);
+        else if (listNumber) {
           const lr = await fetch(`${API_URL}/price-list/${listNumber}`, { credentials: "include" });
           const ld = await lr.json();
           applyExisting(ld);
         }
       }
     };
+
     const applyExisting = (payload) => {
       if (!payload) return;
       setNombreLista(payload?.header?.name || "");
@@ -113,10 +119,13 @@ const LoadNewPriceList = () => {
       setPrecios((prev) => ({ ...prev, ...preciosEdit }));
       setCheckedProducts((prev) => ({ ...prev, ...checksEdit }));
     };
+
     loadProductos();
   }, [editing, listNumber, preload]);
 
-  const handleCheck = (id) => setCheckedProducts((prev) => ({ ...prev, [id]: !prev[id] }));
+  // Handlers
+  const handleCheck = (id) =>
+    setCheckedProducts((prev) => ({ ...prev, [id]: !prev[id] }));
 
   const handlePrecioChange = (id, field, raw) => {
     const value = raw === "" ? "" : Number(raw);
@@ -130,9 +139,6 @@ const LoadNewPriceList = () => {
       } else if (field === "conIva") {
         conIva = value;
         sinIva = calcularPrecioSinIVA(conIva, alicuota);
-      } else if (field === "alicuota") {
-        // ahora es solo lectura; ignoramos cambios por si algún evento llega
-        return prev;
       }
       return { ...prev, [id]: { costo, sinIva, conIva, alicuota, unidad } };
     });
@@ -145,14 +151,17 @@ const LoadNewPriceList = () => {
     p.product_name.toLowerCase().includes(busqueda.toLowerCase())
   );
   const totalPaginas = Math.ceil(productosFiltrados.length / ITEMS_PER_PAGE) || 1;
-  const productosPagina = productosFiltrados.slice((pagina - 1) * ITEMS_PER_PAGE, pagina * ITEMS_PER_PAGE);
+  const productosPagina = productosFiltrados.slice(
+    (pagina - 1) * ITEMS_PER_PAGE,
+    pagina * ITEMS_PER_PAGE
+  );
 
   const handlePaginaChange = (newPage) => {
     if (newPage >= 1 && newPage <= totalPaginas) setPagina(newPage);
   };
 
-  const buildPayloadProducts = () => {
-    const productosSeleccionados = productos
+  const buildPayloadProducts = () =>
+    productos
       .filter((p) => checkedProducts[p.id])
       .map((p) => {
         const pr = precios[p.id] || {};
@@ -161,12 +170,10 @@ const LoadNewPriceList = () => {
           costo: Number(pr.costo || 0),
           precio_sin_iva: Number(pr.sinIva || 0),
           precio_con_iva: Number(pr.conIva || 0),
-          alicuota: Number(pr.alicuota ?? p.alicuota ?? 0), // se envía la que tenemos (solo lectura aquí)
+          alicuota: Number(pr.alicuota ?? p.alicuota ?? 0),
           unidad_venta: pr.unidad || (p?.category?.category_name === "PRINCIPAL" ? "UN" : "KG"),
         };
       });
-    return productosSeleccionados;
-  };
 
   const handleGuardar = async () => {
     const clientsIds = clientesSeleccionados.map((c) => c.value);
@@ -197,6 +204,7 @@ const LoadNewPriceList = () => {
         Swal.fire("Error", data?.msg || "Error al actualizar la lista", "error");
         return;
       }
+
       const response = await fetch(`${API_URL}/create-new-price-list`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -218,125 +226,174 @@ const LoadNewPriceList = () => {
   return (
     <div>
       <Navbar />
-      <div className="load-new-price-list-container">
-        <div className="header">
-          <button className="boton-volver" onClick={() => navigate(-1)}>⬅ Volver</button>
-          <h1>{editing ? "Editar Lista de Precios" : "Nueva Lista de Precios"}</h1>
+
+      <div className="price-list-bg">
+        {/* barra superior gris con Volver */}
+        <div className="toolbar-grey">
+          <button className="price-list-volver-btn" onClick={() => navigate(-1)}>
+            ⬅ Volver
+          </button>
         </div>
 
-        <div className="price-list-form">
-          <label>Nombre de la lista</label>
-          <input value={nombreLista} onChange={(e) => setNombreLista(e.target.value)} />
-        </div>
+        <div className="price-list-container">
+          <h1 className="price-list-title">
+            {editing ? "Editar Lista de Precios" : "Nueva Lista de Precios"}
+          </h1>
 
-        <div className="price-list-form">
-          <label>Clientes</label>
-          <Select isMulti options={clientesOptions} value={clientesSeleccionados} onChange={setClientesSeleccionados} />
-        </div>
+          {/* Formulario: nombre + clientes */}
+          <div className="price-list-form-row">
+            <div className="price-list-form-group">
+              <label className="price-list-label">Nombre de la lista</label>
+              <input
+                className="price-list-input"
+                value={nombreLista}
+                onChange={(e) => setNombreLista(e.target.value)}
+                placeholder="Ej: Lista Mayorista"
+              />
+            </div>
 
-        <div className="price-list-search">
-          <input
-            type="text"
-            placeholder="Buscar producto por nombre"
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
-          />
-        </div>
+            <div className="price-list-form-group">
+              <label className="price-list-label">Clientes</label>
+              <div className="price-list-select">
+                <Select
+                  isMulti
+                  options={clientesOptions}
+                  value={clientesSeleccionados}
+                  onChange={setClientesSeleccionados}
+                  classNamePrefix="rs"
+                />
+              </div>
+            </div>
+          </div>
 
-        <table className="price-list-table">
-          <thead className="price-list-table-head">
-            <tr>
-              <th className="price-list-th">ACCIÓN</th>
-              <th className="price-list-th" style={{ textAlign: "left" }}>PRODUCTO</th>
-              <th className="price-list-th">UNIDAD DE VENTA</th>
-              <th className="price-list-th">COSTO</th>
-              <th className="price-list-th">PRECIO S/IVA</th>
-              <th className="price-list-th">ALICUOTA (%)</th>
-              <th className="price-list-th">PRECIO C/IVA</th>
-            </tr>
-          </thead>
-          <tbody>
-            {productosPagina.map((prod, idx) => {
-              const p = precios[prod.id] || {};
-              return (
-                <tr key={prod.id} className={idx % 2 === 0 ? "price-list-tr-par" : "price-list-tr-impar"}>
-                  <td className="price-list-td">
-                    <input
-                      type="checkbox"
-                      checked={!!checkedProducts[prod.id]}
-                      onChange={() => handleCheck(prod.id)}
-                    />
-                  </td>
-                  <td className="price-list-td price-list-product-name">{prod.product_name}</td>
-                  <td className="price-list-td">
-                    <select
-                      className="price-list-price-input"
-                      value={p.unidad || (prod?.category?.category_name === "PRINCIPAL" ? "UN" : "KG")}
-                      onChange={(e) => handleUnidadChange(prod.id, e.target.value)}
-                    >
-                      <option value="UN">Unidad (Pieza)</option>
-                      <option value="KG">Kilogramo (kg)</option>
-                    </select>
-                  </td>
-                  <td className="price-list-td">
-                    <input
-                      type="number"
-                      min={0}
-                      value={p.costo ?? 0}
-                      onChange={(e) => handlePrecioChange(prod.id, "costo", e.target.value)}
-                      className="price-list-price-input"
-                    />
-                  </td>
-                  <td className="price-list-td">
-                    <input
-                      type="number"
-                      min={0}
-                      value={p.sinIva ?? 0}
-                      onChange={(e) => handlePrecioChange(prod.id, "sinIva", e.target.value)}
-                      className="price-list-price-input"
-                    />
-                  </td>
-                  <td className="price-list-td">
-                    {/* SOLO LECTURA: toma la alícuota del producto o de la lista si vino */}
-                    <input
-                      type="number"
-                      min={0}
-                      value={p.alicuota ?? prod?.alicuota ?? 0}
-                      readOnly
-                      disabled
-                      className="price-list-price-input ali-readonly"
-                      title="La alícuota se edita desde Productos"
-                    />
-                  </td>
-                  <td className="price-list-td">
-                    <input
-                      type="number"
-                      min={0}
-                      value={p.conIva ?? 0}
-                      onChange={(e) => handlePrecioChange(prod.id, "conIva", e.target.value)}
-                      className="price-list-price-input"
-                    />
-                  </td>
+          {/* Buscador */}
+          <div className="price-list-buscar-row">
+            <input
+              className="price-list-buscar-input"
+              type="text"
+              placeholder="Buscar producto por nombre"
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+            />
+          </div>
+
+          {/* Tabla */}
+          <div className="price-list-table-container">
+            <table className="price-list-table">
+              <thead className="price-list-table-head">
+                <tr>
+                  <th className="price-list-th">ACCIÓN</th>
+                  <th className="price-list-th" style={{ textAlign: "left" }}>
+                    PRODUCTO
+                  </th>
+                  <th className="price-list-th">UNIDAD DE VENTA</th>
+                  <th className="price-list-th">COSTO</th>
+                  <th className="price-list-th">PRECIO S/IVA</th>
+                  <th className="price-list-th">ALICUOTA (%)</th>
+                  <th className="price-list-th">PRECIO C/IVA</th>
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
+              </thead>
+              <tbody>
+                {productosPagina.map((prod, idx) => {
+                  const p = precios[prod.id] || {};
+                  return (
+                    <tr
+                      key={prod.id}
+                      className={idx % 2 === 0 ? "price-list-tr-par" : "price-list-tr-impar"}
+                    >
+                      <td className="price-list-td">
+                        <input
+                          type="checkbox"
+                          className="price-list-checkbox"
+                          checked={!!checkedProducts[prod.id]}
+                          onChange={() => handleCheck(prod.id)}
+                        />
+                      </td>
+                      <td className="price-list-td price-list-product-name">
+                        {prod.product_name}
+                      </td>
+                      <td className="price-list-td">
+                        <select
+                          className="price-list-price-input"
+                          value={p.unidad || (prod?.category?.category_name === "PRINCIPAL" ? "UN" : "KG")}
+                          onChange={(e) => handleUnidadChange(prod.id, e.target.value)}
+                        >
+                          <option value="UN">Unidad (Pieza)</option>
+                          <option value="KG">Kilogramo (kg)</option>
+                        </select>
+                      </td>
+                      <td className="price-list-td">
+                        <input
+                          type="number"
+                          min={0}
+                          value={p.costo ?? 0}
+                          onChange={(e) => handlePrecioChange(prod.id, "costo", e.target.value)}
+                          className="price-list-price-input"
+                        />
+                      </td>
+                      <td className="price-list-td">
+                        <input
+                          type="number"
+                          min={0}
+                          value={p.sinIva ?? 0}
+                          onChange={(e) => handlePrecioChange(prod.id, "sinIva", e.target.value)}
+                          className="price-list-price-input"
+                        />
+                      </td>
+                      <td className="price-list-td">
+                        <input
+                          type="number"
+                          min={0}
+                          value={p.alicuota ?? prod?.alicuota ?? 0}
+                          readOnly
+                          disabled
+                          className="price-list-price-input ali-readonly"
+                          title="La alícuota se edita desde Productos"
+                        />
+                      </td>
+                      <td className="price-list-td">
+                        <input
+                          type="number"
+                          min={0}
+                          value={p.conIva ?? 0}
+                          onChange={(e) => handlePrecioChange(prod.id, "conIva", e.target.value)}
+                          className="price-list-price-input"
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
 
-        <div className="price-list-pagination">
-          <button onClick={() => handlePaginaChange(pagina - 1)} disabled={pagina === 1}>
-            ⬅ Anterior
-          </button>
-          <span>Página {pagina} de {totalPaginas}</span>
-          <button onClick={() => handlePaginaChange(pagina + 1)} disabled={pagina === totalPaginas}>
-            Siguiente ➡
-          </button>
-        </div>
+          {/* Paginación */}
+          <div className="price-list-pagination">
+            <button
+              className="price-list-pagination-btn"
+              onClick={() => handlePaginaChange(pagina - 1)}
+              disabled={pagina === 1}
+            >
+              ⬅ Anterior
+            </button>
+            <span className="price-list-pagination-info">
+              Página {pagina} de {totalPaginas}
+            </span>
+            <button
+              className="price-list-pagination-btn"
+              onClick={() => handlePaginaChange(pagina + 1)}
+              disabled={pagina === totalPaginas}
+            >
+              Siguiente ➡
+            </button>
+          </div>
 
-        <div className="price-list-actions">
-          <button className="btn-guardar" onClick={handleGuardar}>
-            {editing ? "Guardar cambios" : "Crear lista"}
-          </button>
+          {/* CTA */}
+          <div className="price-list-actions">
+            <button className="btn-guardar" onClick={handleGuardar}>
+              {editing ? "Guardar cambios" : "Crear lista"}
+            </button>
+          </div>
         </div>
       </div>
     </div>

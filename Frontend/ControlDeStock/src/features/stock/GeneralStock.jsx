@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Navbar from "../../components/Navbar";
 import { useNavigate } from "react-router-dom";
+import "../../assets/styles/generalStock.css";
 
 const API_URL = (import.meta.env.VITE_API_URL || "").replace(/\/+$/, "");
 
@@ -24,10 +25,10 @@ export default function GeneralStock() {
   const [alertFilter, setAlertFilter] = useState("Todos");
   const [search, setSearch] = useState("");
 
-  // listado de categorías (de API + derivadas del stock)
+  // categorías
   const [categories, setCategories] = useState(["Todos"]);
 
-  // Panel / Ajuste manual
+  // panel / ajuste
   const [open, setOpen] = useState(false);
   const [rowSel, setRowSel] = useState(null);
   const [form, setForm] = useState({
@@ -45,7 +46,6 @@ export default function GeneralStock() {
       const list = Array.isArray(data) ? data : [];
       setRows(list);
 
-      // Derivar categorías presentes en el stock actual
       const fromRows = Array.from(
         new Set(
           list
@@ -59,18 +59,18 @@ export default function GeneralStock() {
         )
       );
 
-      // Cargar categorías maestras desde API y fusionarlas
-      // (si falla, mostramos al menos las derivadas del stock)
       try {
         const r2 = await fetch(`${API_URL}/all-product-categories`);
-        const j2 = await r2.json(); // [{id, category_name}, ...]
+        const j2 = await r2.json();
         const fromApi = Array.isArray(j2)
           ? j2
               .map((c) => (c?.category_name || "").trim())
               .filter(Boolean)
           : [];
         const merged = Array.from(new Set(["Todos", ...fromApi, ...fromRows]));
-        setCategories(merged.sort((a, b) => (a === "Todos" ? -1 : a.localeCompare(b))));
+        setCategories(
+          merged.sort((a, b) => (a === "Todos" ? -1 : a.localeCompare(b)))
+        );
       } catch {
         setCategories(
           Array.from(new Set(["Todos", ...fromRows])).sort((a, b) =>
@@ -90,12 +90,11 @@ export default function GeneralStock() {
     fetchStock();
   }, []);
 
-  // ---------- Filtro compuesto ----------
+  // ---------- Filtro ----------
   const filtered = useMemo(() => {
     let list = [...rows];
 
-    // categoría exacta (si no es "Todos")
-    if (category && category !== "Todos") {
+    if (category !== "Todos") {
       list = list.filter((r) => {
         const cat =
           r.product_general_category || r.category_name || r.product_category;
@@ -103,8 +102,7 @@ export default function GeneralStock() {
       });
     }
 
-    // alerta de stock (Bajo/Alto)
-    if (alertFilter && alertFilter !== "Todos") {
+    if (alertFilter !== "Todos") {
       list = list.filter((r) => {
         const qty = Number(r.product_quantity || 0);
         const min = Number(r.min_stock || 0);
@@ -115,7 +113,6 @@ export default function GeneralStock() {
       });
     }
 
-    // búsqueda por nombre o código
     if (search.trim()) {
       const q = search.trim().toLowerCase();
       list = list.filter(
@@ -149,7 +146,6 @@ export default function GeneralStock() {
     if (!rowSel) return;
 
     const idForApi = rowSel.id || rowSel.product_cod || rowSel.product_name;
-
     const currentQty = Number(rowSel.product_quantity || 0);
     const targetQty = Number(form.final_quantity);
 
@@ -157,12 +153,8 @@ export default function GeneralStock() {
       alert("Ingresá un total de unidades válido (entero ≥ 0).");
       return;
     }
-
-    // Por ahora permitimos solo disminuir (compatibilidad con backend)
     if (targetQty > currentQty) {
-      alert(
-        `El total final (${targetQty}) no puede superar el actual (${currentQty}).`
-      );
+      alert(`El total final (${targetQty}) no puede superar el actual (${currentQty}).`);
       return;
     }
 
@@ -205,86 +197,51 @@ export default function GeneralStock() {
     <div>
       <Navbar />
       <div style={{ margin: "20px" }}>
-        <button className="boton-volver" onClick={() => navigate("/operator-panel")}>
+        <button className="btn btn-outline" onClick={() => navigate("/operator-panel")}>
           ⬅ Volver
         </button>
       </div>
+
       <div className="stock-container">
         <h1 className="stock-title">Stock</h1>
 
-        {/* Filtros */}
-        <div
-          className="filters"
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            gap: 8,
-            flexWrap: "wrap",
-            maxWidth: 1000,
-            margin: "10px auto 16px",
-          }}
-        >
-          <div>
-            <label style={{ fontSize: 14 }}>
-              Categoría:
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                style={{ marginLeft: 8, padding: "4px 8px", fontSize: 14, minWidth: 180 }}
-              >
-                {categories.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
+        {/* filtros */}
+        <div className="filters">
+          <label className="field">
+            <span>Categoría:</span>
+            <select value={category} onChange={(e) => setCategory(e.target.value)}>
+              {categories.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </label>
 
-          <div>
-            <label style={{ fontSize: 14 }}>
-              Alerta de stock:
-              <select
-                value={alertFilter}
-                onChange={(e) => setAlertFilter(e.target.value)}
-                style={{ marginLeft: 8, padding: "4px 8px", fontSize: 14, minWidth: 160 }}
-              >
-                <option>Todos</option>
-                <option>Bajo</option>
-                <option>Alto</option>
-              </select>
-            </label>
-          </div>
+          <label className="field">
+            <span>Alerta de stock:</span>
+            <select value={alertFilter} onChange={(e) => setAlertFilter(e.target.value)}>
+              <option>Todos</option>
+              <option>Bajo</option>
+              <option>Alto</option>
+            </select>
+          </label>
 
-          <div style={{ flex: "0 0 auto" }}>
-            <label style={{ fontSize: 14 }}>
-              Buscar producto:
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Nombre del producto"
-                style={{
-                  marginLeft: 8,
-                  padding: "6px 10px",
-                  borderRadius: 5,
-                  border: "1px solid #dce6f0",
-                  width: 220,
-                }}
-              />
-            </label>
-          </div>
+          <label className="field field-search">
+            <span>Buscar producto:</span>
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Nombre del producto"
+            />
+          </label>
 
-          <button
-            className="clear-button"
-            onClick={clearFilters}
-            style={{ padding: "6px 10px", fontSize: 14 }}
-          >
-            Limpiar filtros
-          </button>
+          <div className="filters-right">
+            <button className="btn btn-outline" onClick={clearFilters}>
+              Limpiar filtros
+            </button>
+          </div>
         </div>
 
-        {/* Tabla */}
+        {/* tabla */}
         <div className="table-wrapper">
           <table className="stock-table">
             <thead>
@@ -296,60 +253,37 @@ export default function GeneralStock() {
                 <th>STOCK MÍNIMO</th>
                 <th>STOCK MÁXIMO</th>
                 <th>CATEGORÍA</th>
-                <th style={{ width: 120 }}>ACCIÓN</th>
+                <th>ACCIÓN</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr>
-                  <td colSpan={8} className="loading">
-                    Cargando…
-                  </td>
-                </tr>
+                <tr><td colSpan={8} className="loading">Cargando…</td></tr>
               ) : filtered.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="loading">
-                    Sin resultados
-                  </td>
-                </tr>
+                <tr><td colSpan={8} className="loading">Sin resultados</td></tr>
               ) : (
                 filtered.map((r) => {
                   const qty = Number(r.product_quantity || 0);
                   const min = Number(r.min_stock || 0);
                   const max = Number(r.max_stock || 0);
-
                   const badgeClass =
                     qty <= min ? "low-stock" : max && qty >= max ? "high-stock" : "";
-
-                  const qtyCellStyle =
-                    badgeClass === "low-stock"
-                      ? { background: "#ffeaea", color: "#b00020", fontWeight: 600 }
-                      : badgeClass === "high-stock"
-                      ? { background: "#eaffea", color: "#0a7a0a", fontWeight: 600 }
-                      : null;
 
                   return (
                     <tr key={`${r.id || r.product_cod || r.product_name}`}>
                       <td>{r.product_cod || r.product_id || "-"}</td>
                       <td>{r.product_name}</td>
-                      <td
-                        className={badgeClass}
-                        style={qtyCellStyle}
-                        title={`Min: ${min || 0} • Max: ${max || 0}`}
-                      >
-                        {fmtInt(qty)}
-                      </td>
+                      <td className={badgeClass}>{fmtInt(qty)}</td>
                       <td>{fmtDec(r.product_total_weight)}</td>
                       <td>{fmtInt(min)}</td>
                       <td>{fmtInt(max)}</td>
                       <td>
                         {r.product_general_category ||
                           r.category_name ||
-                          r.product_category ||
-                          "-"}
+                          r.product_category || "-"}
                       </td>
                       <td>
-                        <button className="clear-button" onClick={() => openAdjust(r)}>
+                        <button className="btn btn-primary" onClick={() => openAdjust(r)}>
                           Ajustar
                         </button>
                       </td>
@@ -362,7 +296,7 @@ export default function GeneralStock() {
         </div>
       </div>
 
-      {/* Panel lateral: corrección total */}
+      {/* pop-up ajuste */}
       {open && (
         <div
           onClick={closeAdjust}
@@ -376,67 +310,50 @@ export default function GeneralStock() {
           }}
         >
           <div
+            className="adjust-drawer"
             onClick={(e) => e.stopPropagation()}
             style={{
-              width: 380,
+              width: 420,                // un poco más ancho
               maxWidth: "92vw",
               background: "#fff",
               height: "100%",
-              padding: 18,
+              padding: 20,
               boxShadow: "-8px 0 26px rgba(0,0,0,.15)",
               display: "flex",
               flexDirection: "column",
-              gap: 12,
+              gap: 14,
             }}
           >
-            <div
-              style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
-            >
-              <h3 style={{ margin: 0 }}>Ajustes manuales</h3>
-              <button className="clear-button" onClick={closeAdjust}>
-                ✕
-              </button>
+            <div className="drawer-header">
+              <h3>Ajustes manuales</h3>
+              <button className="btn btn-outline" onClick={closeAdjust}>✕</button>
             </div>
 
-            <div>
-              <div style={{ fontWeight: 700 }}>{rowSel?.product_name}</div>
-              <div style={{ color: "#6b7d90", fontSize: 13, marginTop: 4 }}>
-                Cód: <b>{rowSel?.product_cod || rowSel?.product_id || "-"}</b> ·{" "}
-                Cant: <b>{fmtInt(rowSel?.product_quantity)}</b> · Kg:{" "}
-                <b>{fmtDec(rowSel?.product_total_weight)}</b>
+            <div className="drawer-product">
+              <div className="name">{rowSel?.product_name}</div>
+              <div className="meta">
+                Cód: <b>{rowSel?.product_cod || rowSel?.product_id || "-"}</b> ·
+                Cant: <b>{fmtInt(rowSel?.product_quantity)}</b> · Kg: <b>{fmtDec(rowSel?.product_total_weight)}</b>
               </div>
             </div>
 
-            <form
-              onSubmit={submitAdjust}
-              style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 6 }}
-            >
-              <label style={{ display: "block" }}>
-                Unidades totales (corrección)
+            <form className="drawer-form" onSubmit={submitAdjust}>
+              <label className="frm-field">
+                <span>Unidades totales (corrección)</span>
                 <input
+                  className="input-lg"
                   type="number"
+                  inputMode="numeric"
                   min="0"
                   max={Number(rowSel?.product_quantity || 0)}
                   step="1"
                   value={form.final_quantity}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, final_quantity: e.target.value }))
-                  }
-                  style={{
-                    width: "100%",
-                    padding: "8px 10px",
-                    border: "1px solid #dce6f0",
-                    borderRadius: 8,
-                    marginTop: 6,
-                  }}
+                  onChange={(e) => setForm((f) => ({ ...f, final_quantity: e.target.value }))}
                 />
-                <small style={{ color: "#6b7d90" }}>
-                  Ingresá el <b>total final</b> que querés ver en stock. (Por ahora solo
-                  permite disminuir)
-                </small>
+                <small>Ingresá el <b>total final</b> que querés ver en stock. (Solo permite disminuir)</small>
               </label>
 
-              <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
+              <label className="frm-check">
                 <input
                   type="checkbox"
                   checked={touchWeight}
@@ -445,46 +362,23 @@ export default function GeneralStock() {
                 También corregir KG total
               </label>
 
-              <label style={{ opacity: touchWeight ? 1 : 0.6 }}>
-                KG totales (corrección)
+              <label className={`frm-field ${!touchWeight ? "is-disabled" : ""}`}>
+                <span>KG totales (corrección)</span>
                 <input
+                  className="input-lg"
                   type="number"
+                  inputMode="decimal"
                   step="0.01"
                   disabled={!touchWeight}
                   value={form.product_total_weight}
-                  onChange={(e) =>
-                    setForm((f) => ({
-                      ...f,
-                      product_total_weight: e.target.value,
-                    }))
-                  }
-                  style={{
-                    width: "100%",
-                    padding: "8px 10px",
-                    border: "1px solid #dce6f0",
-                    borderRadius: 8,
-                    marginTop: 6,
-                    background: touchWeight ? "#fff" : "#f4f6f9",
-                  }}
+                  onChange={(e) => setForm((f) => ({ ...f, product_total_weight: e.target.value }))}
                 />
-                <small style={{ color: "#6b7d90" }}>
-                  Ingresá el <b>total final</b> de kilos para el producto.
-                </small>
+                <small>Ingresá el <b>total final</b> de kilos para el producto.</small>
               </label>
 
-              <div
-                style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 6 }}
-              >
-                <button type="button" className="clear-button" onClick={closeAdjust}>
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="clear-button"
-                  style={{ backgroundColor: "#1677ff", color: "#fff", borderColor: "#1677ff" }}
-                >
-                  Guardar cambios
-                </button>
+              <div className="drawer-actions">
+                <button type="button" className="btn btn-outline" onClick={closeAdjust}>Cancelar</button>
+                <button type="submit" className="btn btn-primary">Guardar cambios</button>
               </div>
             </form>
           </div>

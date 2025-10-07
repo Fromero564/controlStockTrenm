@@ -1,97 +1,277 @@
+:root {
+  --primary: #1677ff;
+  --primary-600: #125edc;
+  --border: #dce6f0;
+  --text: #1e2a38;
+}
+
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    /* background-color: #f9fbff; */
-    background-color: #fff;
-  }
-  
-  .stock-container {
-    max-width: 800px;
-    margin: 40px auto;
-    padding: 0 20px;
-  }
-  
-  .low-stock {
-  background-color: #ffe5e5;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: #fff;
+}
+
+.stock-container {
+  max-width: 1200px;
+  margin: 60px auto;
+  padding: 0 32px;
+}
+
+/* ---------- Título ---------- */
+.stock-title {
+  font-size: 36px;
+  font-weight: 800;
+  color: var(--text);
+  margin: 0 0 22px 0;
+  display: inline-block;
+  padding-bottom: 8px;
+  border-bottom: 3px solid var(--primary);
+}
+
+/* ---------- Filtros ---------- */
+.filters {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.4fr auto;
+  gap: 14px;
+  align-items: end;
+  margin: 10px 0 18px;
+}
+
+.field {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 8px;
+}
+
+.field>span {
+  font-weight: 700;
+  color: #333;
+  font-size: 14px;
+}
+
+.field select,
+.field input {
+  padding: 10px 12px;
+  font-size: 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  outline: none;
+  background: #fff;
+}
+
+.field select:focus,
+.field input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(22, 119, 255, .15);
+}
+
+.filters-right {
+  justify-self: end;
+}
+
+/* ---------- Botones ---------- */
+.btn {
+  border-radius: 12px;
+  font-weight: 700;
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: .2s all;
+}
+
+.btn-outline {
+  background: #eaf2ff;
+  color: var(--primary);
+  border: 1px solid var(--primary);
+}
+
+.btn-outline:hover {
+  background: var(--primary);
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: #fff;
+  border: 1px solid var(--primary);
+}
+
+.btn-primary:hover {
+  background: var(--primary-600);
+  border-color: var(--primary-600);
+  transform: scale(1.03);
+}
+
+/* ---------- Tabla ---------- */
+.table-wrapper {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, .05);
+}
+
+.stock-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.stock-table thead {
+  background: #f3f7fd;
+  color: #3a3a3a;
+  font-size: 14px;
+}
+
+.stock-table th,
+.stock-table td {
+  padding: 14px;
+  border-bottom: 1px solid #e5ecf5;
+}
+
+.stock-table tr:last-child td {
+  border-bottom: none;
+}
+
+.stock-table tbody tr:hover {
+  background: #f8faff;
+  transition: background-color .2s;
+}
+
+.low-stock {
+  background: #ffe5e5;
   color: #b10000;
-  font-weight: bold;
+  font-weight: 700;
 }
 
 .high-stock {
-  background-color: #e5ffe5;
+  background: #e5ffe5;
   color: #006b00;
-  font-weight: bold;
+  font-weight: 700;
 }
 
-.filters {
+.loading {
+  text-align: center;
+  color: #777;
+  font-size: 16px;
+  padding: 20px;
+}
+
+/* ---------- Pop-up: estilos coherentes ---------- */
+.adjust-drawer h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 800;
+  color: #111;
+}
+
+.drawer-header {
   display: flex;
-  gap: 1rem;
-  margin-bottom: 1rem;
+  align-items: center;
+  justify-content: space-between;
 }
 
-.filters label {
-  font-weight: bold;
+.drawer-product .name {
+  font-weight: 800;
 }
 
-.filters select {
-  margin-left: 0.5rem;
-  padding: 0.2rem 0.5rem;
-}
-.clear-button {
-  background-color: #ccc;
-  border: none;
-  padding: 0.4rem 0.8rem;
-  cursor: pointer;
-  border-radius: 5px;
-  font-weight: bold;
-  transition: background-color 0.3s ease;
+.drawer-product .meta {
+  color: #6b7d90;
+  font-size: 13px;
+  margin-top: 4px;
 }
 
-.clear-button:hover {
-  background-color: #aaa;
+.drawer-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 6px;
 }
 
-  .stock-title {
-    font-size: 32px;
-    font-weight: 700;
-    color: #4a4a4a;
-    margin-bottom: 20px;
+.frm-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.frm-field>span {
+  font-weight: 700;
+  color: #333;
+  font-size: 14px;
+}
+
+.frm-field small {
+  color: #6b7d90;
+}
+
+.input-lg {
+  width: 100%;
+  padding: 12px 14px;
+  /* más grande */
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  /* mismo radio que botones */
+  font-size: 16px;
+  /* más grande */
+  outline: none;
+  background: #fff;
+}
+
+.input-lg:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(22, 119, 255, .15);
+}
+
+.frm-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+}
+
+.is-disabled .input-lg {
+  background: #f4f6f9;
+}
+
+/* Quitar spinners de number SOLO en el panel */
+.adjust-drawer input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+.adjust-drawer input[type="number"]::-webkit-outer-spin-button,
+.adjust-drawer input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.drawer-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width:1024px) {
+  .filters {
+    grid-template-columns: 1fr 1fr;
   }
-  
-  .table-wrapper {
-    border: 1px solid #dce6f0;
-    border-radius: 8px;
-    overflow: hidden;
+
+  .filters-right {
+    grid-column: 1 / -1;
+    justify-self: start;
   }
-  
-  .stock-table {
+}
+
+@media (max-width:620px) {
+  .filters {
+    grid-template-columns: 1fr;
+  }
+
+  .filters-right {
+    justify-self: stretch;
+  }
+
+  .btn-outline {
     width: 100%;
-    border-collapse: collapse;
-    text-align: left;
   }
-  
-  .stock-table thead {
-    background-color: #f3f7fd;
-    color: #3a3a3a;
-    font-size: 14px;
-  }
-  
-  .stock-table th, .stock-table td {
-    padding: 14px;
-    border-bottom: 1px solid #e5ecf5;
-  }
-  
-  .stock-table tr:last-child td {
-    border-bottom: none;
-  }
-  
-  .stock-table tbody tr:hover {
-    background-color: #f8faff;
-    transition: background-color 0.2s;
-  }
-  
-  .loading {
-    text-align: center;
-    color: #777;
-    font-size: 16px;
-  }
-  
+}

@@ -100,7 +100,7 @@ const ProductionProcess = () => {
             label: prod.product_name,
           }))
         );
-      } catch {}
+      } catch { }
     };
     fetchProductos();
   }, [API_URL]);
@@ -116,7 +116,7 @@ const ProductionProcess = () => {
           peso: item.tare_weight,
         }));
         setTares(tarasConIndex);
-      } catch {}
+      } catch { }
     };
     fetchTares();
   }, [API_URL]);
@@ -134,10 +134,10 @@ const ProductionProcess = () => {
               const detalleData = await resDetalle.json();
               const piezasAgrupadas = Array.isArray(detalleData)
                 ? detalleData.reduce((acc, d) => {
-                    const tipo = d.type?.trim();
-                    acc[tipo] = (acc[tipo] || 0) + Number(d.quantity || 0);
-                    return acc;
-                  }, {})
+                  const tipo = d.type?.trim();
+                  acc[tipo] = (acc[tipo] || 0) + Number(d.quantity || 0);
+                  return acc;
+                }, {})
                 : {};
               return { ...comp, piezasAgrupadas: piezasAgrupadas || {} };
             } catch {
@@ -146,7 +146,7 @@ const ProductionProcess = () => {
           })
         );
         setComprobantesDisponibles(sinProcesoConTipo);
-      } catch {}
+      } catch { }
     };
     fetchComprobantesSinProcesoConTipo();
   }, [API_URL]);
@@ -224,6 +224,20 @@ const ProductionProcess = () => {
     });
     return acumulado;
   };
+  // Suma de CORTES DE ENTRADA = Remitos + subproducción de cortes principales
+  const cortesEntradaConSubproduccion = () => {
+    // Base: lo que viene de los comprobantes
+    const base = cortesTotales(); // { [tipo]: cantidad }
+    // Extra: lo que agregaste como subproducción (productosSinRemito)
+    (productosSinRemito || []).forEach((p) => {
+      const nombre = (p?.producto || "").trim();
+      const cant = Number(p?.cantidad || 0);
+      if (!nombre || !cant) return;
+      base[nombre] = (base[nombre] || 0) + cant;
+    });
+    return base;
+  };
+
 
   const subproductosTotales = () => {
     const acumulado = {};
@@ -372,85 +386,100 @@ const ProductionProcess = () => {
     return Number(subEsperada) + Number(delRemito);
   };
 
-  const handleGuardar = async () => {
-    if (cortesAgregados.length === 0 && productosSinRemito.length === 0) {
-      Swal.fire("Aviso", "No hay datos para guardar.", "info");
-      return;
-    }
+const handleGuardar = async () => {
+  if (cortesAgregados.length === 0 && productosSinRemito.length === 0) {
+    Swal.fire("Aviso", "No hay datos para guardar.", "info");
+    return;
+  }
 
-    const agregadoPorTipo = (cortesAgregados || []).reduce((acc, c) => {
-      const t = (c.tipo || "").trim();
-      acc[t] = (acc[t] || 0) + Number(c.cantidad || 0);
-      return acc;
-    }, {});
+  // --- Validación de límites (igual que antes)
+  const agregadoPorTipo = (cortesAgregados || []).reduce((acc, c) => {
+    const t = (c.tipo || "").trim();
+    acc[t] = (acc[t] || 0) + Number(c.cantidad || 0);
+    return acc;
+  }, {});
 
-    const violaciones = [];
-    for (const [tipo, cantAgregada] of Object.entries(agregadoPorTipo)) {
-      const permitido = getPermitidoPorTipo(tipo);
-      if (cantAgregada > permitido) {
-        violaciones.push({
-          tipo,
-          agregado: cantAgregada,
-          permitido,
-          exceso: cantAgregada - permitido,
-        });
-      }
-    }
-
-    if (violaciones.length) {
-      const detalle = violaciones
-        .map(
-          (v) =>
-            `• ${v.tipo}: agregado ${v.agregado}, permitido ${v.permitido} (exceso ${v.exceso})`
-        )
-        .join("\n");
-      Swal.fire(
-        "No se puede guardar",
-        `Hay cortes que superan lo permitido por los comprobantes/subproducción actual:\n\n${detalle}`,
-        "error"
-      );
-      return;
-    }
-
-    try {
-      let bill_ids = comprobantesAgregados.map((comp) => Number(comp.id));
-      if (bill_ids.length === 0 && productosSinRemito.length > 0) {
-        bill_ids = [0];
-      }
-      const cortes = cortesAgregados.map((corte) => ({
-        type: corte.tipo?.trim(),
-        average: Number(corte.promedio),
-        quantity: Number(corte.cantidad),
-        gross_weight: Number(corte.pesoBruto),
-        tares: Number(corte.tara),
-        net_weight: Number((corte.pesoBruto - corte.tara).toFixed(2)),
-      }));
-      const response = await fetch(`${API_URL}/uploadProcessMeat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cortes, bill_ids }),
+  const violaciones = [];
+  for (const [tipo, cantAgregada] of Object.entries(agregadoPorTipo)) {
+    const permitido = getPermitidoPorTipo(tipo);
+    if (cantAgregada > permitido) {
+      violaciones.push({
+        tipo,
+        agregado: cantAgregada,
+        permitido,
+        exceso: cantAgregada - permitido,
       });
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Error al guardar el proceso productivo.");
-      }
-      Swal.fire("Éxito", "Datos guardados correctamente.", "success");
-
-      // Limpiamos estados
-      setCortesAgregados([]);
-      setProductosSinRemito([]);
-      setComprobantesAgregados([]);
-
-      // ---------- PERSISTENCIA: Limpiar localStorage al guardar ----------
-      localStorage.removeItem(LS_KEYS.CORTES);
-      localStorage.removeItem(LS_KEYS.SIN_REMITO);
-      localStorage.removeItem(LS_KEYS.COMPROBANTES);
-
-      navigate("/operator-panel");
-    } catch (err) {
-      Swal.fire("Error", err.message || "Ocurrió un error al guardar.", "error");
     }
-  };
+  }
+
+  if (violaciones.length) {
+    const detalle = violaciones
+      .map(
+        (v) =>
+          `• ${v.tipo}: agregado ${v.agregado}, permitido ${v.permitido} (exceso ${v.exceso})`
+      )
+      .join("\n");
+    Swal.fire(
+      "No se puede guardar",
+      `Hay cortes que superan lo permitido por los comprobantes/subproducción actual:\n\n${detalle}`,
+      "error"
+    );
+    return;
+  }
+
+  try {
+    // --- bill_ids igual que antes (si no hay comprobantes pero sí subproducción, usamos [0])
+    let bill_ids = comprobantesAgregados.map((comp) => Number(comp.id));
+    if (bill_ids.length === 0 && productosSinRemito.length > 0) {
+      bill_ids = [0];
+    }
+
+    // --- cortes (igual que antes)
+    const cortes = cortesAgregados.map((corte) => ({
+      type: corte.tipo?.trim(),
+      average: Number(corte.promedio),
+      quantity: Number(corte.cantidad),
+      gross_weight: Number(corte.pesoBruto),
+      tares: Number(corte.tara),
+      net_weight: Number((corte.pesoBruto - corte.tara).toFixed(2)),
+    }));
+
+    // --- NUEVO: subproducción para la tabla productionprocess_subproduction
+    const subproduction = (Array.isArray(productosSinRemito) ? productosSinRemito : [])
+      .map((p) => ({
+        cut_name: (p.producto || "").trim(),      // nombre del corte
+        quantity: Number(p.cantidad || 0),        // cantidad agregada
+      }))
+      .filter((r) => r.cut_name && r.quantity > 0);
+
+    const response = await fetch(`${API_URL}/uploadProcessMeat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      // 👇 ahora enviamos también subproduction
+      body: JSON.stringify({ cortes, bill_ids, subproduction }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || "Error al guardar el proceso productivo.");
+    }
+
+    Swal.fire("Éxito", "Datos guardados correctamente.", "success");
+
+    // Limpiar estados + localStorage (igual que antes)
+    setCortesAgregados([]);
+    setProductosSinRemito([]);
+    setComprobantesAgregados([]);
+    localStorage.removeItem(LS_KEYS.CORTES);
+    localStorage.removeItem(LS_KEYS.SIN_REMITO);
+    localStorage.removeItem(LS_KEYS.COMPROBANTES);
+
+    navigate("/operator-panel");
+  } catch (err) {
+    Swal.fire("Error", err.message || "Ocurrió un error al guardar.", "error");
+  }
+};
+
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -593,16 +622,22 @@ const ProductionProcess = () => {
                   );
                 })}
               </div>
+
               <div className="pp-totales-box">
                 <div style={{ marginBottom: 8 }}>🟦 <b>Cortes totales sumados:</b></div>
-                <ul>
-                  {cortesAgrupados.map(([tipo, cantidad]) => (
-                    <li key={tipo}>
-                      <span className="pp-tag-corte">{tipo}</span> — {cantidad} unidades
-                    </li>
-                  ))}
-                </ul>
+                {Object.entries(cortesEntradaConSubproduccion()).length ? (
+                  <ul>
+                    {Object.entries(cortesEntradaConSubproduccion()).map(([tipo, cantidad]) => (
+                      <li key={tipo}>
+                        <span className="pp-tag-corte">{tipo}</span> — {cantidad} unidades
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <div style={{ color: "#666" }}>Sin piezas cargadas.</div>
+                )}
               </div>
+
               <div className="pp-totales-box">
                 <div style={{ marginBottom: 8 }}>🟩 <b>Subproductos totales sumados:</b></div>
                 <ul>
@@ -612,7 +647,7 @@ const ProductionProcess = () => {
                       {" — "}
                       {cantidadTotal} {labelUnidad(unit)}
                       <span style={{ fontSize: "0.95em", color: "#444", marginLeft: 4 }}>
-                        ({cantidadPorUnidad} {labelUnidad(unit)} por pieza) 
+                        ({cantidadPorUnidad} {labelUnidad(unit)} por pieza)
                       </span>
                     </li>
                   ))}

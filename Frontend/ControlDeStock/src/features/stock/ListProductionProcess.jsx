@@ -91,7 +91,7 @@ const ListProductionProcess = () => {
               const res = await fetch(`${API_URL}/find-remit/${billId}`);
               if (!res.ok) return [billId, null];
               const remit = await res.json();
-              // Cambiá "supplier" si tu campo se llama distinto
+   
               const supplier = remit?.supplier ?? null;
               return [billId, supplier];
             } catch {
@@ -308,7 +308,7 @@ const ListProductionProcess = () => {
             <th>Número de proceso</th>
             <th>Fecha</th>
             <th>Comprobantes asociados</th>
-            <th>Cliente(s)</th>
+            <th>Proveedor(es)</th>
             <th>Acciones</th>
           </tr>
         </thead>

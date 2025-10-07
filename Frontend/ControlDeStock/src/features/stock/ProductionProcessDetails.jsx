@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Navbar from "../../components/Navbar";
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -29,17 +29,34 @@ const cell = { textAlign: "left", padding: "10px 12px" };
 const ProductionProcessDetails = () => {
   const { processNumber } = useParams();
   const navigate = useNavigate();
-  const [processes, setProcesses] = useState([]);
-  const [bills, setBills] = useState([]);
-  const [expectedDetails, setExpectedDetails] = useState([]);
-  const [expectedSubs, setExpectedSubs] = useState([]);
+
+  // ---- estados base ----
+  const [processes, setProcesses] = useState([]);         // filas reales del proceso (salida)
+  const [bills, setBills] = useState([]);                 // bill_ids asociados
+  const [expectedDetails, setExpectedDetails] = useState([]); // detalles esperados (entrada) ETIQUETADOS con bill_id
   const [loading, setLoading] = useState(true);
+
+  // ---- NUEVO: subproducción guardada para este proceso ----
+  const [subproductionRows, setSubproductionRows] = useState([]);
+  const subproductionGrouped = useMemo(() => {
+    const acc = {};
+    (subproductionRows || []).forEach((r) => {
+      const name = String(r.cut_name || r.nombre || r.type || "").trim();
+      const qty = Number(r.quantity ?? r.cantidad ?? 0);
+      if (!name || !qty) return;
+      acc[name] = (acc[name] || 0) + qty;
+    });
+    return acc;
+  }, [subproductionRows]);
+
+  // ---- filtro por comprobante ----
+  const [selectedBill, setSelectedBill] = useState("ALL");
 
   useEffect(() => {
     const fetchDetails = async () => {
       setLoading(true);
       try {
-        // Productos reales del proceso (panel derecho)
+        // 1) Productos reales del proceso
         const res = await fetch(`${API_URL}/all-process-products`);
         const data = await res.json();
         const filtered = data.filter(
@@ -47,7 +64,7 @@ const ProductionProcessDetails = () => {
         );
         setProcesses(filtered);
 
-        // Bill IDs asociados al proceso
+        // 2) Bill IDs asociados al proceso
         const resBills = await fetch(`${API_URL}/all-process-number`);
         const billsData = await resBills.json();
         const bill_ids = billsData
@@ -55,85 +72,84 @@ const ProductionProcessDetails = () => {
           .map((row) => row.bill_id);
         setBills(bill_ids);
 
-        // Detalles esperados desde remito
+        // 3) Detalles esperados desde remitos (ETIQUETADOS con bill_id)
         let allExpected = [];
         for (const bill_id of bill_ids) {
           const resDetails = await fetch(
             `${API_URL}/bill-details-readonly/${bill_id}`
           );
           const details = await resDetails.json();
-          allExpected = allExpected.concat(Array.isArray(details) ? details : []);
+          const tagged = (Array.isArray(details) ? details : []).map((d) => ({
+            ...d,
+            bill_id,
+          }));
+          allExpected = allExpected.concat(tagged);
         }
         setExpectedDetails(allExpected);
 
-        // Subproductos esperados/proyectados
-        const group = {};
-        allExpected.forEach((det) => {
-          if (!group[det.type]) group[det.type] = 0;
-          group[det.type] += Number(det.quantity);
-        });
-
-        let subResults = [];
-        for (const type of Object.keys(group)) {
-          const cantidad = group[type];
-          const resSubs = await fetch(
-            `${API_URL}/subproducts-by-name/${encodeURIComponent(type)}`
+        // 4) NUEVO: Subproducción persistida para este proceso
+        try {
+          const resSub = await fetch(
+            `${API_URL}/productionprocess-subproduction?process_number=${processNumber}`
           );
-          const subs = await resSubs.json();
-          subs.forEach((sub) => {
-            subResults.push({
-              nombre: sub.nombre,
-              cantidadTotal: sub.cantidadPorUnidad * cantidad,
-              cantidadPorUnidad: sub.cantidadPorUnidad,
-              productoOrigen: type,
-            });
-          });
+          if (resSub.ok) {
+            const rows = await resSub.json();
+            setSubproductionRows(Array.isArray(rows) ? rows : []);
+          } else {
+            setSubproductionRows([]);
+          }
+        } catch {
+          setSubproductionRows([]);
         }
-
-        const subsAgrupados = {};
-        subResults.forEach((sub) => {
-          if (!subsAgrupados[sub.nombre])
-            subsAgrupados[sub.nombre] = {
-              cantidadTotal: 0,
-              cantidadPorUnidad: sub.cantidadPorUnidad,
-              origenes: [],
-            };
-          subsAgrupados[sub.nombre].cantidadTotal += sub.cantidadTotal;
-          subsAgrupados[sub.nombre].origenes.push(sub.productoOrigen);
-        });
-        setExpectedSubs(subsAgrupados);
       } catch (err) {
         setProcesses([]);
         setBills([]);
         setExpectedDetails([]);
-        setExpectedSubs([]);
+        setSubproductionRows([]);
       }
       setLoading(false);
     };
     fetchDetails();
   }, [processNumber]);
 
+  // ---- helpers de cálculo (solo ENTRADA) ----
+  const filteredExpected = useMemo(() => {
+    if (selectedBill === "ALL") return expectedDetails;
+    return expectedDetails.filter((d) => String(d.bill_id) === String(selectedBill));
+  }, [expectedDetails, selectedBill]);
+
   // Agrupar lo esperado por tipo (usa weight como peso neto esperado)
-  const expectedByType = expectedDetails.reduce((acc, det) => {
-    if (!acc[det.type]) acc[det.type] = { quantity: 0, totalWeight: 0 };
-    acc[det.type].quantity += Number(det.quantity);
-    acc[det.type].totalWeight += Number(det.weight || 0);
-    return acc;
-  }, {});
+  const expectedByType = useMemo(() => {
+    return filteredExpected.reduce((acc, det) => {
+      if (!acc[det.type]) acc[det.type] = { quantity: 0, totalWeight: 0 };
+      acc[det.type].quantity += Number(det.quantity);
+      acc[det.type].totalWeight += Number(det.weight || 0);
+      return acc;
+    }, {});
+  }, [filteredExpected]);
 
-  // Agrupar lo real por tipo
-  const realByType = processes.reduce((acc, proc) => {
-    if (!acc[proc.type])
-      acc[proc.type] = { quantity: 0, totalWeight: 0, netWeight: 0 };
-    acc[proc.type].quantity += Number(proc.quantity);
-    acc[proc.type].totalWeight += Number(proc.gross_weight || 0);
-    acc[proc.type].netWeight += Number(proc.net_weight || 0);
-    return acc;
-  }, {});
+  // ---- salida real por tipo (no se filtra por bill) ----
+  const realByType = useMemo(() => {
+    return processes.reduce((acc, proc) => {
+      if (!acc[proc.type])
+        acc[proc.type] = { quantity: 0, totalWeight: 0, netWeight: 0 };
+      acc[proc.type].quantity += Number(proc.quantity);
+      acc[proc.type].totalWeight += Number(proc.gross_weight || 0);
+      acc[proc.type].netWeight += Number(proc.net_weight || 0);
+      return acc;
+    }, {});
+  }, [processes]);
 
-  // Conjunto de todos los tipos para ayudar a pintar estados
-  const allTypes = Array.from(
-    new Set([...Object.keys(expectedByType), ...Object.keys(realByType)])
+  // Conjunto de todos los tipos para pintar estados (entrada filtrada + salida)
+  const allTypes = useMemo(
+    () =>
+      Array.from(
+        new Set([
+          ...Object.keys(expectedByType),
+          ...Object.keys(realByType),
+        ])
+      ),
+    [expectedByType, realByType]
   );
 
   const statusForType = (type) => {
@@ -148,7 +164,10 @@ const ProductionProcessDetails = () => {
     if (exp && real) {
       const qtyMatch = Number(exp.quantity) === Number(real.quantity);
       const diff = Math.abs((real.netWeight || 0) - (exp.totalWeight || 0));
-      const tol = Math.max(WEIGHT_TOLERANCE_KG, (exp.totalWeight || 0) * WEIGHT_TOLERANCE_PCT);
+      const tol = Math.max(
+        WEIGHT_TOLERANCE_KG,
+        (exp.totalWeight || 0) * WEIGHT_TOLERANCE_PCT
+      );
       const weightMatch = diff <= tol;
 
       if (qtyMatch && weightMatch) {
@@ -199,11 +218,90 @@ const ProductionProcessDetails = () => {
         </button>
       </div>
 
-      <h2 style={{ margin: "0 40px 30px" }}>
+      <h2 style={{ margin: "0 40px 18px" }}>
         Detalles del proceso #{processNumber}
       </h2>
 
-      {/* Contenedor de tarjetas con mejores márgenes/espacio */}
+      {/* 🔶 NUEVO: recuadro de Ingreso por subproducción */}
+      {Object.keys(subproductionGrouped).length > 0 && (
+        <div
+          style={{
+            margin: "0 40px 18px",
+            padding: "14px 16px",
+            border: "1px solid #ffda9e",
+            background: "#fff7e6",
+            borderRadius: 12,
+            boxShadow: "0 2px 6px rgba(0,0,0,0.06)",
+          }}
+        >
+          <div style={{ fontWeight: 800, marginBottom: 8, color: "#8a5a00" }}>
+            Ingreso por subproducción
+          </div>
+          <ul style={{ margin: 0, paddingLeft: 18 }}>
+            {Object.entries(subproductionGrouped).map(([name, qty]) => (
+              <li key={name} style={{ marginBottom: 4 }}>
+                <span
+                  style={{
+                    background: "#ffe6bf",
+                    borderRadius: 8,
+                    padding: "2px 8px",
+                    marginRight: 6,
+                    color: "#8a5a00",
+                    fontWeight: 600,
+                    display: "inline-block",
+                    minWidth: 10,
+                  }}
+                >
+                  {name}
+                </span>
+                <b style={{ color: "#333" }}>{qty}</b> unidad{qty > 1 ? "es" : ""}
+              </li>
+            ))}
+          </ul>
+          <div style={{ marginTop: 6, fontSize: 12, color: "#8a5a00" }}>
+            * Estos cortes ingresaron sin remito y se registraron como subproducción del proceso.
+          </div>
+        </div>
+      )}
+
+      {/* Filtro por comprobante */}
+      {bills.length > 0 && (
+        <div
+          style={{
+            margin: "0 40px 24px",
+            display: "flex",
+            gap: 12,
+            alignItems: "center",
+            flexWrap: "wrap",
+          }}
+        >
+          <label htmlFor="billFilter" style={{ fontWeight: 600 }}>
+            Filtrar ingreso por comprobante:
+          </label>
+          <select
+            id="billFilter"
+            value={selectedBill}
+            onChange={(e) => setSelectedBill(e.target.value)}
+            style={{
+              minWidth: 260,
+              padding: "8px 10px",
+              borderRadius: 10,
+              border: "1px solid #bcd7f7",
+              background: "#f7fbff",
+              outline: "none",
+            }}
+          >
+            <option value="ALL">Todos los comprobantes</option>
+            {bills.map((b) => (
+              <option key={b} value={b}>
+                {b}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {/* Contenedor de tarjetas */}
       <div
         style={{
           display: "flex",
@@ -213,7 +311,7 @@ const ProductionProcessDetails = () => {
           padding: "0 40px 30px",
         }}
       >
-        {/* Panel: Ingreso */}
+        {/* Panel: Ingreso (ESPERADO, filtrado por bill) */}
         <div
           style={{
             flex: 1,
@@ -230,14 +328,24 @@ const ProductionProcessDetails = () => {
               borderBottom: "1px solid #aad2f5",
               paddingBottom: 8,
               marginTop: 0,
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: 10,
+              flexWrap: "wrap",
             }}
           >
-            Ingreso al proceso productivo
+            <span>Ingreso al proceso productivo</span>
+            {selectedBill !== "ALL" && (
+              <span style={{ fontSize: 12, color: "#337ab7" }}>
+                Mostrando comprobante: <b>{selectedBill}</b>
+              </span>
+            )}
           </h3>
 
           {Object.keys(expectedByType).length === 0 ? (
             <p style={{ margin: "12px 0 0" }}>
-              No hay información esperada asociada a este proceso.
+              No hay información esperada asociada a este filtro.
             </p>
           ) : (
             <table style={tableBase}>
@@ -290,39 +398,9 @@ const ProductionProcessDetails = () => {
               </tbody>
             </table>
           )}
-
-          {/* Subproductos esperados */}
-          {Object.keys(expectedSubs).length > 0 && (
-            <div style={{ marginTop: 28 }}>
-              <h4 style={{ margin: "0 0 8px" }}>Subproductos esperados</h4>
-              <table style={tableBase}>
-                <thead>
-                  <tr style={{ background: "#e9f3ff" }}>
-                    <th style={cell}>Subproducto</th>
-                    <th style={cell}>Cantidad total</th>
-                    <th style={cell}>Origen</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {Object.entries(expectedSubs).map(([nombre, data], idx) => (
-                    <tr
-                      key={nombre}
-                      style={{
-                        background: idx % 2 ? "#fff" : "#f9fbff",
-                      }}
-                    >
-                      <td style={cell}>{nombre}</td>
-                      <td style={cell}>{data.cantidadTotal} unidades</td>
-                      <td style={cell}>{data.origenes.join(", ")}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
         </div>
 
-        {/* Panel: Resultado */}
+        {/* Panel: Resultado (REAL, no se filtra por bill) */}
         <div
           style={{
             flex: 1,
@@ -400,7 +478,8 @@ const ProductionProcessDetails = () => {
                     </tr>
                   );
                 })}
-                {/* Filas "fantasma" para mostrar faltantes también en el panel derecho */}
+
+                {/* Mostrar faltantes también del lado derecho */}
                 {allTypes
                   .filter((t) => expectedByType[t] && !realByType[t])
                   .map((t) => (
