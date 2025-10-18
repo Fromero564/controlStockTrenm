@@ -1,3 +1,4 @@
+
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../../components/Navbar";
@@ -48,7 +49,7 @@ export default function BulkPriceListUpdate() {
     return arr;
   }, [listsRaw]);
 
-  // 🔎 mapa rápido número -> nombre para usar en subtítulos de las tablas
+  // mapa rápido número -> nombre
   const nameByNumber = useMemo(() => {
     const m = {};
     for (const o of listOptions) m[o.number] = o.name;
@@ -67,7 +68,7 @@ export default function BulkPriceListUpdate() {
     );
   };
 
-  // fetch productos de las listas elegidas (para vista previa)
+  // fetch productos de las listas elegidas
   useEffect(() => {
     (async () => {
       const need = selected.filter(n => !productMaps[n]);
@@ -107,7 +108,7 @@ export default function BulkPriceListUpdate() {
         rows.push({
           list_number: ln,
           product_id: p.product_id ?? null,
-          product_name: p.product_name,
+          product_name: p.product_name || `ID ${p.product_id ?? ""}`,
           unidad: p.unidad_venta || "",
           old: { costo, sin, con },
           neu: { costo: newCosto, sin: newSin, con: newCon },
@@ -127,7 +128,7 @@ export default function BulkPriceListUpdate() {
     return [...m.entries()].sort((a,b)=>a[0]-b[0]);
   }, [previewRows]);
 
-  // 🔁 volver a pedir productos para ver el impacto recién guardado
+  // volver a pedir productos para ver el impacto recién guardado
   const reloadSelectedLists = async () => {
     const copy = { ...productMaps };
     for (const n of selected) {
@@ -161,7 +162,7 @@ export default function BulkPriceListUpdate() {
       alert(data?.msg || "No se pudo actualizar");
       return;
     }
- 
+
     await reloadSelectedLists();
     setAmount(0);
     alert("Listas actualizadas correctamente");
@@ -171,13 +172,12 @@ export default function BulkPriceListUpdate() {
     <div className="bulk-root">
       <Navbar />
       <div style={{ margin: "20px" }}>
-                <button className="boton-volver" onClick={() => navigate("/price-list-general")}>
-                    ⬅ Volver
-                </button>
-            </div>
+        <button className="boton-volver" onClick={() => navigate("/price-list-general")}>
+          ⬅ Volver
+        </button>
+      </div>
       <div className="bulk-card">
         <div className="bulk-head">
-        
           <h1>Modificación masiva de listas de precio</h1>
         </div>
 
@@ -243,21 +243,31 @@ export default function BulkPriceListUpdate() {
         {rowsByList.length ? (
           rowsByList.map(([ln, items]) => (
             <div key={ln} className="bulk-tableWrap">
-              {/* 👇 muestra número + nombre real */}
+              {/* subtítulo */}
               <div className="bulk-subtitle">
                 {ln} — {nameByNumber[ln] || "(sin nombre)"}
               </div>
+
+              {/* leyenda de colores */}
+              <div className="bulk-legend">
+                <span className="legend-box legend-old" /> <b>Actual</b>
+                <span style={{width:12, display:"inline-block"}} />
+                <span className="legend-box legend-new" /> <b>Nuevo</b>
+                <span style={{width:12, display:"inline-block"}} />
+                <span className="legend-box legend-changed" /> <b>Cambiado</b>
+              </div>
+
               <table className="bulk-table">
                 <thead>
                   <tr>
                     <th>Producto</th>
                     <th>Unidad</th>
-                    <th>Cost. actual</th>
-                    <th>Cost. nuevo</th>
-                    <th>S/IVA actual</th>
-                    <th>S/IVA nuevo</th>
-                    <th>C/IVA actual</th>
-                    <th>C/IVA nuevo</th>
+                    <th className="th-old">Cost. actual</th>
+                    <th className="th-new">Cost. nuevo</th>
+                    <th className="th-old">S/IVA actual</th>
+                    <th className="th-new">S/IVA nuevo</th>
+                    <th className="th-old">C/IVA actual</th>
+                    <th className="th-new">C/IVA nuevo</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -265,12 +275,21 @@ export default function BulkPriceListUpdate() {
                     <tr key={`${r.product_id}-${idx}`}>
                       <td>{r.product_name}</td>
                       <td><span className="bulk-pill">{r.unidad || "—"}</span></td>
-                      <td>{r.old.costo.toFixed(2)}</td>
-                      <td className={r.old.costo !== r.neu.costo ? "diff" : ""}>{r.neu.costo.toFixed(2)}</td>
-                      <td>{r.old.sin.toFixed(2)}</td>
-                      <td className={r.old.sin !== r.neu.sin ? "diff" : ""}>{r.neu.sin.toFixed(2)}</td>
-                      <td>{r.old.con.toFixed(2)}</td>
-                      <td className={r.old.con !== r.neu.con ? "diff" : ""}>{r.neu.con.toFixed(2)}</td>
+
+                      <td className="td-old">{r.old.costo.toFixed(2)}</td>
+                      <td className={`td-new ${r.old.costo !== r.neu.costo ? "changed" : ""}`}>
+                        {r.neu.costo.toFixed(2)}
+                      </td>
+
+                      <td className="td-old">{r.old.sin.toFixed(2)}</td>
+                      <td className={`td-new ${r.old.sin !== r.neu.sin ? "changed" : ""}`}>
+                        {r.neu.sin.toFixed(2)}
+                      </td>
+
+                      <td className="td-old">{r.old.con.toFixed(2)}</td>
+                      <td className={`td-new ${r.old.con !== r.neu.con ? "changed" : ""}`}>
+                        {r.neu.con.toFixed(2)}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

@@ -219,359 +219,359 @@ function drawHeader(doc, remit) {
 
 
 function drawTable(doc, items, startY = 210) {
-  const topY = startY + 10;
+    const topY = startY + 10;
 
-  const left = doc.page.margins.left || 40;
-  const right = doc.page.margins.right || 40;
-  const availableWidth = doc.page.width - left - right;
+    const left = doc.page.margins.left || 40;
+    const right = doc.page.margins.right || 40;
+    const availableWidth = doc.page.width - left - right;
 
-  const COLS = [
-    { key: "product_id",   title: "CÓDIGO",  width: 50,  align: "left"   },
-    { key: "product_name", title: "PRODUCTO",width: 135, align: "left"   },
-    { key: "packaging",    title: "EMPAQUE", width: 70,  align: "left"   }, // 👈 NUEVA
-    { key: "unit_measure", title: "UNIDAD",  width: 45,  align: "center" },
-    { key: "qty",          title: "CANT.",   width: 55,  align: "right"  },
-    { key: "net_weight",   title: "P. NETO", width: 60,  align: "right"  },
-    { key: "unit_price",   title: "P. UNIT", width: 65,  align: "right"  },
-    { key: "total",        title: "P. TOTAL",width: 65,  align: "right"  },
-  ];
-  const sumW = COLS.reduce((a,c)=>a+c.width,0);
-  if (sumW !== Math.round(availableWidth)) {
-    COLS[COLS.length-1].width += (availableWidth - sumW);
-  }
-
-  const rowHeight = 18;
-  const headerHeight = 22;
-  let y = topY;
-
-  doc.moveTo(left, y).lineTo(left + availableWidth, y).strokeColor("#cfcfd1").lineWidth(1).stroke();
-  y += 6;
-
-  doc.font("Helvetica-Bold").fontSize(10);
-  let x = left;
-  COLS.forEach(col => {
-    doc.text(col.title, x + 2, y, { width: col.width - 4, align: col.align, ellipsis: true, lineBreak: false });
-    x += col.width;
-  });
-  y += headerHeight - 8;
-
-  doc.moveTo(left, y).lineTo(left + availableWidth, y).strokeColor("#cfcfd1").lineWidth(1).stroke();
-  y += 6;
-
-  doc.font("Helvetica").fontSize(9);
-
-  let totalFinal = 0;
-  let totalItems = 0; // líneas
-  let totalKg = 0;
-
-  const needPage = (nextY) => nextY > (doc.page.height - doc.page.margins.bottom - 120);
-
-  const redrawHeader = () => {
-    doc.font("Helvetica").fontSize(9);
-    let yy = Math.max(doc.y, doc.page.margins.top + 120);
-    y = yy;
-
-    doc.moveTo(left, y).lineTo(left + availableWidth, y).strokeColor("#cfcfd1").lineWidth(1).stroke();
-    y += 6;
-    doc.font("Helvetica-Bold").fontSize(10);
-    let xx = left;
-    COLS.forEach(col => {
-      doc.text(col.title, xx + 2, y, { width: col.width - 4, align: col.align, ellipsis: true, lineBreak: false });
-      xx += col.width;
-    });
-    y += headerHeight - 8;
-    doc.moveTo(left, y).lineTo(left + availableWidth, y).strokeColor("#cfcfd1").lineWidth(1).stroke();
-    y += 6;
-    doc.font("Helvetica").fontSize(9);
-  };
-
-  items.forEach((it) => {
-    const qty       = Number(it.qty || 0);
-    const netWeight = Number(it.net_weight || 0);
-    const unitPrice = Number(it.unit_price || 0);
-    const total     = (it.total != null) ? Number(it.total) : unitPrice * qty;
-
-    totalItems += 1;          // 👈 ítems = líneas
-    totalKg    += netWeight;
-    totalFinal += total;
-
-    if (needPage(y + rowHeight)) {
-      doc.addPage();
-      redrawHeader();
+    const COLS = [
+        { key: "product_id", title: "CÓDIGO", width: 50, align: "left" },
+        { key: "product_name", title: "PRODUCTO", width: 135, align: "left" },
+        { key: "packaging", title: "EMPAQUE", width: 70, align: "left" }, // 👈 NUEVA
+        { key: "unit_measure", title: "UNIDAD", width: 45, align: "center" },
+        { key: "qty", title: "CANT.", width: 55, align: "right" },
+        { key: "net_weight", title: "P. NETO", width: 60, align: "right" },
+        { key: "unit_price", title: "P. UNIT", width: 65, align: "right" },
+        { key: "total", title: "P. TOTAL", width: 65, align: "right" },
+    ];
+    const sumW = COLS.reduce((a, c) => a + c.width, 0);
+    if (sumW !== Math.round(availableWidth)) {
+        COLS[COLS.length - 1].width += (availableWidth - sumW);
     }
 
-    let xx = left;
-    const cells = [
-      String(it.product_id ?? ""),
-      String(it.product_name ?? ""),
-      String(it.packaging ?? "-"),                  // 👈 NUEVO
-      String(it.unit_measure ?? ""),
-      fmtQty(qty),
-      nf.format(netWeight),
-      fmtMoney(unitPrice),
-      fmtMoney(total),
-    ];
+    const rowHeight = 18;
+    const headerHeight = 22;
+    let y = topY;
 
-    cells.forEach((val, i) => {
-      const col = COLS[i];
-      doc.text(val, xx + 2, y, { width: col.width - 4, align: col.align, ellipsis: true });
-      xx += col.width;
+    doc.moveTo(left, y).lineTo(left + availableWidth, y).strokeColor("#cfcfd1").lineWidth(1).stroke();
+    y += 6;
+
+    doc.font("Helvetica-Bold").fontSize(10);
+    let x = left;
+    COLS.forEach(col => {
+        doc.text(col.title, x + 2, y, { width: col.width - 4, align: col.align, ellipsis: true, lineBreak: false });
+        x += col.width;
+    });
+    y += headerHeight - 8;
+
+    doc.moveTo(left, y).lineTo(left + availableWidth, y).strokeColor("#cfcfd1").lineWidth(1).stroke();
+    y += 6;
+
+    doc.font("Helvetica").fontSize(9);
+
+    let totalFinal = 0;
+    let totalItems = 0; // líneas
+    let totalKg = 0;
+
+    const needPage = (nextY) => nextY > (doc.page.height - doc.page.margins.bottom - 120);
+
+    const redrawHeader = () => {
+        doc.font("Helvetica").fontSize(9);
+        let yy = Math.max(doc.y, doc.page.margins.top + 120);
+        y = yy;
+
+        doc.moveTo(left, y).lineTo(left + availableWidth, y).strokeColor("#cfcfd1").lineWidth(1).stroke();
+        y += 6;
+        doc.font("Helvetica-Bold").fontSize(10);
+        let xx = left;
+        COLS.forEach(col => {
+            doc.text(col.title, xx + 2, y, { width: col.width - 4, align: col.align, ellipsis: true, lineBreak: false });
+            xx += col.width;
+        });
+        y += headerHeight - 8;
+        doc.moveTo(left, y).lineTo(left + availableWidth, y).strokeColor("#cfcfd1").lineWidth(1).stroke();
+        y += 6;
+        doc.font("Helvetica").fontSize(9);
+    };
+
+    items.forEach((it) => {
+        const qty = Number(it.qty || 0);
+        const netWeight = Number(it.net_weight || 0);
+        const unitPrice = Number(it.unit_price || 0);
+        const total = (it.total != null) ? Number(it.total) : unitPrice * qty;
+
+        totalItems += 1;          // 👈 ítems = líneas
+        totalKg += netWeight;
+        totalFinal += total;
+
+        if (needPage(y + rowHeight)) {
+            doc.addPage();
+            redrawHeader();
+        }
+
+        let xx = left;
+        const cells = [
+            String(it.product_id ?? ""),
+            String(it.product_name ?? ""),
+            String(it.packaging ?? "-"),                  // 👈 NUEVO
+            String(it.unit_measure ?? ""),
+            fmtQty(qty),
+            nf.format(netWeight),
+            fmtMoney(unitPrice),
+            fmtMoney(total),
+        ];
+
+        cells.forEach((val, i) => {
+            const col = COLS[i];
+            doc.text(val, xx + 2, y, { width: col.width - 4, align: col.align, ellipsis: true });
+            xx += col.width;
+        });
+
+        y += rowHeight;
+        doc.moveTo(left, y).lineTo(left + availableWidth, y).strokeColor("#e6e6e8").lineWidth(0.5).stroke();
     });
 
-    y += rowHeight;
-    doc.moveTo(left, y).lineTo(left + availableWidth, y).strokeColor("#e6e6e8").lineWidth(0.5).stroke();
-  });
-
-  return { y: y + 20, totalFinal, totalItems, totalKg };
+    return { y: y + 20, totalFinal, totalItems, totalKg };
 }
 
 function drawFooter(doc, remit, y, totalFinal, totalItems, totalKg) {
-  const left = 50;
+    const left = 50;
 
-  doc.font("Helvetica-Bold").fontSize(10);
-  doc.text(`TOTAL ÍTEMS: ${fmtQty(totalItems ?? remit.total_items ?? 0)}`, left, y);
-  y += 16;
-  doc.text(`TOTAL KG: ${nf.format(totalKg ?? remit.total_kg ?? 0)}`, left, y); // 👈 nuevo
-  y += 16;
-  doc.text(`TOTAL $: ${fmtMoney(totalFinal ?? remit.total_amount ?? 0)}`, left, y);
+    doc.font("Helvetica-Bold").fontSize(10);
+    doc.text(`TOTAL ÍTEMS: ${fmtQty(totalItems ?? remit.total_items ?? 0)}`, left, y);
+    y += 16;
+    doc.text(`TOTAL KG: ${nf.format(totalKg ?? remit.total_kg ?? 0)}`, left, y); // 👈 nuevo
+    y += 16;
+    doc.text(`TOTAL $: ${fmtMoney(totalFinal ?? remit.total_amount ?? 0)}`, left, y);
 
-  if (remit.note) {
-    y += 18;
-    doc.font("Helvetica-Bold").text("OBSERVACIONES", left, y);
-    y += 14;
-    doc.font("Helvetica").text(remit.note, left, y, { width: 360 });
-  }
+    if (remit.note) {
+        y += 18;
+        doc.font("Helvetica-Bold").text("OBSERVACIONES", left, y);
+        y += 14;
+        doc.font("Helvetica").text(remit.note, left, y, { width: 360 });
+    }
 
-  const boxY = y + 24;
-  doc
-    .roundedRect(370, boxY, 175, 70, 6)
-    .strokeColor("#b8c6d8")
-    .lineWidth(1)
-    .stroke();
-  doc.font("Helvetica").text("Recibí Conforme", 380, boxY + 8);
+    const boxY = y + 24;
+    doc
+        .roundedRect(370, boxY, 175, 70, 6)
+        .strokeColor("#b8c6d8")
+        .lineWidth(1)
+        .stroke();
+    doc.font("Helvetica").text("Recibí Conforme", 380, boxY + 8);
 }
 
 
 
 
 async function streamRemitPdfById(req, res) {
-  try {
-    const { id } = req.params;
+    try {
+        const { id } = req.params;
 
-    const remit = await FinalRemit.findByPk(id);
-    if (!remit) return res.status(404).json({ ok: false, msg: "Remito no encontrado" });
+        const remit = await FinalRemit.findByPk(id);
+        if (!remit) return res.status(404).json({ ok: false, msg: "Remito no encontrado" });
 
-    // Fecha del header: usa la fecha de la orden si existe
-    const order = await NewOrder.findByPk(remit.order_id);
+        // Fecha del header: usa la fecha de la orden si existe
+        const order = await NewOrder.findByPk(remit.order_id);
 
-    const items = await FinalRemitProduct.findAll({
-      where: { final_remit_id: id },
-      order: [["id", "ASC"]],
-    });
-
-    // Construimos las filas usando qty_requested desde cuts_header
-    const rows = await Promise.all(
-      items.map(async (i) => {
-        // Fallback de unidad si quedó null en la tabla final
-        let unit_measure = i.unit_measure || null;
-        if (!unit_measure) {
-          const pl = await PriceListProduct.findOne({
-            where: { product_id: String(i.product_id) },
+        const items = await FinalRemitProduct.findAll({
+            where: { final_remit_id: id },
             order: [["id", "ASC"]],
-          });
-          unit_measure = pl?.unidad_venta || null; // "KG" | "UN" | null
-        }
-
-        // Empaque sugerido (más frecuente en los details)
-        const pkg = await packagingFor(remit.order_id, i.product_id);
-
-        // Cantidad a mostrar = sum(qty_requested) de cuts_header
-        const qtyRequested = await CutsHeader.sum("qty_requested", {
-          where: { receipt_number: remit.order_id, product_code: String(i.product_id) },
         });
 
-        const qty   = Number(qtyRequested || 0);     // CANT. mostrada
-        const net   = Number(i.net_weight || 0);     // P. NETO (kg)
-        const price = Number(i.unit_price || 0);
-        const unit  = String(unit_measure || "-").toUpperCase();
+        // Construimos las filas usando qty_requested desde cuts_header
+        const rows = await Promise.all(
+            items.map(async (i) => {
+                // Fallback de unidad si quedó null en la tabla final
+                let unit_measure = i.unit_measure || null;
+                if (!unit_measure) {
+                    const pl = await PriceListProduct.findOne({
+                        where: { product_id: String(i.product_id) },
+                        order: [["id", "ASC"]],
+                    });
+                    unit_measure = pl?.unidad_venta || null; // "KG" | "UN" | null
+                }
 
-        const total = unit === "KG" ? price * net : price * qty;
+                // Empaque sugerido (más frecuente en los details)
+                const pkg = await packagingFor(remit.order_id, i.product_id);
 
-        return {
-          product_id: i.product_id,
-          product_name: i.product_name,
-          packaging: pkg,                 // 👈 agregado
-          unit_measure: unit_measure || "-",
-          qty,
-          net_weight: net,
-          unit_price: price,
-          total,
+                // Cantidad a mostrar = sum(qty_requested) de cuts_header
+                const qtyRequested = await CutsHeader.sum("qty_requested", {
+                    where: { receipt_number: remit.order_id, product_code: String(i.product_id) },
+                });
+
+                const qty = Number(qtyRequested || 0);     // CANT. mostrada
+                const net = Number(i.net_weight || 0);     // P. NETO (kg)
+                const price = Number(i.unit_price || 0);
+                const unit = String(unit_measure || "-").toUpperCase();
+
+                const total = unit === "KG" ? price * net : price * qty;
+
+                return {
+                    product_id: i.product_id,
+                    product_name: i.product_name,
+                    packaging: pkg,                 // 👈 agregado
+                    unit_measure: unit_measure || "-",
+                    qty,
+                    net_weight: net,
+                    unit_price: price,
+                    total,
+                };
+            })
+        );
+
+        // Encabezado a usar en el PDF (incluye fecha de la orden)
+        const headerForPdf = {
+            ...remit.toJSON(),
+            date_order: order?.date_order || remit.created_at,
         };
-      })
-    );
 
-    // Encabezado a usar en el PDF (incluye fecha de la orden)
-    const headerForPdf = {
-      ...remit.toJSON(),
-      date_order: order?.date_order || remit.created_at,
-    };
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader("Content-Disposition", `inline; filename=remito_${remit.receipt_number}.pdf`);
 
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `inline; filename=remito_${remit.receipt_number}.pdf`);
+        const doc = new PDFDocument({ margin: 40, size: "A4" });
+        doc.pipe(res);
 
-    const doc = new PDFDocument({ margin: 40, size: "A4" });
-    doc.pipe(res);
+        const startY = drawHeader(doc, headerForPdf);
+        const { y: afterY, totalFinal, totalItems, totalKg } = drawTable(doc, rows, startY); // 👈 ahora trae totalKg
+        drawFooter(doc, headerForPdf, afterY, totalFinal, totalItems, totalKg);               // 👈 lo pasamos al footer
 
-    const startY = drawHeader(doc, headerForPdf);
-    const { y: afterY, totalFinal, totalItems, totalKg } = drawTable(doc, rows, startY); // 👈 ahora trae totalKg
-    drawFooter(doc, headerForPdf, afterY, totalFinal, totalItems, totalKg);               // 👈 lo pasamos al footer
-
-    doc.end();
-  } catch (e) {
-    console.error(e);
-    if (!res.headersSent) {
-      res.status(500).json({ ok: false, msg: "Error al generar PDF" });
+        doc.end();
+    } catch (e) {
+        console.error(e);
+        if (!res.headersSent) {
+            res.status(500).json({ ok: false, msg: "Error al generar PDF" });
+        }
     }
-  }
 }
 
 
 
 async function buildRemitPreview(orderId) {
-  const order = await NewOrder.findByPk(orderId);
-  if (!order) throw new Error("Orden no encontrada");
+    const order = await NewOrder.findByPk(orderId);
+    if (!order) throw new Error("Orden no encontrada");
 
-  const lines = await ProductsSellOrder.findAll({
-    where: { sell_order_id: orderId },
-    order: [["id", "ASC"]],
-  });
-
-  const items = [];
-  let totalItems = 0;       // ahora cuenta líneas/productos
-  let totalAmount = 0;
-  let totalKg = 0;          // suma de net_weight
-
-  for (const l of lines) {
-    const fallbackPrice = Number(l.product_price || 0);
-
-    const priceRow = await PriceListProduct.findOne({
-      where: { product_id: String(l.product_id) },
-      order: [["id", "ASC"]],
+    const lines = await ProductsSellOrder.findAll({
+        where: { sell_order_id: orderId },
+        order: [["id", "ASC"]],
     });
 
-    const headers = await CutsHeader.findAll({
-      where: { receipt_number: orderId, product_code: String(l.product_id) },
-      include: [{ model: CutsDetail, as: "details" }],
-      order: [["id", "ASC"]],
-    });
+    const items = [];
+    let totalItems = 0;       // ahora cuenta líneas/productos
+    let totalAmount = 0;
+    let totalKg = 0;          // suma de net_weight
 
-    let qty_requested_total = 0;
-    let units_count = 0;
-    let gross_weight = 0;
-    let net_weight = 0;
+    for (const l of lines) {
+        const fallbackPrice = Number(l.product_price || 0);
 
-    for (const h of headers) {
-      qty_requested_total += Number(h.qty_requested || 0);
-      for (const d of (h.details || [])) {
-        units_count += Number(d.units_count || 0);
-        gross_weight += Number(d.gross_weight || 0);
-        net_weight += Number(d.net_weight || 0);
-      }
-    }
+        const priceRow = await PriceListProduct.findOne({
+            where: { product_id: String(l.product_id) },
+            order: [["id", "ASC"]],
+        });
 
-    let packaging = "-";
-    {
-      const counts = {};
-      for (const h of headers) {
-        for (const d of (h.details || [])) {
-          const k = String((d.packaging_type || "").trim() || "-");
-          counts[k] = (counts[k] || 0) + 1;
+        const headers = await CutsHeader.findAll({
+            where: { receipt_number: orderId, product_code: String(l.product_id) },
+            include: [{ model: CutsDetail, as: "details" }],
+            order: [["id", "ASC"]],
+        });
+
+        let qty_requested_total = 0;
+        let units_count = 0;
+        let gross_weight = 0;
+        let net_weight = 0;
+
+        for (const h of headers) {
+            qty_requested_total += Number(h.qty_requested || 0);
+            for (const d of (h.details || [])) {
+                units_count += Number(d.units_count || 0);
+                gross_weight += Number(d.gross_weight || 0);
+                net_weight += Number(d.net_weight || 0);
+            }
         }
-      }
-      let bestN = -1;
-      for (const [k, n] of Object.entries(counts)) {
-        if (n > bestN) { packaging = k; bestN = n; }
-      }
+
+        let packaging = "-";
+        {
+            const counts = {};
+            for (const h of headers) {
+                for (const d of (h.details || [])) {
+                    const k = String((d.packaging_type || "").trim() || "-");
+                    counts[k] = (counts[k] || 0) + 1;
+                }
+            }
+            let bestN = -1;
+            for (const [k, n] of Object.entries(counts)) {
+                if (n > bestN) { packaging = k; bestN = n; }
+            }
+        }
+
+        const unit_measure = priceRow?.unidad_venta || null; // "UN" | "KG"
+        const unit_price = Number(priceRow?.price ?? fallbackPrice);
+
+        const qty = qty_requested_total;
+
+        const lineTotal =
+            unit_measure === "KG"
+                ? unit_price * Number(net_weight || 0)
+                : unit_price * Number(qty || 0);
+
+        items.push({
+            product_id: l.product_id ?? null,
+            product_name: l.product_name,
+            packaging,
+            unit_measure: unit_measure || "-",
+            qty,
+            net_weight,                   // va a su propia columna
+            unit_price,
+            total: lineTotal,
+        });
+
+        totalItems += 1;
+        totalAmount += lineTotal;
+        totalKg += Number(net_weight || 0);
     }
 
-    const unit_measure = priceRow?.unidad_venta || null; // "UN" | "KG"
-    const unit_price = Number(priceRow?.price ?? fallbackPrice);
+    const header = {
+        receipt_number: order.id,
+        date_order: order.date_order,
+        client_name: order.client_name,
+        salesman_name: order.salesman_name,
+        price_list: order.price_list,
+        sell_condition: order.sell_condition,
+        payment_condition: order.payment_condition,
+        order_id: order.id,
+        total_items: totalItems,
+        total_amount: totalAmount,
+        total_kg: totalKg,
+        note: order.observation_order || null,
+    };
 
-    const qty = qty_requested_total;
-
-    const lineTotal =
-      unit_measure === "KG"
-        ? unit_price * Number(net_weight || 0)
-        : unit_price * Number(qty || 0);
-
-    items.push({
-      product_id: l.product_id ?? null,
-      product_name: l.product_name,
-      packaging,                    
-      unit_measure: unit_measure || "-",
-      qty,
-      net_weight,                   // va a su propia columna
-      unit_price,
-      total: lineTotal,
-    });
-
-    totalItems += 1;       
-    totalAmount += lineTotal;
-    totalKg += Number(net_weight || 0);
-  }
-
-  const header = {
-    receipt_number: order.id,
-    date_order: order.date_order,
-    client_name: order.client_name,
-    salesman_name: order.salesman_name,
-    price_list: order.price_list,
-    sell_condition: order.sell_condition,
-    payment_condition: order.payment_condition,
-    order_id: order.id,
-    total_items: totalItems,     
-    total_amount: totalAmount,
-    total_kg: totalKg,          
-    note: order.observation_order || null,
-  };
-
-  return { header, items };
+    return { header, items };
 }
 
 
 
 async function streamRemitPdfByOrder(req, res) {
-  try {
-    const { id } = req.params;
+    try {
+        const { id } = req.params;
 
-    const { header, items } = await buildRemitPreview(id);
+        const { header, items } = await buildRemitPreview(id);
 
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `inline; filename=remito_${header.receipt_number}.pdf`);
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader("Content-Disposition", `inline; filename=remito_${header.receipt_number}.pdf`);
 
-    const doc = new PDFDocument({ margin: 40, size: "A4" });
-    doc.pipe(res);
+        const doc = new PDFDocument({ margin: 40, size: "A4" });
+        doc.pipe(res);
 
-    const startY = drawHeader(doc, header);
+        const startY = drawHeader(doc, header);
 
-    // 👇 ahora obtenemos totalKg desde drawTable
-    const { y: afterY, totalFinal, totalItems, totalKg } = drawTable(doc, items, startY);
+        // 👇 ahora obtenemos totalKg desde drawTable
+        const { y: afterY, totalFinal, totalItems, totalKg } = drawTable(doc, items, startY);
 
-    // 👇 pasamos totalKg al footer y total_amount actualizado
-    drawFooter(
-      doc,
-      { ...header, total_amount: totalFinal, total_kg: totalKg },
-      afterY,
-      totalFinal,
-      totalItems,
-      totalKg
-    );
+        // 👇 pasamos totalKg al footer y total_amount actualizado
+        drawFooter(
+            doc,
+            { ...header, total_amount: totalFinal, total_kg: totalKg },
+            afterY,
+            totalFinal,
+            totalItems,
+            totalKg
+        );
 
-    doc.end();
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ ok: false, msg: "Error al generar PDF" });
-  }
+        doc.end();
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ ok: false, msg: "Error al generar PDF" });
+    }
 }
 
 
@@ -788,13 +788,14 @@ const saleApiController = {
             if (Array.isArray(products) && products.length > 0) {
                 const productRecords = products.map(prod => ({
                     price_list_number: nextListNumber,
-                    product_id: prod.id,
-                    product_name: prod.name,
-                    unidad_venta: prod.unidad_venta, // "UN" o "KG"
-                    costo: prod.costo,
-                    precio_sin_iva: prod.precio_sin_iva,
-                    precio_con_iva: prod.precio_con_iva
+                    product_id: prod.product_id ?? prod.id,
+                    product_name: prod.product_name ?? prod.name ?? null,
+                    unidad_venta: prod.unidad_venta ?? prod.unidad ?? null,
+                    costo: Number(prod.costo ?? 0),
+                    precio_sin_iva: Number(prod.precio_sin_iva ?? 0),
+                    precio_con_iva: Number(prod.precio_con_iva ?? 0),
                 }));
+
                 await PriceListProduct.bulkCreate(productRecords);
             }
 
@@ -2240,12 +2241,21 @@ const saleApiController = {
             return res.status(500).json({ ok: false, msg: "Error al eliminar camión" });
         }
     },
-    // Buscar remitos para el select con search remoto
+    // Buscar remitos para el select con search remoto (excluye los ya usados en roadmap_info_destinations)
     listRemitsOptions: async (req, res) => {
         try {
             const q = String(req.query.search || "").trim();
             const limit = Math.min(50, Number(req.query.limit || 20));
 
+            // 1) Traer IDs de remitos ya asignados a alguna hoja de ruta
+            const usedRows = await db.RoadmapInfoDestination.findAll({
+                attributes: ["id_remit"],
+                group: ["id_remit"],   // evitar duplicados
+                raw: true,
+            });
+            const usedIds = usedRows.map(r => Number(r.id_remit)).filter(Boolean);
+
+            // 2) Armar WHERE base
             const where = {};
             if (q) {
                 where[Op.or] = [
@@ -2253,16 +2263,23 @@ const saleApiController = {
                     { client_name: { [Op.like]: `%${q}%` } },
                 ];
             }
+            // 3) Excluir remitos ya usados (solo si hay alguno)
+            if (usedIds.length > 0) {
+                where.id = { [Op.notIn]: usedIds };
+            }
 
+            // 4) Traer opciones
             const rows = await db.FinalRemit.findAll({
                 where,
                 order: [["id", "DESC"]],
                 limit,
+                attributes: ["id", "receipt_number", "client_name"],
+                raw: true,
             });
 
             const options = rows.map(r => ({
                 value: r.id,
-                label: `N° ${r.receipt_number} — ${r.client_name}`,
+                label: `N° ${r.receipt_number} — ${r.client_name || ""}`,
                 receipt_number: r.receipt_number,
                 client_name: r.client_name,
             }));
@@ -2273,6 +2290,7 @@ const saleApiController = {
             return res.status(500).json({ ok: false, msg: "Error listando remitos" });
         }
     },
+
 
     createRoadmap: async (req, res) => {
         const t = await sequelize.transaction();
@@ -2649,6 +2667,7 @@ const saleApiController = {
             return res.status(500).json({ ok: false, msg: "Error al armar detalle de prefacturaciones" });
         }
     },
+
     savePreinvoice: async (req, res) => {
         const t = await sequelize.transaction();
         try {
@@ -2662,6 +2681,13 @@ const saleApiController = {
                 const n = parseInt(String(v ?? "").trim(), 10);
                 return Number.isFinite(n) ? n : null;
             };
+            const toNum = (v, d = 0) => {
+                if (v === null || v === undefined || v === "") return d;
+                const n = parseFloat(String(v).replace(",", ".").trim());
+                return Number.isFinite(n) ? n : d;
+            };
+            const getUnits = (it) => toNum(it.units_received ?? it.received_units ?? it.units);
+            const getKg = (it) => toNum(it.kg_received ?? it.received_kg ?? it.kg);
 
             const results = [];
 
@@ -2672,16 +2698,22 @@ const saleApiController = {
                     return res.status(400).json({ ok: false, msg: "Falta item_id (final_remit_item_id)" });
                 }
 
+                const units = getUnits(it);
+                const kg = getKg(it);
+
                 let row = await Preinvoice.findOne({
                     where: { final_remit_item_id: finalRemitItemId },
                     transaction: t,
                 });
 
                 if (!row) {
-                    // Descubro final_remit_id desde el ítem del remito
+                    // CREATE: seteo expected_* desde el remito, NUNCA desde el payload
                     const frItem = await FinalRemitProduct.findOne({
                         where: { id: finalRemitItemId },
-                        attributes: ["final_remit_id"],
+                        attributes: [
+                            "final_remit_id", "qty", "net_weight",
+                            "product_id", "product_name", "unit_measure"
+                        ],
                         transaction: t,
                     });
                     if (!frItem) {
@@ -2693,14 +2725,32 @@ const saleApiController = {
                         {
                             final_remit_id: frItem.final_remit_id,
                             final_remit_item_id: finalRemitItemId,
-                            received_units: Number(it.units_received ?? 0),
-                            received_kg: Number(it.kg_received ?? 0),
+                            product_id: it.product_id ?? frItem.product_id ?? null,
+                            product_name: it.product_name ?? frItem.product_name ?? null,
+                            unit_measure: it.unit_measure ?? frItem.unit_measure ?? null,
+                            receipt_number: it.receipt_number ?? null,
+
+                            // Esperados SIEMPRE desde el remito
+                            expected_units: Number(frItem.qty ?? 0),
+                            expected_kg: Number(frItem.net_weight ?? 0),
+
+                            // Recibidos desde lo editado
+                            received_units: units,
+                            received_kg: kg,
                         },
                         { transaction: t }
                     );
                 } else {
-                    row.received_units = Number(it.units_received ?? 0);
-                    row.received_kg = Number(it.kg_received ?? 0);
+                    // UPDATE: SOLO recibidos; NO tocar expected_*
+                    row.received_units = units;
+                    row.received_kg = kg;
+
+                    // metadatos opcionales si vienen
+                    if (it.product_id !== undefined) row.product_id = toInt(it.product_id);
+                    if (it.product_name !== undefined) row.product_name = it.product_name ?? null;
+                    if (it.unit_measure !== undefined) row.unit_measure = it.unit_measure ?? null;
+                    if (it.receipt_number !== undefined) row.receipt_number = it.receipt_number ?? null;
+
                     await row.save({ transaction: t });
                 }
 
@@ -2719,6 +2769,10 @@ const saleApiController = {
             return res.status(500).json({ ok: false, msg: "Error al guardar prefacturación" });
         }
     },
+
+
+
+
 
     readSavedPreinvoices: async (req, res) => {
         try {
@@ -3340,6 +3394,89 @@ const saleApiController = {
             return res.status(500).json({ ok: false, msg: "Error en actualización masiva" });
         }
     },
+
+    preinvoicesSaved: async (req, res) => {
+        try {
+            const rawReceipts =
+                (req.params?.receipts ?? req.query?.receipts ?? "").toString().trim();
+            const rawItems =
+                (req.params?.items ?? req.query?.items ?? "").toString().trim();
+
+            const where = {};
+            if (rawReceipts) {
+                const list = rawReceipts.split(",").map(s => s.trim()).filter(Boolean);
+                const asNum = list.map(n => Number(n)).filter(n => Number.isFinite(n));
+                where[Op.or] = [
+                    { receipt_number: { [Op.in]: list } },   // si es VARCHAR
+                    { receipt_number: { [Op.in]: asNum } },  // si es INT
+                ];
+            } else if (rawItems) {
+                const ids = rawItems.split(",").map(s => Number(s))
+                    .filter(n => Number.isFinite(n) && n > 0);
+                if (!ids.length) return res.status(400).json({ ok: false, msg: "items vacío" });
+                where.final_remit_item_id = { [Op.in]: ids };
+            } else {
+                return res.status(400).json({ ok: false, msg: "Usá /preinvoices/saved/receipts/4,6 o /preinvoices/saved?receipts=4,6" });
+            }
+
+            const rows = await Preinvoice.findAll({
+                where,
+                order: [["id", "ASC"]],
+                attributes: [
+                    "id", "receipt_number", "final_remit_id", "final_remit_item_id",
+                    "product_id", "product_name", "unit_measure",
+                    "expected_units", "expected_kg", "received_units", "received_kg",
+                    "created_at", "updated_at"
+                ],
+            });
+
+            const byItemId = {};
+            for (const r of rows) {
+                byItemId[String(r.final_remit_item_id)] = {
+                    received_units: Number(r.received_units ?? 0),
+                    received_kg: Number(r.received_kg ?? 0),
+                    expected_units: Number(r.expected_units ?? 0),
+                    expected_kg: Number(r.expected_kg ?? 0),
+                    product_id: r.product_id ?? null,
+                    product_name: r.product_name ?? null,
+                    unit_measure: r.unit_measure ?? null,
+                    receipt_number: r.receipt_number ?? null,
+                    final_remit_id: r.final_remit_id ?? null,
+                };
+            }
+
+            return res.json({ ok: true, byItemId, items: rows });
+        } catch (e) {
+            console.error("[preinvoicesSaved] error:", e);
+            return res.status(500).json({ ok: false, msg: "Error leyendo preinvoices guardados" });
+        }
+    },
+
+deleteRoadmap: async (req, res) => {
+  const { id } = req.params;
+  if (!id) return res.status(400).json({ ok: false, msg: "Falta id" });
+
+  const t = await sequelize.transaction();
+  try {
+    const head = await RoadmapInfo.findByPk(id, { transaction: t });
+    if (!head) {
+      await t.rollback();
+      return res.status(404).json({ ok: false, msg: "Hoja de ruta no encontrada" });
+    }
+
+    await RoadmapInfoDestination.destroy({ where: { roadmap_info_id: id }, transaction: t });
+    await RoadmapInfo.destroy({ where: { id }, transaction: t });
+
+    await t.commit();
+    return res.json({ ok: true, msg: "Hoja de ruta eliminada" });
+  } catch (e) {
+    console.error(e);
+    await t.rollback();
+    return res.status(500).json({ ok: false, msg: "Error al eliminar hoja de ruta" });
+  }
+},
+
+
 
 }
 

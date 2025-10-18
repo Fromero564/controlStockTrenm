@@ -64,6 +64,7 @@ import PreInvoiceList from './features/sales/pre-invoicing/PreInvoiceList.jsx';
 import PreInvoiceCharge from './features/sales/pre-invoicing/PreInvoiceCharge.jsx';
 import ComparePriceLists from './features/sales/ComparePriceLists.jsx';
 import BulkPriceListUpdate from './features/sales/BulkPriceListUpdate.jsx';
+import OrderWeightInfo from './features/sales/OrderWeightInfo.jsx';
 
 
 
@@ -649,7 +650,16 @@ const router = createBrowserRouter([
       <BulkPriceListUpdate/>
     </ProtectedRoute>
   ),
-}
+},
+
+{
+  path: "/order-weight-info/:id",
+  element: (
+    <ProtectedRoute>
+      <OrderWeightInfo/>
+    </ProtectedRoute>
+  ),
+},
 ]);
 
 

@@ -148,7 +148,10 @@ const ListFinalOrders = () => {
   };
 
   const onWeigh = (id) => navigate(`/order-weight/${id}`);
-  const onView = (_id) => {};
+
+  // 👁️ OJITO → navegar a la vista de pesaje info:
+  const onView = (id) => navigate(`/order-weight-info/${id}`);
+
   const onPDF = (_id) => {};
 
   return (
@@ -245,6 +248,7 @@ const ListFinalOrders = () => {
                           >
                             {isWeighed ? "Pesada" : "Pesar"}
                           </button>
+                          {/* 👁️ Ver pesaje */}
                           <button className="lfo-icon" onClick={() => onView(id)} title="Ver">👁</button>
                           <button className="lfo-icon" onClick={() => onPDF(id)} title="PDF">PDF</button>
                         </div>

@@ -30,6 +30,15 @@ async function jput(path, body) {
   return r.json();
 }
 
+// >>> CAMBIO NUEVO: fecha de HOY en LOCAL (YYYY-MM-DD) <<<
+const todayLocal = (() => {
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+})();
+
 export default function Roadmap() {
   const { id } = useParams();
   const isEdit = !!id;
@@ -37,7 +46,8 @@ export default function Roadmap() {
 
   const [saving, setSaving] = useState(false);
 
-  const [deliveryDate, setDeliveryDate] = useState("");
+  // >>> CAMBIO NUEVO: inicializar con todayLocal (antes: "")
+  const [deliveryDate, setDeliveryDate] = useState(todayLocal);
   const [remits, setRemits] = useState([]); // [{value,label}]
 
   const [destOptions, setDestOptions] = useState([]);
@@ -97,6 +107,7 @@ export default function Roadmap() {
           return;
         }
 
+        // Mantengo tu lógica: corto a YYYY-MM-DD al editar
         setDeliveryDate((r.roadmap?.delivery_date || "").slice(0, 10));
         setRemits(r.roadmap?.remit_options || []);
 
@@ -107,9 +118,7 @@ export default function Roadmap() {
         }
 
         if (r.roadmap?.truck_license_plate) {
-          const tHit = trucksArr.find(
-            (t) => t.label === r.roadmap.truck_license_plate
-          );
+          const tHit = trucksArr.find((t) => t.label === r.roadmap.truck_license_plate);
           if (tHit) setTruckSel(tHit);
         }
 
@@ -140,9 +149,7 @@ export default function Roadmap() {
     if (one?.header?.id) {
       const opt = {
         value: one.header.id,
-        label: `N° ${one.header.receipt_number} — ${
-          one.header.client_name || ""
-        }`,
+        label: `N° ${one.header.receipt_number} — ${one.header.client_name || ""}`,
       };
       return chosen.has(opt.value) ? [] : [opt];
     }
@@ -169,9 +176,8 @@ export default function Roadmap() {
       return;
     }
 
-    // Validación extra para bloquear fechas pasadas
-    const today = new Date().toISOString().split("T")[0];
-    if (deliveryDate < today) {
+    // >>> CAMBIO NUEVO: validar contra HOY LOCAL (antes usabas toISOString/UTC)
+    if (deliveryDate < todayLocal) {
       Swal.fire("Fecha inválida", "No podés seleccionar una fecha pasada", "error");
       return;
     }
@@ -229,7 +235,7 @@ export default function Roadmap() {
             loadOptions={loadRemits}
             value={remits}
             onChange={(vals) => setRemits(vals || [])}
-            placeholder="Buscar remitos por N° o cliente..."
+            placeholder="Buscar remitos por N° o cliente."
             classNamePrefix="rs"
             className="rm-select"
             noOptionsMessage={() => "Sin resultados"}
@@ -257,12 +263,13 @@ export default function Roadmap() {
                 className="rm-input"
                 value={deliveryDate}
                 onChange={(e) => setDeliveryDate(e.target.value)}
-                min={new Date().toISOString().split("T")[0]} // bloquea fechas pasadas
+                // >>> CAMBIO NUEVO: min en LOCAL (antes ISO/UTC)
+                min={todayLocal}
               />
             </div>
 
             <div className="rm-cell">
-              <label className="rm-label">Patente camión</label>
+              <label className="rm-label">Camión</label>
               <Select
                 options={trucks}
                 value={truckSel}
@@ -292,13 +299,13 @@ export default function Roadmap() {
 
           <div className="rm-actions">
             <button
-              className="rm-btn primary"
+              className="rm-btn rm-btn--primary"
               disabled={saving}
               onClick={onSave}
             >
-              {saving ? "Guardando…" : isEdit ? "Guardar cambios" : "Asignar pedido"}
+              {saving ? "Guardando…" : isEdit ? "Guardar cambios" : "Crear hoja de ruta"}
             </button>
-            <button className="rm-btn" onClick={() => navigate("/roadmap-options")}>
+            <button className="rm-btn" onClick={() => navigate(-1)}>
               Cancelar
             </button>
           </div>

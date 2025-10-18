@@ -27,7 +27,7 @@ function calcularPrecioSinIVA(precioConIVA, alicuota) {
 const LoadNewPriceList = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const preload = location.state?.payload || null;   // si venimos desde editar
+  const preload = location.state?.payload || null; // si venimos desde editar
   const listNumber = location.state?.listNumber || null;
   const editing = Boolean(preload || listNumber);
 
@@ -160,6 +160,7 @@ const LoadNewPriceList = () => {
     if (newPage >= 1 && newPage <= totalPaginas) setPagina(newPage);
   };
 
+  // ⚠️ ESTE ES EL CAMBIO CLAVE: ahora enviamos product_name al backend
   const buildPayloadProducts = () =>
     productos
       .filter((p) => checkedProducts[p.id])
@@ -167,11 +168,13 @@ const LoadNewPriceList = () => {
         const pr = precios[p.id] || {};
         return {
           product_id: p.id,
+          product_name: p.product_name, // ✅ nuevo campo
           costo: Number(pr.costo || 0),
           precio_sin_iva: Number(pr.sinIva || 0),
           precio_con_iva: Number(pr.conIva || 0),
           alicuota: Number(pr.alicuota ?? p.alicuota ?? 0),
-          unidad_venta: pr.unidad || (p?.category?.category_name === "PRINCIPAL" ? "UN" : "KG"),
+          unidad_venta:
+            pr.unidad || (p?.category?.category_name === "PRINCIPAL" ? "UN" : "KG"),
         };
       });
 
@@ -193,7 +196,11 @@ const LoadNewPriceList = () => {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({ name: nombreLista, clients: clientsIds, products: productosSeleccionados }),
+          body: JSON.stringify({
+            name: nombreLista,
+            clients: clientsIds,
+            products: productosSeleccionados,
+          }),
         });
         const data = await response.json();
         if (response.ok && data?.ok !== false) {
@@ -209,7 +216,11 @@ const LoadNewPriceList = () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ name: nombreLista, clients: clientsIds, products: productosSeleccionados }),
+        body: JSON.stringify({
+          name: nombreLista,
+          clients: clientsIds,
+          products: productosSeleccionados,
+        }),
       });
       const data = await response.json();
       if (response.ok && data?.ok !== false) {
@@ -228,13 +239,13 @@ const LoadNewPriceList = () => {
       <Navbar />
 
       <div className="price-list-bg">
-        {/* barra superior gris con Volver */}
-        <div className="toolbar-grey">
-          <button className="price-list-volver-btn" onClick={() => navigate(-1)}>
-            ⬅ Volver
-          </button>
-        </div>
-
+        <button
+          className="boton-volver"
+          style={{ margin: "20px" }}
+          onClick={() => navigate("/sales-panel")}
+        >
+          ⬅ Volver
+        </button>
         <div className="price-list-container">
           <h1 className="price-list-title">
             {editing ? "Editar Lista de Precios" : "Nueva Lista de Precios"}
@@ -309,13 +320,13 @@ const LoadNewPriceList = () => {
                           onChange={() => handleCheck(prod.id)}
                         />
                       </td>
-                      <td className="price-list-td price-list-product-name">
-                        {prod.product_name}
-                      </td>
+                      <td className="price-list-td price-list-product-name">{prod.product_name}</td>
                       <td className="price-list-td">
                         <select
                           className="price-list-price-input"
-                          value={p.unidad || (prod?.category?.category_name === "PRINCIPAL" ? "UN" : "KG")}
+                          value={
+                            p.unidad || (prod?.category?.category_name === "PRINCIPAL" ? "UN" : "KG")
+                          }
                           onChange={(e) => handleUnidadChange(prod.id, e.target.value)}
                         >
                           <option value="UN">Unidad (Pieza)</option>

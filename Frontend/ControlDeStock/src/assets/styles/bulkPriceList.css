@@ -169,11 +169,73 @@
     border-radius: 12px
 }
 
-.diff {
-    background: #fff3cd
-}
+
 
 .bulk-empty {
     padding: 16px;
     color: #5c6b7a
+}
+
+/* Encabezados */
+.th-old {
+    background: #f0f5ff;
+}
+
+/* azul muy suave */
+.th-new {
+    background: #fff7e6;
+}
+
+/* naranja suave */
+
+/* Celdas */
+.td-old {
+    background: #f7faff;
+}
+
+.td-new {
+    background: #fffaf2;
+}
+
+/* Si cambió el valor nuevo, remarcar */
+.td-new.changed {
+    background: #fff2d6;
+    /* un poco más intenso */
+    font-weight: 600;
+}
+
+/* Leyenda */
+.bulk-legend {
+    margin: 8px 0 12px;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.legend-box {
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    display: inline-block;
+    border: 1px solid rgba(0, 0, 0, .06);
+    margin-right: 6px;
+}
+
+.legend-old {
+    background: #f0f5ff;
+}
+
+.legend-new {
+    background: #fff7e6;
+}
+
+.legend-changed {
+    background: #ffd699;
+}
+
+
+.diff {
+    background: #fff2d6;
 }

@@ -11,8 +11,7 @@ const API_URL = import.meta.env.VITE_URL || import.meta.env.VITE_API_URL || "";
 
 // helpers
 const toDDMMYY = (iso) => (iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(2, 4)}` : "-");
-const money = (n) =>
-  new Intl.NumberFormat("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(n || 0));
+const money = (n) => new Intl.NumberFormat("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(n || 0));
 const nf2 = (n) => Number(n || 0).toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const nf3 = (n) => Number(n || 0).toLocaleString("es-AR", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
 
@@ -43,70 +42,84 @@ export default function PreInvoiceCharge() {
   // redirectMap[itemId] = { entries: [{ type:'client'|'stock', client_name?, units, kg, ts }, ...] }
   const [redirectMap, setRedirectMap] = useState({});
 
-  const title = useMemo(
-    () => `PREFACTURACIÓN • Prod: ${toDDMMYY(prod)} • Entrega: ${toDDMMYY(del)}`,
-    [prod, del]
-  );
+  const title = useMemo(() => `PREFACTURACIÓN • Prod: ${toDDMMYY(prod)} • Entrega: ${toDDMMYY(del)}`, [prod, del]);
 
-  // Carga datos base
+  // Carga datos base (detalle) e inicializa recibidos con lo remitido
   useEffect(() => {
+    let cancel = false;
     (async () => {
       setLoading(true);
       try {
         const res = await fetch(`${API_URL}/preinvoices/detail?production_date=${prod}&delivery_date=${del}`);
         const js = await res.json();
+        if (cancel) return;
+
         const payload = js?.ok ? js : { ok: false, roadmaps: [] };
         setData(payload);
 
-        // inicializa valores recibidos = lo remitido
-        const init = {};
+        // Inicializa recibidos con lo REMITIDO
+        const base = {};
         (payload.roadmaps || []).forEach((r) =>
           (r.remits || []).forEach((rm) =>
             (rm.items || []).forEach((it) => {
-              init[it.id] = { units: Number(it.qty || 0), kg: Number(it.net_weight || 0) };
+              base[it.id] = { units: Number(it.qty || 0), kg: Number(it.net_weight || 0) };
             })
           )
         );
-        setReceived(init);
+        setReceived(base);
+
+        // Hidrata recibidos guardados (por comprobantes) y pisa los inputs
+        const receipts = [];
+        (payload.roadmaps || []).forEach((r) =>
+          (r.remits || []).forEach((rm) => {
+            if (rm?.receipt_number != null) receipts.push(String(rm.receipt_number));
+          })
+        );
+        if (receipts.length) {
+          const savedRes = await fetch(
+            `${API_URL}/preinvoices/saved/receipts/${encodeURIComponent(receipts.join(","))}`
+          );
+          if (savedRes.ok) {
+            const saved = await savedRes.json();
+            const map = saved?.byItemId || {};
+            if (!cancel) {
+              setReceived((prev) => {
+                const next = { ...prev };
+                for (const itemId in map) {
+                  const v = map[itemId] || {};
+                  next[itemId] = {
+                    units: Number(v.received_units ?? prev[itemId]?.units ?? 0),
+                    kg: Number(v.received_kg ?? prev[itemId]?.kg ?? 0),
+                  };
+                }
+                return next;
+              });
+            }
+          }
+        }
       } catch {
-        setData({ ok: false, roadmaps: [] });
-        setReceived({});
+        if (!cancel) {
+          setData({ ok: false, roadmaps: [] });
+          setReceived({});
+        }
       } finally {
-        setLoading(false);
+        if (!cancel) setLoading(false);
       }
     })();
-  }, [prod, del]);
-
-  // Hidratar "recibidos" guardados previamente
-  useEffect(() => {
-    (async () => {
-      try {
-        const u = `${API_URL}/preinvoices/saved?production_date=${prod}&delivery_date=${del}`;
-        const r = await fetch(u);
-        const js = await r.json();
-        if (js?.ok && Array.isArray(js.items)) {
-          setReceived((prev) => {
-            const copy = { ...prev };
-            js.items.forEach((it) => {
-              copy[it.item_id] = {
-                units: Number(it.units_received ?? (copy[it.item_id]?.units || 0)),
-                kg: Number(it.kg_received ?? (copy[it.item_id]?.kg || 0)),
-              };
-            });
-            return copy;
-          });
-        }
-      } catch {}
-    })();
+    return () => {
+      cancel = true;
+    };
   }, [prod, del]);
 
   // Hidratar "redirectMap" (devoluciones) guardadas previamente
   useEffect(() => {
+    let cancel = false;
     (async () => {
       try {
         const u = `${API_URL}/preinvoices/returns?production_date=${prod}&delivery_date=${del}`;
         const r = await fetch(u);
         const js = await r.json();
+        if (cancel) return;
         if (js?.ok && Array.isArray(js.items)) {
           const map = {};
           js.items.forEach((row) => {
@@ -123,6 +136,9 @@ export default function PreInvoiceCharge() {
         }
       } catch {}
     })();
+    return () => {
+      cancel = true;
+    };
   }, [prod, del]);
 
   // Carga clientes para el select
@@ -152,6 +168,7 @@ export default function PreInvoiceCharge() {
     }));
   };
 
+  // Calcula faltantes de un remito contra lo recibido
   const shortagesForRemit = (rm) => {
     const out = [];
     (rm.items || []).forEach((it) => {
@@ -310,17 +327,15 @@ export default function PreInvoiceCharge() {
   return (
     <div className="charge-wrap">
       <Navbar />
-        <div style={{ margin: "20px" }}>
-                <button className="boton-volver" onClick={() => navigate("/sales-panel")}>
-                    ⬅ Volver
-                </button>
-            </div>
+      <div style={{ margin: "20px" }}>
+        <button className="boton-volver" onClick={() => navigate("/sales-panel")}>
+          <FontAwesomeIcon icon={faArrowLeftLong} /> Volver
+        </button>
+      </div>
+
       <div className="charge-container">
         <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "6px 0 14px" }}>
-       
-          <h1 className="charge-title" style={{ margin: 0 }}>
-            {title}
-          </h1>
+          <h1 className="charge-title" style={{ margin: 0 }}>{title}</h1>
         </div>
 
         {!data?.ok && !loading && <div className="charge-empty">No hay datos para esas fechas.</div>}
@@ -334,15 +349,9 @@ export default function PreInvoiceCharge() {
                 <div className="charge-thead">ENCABEZADO</div>
                 <div className="charge-tbody">
                   <div className="charge-row" style={{ gridTemplateColumns: "1fr 1fr 1fr" }}>
-                    <div>
-                      <FontAwesomeIcon icon={faTruck} /> Patente: <b>{r.truck_license_plate || "-"}</b>
-                    </div>
-                    <div>
-                      <FontAwesomeIcon icon={faUserTie} /> Chofer: <b>{r.driver || "-"}</b>
-                    </div>
-                    <div>
-                      <FontAwesomeIcon icon={faFileInvoice} /> Roadmap ID: <b>{r.roadmap_id}</b>
-                    </div>
+                    <div><FontAwesomeIcon icon={faTruck} /> Patente: <b>{r.truck_license_plate || "-"}</b></div>
+                    <div><FontAwesomeIcon icon={faUserTie} /> Chofer: <b>{r.driver || "-"}</b></div>
+                    <div><FontAwesomeIcon icon={faFileInvoice} /> Roadmap ID: <b>{r.roadmap_id}</b></div>
                   </div>
                 </div>
               </div>
@@ -404,12 +413,8 @@ export default function PreInvoiceCharge() {
                                   <tr key={it.id} style={{ borderTop: "1px solid #eef2f7" }}>
                                     <td style={{ padding: "8px 10px" }}>{it.product_id ?? ""}</td>
                                     <td style={{ padding: "8px 10px" }}>{it.product_name ?? ""}</td>
-                                    <td style={{ padding: "8px 10px", textAlign: "center" }}>
-                                      {it.unit_measure || "-"}
-                                    </td>
-                                    <td style={{ padding: "8px 10px", textAlign: "right" }}>
-                                      {Number(it.qty || 0)}
-                                    </td>
+                                    <td style={{ padding: "8px 10px", textAlign: "center" }}>{it.unit_measure || "-"}</td>
+                                    <td style={{ padding: "8px 10px", textAlign: "right" }}>{Number(it.qty || 0)}</td>
                                     <td style={{ padding: "6px 8px", textAlign: "right" }}>
                                       <input
                                         type="number"
@@ -435,9 +440,7 @@ export default function PreInvoiceCharge() {
                                         style={{ width: 110, textAlign: "right" }}
                                       />
                                     </td>
-                                    <td style={{ padding: "8px 10px", textAlign: "right" }}>
-                                      {money(it.unit_price)}
-                                    </td>
+                                    <td style={{ padding: "8px 10px", textAlign: "right" }}>{money(it.unit_price)}</td>
                                     <td style={{ padding: "8px 10px", textAlign: "right" }}>{money(total)}</td>
                                   </tr>
                                 );
@@ -463,20 +466,11 @@ export default function PreInvoiceCharge() {
 
                               const clientLines = logs
                                 .filter((e) => e.type === "client" && (e.units || e.kg))
-                                .map(
-                                  (e) =>
-                                    `Redirigió a ${e.client_name ?? "—"} ${nf3(e.kg)} KG, ${nf2(e.units)} UN`
-                                );
-                              const stockKg = logs
-                                .filter((e) => e.type === "stock")
-                                .reduce((a, e) => a + Number(e.kg || 0), 0);
-                              const stockUn = logs
-                                .filter((e) => e.type === "stock")
-                                .reduce((a, e) => a + Number(e.units || 0), 0);
-                              const stockLine =
-                                stockKg > 0 || stockUn > 0
-                                  ? `Volvió a stock ${nf3(stockKg)} KG, ${nf2(stockUn)} UN`
-                                  : null;
+                                .map((e) => `Redirigió a ${e.client_name ?? "—"} ${nf3(e.kg)} KG, ${nf2(e.units)} UN`);
+
+                              const stockKg = logs.filter((e) => e.type === "stock").reduce((a, e) => a + Number(e.kg || 0), 0);
+                              const stockUn = logs.filter((e) => e.type === "stock").reduce((a, e) => a + Number(e.units || 0), 0);
+                              const stockLine = stockKg > 0 || stockUn > 0 ? `Volvió a stock ${nf3(stockKg)} KG, ${nf2(stockUn)} UN` : null;
 
                               const rightLines = [...clientLines, ...(stockLine ? [stockLine] : [])];
 
@@ -496,17 +490,13 @@ export default function PreInvoiceCharge() {
                                   <div>
                                     <div style={{ fontWeight: 700 }}>{s.product_name}</div>
                                     <div style={{ fontSize: 12, color: "#7a8aa0", marginTop: 2 }}>
-                                      Faltan: {nf2(remainingUnits)} UN · {nf3(remainingKg)} KG (Recibido{" "}
-                                      {nf2(s.received_units)} UN · {nf3(s.received_kg)} KG de {nf2(s.expected_units)} UN
-                                      · {nf3(s.expected_kg)} KG)
+                                      Faltan: {nf2(remainingUnits)} UN · {nf3(remainingKg)} KG (Recibido {nf2(s.received_units)} UN · {nf3(s.received_kg)} KG de {nf2(s.expected_units)} UN · {nf3(s.expected_kg)} KG)
                                     </div>
 
                                     {clientLines.length > 0 && (
                                       <div style={{ marginTop: 6 }}>
                                         {clientLines.map((line, i) => (
-                                          <div key={i} className="charge-devol-line">
-                                            {line}
-                                          </div>
+                                          <div key={i} className="charge-devol-line">{line}</div>
                                         ))}
                                       </div>
                                     )}
@@ -533,11 +523,7 @@ export default function PreInvoiceCharge() {
                                       </div>
                                     )}
 
-                                    <button
-                                      className="charge-btn"
-                                      disabled={fullyAssigned}
-                                      onClick={() => openPopup(rm, s)}
-                                    >
+                                    <button className="charge-btn" disabled={fullyAssigned} onClick={() => openPopup(rm, s)}>
                                       {fullyAssigned ? "Redirigido" : "Redirigir"}
                                     </button>
                                   </div>
@@ -556,10 +542,7 @@ export default function PreInvoiceCharge() {
 
         {/* Footer global */}
         <div style={{ display: "flex", gap: 12, justifyContent: "flex-end", marginTop: 16 }}>
-          <button
-            className="charge-btn charge-btn-secondary"
-            onClick={() => window.location.reload()}
-          >
+          <button className="charge-btn charge-btn-secondary" onClick={() => window.location.reload()}>
             Cancelar cambios
           </button>
 
@@ -572,11 +555,7 @@ export default function PreInvoiceCharge() {
                 kg_received: Number(v?.kg || 0),
               }));
 
-              const body = {
-                production_date: prod,
-                delivery_date: del,
-                items,
-              };
+              const body = { production_date: prod, delivery_date: del, items };
 
               try {
                 const r = await fetch(`${API_URL}/preinvoices/save`, {
@@ -586,7 +565,7 @@ export default function PreInvoiceCharge() {
                 });
                 const js = await r.json();
                 if (js?.ok) {
-                  alert("Prefacturación guardada.");
+                  window.location.reload();
                 } else {
                   alert(js?.msg || "No se pudo guardar.");
                 }
@@ -605,9 +584,7 @@ export default function PreInvoiceCharge() {
             <div className="charge-popup" onClick={(e) => e.stopPropagation()}>
               <div className="charge-popup-header">
                 <h2>REDIRIGIR SOBRANTE</h2>
-                <button className="charge-popup-close" onClick={closePopup}>
-                  ×
-                </button>
+                <button className="charge-popup-close" onClick={closePopup}>×</button>
               </div>
 
               <div className="charge-popup-body">
@@ -620,12 +597,7 @@ export default function PreInvoiceCharge() {
 
                 <div className="charge-toggle">
                   <label className={`charge-chip ${popupTo === "client" ? "active" : ""}`}>
-                    <input
-                      type="radio"
-                      name="to"
-                      checked={popupTo === "client"}
-                      onChange={() => setPopupTo("client")}
-                    />
+                    <input type="radio" name="to" checked={popupTo === "client"} onChange={() => setPopupTo("client")} />
                     Redirigir a otro cliente
                   </label>
                   <label className={`charge-chip ${popupTo === "stock" ? "active" : ""}`}>
@@ -643,7 +615,7 @@ export default function PreInvoiceCharge() {
                       min={0}
                       step="1"
                       value={popupUnits}
-                      onChange={onUnitsChange}
+                      onChange={(e) => setPopupUnits(String(Math.min(Math.max(0, Number(e.target.value || 0)), popupMaxUnits)))}
                       placeholder="00000"
                     />
                     <small>Máximo: {Number(popupMaxUnits || 0)} UN</small>
@@ -657,7 +629,7 @@ export default function PreInvoiceCharge() {
                       min={0}
                       step="0.001"
                       value={popupKg}
-                      onChange={onKgChange}
+                      onChange={(e) => setPopupKg(String(Math.min(Math.max(0, Number(e.target.value || 0)), popupMaxKg)))}
                       placeholder="00000"
                     />
                     <small>Máximo: {Number(popupMaxKg || 0).toFixed(3)} KG</small>

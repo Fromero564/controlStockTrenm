@@ -18,12 +18,26 @@ const UPDATE_URL = (id) => `${API_URL}/update-order/${id}`;
 const PAYMENT_CONDITIONS_URL = `${API_URL}/payment-conditions`;
 const SALE_CONDITIONS_URL = `${API_URL}/sale-conditions`;
 
+// 🔧 Helper: deduplica listas por list_number; si falta, cae a name o id
+const dedupePriceLists = (arr) => {
+  const seen = new Set();
+  return (arr || []).filter((l) => {
+    const key =
+      (l && (l.list_number ?? l.name ?? l.id ?? JSON.stringify(l))) || "";
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+};
+
 const LoadNewOrder = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const isEdit = Boolean(id);
 
-  const [cortesOptions, setCortesOptions] = useState([]);
+  const [cortesOptions, setCortesOptions] = useState([
+    { corte: null, precio: "", cantidad: "", tipoMedida: "", codigo: "" },
+  ]);
   const [productos, setProductos] = useState([
     { corte: null, precio: "", cantidad: "", tipoMedida: "", codigo: "" },
   ]);
@@ -162,16 +176,21 @@ const LoadNewOrder = () => {
     );
   }, [listaSeleccionada, preciosListas]);
 
+  // 🔧 FIX: construir base (todas vs asociadas) y luego DEDUPLICAR
   useEffect(() => {
-    let opts = [];
+    let base = [];
     if (verTodasLasListas) {
-      opts = listasPrecio.map((l) => ({ value: l, label: l.name }));
+      base = listasPrecio; // todas
     } else if (clienteSeleccionado) {
-      opts = listasPrecio
-        .filter((l) => l.client_id === clienteSeleccionado.value.id)
-        .map((l) => ({ value: l, label: l.name }));
+      base = listasPrecio.filter(
+        (l) => String(l.client_id) === String(clienteSeleccionado.value.id)
+      );
     }
-    setListaPrecioOptions(opts);
+
+    const uniq = dedupePriceLists(base); // ← Quita duplicados
+
+    setListaPrecioOptions(uniq.map((l) => ({ value: l, label: l.name })));
+
     if (!isEdit) setListaSeleccionada(null);
   }, [listasPrecio, clienteSeleccionado, verTodasLasListas, isEdit]);
 

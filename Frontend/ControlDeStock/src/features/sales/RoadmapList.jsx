@@ -3,11 +3,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import Navbar from "../../components/Navbar";
-
-// 👇 igual que en tu ejemplo MeatLoad
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEye, faPen, faXmark } from "@fortawesome/free-solid-svg-icons";
-import "../../assets/styles/meatLoad.css"; // reutilizamos los colores/estilos de acciones
+import "../../assets/styles/meatLoad.css";
 
 const API_BASE = (import.meta.env.VITE_API_URL || "").replace(/\/+$/, "");
 const u = (p) => `${API_BASE}${p.startsWith("/") ? p : `/${p}`}`;
@@ -21,9 +19,13 @@ async function jdel(path) {
   return r.json();
 }
 
+// ✅ Evita corrimiento de día por zona horaria
 function fmtDate(d) {
   if (!d) return "-";
-  const dt = typeof d === "string" || typeof d === "number" ? new Date(d) : d;
+  const s = String(d);
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/); // YYYY-MM-DD (o con tiempo detrás)
+  if (m) return `${m[3]}/${m[2]}/${m[1]}`;      // dd/mm/yyyy sin construir Date
+  const dt = new Date(s);
   if (isNaN(dt)) return "-";
   return dt.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
@@ -106,7 +108,7 @@ export default function RoadmapList() {
   return (
     <div>
       <Navbar />
-       <div style={{ margin: "20px" }}>
+      <div style={{ margin: "20px" }}>
         <button className="boton-volver" onClick={() => nav('/roadmap-options')}>⬅ Volver</button>
       </div>
       <div className="rm-wrap" style={{ maxWidth: 1100, margin: "0 auto" }}>
@@ -162,7 +164,7 @@ export default function RoadmapList() {
                         <button
                           className="edit-button"
                           title="Editar"
-                          onClick={() => nav(`/roadmaps/${r.id}`)}
+                          onClick={() => nav(`/new-roadmap/${r.id}`)}
                         >
                           <FontAwesomeIcon icon={faPen} />
                         </button>
