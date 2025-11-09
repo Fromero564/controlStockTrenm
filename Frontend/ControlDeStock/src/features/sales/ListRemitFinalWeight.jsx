@@ -28,7 +28,7 @@ export default function ListRemitFinalWeight() {
 
   const queryString = useMemo(() => {
     const p = new URLSearchParams();
-    p.set("status", "generated"); // ← solo órdenes ya pesadas
+    p.set("status", "generated");
     if (date) {
       p.set("date_from", date);
       p.set("date_to", date);
@@ -96,7 +96,7 @@ export default function ListRemitFinalWeight() {
     <div className="lrf">
       <Navbar />
       <div className="lrf-back">
-        <button className="boton-volver" onClick={() => navigate(-1)}>
+        <button className="boton-volver" onClick={() => navigate('/sales-panel')}>
           ⬅ Volver
         </button>
       </div>
@@ -106,7 +106,7 @@ export default function ListRemitFinalWeight() {
 
         <div className="tabs">
           <button className="tab active">A REMITIR</button>
-          <button className="tab" onClick={() => navigate("/remits/list")}>
+          <button className="tab" onClick={() => navigate("/sales-panel")}>
             LISTA DE REMITOS
           </button>
         </div>

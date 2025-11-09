@@ -39,6 +39,20 @@ const RoadmapInfoDestination = db.RoadmapInfoDestination;
 const Preinvoice = db.Preinvoice;
 const PreinvoiceReturn = db.PreinvoiceReturn;
 
+// Inserta un espacio fino después del separador de miles para que pdfkit pueda cortar con ellipsis
+function thinSpaceNumber(str) {
+  return String(str).replace(/\./g, ".\u2009");
+}
+
+// Calcula el tamaño de fuente que permite que "text" entre en "width" (entre minSize y maxSize)
+function fitFontSize(doc, text, width, maxSize, minSize) {
+  doc.font("Helvetica");
+  for (let s = maxSize; s >= minSize; s--) {
+    doc.fontSize(s);
+    if (doc.widthOfString(text) <= width) return s;
+  }
+  return minSize;
+}
 
 
 async function packagingFor(orderId, productId) {
@@ -219,111 +233,162 @@ function drawHeader(doc, remit) {
 
 
 function drawTable(doc, items, startY = 210) {
-    const topY = startY + 10;
+  const topY = startY + 10;
 
-    const left = doc.page.margins.left || 40;
-    const right = doc.page.margins.right || 40;
-    const availableWidth = doc.page.width - left - right;
+  const left = doc.page.margins.left || 40;
+  const right = doc.page.margins.right || 40;
+  const availableWidth = doc.page.width - left - right;
 
-    const COLS = [
-        { key: "product_id", title: "CÓDIGO", width: 50, align: "left" },
-        { key: "product_name", title: "PRODUCTO", width: 135, align: "left" },
-        { key: "packaging", title: "EMPAQUE", width: 70, align: "left" }, // 👈 NUEVA
-        { key: "unit_measure", title: "UNIDAD", width: 45, align: "center" },
-        { key: "qty", title: "CANT.", width: 55, align: "right" },
-        { key: "net_weight", title: "P. NETO", width: 60, align: "right" },
-        { key: "unit_price", title: "P. UNIT", width: 65, align: "right" },
-        { key: "total", title: "P. TOTAL", width: 65, align: "right" },
-    ];
-    const sumW = COLS.reduce((a, c) => a + c.width, 0);
-    if (sumW !== Math.round(availableWidth)) {
-        COLS[COLS.length - 1].width += (availableWidth - sumW);
-    }
+  // Anchos fijos con más espacio para P. TOTAL
+  const COLS = [
+    { key: "product_id",   title: "CÓDIGO",   width: 50,  align: "left"  },
+    { key: "product_name", title: "PRODUCTO", width: 120, align: "left"  }, // -15
+    { key: "packaging",    title: "EMPAQUE",  width: 60,  align: "left"  }, // -10
+    { key: "unit_measure", title: "UNIDAD",   width: 45,  align: "center"},
+    { key: "qty",          title: "CANT.",    width: 50,  align: "right" }, // -5
+    { key: "net_weight",   title: "P. NETO",  width: 60,  align: "right" },
+    { key: "unit_price",   title: "P. UNIT",  width: 60,  align: "right" }, // -5
+    { key: "total",        title: "P. TOTAL", width: 90,  align: "right" }, // +25 ✅
+  ];
+  const sumW = COLS.reduce((a, c) => a + c.width, 0);
+  if (sumW !== Math.round(availableWidth)) {
+    COLS[COLS.length - 1].width += (availableWidth - sumW);
+  }
 
-    const rowHeight = 18;
-    const headerHeight = 22;
-    let y = topY;
+  const rowHeight = 18;
+  const headerHeight = 22;
+  let y = topY;
+
+  // Línea superior de la tabla
+  doc.moveTo(left, y).lineTo(left + availableWidth, y).strokeColor("#cfcfd1").lineWidth(1).stroke();
+  y += 6;
+
+  // ====== HEADER con auto-fit ======
+  const headerMaxSize = 10, headerMinSize = 8;
+  let headerFontSize = headerMaxSize;
+
+  COLS.forEach(col => {
+    const needed = fitFontSize(doc, col.title, col.width - 4, headerMaxSize, headerMinSize);
+    if (needed < headerFontSize) headerFontSize = needed;
+  });
+
+  doc.font("Helvetica-Bold").fontSize(headerFontSize);
+  let x = left;
+  COLS.forEach(col => {
+    doc.text(col.title, x + 2, y, {
+      width: col.width - 4,
+      align: col.align,
+      ellipsis: true,
+      lineBreak: false
+    });
+    x += col.width;
+  });
+  y += headerHeight - 8;
+
+  // Línea bajo header
+  doc.moveTo(left, y).lineTo(left + availableWidth, y).strokeColor("#cfcfd1").lineWidth(1).stroke();
+  y += 6;
+
+  // ====== CUERPO ======
+  doc.font("Helvetica");
+
+  let totalFinal = 0;
+  let totalItems = 0; // líneas
+  let totalKg = 0;
+
+  const needPage = (nextY) => nextY > (doc.page.height - doc.page.margins.bottom - 120);
+
+  const redrawHeader = () => {
+    let yy = Math.max(doc.y, doc.page.margins.top + 120);
+    y = yy;
 
     doc.moveTo(left, y).lineTo(left + availableWidth, y).strokeColor("#cfcfd1").lineWidth(1).stroke();
     y += 6;
 
-    doc.font("Helvetica-Bold").fontSize(10);
-    let x = left;
+    let hdrSize = headerMaxSize;
     COLS.forEach(col => {
-        doc.text(col.title, x + 2, y, { width: col.width - 4, align: col.align, ellipsis: true, lineBreak: false });
-        x += col.width;
+      const needed = fitFontSize(doc, col.title, col.width - 4, headerMaxSize, headerMinSize);
+      if (needed < hdrSize) hdrSize = needed;
+    });
+
+    doc.font("Helvetica-Bold").fontSize(hdrSize);
+    let xx = left;
+    COLS.forEach(col => {
+      doc.text(col.title, xx + 2, y, {
+        width: col.width - 4,
+        align: col.align,
+        ellipsis: true,
+        lineBreak: false
+      });
+      xx += col.width;
     });
     y += headerHeight - 8;
-
     doc.moveTo(left, y).lineTo(left + availableWidth, y).strokeColor("#cfcfd1").lineWidth(1).stroke();
     y += 6;
+    doc.font("Helvetica");
+  };
 
-    doc.font("Helvetica").fontSize(9);
+  items.forEach((it) => {
+    const qty       = Number(it.qty || 0);
+    const netWeight = Number(it.net_weight || 0);
+    const unitPrice = Number(it.unit_price || 0);
+    const total     = (it.total != null) ? Number(it.total) : unitPrice * qty;
 
-    let totalFinal = 0;
-    let totalItems = 0; // líneas
-    let totalKg = 0;
+    totalItems += 1;
+    totalKg    += netWeight;
+    totalFinal += total;
 
-    const needPage = (nextY) => nextY > (doc.page.height - doc.page.margins.bottom - 120);
+    if (needPage(y + rowHeight)) {
+      doc.addPage();
+      redrawHeader();
+    }
 
-    const redrawHeader = () => {
-        doc.font("Helvetica").fontSize(9);
-        let yy = Math.max(doc.y, doc.page.margins.top + 120);
-        y = yy;
+    // 1) Textos por celda
+    const cells = [
+      String(it.product_id ?? ""),
+      String(it.product_name ?? ""),
+      String(it.packaging ?? "-"),
+      String(it.unit_measure ?? ""),
+      fmtQty(qty),
+      nf.format(netWeight),
+      fmtMoney(unitPrice),
+      fmtMoney(total),
+    ];
 
-        doc.moveTo(left, y).lineTo(left + availableWidth, y).strokeColor("#cfcfd1").lineWidth(1).stroke();
-        y += 6;
-        doc.font("Helvetica-Bold").fontSize(10);
-        let xx = left;
-        COLS.forEach(col => {
-            doc.text(col.title, xx + 2, y, { width: col.width - 4, align: col.align, ellipsis: true, lineBreak: false });
-            xx += col.width;
-        });
-        y += headerHeight - 8;
-        doc.moveTo(left, y).lineTo(left + availableWidth, y).strokeColor("#cfcfd1").lineWidth(1).stroke();
-        y += 6;
-        doc.font("Helvetica").fontSize(9);
-    };
+    // 2) SIN “thin space” para números (evita saltos). Vamos con truncado + no wrap.
+    const displayCells = cells;
 
-    items.forEach((it) => {
-        const qty = Number(it.qty || 0);
-        const netWeight = Number(it.net_weight || 0);
-        const unitPrice = Number(it.unit_price || 0);
-        const total = (it.total != null) ? Number(it.total) : unitPrice * qty;
-
-        totalItems += 1;          // 👈 ítems = líneas
-        totalKg += netWeight;
-        totalFinal += total;
-
-        if (needPage(y + rowHeight)) {
-            doc.addPage();
-            redrawHeader();
-        }
-
-        let xx = left;
-        const cells = [
-            String(it.product_id ?? ""),
-            String(it.product_name ?? ""),
-            String(it.packaging ?? "-"),                  // 👈 NUEVO
-            String(it.unit_measure ?? ""),
-            fmtQty(qty),
-            nf.format(netWeight),
-            fmtMoney(unitPrice),
-            fmtMoney(total),
-        ];
-
-        cells.forEach((val, i) => {
-            const col = COLS[i];
-            doc.text(val, xx + 2, y, { width: col.width - 4, align: col.align, ellipsis: true });
-            xx += col.width;
-        });
-
-        y += rowHeight;
-        doc.moveTo(left, y).lineTo(left + availableWidth, y).strokeColor("#e6e6e8").lineWidth(0.5).stroke();
+    // 3) Auto–ajuste de fuente por fila (todo a una misma fuente)
+    const normalSize = 9, minSize = 7;
+    let rowFont = normalSize;
+    displayCells.forEach((val, i) => {
+      const col = COLS[i];
+      const needed = fitFontSize(doc, val, col.width - 4, normalSize, minSize);
+      if (needed < rowFont) rowFont = needed;
     });
 
-    return { y: y + 20, totalFinal, totalItems, totalKg };
+    // 4) Dibujar fila
+    doc.font("Helvetica").fontSize(rowFont);
+    let xx = left;
+    displayCells.forEach((val, i) => {
+      const col = COLS[i];
+      doc.text(val, xx + 2, y, {
+        width: col.width - 4,
+        align: col.align,
+        ellipsis: true,
+        lineBreak: false   // 👈 no permitimos salto en ninguna celda
+      });
+      xx += col.width;
+    });
+    doc.fontSize(normalSize);
+
+    y += rowHeight;
+    doc.moveTo(left, y).lineTo(left + availableWidth, y).strokeColor("#e6e6e8").lineWidth(0.5).stroke();
+  });
+
+  return { y: y + 20, totalFinal, totalItems, totalKg };
 }
+
 
 function drawFooter(doc, remit, y, totalFinal, totalItems, totalKg) {
     const left = 50;
@@ -3473,6 +3538,1449 @@ deleteRoadmap: async (req, res) => {
     console.error(e);
     await t.rollback();
     return res.status(500).json({ ok: false, msg: "Error al eliminar hoja de ruta" });
+  }
+},
+    // GET /preinvoices/detail/by-roadmaps?ids=1,2,3
+    // Devuelve el mismo formato que getPreinvoiceDetail,
+    // pero filtrando por una lista de roadmap_ids explícitos
+    getPreinvoiceDetailByRoadmapIds: async (req, res) => {
+        try {
+            const idsRaw = String(req.query.ids || "");
+            const roadmapIds = idsRaw
+                .split(",")
+                .map(x => x.trim())
+                .filter(x => x !== "")
+                .map(x => Number(x));
+
+            if (!roadmapIds.length) {
+                return res.status(400).json({ ok: false, msg: "Faltan roadmap_ids en 'ids'" });
+            }
+
+            // 1) Busco info de las hojas de ruta pedidas
+            const roadmaps = await RoadmapInfo.findAll({
+                where: { id: { [Op.in]: roadmapIds } },
+                order: [["id", "ASC"]],
+                attributes: [
+                    "id",
+                    "truck_license_plate",
+                    "driver",
+                    "created_at",
+                    "delivery_date",
+                ],
+            });
+            if (!roadmaps.length) {
+                return res.json({ ok: true, roadmaps: [] });
+            }
+
+            // 2) Destinos/remitos asociados a esas hojas
+            const dests = await RoadmapInfoDestination.findAll({
+                where: { roadmap_info_id: { [Op.in]: roadmapIds } },
+                order: [["id", "ASC"]],
+                attributes: [
+                    "roadmap_info_id",
+                    "id_remit",
+                    "destination",
+                ],
+            });
+
+            // armo índice de destinos por hoja
+            const destByRoadmap = new Map();
+            for (const d of dests) {
+                if (!destByRoadmap.has(d.roadmap_info_id)) {
+                    destByRoadmap.set(d.roadmap_info_id, []);
+                }
+                destByRoadmap.get(d.roadmap_info_id).push(d);
+            }
+
+            // 3) Traigo remitos finales + sus ítems
+            const remitIds = dests.map(d => d.id_remit).filter(Boolean);
+            const remits = remitIds.length
+                ? await FinalRemit.findAll({
+                    where: { id: { [Op.in]: remitIds } },
+                    order: [["id", "ASC"]],
+                    attributes: [
+                        "id",
+                        "receipt_number",
+                        "order_id",
+                        "client_name",
+                        "salesman_name",
+                        "generated_by",
+                        "price_list",
+                        "sell_condition",
+                        "payment_condition",
+                        "total_items",
+                        "total_amount",
+                    ],
+                })
+                : [];
+
+            const products = remitIds.length
+                ? await FinalRemitProduct.findAll({
+                    where: { final_remit_id: { [Op.in]: remitIds } },
+                    order: [["id", "ASC"]],
+                    attributes: [
+                        "id",
+                        "final_remit_id",
+                        "product_id",
+                        "product_name",
+                        "unit_measure",
+                        "qty",
+                        "net_weight",
+                        "unit_price",
+                        "gross_weight",
+                        "avg_weight",
+                    ],
+                })
+                : [];
+
+            // indexo para armar respuesta rápido (mismo approach que tu getPreinvoiceDetail) 
+            const remitById = new Map(remits.map(r => [r.id, r]));
+            const itemsByRemit = new Map();
+            for (const p of products) {
+                if (!itemsByRemit.has(p.final_remit_id)) itemsByRemit.set(p.final_remit_id, []);
+                itemsByRemit.get(p.final_remit_id).push({
+                    id: p.id,
+                    final_remit_item_id: p.id,
+                    product_id: p.product_id,
+                    product_name: p.product_name,
+                    unit_measure: p.unit_measure,
+                    qty: Number(p.qty || 0),
+                    net_weight: Number(p.net_weight || 0),
+                    unit_price: Number(p.unit_price || 0),
+                    gross_weight: Number(p.gross_weight || 0),
+                    avg_weight: Number(p.avg_weight || 0),
+                    total:
+                        Number(p.unit_price || 0) *
+                        (String(p.unit_measure || "").toUpperCase() === "KG"
+                            ? Number(p.net_weight || 0)
+                            : Number(p.qty || 0)),
+                });
+            }
+
+            // 4) Armo salida agrupada por hoja de ruta
+            const out = roadmaps.map(r => {
+                const destsForRoadmap = destByRoadmap.get(r.id) || [];
+
+                const remitsForRoadmap = destsForRoadmap
+                    .map(d => {
+                        const h = remitById.get(d.id_remit);
+                        if (!h) return null;
+
+                        return {
+                            final_remit_id: h.id,
+                            receipt_number: h.receipt_number,
+                            order_id: h.order_id,
+                            client_name: h.client_name,
+                            salesman_name: h.salesman_name,
+                            generated_by: h.generated_by,
+                            price_list: h.price_list,
+                            sell_condition: h.sell_condition,
+                            payment_condition: h.payment_condition,
+                            destination: d.destination,
+                            total_items: Number(h.total_items || 0),
+                            total_amount: Number(h.total_amount || 0),
+                            items: itemsByRemit.get(h.id) || [],
+                        };
+                    })
+                    .filter(Boolean);
+
+                return {
+                    roadmap_id: r.id,
+                    truck_license_plate: r.truck_license_plate,
+                    driver: r.driver,
+                    production_date: String(r.created_at).slice(0, 10),
+                    delivery_date: String(r.delivery_date).slice(0, 10),
+                    remits: remitsForRoadmap,
+                };
+            });
+
+            return res.json({
+                ok: true,
+                roadmaps: out,
+            });
+        } catch (e) {
+            console.error(e);
+            return res
+                .status(500)
+                .json({ ok: false, msg: "Error al armar detalle de prefacturaciones (by-roadmaps)" });
+        }
+    },
+
+    // GET /preinvoices/returns/by-roadmaps?ids=1,2,3
+    // Devuelve las redirecciones registradas (faltantes reasignados) para esas hojas
+    readPreinvoiceReturnsByRoadmapIds: async (req, res) => {
+        try {
+            const idsRaw = String(req.query.ids || "");
+            const roadmapIds = idsRaw
+                .split(",")
+                .map(x => x.trim())
+                .filter(x => x !== "")
+                .map(x => Number(x));
+
+            if (!roadmapIds.length) {
+                return res.status(400).json({ ok: false, msg: "Faltan roadmap_ids en 'ids'" });
+            }
+
+            // 1) Busco los remitos que pertenecen a esas hojas
+            const dests = await RoadmapInfoDestination.findAll({
+                where: { roadmap_info_id: { [Op.in]: roadmapIds } },
+                attributes: ["id_remit"],
+            });
+
+            const remitIds = dests.map(d => Number(d.id_remit)).filter(Boolean);
+            if (!remitIds.length) {
+                return res.json({ ok: true, items: [] });
+            }
+
+            // 2) Busco las filas de Preinvoice + sus devoluciones (igual que readPreinvoiceReturnsV2, pero usando remitIds) :contentReference[oaicite:5]{index=5}
+            const rows = await Preinvoice.findAll({
+                where: { final_remit_id: { [Op.in]: remitIds } },
+                attributes: ["final_remit_item_id"],
+                include: [
+                    {
+                        model: PreinvoiceReturn,
+                        as: "returns",
+                        required: false,
+                    },
+                ],
+                order: [["id", "ASC"]],
+            });
+
+            // 3) Armo salida para el front
+            const items = [];
+            for (const p of rows) {
+                for (const r of (p.returns || [])) {
+                    items.push({
+                        item_id: Number(p.final_remit_item_id),
+                        reason: r.reason === "STOCK" ? "stock" : "client",
+                        client_name: r.client_name || null,
+                        units_redirected: Number(r.units_redirected || 0),
+                        kg_redirected: Number(r.kg_redirected || 0),
+                        created_at: r.created_at,
+                        updated_at: r.updated_at,
+                    });
+                }
+            }
+
+            return res.json({ ok: true, items });
+        } catch (e) {
+            console.error(e);
+            return res
+                .status(500)
+                .json({ ok: false, msg: "Error al leer devoluciones (by-roadmaps)" });
+        }
+    },
+
+    // POST /preinvoices/save/by-roadmaps
+    // body: { roadmap_ids:[...], items:[ { item_id, units_received, kg_received }, ... ] }
+    // Guarda recepción (UNI.RECEP / KG RECEP) en Preinvoice, igual que savePreinvoice pero para varias hojas
+    savePreinvoiceByRoadmapIds: async (req, res) => {
+        const t = await sequelize.transaction();
+        try {
+            const { roadmap_ids = [], items = [] } = req.body || {};
+
+            if (!Array.isArray(roadmap_ids) || roadmap_ids.length === 0) {
+                await t.rollback();
+                return res.status(400).json({ ok: false, msg: "Faltan roadmap_ids" });
+            }
+
+            // Por cada item recibido actualizamos / creamos la fila de Preinvoice (misma lógica que savePreinvoice) 
+            for (const row of items) {
+                const { item_id, units_received = 0, kg_received = 0 } = row;
+
+                // Busco el producto en el remito final
+                const frItem = await FinalRemitProduct.findOne({
+                    where: { id: item_id },
+                    transaction: t,
+                });
+                if (!frItem) continue;
+
+                const expUnits = Number(frItem.qty || 0);
+                const expKg = Number(frItem.net_weight || 0);
+
+                // upsert en Preinvoice para ese item
+                let pre = await Preinvoice.findOne({
+                    where: { final_remit_item_id: item_id },
+                    transaction: t,
+                });
+
+                if (!pre) {
+                    pre = await Preinvoice.create(
+                        {
+                            receipt_number: null,
+                            final_remit_id: frItem.final_remit_id,
+                            final_remit_item_id: item_id,
+                            product_id: frItem.product_id,
+                            product_name: frItem.product_name,
+                            unit_measure: frItem.unit_measure,
+                            expected_units: expUnits,
+                            expected_kg: expKg,
+                            received_units: Number(units_received || 0),
+                            received_kg: Number(kg_received || 0),
+                        },
+                        { transaction: t }
+                    );
+                } else {
+                    pre.received_units = Number(units_received || 0);
+                    pre.received_kg = Number(kg_received || 0);
+                    await pre.save({ transaction: t });
+                }
+            }
+
+            await t.commit();
+            return res.status(201).json({ ok: true, msg: "Prefacturación guardada (by-roadmaps)" });
+        } catch (e) {
+            console.error(e);
+            try { await t.rollback(); } catch {}
+            return res
+                .status(500)
+                .json({ ok: false, msg: "Error al guardar prefacturación (by-roadmaps)" });
+        }
+    },
+
+    // POST /preinvoices/redirect/by-roadmaps
+    // body: {
+    //   roadmap_ids:[...],
+    //   final_remit_id,
+    //   item_id,
+    //   to:'client'|'stock',
+    //   client_id?,
+    //   client_name?,
+    //   units,
+    //   kg
+    // }
+    // Guarda o borra la redirección de faltante para un item, igual que savePreinvoiceRedirect pero verificando que el remito pertenezca a alguna de las hojas seleccionadas
+    savePreinvoiceRedirectByRoadmapIds: async (req, res) => {
+        const t = await sequelize.transaction();
+        try {
+            const {
+                roadmap_ids = [],
+                final_remit_id,
+                item_id,
+                to, // 'client' | 'stock'
+                client_id = null,
+                client_name = null,
+                units = 0,
+                kg = 0,
+            } = req.body || {};
+
+            if (!Array.isArray(roadmap_ids) || roadmap_ids.length === 0) {
+                await t.rollback();
+                return res.status(400).json({ ok: false, msg: "Faltan roadmap_ids" });
+            }
+
+            if (!final_remit_id || !item_id || !to) {
+                await t.rollback();
+                return res.status(400).json({ ok: false, msg: "Faltan datos obligatorios (final_remit_id / item_id / to)" });
+            }
+
+            // 1) chequeo que ese remito realmente pertenezca a alguna hoja pasada
+            const destCheck = await RoadmapInfoDestination.findOne({
+                where: {
+                    roadmap_info_id: { [Op.in]: roadmap_ids },
+                    id_remit: final_remit_id,
+                },
+                transaction: t,
+            });
+
+            if (!destCheck) {
+                await t.rollback();
+                return res.status(400).json({
+                    ok: false,
+                    msg: "El remito no pertenece a las hojas indicadas",
+                });
+            }
+
+            // 2) Busco/creo la fila Preinvoice del item
+            const frItem = await FinalRemitProduct.findOne({
+                where: { id: item_id },
+                transaction: t,
+            });
+            if (!frItem) {
+                await t.rollback();
+                return res.status(404).json({ ok: false, msg: "Ítem de remito no encontrado" });
+            }
+
+            const expUnits = Number(frItem.qty || 0);
+            const expKg = Number(frItem.net_weight || 0);
+
+            let pre = await Preinvoice.findOne({
+                where: {
+                    final_remit_id: final_remit_id,
+                    final_remit_item_id: item_id,
+                },
+                transaction: t,
+            });
+
+            if (!pre) {
+                pre = await Preinvoice.create(
+                    {
+                        receipt_number: null,
+                        final_remit_id: final_remit_id,
+                        final_remit_item_id: item_id,
+                        product_id: frItem.product_id,
+                        product_name: frItem.product_name,
+                        unit_measure: frItem.unit_measure,
+                        expected_units: expUnits,
+                        expected_kg: expKg,
+                        received_units: 0,
+                        received_kg: 0,
+                    },
+                    { transaction: t }
+                );
+            }
+
+            // 3) Upsert de la redirección (idéntica idea que savePreinvoiceRedirect) :contentReference[oaicite:7]{index=7}
+            const reasonDB = to === "stock" ? "STOCK" : "CLIENT";
+
+            const whereReturn = {
+                preinvoice_id: pre.id,
+                reason: reasonDB,
+            };
+            if (reasonDB === "CLIENT") {
+                whereReturn.client_name = client_name || null;
+            }
+
+            const existing = await PreinvoiceReturn.findOne({
+                where: whereReturn,
+                transaction: t,
+            });
+
+            // Si mando 0 y 0 → borrar esa redirección
+            if (Number(units) === 0 && Number(kg) === 0) {
+                if (existing) {
+                    await existing.destroy({ transaction: t });
+                }
+                await t.commit();
+                return res
+                    .status(201)
+                    .json({ ok: true, msg: "Redirección eliminada (by-roadmaps)" });
+            }
+
+            if (existing) {
+                existing.client_id = client_id;
+                existing.client_name = client_name;
+                existing.units_redirected = Number(units);
+                existing.kg_redirected = Number(kg);
+                await existing.save({ transaction: t });
+            } else {
+                await PreinvoiceReturn.create(
+                    {
+                        preinvoice_id: pre.id,
+                        client_id,
+                        client_name,
+                        units_redirected: Number(units),
+                        kg_redirected: Number(kg),
+                        reason: reasonDB,
+                    },
+                    { transaction: t }
+                );
+            }
+
+            await t.commit();
+            return res
+                .status(201)
+                .json({ ok: true, msg: "Redirección registrada (by-roadmaps)" });
+        } catch (e) {
+            console.error(e);
+            try { await t.rollback(); } catch {}
+            return res
+                .status(500)
+                .json({ ok: false, msg: "Error al registrar redirección (by-roadmaps)" });
+        }
+    },
+// =========================================================
+// PREFACURACIÓN MULTI-HOJA (BY ROADMAP IDS)
+// =========================================================
+
+
+getPreinvoiceDetailByRoadmapIds: async (req, res) => {
+  try {
+    // --- bandera para incluir remitos "lockeados" (ya prefacturados)
+    const includeLocked =
+      req.query.include_locked === "1" ||
+      String(req.query.include_locked || "").toLowerCase() === "true";
+
+    // --- parseo de ids
+    const idsRaw = String(req.query.ids || "");
+    const roadmapIds = idsRaw
+      .split(",")
+      .map((x) => x.trim())
+      .filter((x) => x !== "")
+      .map((x) => Number(x))
+      .filter((n) => !Number.isNaN(n));
+
+    if (!roadmapIds.length)
+      return res
+        .status(400)
+        .json({ ok: false, msg: "Faltan roadmap_ids en 'ids'" });
+
+    // --- roadmaps
+    const roadmaps = await RoadmapInfo.findAll({
+      where: { id: { [Op.in]: roadmapIds } },
+      order: [["id", "ASC"]],
+      attributes: ["id", "truck_license_plate", "driver", "created_at", "delivery_date"],
+    });
+    if (!roadmaps.length) return res.json({ ok: true, roadmaps: [] });
+
+    // --- destinos (aportan id_remit)
+    const dests = await RoadmapInfoDestination.findAll({
+      where: { roadmap_info_id: { [Op.in]: roadmapIds } },
+      order: [["id", "ASC"]],
+      attributes: ["roadmap_info_id", "id_remit", "destination"],
+    });
+
+    // --- ids de remitos
+    const remitIds = dests.map((d) => Number(d.id_remit)).filter(Boolean);
+
+    // --- remitos "lockeados" por prefactura existente
+    const locked = remitIds.length
+      ? new Set(
+          (
+            await Preinvoice.findAll({
+              where: { final_remit_id: { [Op.in]: remitIds } },
+              attributes: ["final_remit_id"],
+              group: ["final_remit_id"],
+            })
+          )
+            .map((r) => Number(r.final_remit_id))
+            .filter((n) => !Number.isNaN(n))
+        )
+      : new Set();
+
+    // --- headers de remitos
+    const remits = remitIds.length
+      ? await FinalRemit.findAll({
+          where: { id: { [Op.in]: remitIds } },
+          order: [["id", "ASC"]],
+          attributes: [
+            "id",
+            "receipt_number",
+            "order_id",
+            "client_name",
+            "salesman_name",
+            "generated_by",
+            "price_list",
+            "sell_condition",
+            "payment_condition",
+            "total_items",
+            "total_amount",
+          ],
+        })
+      : [];
+
+    // --- items de remitos
+    const products = remitIds.length
+      ? await FinalRemitProduct.findAll({
+          where: { final_remit_id: { [Op.in]: remitIds } },
+          order: [["id", "ASC"]],
+          attributes: [
+            "id",
+            "final_remit_id",
+            "product_id",
+            "product_name",
+            "unit_measure",
+            "qty",
+            "net_weight",
+            "unit_price",
+            "gross_weight",
+            "avg_weight",
+          ],
+        })
+      : [];
+
+    // --- indexaciones
+    const remitById = new Map(remits.map((r) => [r.id, r]));
+    const itemsByRemit = new Map();
+    for (const p of products) {
+      if (!itemsByRemit.has(p.final_remit_id))
+        itemsByRemit.set(p.final_remit_id, []);
+      itemsByRemit.get(p.final_remit_id).push({
+        id: p.id,
+        final_remit_item_id: p.id,
+        product_id: p.product_id,
+        product_name: p.product_name,
+        unit_measure: p.unit_measure,
+        qty: Number(p.qty || 0),
+        net_weight: Number(p.net_weight || 0),
+        unit_price: Number(p.unit_price || 0),
+        gross_weight: Number(p.gross_weight || 0),
+        avg_weight: Number(p.avg_weight || 0),
+        total:
+          Number(p.unit_price || 0) *
+          (String(p.unit_measure || "").toUpperCase() === "KG"
+            ? Number(p.net_weight || 0)
+            : Number(p.qty || 0)),
+      });
+    }
+
+    const destByRoadmap = new Map();
+    for (const d of dests) {
+      if (!destByRoadmap.has(d.roadmap_info_id))
+        destByRoadmap.set(d.roadmap_info_id, []);
+      destByRoadmap.get(d.roadmap_info_id).push(d);
+    }
+
+    // --- armado de salida, respetando includeLocked
+    const out = roadmaps.map((r) => {
+      const destsForRoadmap = destByRoadmap.get(r.id) || [];
+      const remitsForRoadmap = destsForRoadmap
+        .map((d) => {
+          const h = remitById.get(d.id_remit);
+          if (!h) return null;
+
+      
+          if (!includeLocked && locked.has(Number(h.id))) return null;
+
+          return {
+            final_remit_id: h.id,
+            receipt_number: h.receipt_number,
+            order_id: h.order_id,
+            client_name: h.client_name,
+            salesman_name: h.salesman_name,
+            generated_by: h.generated_by,
+            price_list: h.price_list,
+            sell_condition: h.sell_condition,
+            payment_condition: h.payment_condition,
+            destination: d.destination,
+            total_items: Number(h.total_items || 0),
+            total_amount: Number(h.total_amount || 0),
+            items: itemsByRemit.get(h.id) || [],
+          };
+        })
+        .filter(Boolean);
+
+      return {
+        roadmap_id: r.id,
+        truck_license_plate: r.truck_license_plate,
+        driver: r.driver,
+        production_date: String(r.created_at || "").slice(0, 10),
+        delivery_date: String(r.delivery_date || "").slice(0, 10),
+        remits: remitsForRoadmap,
+      };
+    });
+
+    return res.json({ ok: true, roadmaps: out });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({
+      ok: false,
+      msg: "Error al armar detalle de prefacturaciones (by-roadmaps)",
+    });
+  }
+},
+
+
+
+readPreinvoiceReturnsByRoadmapIds: async (req, res) => {
+    try {
+        const idsRaw = String(req.query.ids || "");
+        const roadmapIds = idsRaw.split(",").map(x => x.trim()).filter(x => x !== "").map(x => Number(x));
+
+        if (!roadmapIds.length) {
+            return res.status(400).json({ ok: false, msg: "Faltan roadmap_ids en 'ids'" });
+        }
+
+        const dests = await RoadmapInfoDestination.findAll({
+            where: { roadmap_info_id: { [Op.in]: roadmapIds } },
+            attributes: ["id_remit"],
+        });
+
+        const remitIds = dests.map(d => Number(d.id_remit)).filter(Boolean);
+        if (!remitIds.length) return res.json({ ok: true, items: [] });
+
+        const rows = await Preinvoice.findAll({
+            where: { final_remit_id: { [Op.in]: remitIds } },
+            attributes: ["final_remit_item_id"],
+            include: [{ model: PreinvoiceReturn, as: "returns", required: false }],
+            order: [["id", "ASC"]],
+        });
+
+        const items = [];
+        for (const p of rows) {
+            for (const r of (p.returns || [])) {
+                items.push({
+                    item_id: Number(p.final_remit_item_id),
+                    reason: r.reason === "STOCK" ? "stock" : "client",
+                    client_name: r.client_name || null,
+                    units_redirected: Number(r.units_redirected || 0),
+                    kg_redirected: Number(r.kg_redirected || 0),
+                    created_at: r.created_at,
+                    updated_at: r.updated_at,
+                });
+            }
+        }
+
+        return res.json({ ok: true, items });
+    } catch (e) {
+        console.error(e);
+        return res.status(500).json({ ok: false, msg: "Error al leer devoluciones (by-roadmaps)" });
+    }
+},
+
+savePreinvoiceByRoadmapIds: async (req, res) => {
+    const t = await sequelize.transaction();
+    try {
+        const { roadmap_ids = [], items = [] } = req.body || {};
+
+        if (!Array.isArray(roadmap_ids) || roadmap_ids.length === 0) {
+            await t.rollback();
+            return res.status(400).json({ ok: false, msg: "Faltan roadmap_ids" });
+        }
+
+        // Recorro cada ítem recepcionado que vino del front
+        for (const row of items) {
+            const {
+                item_id,                // final_remit_product.id
+                units_received = 0,
+                kg_received = 0,
+            } = row;
+
+            // 1) Busco el ítem del remito final
+            const frItem = await FinalRemitProduct.findOne({
+                where: { id: item_id },
+                transaction: t,
+                attributes: [
+                    "id",
+                    "final_remit_id",
+                    "product_id",
+                    "product_name",
+                    "unit_measure",
+                    "qty",
+                    "net_weight",
+                ],
+            });
+
+            if (!frItem) {
+                // si el ítem ya no existe o el id vino mal, lo salto
+                continue;
+            }
+
+            const expectedUnits = Number(frItem.qty || 0);
+            const expectedKg = Number(frItem.net_weight || 0);
+
+            // 2) Traigo el remito dueño de este ítem, para conocer el receipt_number
+            const frHead = await FinalRemit.findOne({
+                where: { id: frItem.final_remit_id },
+                transaction: t,
+                attributes: ["id", "receipt_number"],
+            });
+
+            const receiptNumber = frHead && frHead.receipt_number
+                ? frHead.receipt_number
+                : `REM-${frItem.final_remit_id}`; // fallback mínimo para cumplir NOT NULL
+
+            // 3) Busco si ya existe una fila de preinvoices para este ítem
+            let pre = await Preinvoice.findOne({
+                where: { final_remit_item_id: item_id },
+                transaction: t,
+            });
+
+            if (!pre) {
+                // 4a) No existe -> creo una nueva fila en preinvoices
+                await Preinvoice.create(
+                    {
+                        receipt_number: receiptNumber,
+                        final_remit_id: frItem.final_remit_id,
+                        final_remit_item_id: frItem.id, // item_id
+                        product_id: frItem.product_id,
+                        product_name: frItem.product_name,
+                        unit_measure: frItem.unit_measure,
+
+                        expected_units: expectedUnits,
+                        expected_kg: expectedKg,
+
+                        received_units: Number(units_received || 0),
+                        received_kg: Number(kg_received || 0),
+
+                        // note: null por ahora, igual que tu esquema actual
+                    },
+                    { transaction: t }
+                );
+            } else {
+                // 4b) Ya existía -> actualizo recepción
+                pre.received_units = Number(units_received || 0);
+                pre.received_kg = Number(kg_received || 0);
+
+                // aseguramos no dejar receipt_number vacío por versiones viejas
+                if (!pre.receipt_number || pre.receipt_number === "") {
+                    pre.receipt_number = receiptNumber;
+                }
+
+                await pre.save({ transaction: t });
+            }
+        }
+
+        // 5) todo OK -> commit
+        await t.commit();
+        return res
+            .status(201)
+            .json({ ok: true, msg: "Prefacturación guardada (by-roadmaps)" });
+
+    } catch (e) {
+        console.error(e);
+        try { await t.rollback(); } catch {}
+        return res
+            .status(500)
+            .json({ ok: false, msg: "Error al guardar prefacturación (by-roadmaps)" });
+    }
+},
+
+
+savePreinvoiceRedirectByRoadmapIds: async (req, res) => {
+    const t = await sequelize.transaction();
+    try {
+        const {
+            roadmap_ids = [],
+            final_remit_id,
+            item_id,
+            to,
+            client_id = null,
+            client_name = null,
+            units = 0,
+            kg = 0,
+        } = req.body || {};
+
+        if (!Array.isArray(roadmap_ids) || roadmap_ids.length === 0) {
+            await t.rollback();
+            return res.status(400).json({ ok: false, msg: "Faltan roadmap_ids" });
+        }
+
+        if (!final_remit_id || !item_id || !to) {
+            await t.rollback();
+            return res.status(400).json({ ok: false, msg: "Faltan datos obligatorios" });
+        }
+
+        const destCheck = await RoadmapInfoDestination.findOne({
+            where: { roadmap_info_id: { [Op.in]: roadmap_ids }, id_remit: final_remit_id },
+            transaction: t,
+        });
+
+        if (!destCheck) {
+            await t.rollback();
+            return res.status(400).json({ ok: false, msg: "El remito no pertenece a las hojas indicadas" });
+        }
+
+        const frItem = await FinalRemitProduct.findOne({ where: { id: item_id }, transaction: t });
+        if (!frItem) {
+            await t.rollback();
+            return res.status(404).json({ ok: false, msg: "Ítem de remito no encontrado" });
+        }
+
+        const expUnits = Number(frItem.qty || 0);
+        const expKg = Number(frItem.net_weight || 0);
+
+        let pre = await Preinvoice.findOne({
+            where: { final_remit_id: final_remit_id, final_remit_item_id: item_id },
+            transaction: t,
+        });
+
+        if (!pre) {
+            pre = await Preinvoice.create({
+                receipt_number: null,
+                final_remit_id: final_remit_id,
+                final_remit_item_id: item_id,
+                product_id: frItem.product_id,
+                product_name: frItem.product_name,
+                unit_measure: frItem.unit_measure,
+                expected_units: expUnits,
+                expected_kg: expKg,
+                received_units: 0,
+                received_kg: 0,
+            }, { transaction: t });
+        }
+
+        const reasonDB = to === "stock" ? "STOCK" : "CLIENT";
+        const whereReturn = { preinvoice_id: pre.id, reason: reasonDB };
+        if (reasonDB === "CLIENT") whereReturn.client_name = client_name || null;
+
+        const existing = await PreinvoiceReturn.findOne({ where: whereReturn, transaction: t });
+
+        if (Number(units) === 0 && Number(kg) === 0) {
+            if (existing) await existing.destroy({ transaction: t });
+            await t.commit();
+            return res.status(201).json({ ok: true, msg: "Redirección eliminada (by-roadmaps)" });
+        }
+
+        if (existing) {
+            existing.client_id = client_id;
+            existing.client_name = client_name;
+            existing.units_redirected = Number(units);
+            existing.kg_redirected = Number(kg);
+            await existing.save({ transaction: t });
+        } else {
+            await PreinvoiceReturn.create({
+                preinvoice_id: pre.id,
+                client_id,
+                client_name,
+                units_redirected: Number(units),
+                kg_redirected: Number(kg),
+                reason: reasonDB,
+            }, { transaction: t });
+        }
+
+        await t.commit();
+        return res.status(201).json({ ok: true, msg: "Redirección registrada (by-roadmaps)" });
+    } catch (e) {
+        console.error(e);
+        try { await t.rollback(); } catch {}
+        return res.status(500).json({ ok: false, msg: "Error al registrar redirección (by-roadmaps)" });
+    }
+},
+
+listPreinvoicesGrouped: async (req, res) => {
+    try {
+    
+        const preRows = await Preinvoice.findAll({
+            attributes: ["final_remit_id"],
+            group: ["final_remit_id"],
+        });
+        const remitIds = preRows.map(r => r.final_remit_id).filter(Boolean);
+
+        if (!remitIds.length) {
+            return res.json({ ok: true, roadmaps: [] });
+        }
+
+        // 1b: Busco roadmap_info_destination para esos remitos
+        const destLinks = await RoadmapInfoDestination.findAll({
+            where: { id_remit: { [Op.in]: remitIds } },
+            attributes: [
+                "roadmap_info_id",
+                "id_remit",
+                "destination"
+            ],
+        });
+
+        const roadmapIds = [
+            ...new Set(destLinks.map(d => d.roadmap_info_id))
+        ];
+
+        if (!roadmapIds.length) {
+            return res.json({ ok: true, roadmaps: [] });
+        }
+
+        // 2: Traigo info de esas hojas de ruta
+        const roadmaps = await RoadmapInfo.findAll({
+            where: { id: { [Op.in]: roadmapIds } },
+            attributes: [
+                "id",
+                "truck_license_plate",
+                "driver",
+                "created_at",
+                "delivery_date",
+            ],
+            order: [["created_at", "DESC"], ["id", "DESC"]],
+        });
+
+        // 3: armo data lista para el front
+        //    (si una hoja tiene varios destinos, agarramos el/los nombres de destino)
+        const byRoadmap = new Map(); // roadmap_id -> { destinos:Set }
+        for (const link of destLinks) {
+            if (!byRoadmap.has(link.roadmap_info_id)) {
+                byRoadmap.set(link.roadmap_info_id, new Set());
+            }
+            if (link.destination) {
+                byRoadmap.get(link.roadmap_info_id).add(link.destination);
+            }
+        }
+
+        const result = roadmaps.map(rm => {
+            const destSet = byRoadmap.get(rm.id) || new Set();
+            return {
+                id: rm.id,
+                production_date: (rm.created_at || "").toISOString
+                    ? rm.created_at.toISOString().slice(0,10)
+                    : String(rm.created_at || "").slice(0,10),
+                delivery_date: (rm.delivery_date || "").toISOString
+                    ? rm.delivery_date.toISOString().slice(0,10)
+                    : String(rm.delivery_date || "").slice(0,10),
+                truck_plate: rm.truck_license_plate || "",
+                driver: rm.driver || "",
+                destinations: Array.from(destSet),
+            };
+        });
+
+        return res.json({
+            ok: true,
+            roadmaps: result
+        });
+    } catch (e) {
+        console.error(e);
+        return res.status(500).json({
+            ok: false,
+            msg: "Error al listar prefacturaciones guardadas"
+        });
+    }
+},
+// =========================
+// PREFACURACIONES - LISTA
+// =========================
+getPreinvoicesHistory: async (req, res) => {
+  try {
+    const agg = await Preinvoice.findAll({
+      attributes: [
+        "receipt_number",
+        "final_remit_id",
+        [fn("MIN", col("created_at")), "preinvoice_created_at"],
+        [fn("COUNT", col("id")), "lines"],
+      ],
+      group: ["receipt_number", "final_remit_id"],
+      order: [[fn("MIN", col("created_at")), "DESC"]],
+      raw: true,
+    });
+
+    if (!agg.length) return res.json({ ok: true, items: [] });
+
+    const remitIds = Array.from(
+      new Set(agg.map(a => Number(a.final_remit_id)).filter(Boolean))
+    );
+
+    const remits = await FinalRemit.findAll({
+      where: { id: { [Op.in]: remitIds } },
+      attributes: [
+        "id",
+        "receipt_number",
+        "client_name",
+        "salesman_name",
+        "generated_by",
+        "total_items",
+        "total_amount",
+      ],
+      raw: true,
+    });
+    const remitById = new Map(remits.map(r => [Number(r.id), r]));
+
+    const links = await RoadmapInfoDestination.findAll({
+      where: { id_remit: { [Op.in]: remitIds } },
+      attributes: ["id_remit", "roadmap_info_id", "destination"],
+      raw: true,
+    });
+
+    const roadmapIds = Array.from(
+      new Set(links.map(d => Number(d.roadmap_info_id)).filter(Boolean))
+    );
+
+    const roadmaps = roadmapIds.length
+      ? await RoadmapInfo.findAll({
+          where: { id: { [Op.in]: roadmapIds } },
+          attributes: ["id", "truck_license_plate", "driver", "created_at", "delivery_date"],
+          raw: true,
+        })
+      : [];
+    const roadmapById = new Map(roadmaps.map(r => [Number(r.id), r]));
+
+    const rows = [];
+    for (const a of agg) {
+      const rem = remitById.get(Number(a.final_remit_id));
+      if (!rem) continue;
+
+      const link = links.find(d => Number(d.id_remit) === Number(rem.id)) || null;
+      const rm = link ? roadmapById.get(Number(link.roadmap_info_id)) : null;
+
+      rows.push({
+        receipt_number: a.receipt_number,
+        preinvoice_created_at: a.preinvoice_created_at,
+        client_name: rem.client_name,
+        salesman_name: rem.salesman_name,
+        generated_by: rem.generated_by,
+        total_items: rem.total_items,
+        total_amount: rem.total_amount,
+        roadmap_id: rm?.id || null,
+        truck_license_plate: rm?.truck_license_plate || null,
+        driver: rm?.driver || null,
+        production_ts: rm?.created_at || null,
+        delivery_date: rm?.delivery_date || null,
+        destination: link?.destination || null,
+        lines: Number(a.lines || 0),
+      });
+    }
+
+    rows.sort((x, y) => {
+      const dx = x.delivery_date ? new Date(x.delivery_date).getTime() : 0;
+      const dy = y.delivery_date ? new Date(y.delivery_date).getTime() : 0;
+      if (dy !== dx) return dy - dx;
+      return String(y.receipt_number).localeCompare(String(x.receipt_number));
+    });
+
+    return res.json({ ok: true, items: rows });
+  } catch (e) {
+    console.error("getPreinvoicesHistory:", e);
+    return res.status(500).json({ ok: false, msg: "Error al obtener historial de prefacturas" });
+  }
+},
+
+// =========================
+// PREFACURACIONES - DETALLE
+// =========================
+getPreinvoiceDetailByReceipt: async (req, res) => {
+  try {
+    const { receipt } = req.params;
+    if (!receipt) return res.status(400).json({ ok: false, msg: "Falta receipt" });
+
+    const lines = await Preinvoice.findAll({
+      where: { receipt_number: receipt },
+      attributes: [
+        "id",
+        "final_remit_id",
+        "final_remit_item_id",
+        "product_id",
+        "product_name",
+        "unit_measure",
+        "expected_units",
+        "expected_kg",
+        "received_units",
+        "received_kg",
+        "created_at",
+      ],
+      order: [["id", "ASC"]],
+      raw: true,
+    });
+
+    if (!lines.length) return res.json({ ok: true, header: null, items: [], returns: [] });
+
+    const finalRemitId = Number(lines[0].final_remit_id);
+
+    const fr = await FinalRemit.findOne({
+      where: { id: finalRemitId },
+      attributes: [
+        "id",
+        "receipt_number",
+        "client_name",
+        "salesman_name",
+        "price_list",
+        "sell_condition",
+        "payment_condition",
+        "generated_by",
+        "total_items",
+        "total_amount",
+      ],
+      raw: true,
+    });
+
+    const link = await RoadmapInfoDestination.findOne({
+      where: { id_remit: finalRemitId },
+      attributes: ["roadmap_info_id", "destination"],
+      raw: true,
+    });
+
+    let rm = null;
+    if (link?.roadmap_info_id) {
+      rm = await RoadmapInfo.findOne({
+        where: { id: Number(link.roadmap_info_id) },
+        attributes: ["id", "truck_license_plate", "driver", "created_at", "delivery_date"],
+        raw: true,
+      });
+    }
+
+    let returns = [];
+    if (PreinvoiceReturn) {
+      returns = await PreinvoiceReturn.findAll({
+        include: [{
+          model: Preinvoice,
+          as: "preinvoice",
+          required: true,
+          where: { receipt_number: receipt },
+          attributes: [],
+        }],
+        attributes: [
+          "id",
+          "preinvoice_id",
+          "client_id",
+          "client_name",
+          "units_redirected",
+          "kg_redirected",
+          "reason",
+          "created_at",
+        ],
+        order: [["id", "ASC"]],
+        raw: true,
+      });
+    }
+
+    const header = {
+      receipt_number: fr?.receipt_number || receipt,
+      preinvoice_created_at: lines[0]?.created_at || null,
+      final_remit_id: finalRemitId,
+      client_name: fr?.client_name || null,
+      salesman_name: fr?.salesman_name || null,
+      price_list: fr?.price_list || null,
+      sell_condition: fr?.sell_condition || null,
+      payment_condition: fr?.payment_condition || null,
+      generated_by: fr?.generated_by || null,
+      total_items: fr?.total_items || null,
+      total_amount: fr?.total_amount || null,
+      roadmap_id: rm?.id || null,
+      truck_license_plate: rm?.truck_license_plate || null,
+      driver: rm?.driver || null,
+      production_ts: rm?.created_at || null,
+      delivery_date: rm?.delivery_date || null,
+      destination: link?.destination || null,
+    };
+
+    return res.json({ ok: true, header, items: lines, returns });
+  } catch (e) {
+    console.error("getPreinvoiceDetailByReceipt:", e);
+    return res.status(500).json({ ok: false, msg: "Error al obtener detalle de prefactura" });
+  }
+},
+// =========================
+// PREFAC - EDIT PAYLOAD (GET) POR RECIBO
+// =========================
+getPreinvoiceEditPayloadByReceipt: async (req, res) => {
+  try {
+    const { receipt } = req.params;
+    if (!receipt) return res.status(400).json({ ok: false, msg: "Falta receipt" });
+
+    const {
+      Preinvoice,
+      PreinvoiceReturn,
+      FinalRemit,
+      RoadmapInfoDestination,
+      RoadmapInfo,
+    } = require("../../src/config/models");
+
+    const lines = await Preinvoice.findAll({
+      where: { receipt_number: receipt },
+      attributes: [
+        "id",
+        "final_remit_id",
+        "product_id",
+        "product_name",
+        "unit_measure",
+        "expected_units",
+        "expected_kg",
+        "received_units",
+        "received_kg",
+        "created_at",
+      ],
+      order: [["id", "ASC"]],
+      raw: true,
+    });
+
+    if (!lines.length) {
+      return res.json({ ok: true, roadmaps: [], redirects: [] });
+    }
+
+    const finalRemitId = Number(lines[0].final_remit_id);
+
+    const fr = await FinalRemit.findOne({
+      where: { id: finalRemitId },
+      attributes: [
+        "id",
+        "receipt_number",
+        "client_name",
+        "salesman_name",
+        "total_items",
+        "total_amount",
+      ],
+      raw: true,
+    });
+
+    const link = await RoadmapInfoDestination.findOne({
+      where: { id_remit: finalRemitId },
+      attributes: ["roadmap_info_id", "destination"],
+      raw: true,
+    });
+
+    let ri = null;
+    if (link?.roadmap_info_id) {
+      ri = await RoadmapInfo.findOne({
+        where: { id: Number(link.roadmap_info_id) },
+        attributes: ["id", "truck_license_plate", "driver", "created_at", "delivery_date"],
+        raw: true,
+      });
+    }
+
+    let redirects = [];
+    if (PreinvoiceReturn) {
+      redirects = await PreinvoiceReturn.findAll({
+        where: { preinvoice_id: lines.map(l => l.id) },
+        attributes: [
+          "id",
+          "preinvoice_id",
+          "client_id",
+          "client_name",
+          "units_redirected",
+          "kg_redirected",
+          "reason",
+          "created_at",
+          "updated_at",
+        ],
+        order: [["id", "ASC"]],
+        raw: true,
+      });
+    }
+
+    const remitBlock = {
+      id_remit: finalRemitId,
+      receipt_number: fr?.receipt_number || receipt,
+      client_name: fr?.client_name || null,
+      salesman_name: fr?.salesman_name || null,
+      total_items: fr?.total_items || null,
+      total_amount: fr?.total_amount || null,
+      items: lines.map((l) => ({
+        id: l.id,
+        product_id: l.product_id,
+        product_name: l.product_name,
+        unit_measure: l.unit_measure,
+        expected_units: Number(l.expected_units || 0),
+        expected_kg: Number(l.expected_kg || 0),
+        received_units: Number(l.received_units || 0),
+        received_kg: Number(l.received_kg || 0),
+      })),
+    };
+
+    const roadmap = {
+      roadmap_id: ri?.id || null,
+      created_at: ri?.created_at || null,
+      delivery_date: ri?.delivery_date || null,
+      driver: ri?.driver || null,
+      truck_license_plate: ri?.truck_license_plate || null,
+      destinations: link?.destination ? [link.destination] : [],
+      remits: [remitBlock],
+    };
+
+    return res.json({ ok: true, roadmaps: [roadmap], redirects });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ ok: false, msg: "Error al armar payload de edición" });
+  }
+},
+
+// =========================
+// PREFAC - GUARDAR EDICIÓN POR RECIBO
+// =========================
+savePreinvoiceEditsByReceipt: async (req, res) => {
+  const { receipt } = req.params;
+  const { items = [], returns = null } = req.body || {};
+  if (!receipt) return res.status(400).json({ ok: false, msg: "Falta receipt" });
+
+  try {
+    const models = require("../database/models");
+    const { Preinvoice, PreinvoiceReturn, sequelize } = models;
+
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ ok: false, msg: "Faltan items a actualizar" });
+    }
+
+    const t = await sequelize.transaction();
+
+    try {
+      let updatedCount = 0;
+
+      for (const it of items) {
+        if (!it?.id) continue;
+        const payload = {};
+        if (typeof it.received_units !== "undefined")
+          payload.received_units = Number(it.received_units) || 0;
+        if (typeof it.received_kg !== "undefined")
+          payload.received_kg = Number(it.received_kg) || 0;
+
+        if (Object.keys(payload).length > 0) {
+          const [aff] = await Preinvoice.update(payload, {
+            where: { id: it.id, receipt_number: receipt },
+            transaction: t,
+          });
+          updatedCount += Number(aff || 0);
+        }
+      }
+
+      let returnsCreated = 0;
+      if (returns && Array.isArray(returns) && PreinvoiceReturn) {
+        const existing = await Preinvoice.findAll({
+          where: { receipt_number: receipt },
+          attributes: ["id"],
+          transaction: t,
+        });
+        const lineIds = existing.map(r => r.id);
+
+        if (lineIds.length) {
+          await PreinvoiceReturn.destroy({
+            where: { preinvoice_id: lineIds },
+            transaction: t,
+          });
+        }
+
+        if (returns.length) {
+          const toCreate = returns
+            .filter(r => r && r.preinvoice_id && lineIds.includes(Number(r.preinvoice_id)))
+            .map(r => ({
+              preinvoice_id: Number(r.preinvoice_id),
+              client_id: r.client_id || null,
+              client_name: r.client_name || null,
+              units_redirected: Number(r.units_redirected || 0),
+              kg_redirected: Number(r.kg_redirected || 0),
+              reason: r.reason || null,
+            }));
+
+          if (toCreate.length) {
+            const created = await PreinvoiceReturn.bulkCreate(toCreate, { transaction: t });
+            returnsCreated = created.length;
+          }
+        }
+      }
+
+      await t.commit();
+      return res.json({ ok: true, updated: updatedCount, returns_created: returnsCreated });
+    } catch (err) {
+      await t.rollback();
+      console.error("savePreinvoiceEditsByReceipt TX:", err);
+      return res.status(500).json({ ok: false, msg: "No se pudieron guardar los cambios" });
+    }
+  } catch (e) {
+    console.error("savePreinvoiceEditsByReceipt:", e);
+    return res.status(500).json({ ok: false, msg: "Error al guardar edición" });
+  }
+},
+
+// Borrar TODA una prefacturación por número de comprobante (receipt)
+deletePreinvoiceByReceipt: async (req, res) => {
+  const { receipt } = req.params;
+  try {
+    if (!receipt) return res.status(400).json({ ok: false, msg: "Falta receipt" });
+
+    // Usa los modelos ya definidos arriba del archivo
+    // const db = require("././src/config/models"); // <-- NO lo uses aquí
+    // const sequelize = db.sequelize;              // ya existe arriba
+    // const { Preinvoice, PreinvoiceReturn } = db; // ya existen arriba
+
+    // Buscar todas las líneas de esa prefacturación
+    const lines = await Preinvoice.findAll({
+      where: { receipt_number: receipt },
+      attributes: ["id"],
+      raw: true,
+    });
+
+    if (!lines.length) {
+      return res.status(404).json({ ok: false, msg: "Prefacturación no encontrada" });
+    }
+
+    const ids = lines.map(l => Number(l.id)).filter(Boolean);
+
+    const t = await sequelize.transaction();
+    try {
+      // Borrar devoluciones asociadas
+      await PreinvoiceReturn.destroy({
+        where: { preinvoice_id: { [Op.in]: ids } },
+        transaction: t,
+      });
+
+      // Borrar líneas de prefactura
+      const deleted = await Preinvoice.destroy({
+        where: { id: { [Op.in]: ids } },
+        transaction: t,
+      });
+
+      await t.commit();
+      return res.json({ ok: true, deleted, msg: "Prefacturación eliminada" });
+    } catch (err) {
+      await t.rollback();
+      console.error("deletePreinvoiceByReceipt TX:", err);
+      return res.status(500).json({ ok: false, msg: "Error al eliminar la prefacturación" });
+    }
+  } catch (e) {
+    console.error("deletePreinvoiceByReceipt:", e);
+    return res.status(500).json({ ok: false, msg: "Error al procesar la eliminación" });
   }
 },
 

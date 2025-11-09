@@ -18,7 +18,7 @@ const UPDATE_URL = (id) => `${API_URL}/update-order/${id}`;
 const PAYMENT_CONDITIONS_URL = `${API_URL}/payment-conditions`;
 const SALE_CONDITIONS_URL = `${API_URL}/sale-conditions`;
 
-// 🔧 Helper: deduplica listas por list_number; si falta, cae a name o id
+// dedup listas precio
 const dedupePriceLists = (arr) => {
   const seen = new Set();
   return (arr || []).filter((l) => {
@@ -43,6 +43,7 @@ const LoadNewOrder = () => {
   ]);
 
   const [observaciones, setObservaciones] = useState("");
+
   const [clientesOptions, setClientesOptions] = useState([]);
   const [clienteSeleccionado, setClienteSeleccionado] = useState(null);
 
@@ -73,6 +74,7 @@ const LoadNewOrder = () => {
     return isNaN(n) ? 0 : n;
   };
 
+  // nro comprobante automático (solo alta)
   useEffect(() => {
     if (isEdit) return;
     fetch(ORDERS_URL)
@@ -81,19 +83,25 @@ const LoadNewOrder = () => {
         if (Array.isArray(data) && data.length > 0) {
           const lastId = Math.max(...data.map((o) => o.id));
           setNroComprobante(String(lastId + 1));
-        } else setNroComprobante("1");
+        } else {
+          setNroComprobante("1");
+        }
       })
       .catch(() => setNroComprobante("1"));
   }, [isEdit]);
 
+  // catálogo de productos
   useEffect(() => {
     fetch(PRODUCTOS_URL)
       .then((r) => r.json())
       .then((data) =>
-        setCortesOptions(data.map((p) => ({ value: p, label: p.product_name })))
+        setCortesOptions(
+          data.map((p) => ({ value: p, label: p.product_name }))
+        )
       );
   }, []);
 
+  // clientes
   useEffect(() => {
     fetch(CLIENTES_URL)
       .then((r) => r.json())
@@ -107,6 +115,7 @@ const LoadNewOrder = () => {
       });
   }, []);
 
+  // vendedores
   useEffect(() => {
     fetch(VENDEDORES_URL)
       .then((r) => r.json())
@@ -119,6 +128,7 @@ const LoadNewOrder = () => {
       );
   }, []);
 
+  // condiciones de cobro
   useEffect(() => {
     fetch(PAYMENT_CONDITIONS_URL)
       .then((r) => r.json())
@@ -133,28 +143,36 @@ const LoadNewOrder = () => {
       });
   }, []);
 
+  // condiciones de venta
   useEffect(() => {
     fetch(SALE_CONDITIONS_URL)
       .then((r) => r.json())
       .then((list) => {
         const arr = Array.isArray(list) ? list : list.conditions || [];
         setSaleConditionOptions(
-          arr.map((s) => ({ value: s.condition_name, label: s.condition_name }))
+          arr.map((s) => ({
+            value: s.condition_name,
+            label: s.condition_name,
+          }))
         );
       });
   }, []);
 
+  // listas de precio
   useEffect(() => {
     fetch(`${API_URL}/all-price-list`).then((r) =>
       r.json().then(setListasPrecio)
     );
   }, []);
+
+  // info listas (precios por producto)
   useEffect(() => {
     fetch(`${API_URL}/all-info-price-list`).then((r) =>
       r.json().then(setPreciosListas)
     );
   }, []);
 
+  // cuando cambio lista -> autocompletar precio en filas ya cargadas
   useEffect(() => {
     if (!listaSeleccionada) return;
     setProductos((prev) =>
@@ -176,24 +194,24 @@ const LoadNewOrder = () => {
     );
   }, [listaSeleccionada, preciosListas]);
 
-  // 🔧 FIX: construir base (todas vs asociadas) y luego DEDUPLICAR
+  // armar opciones de lista de precio según cliente / verTodasLasListas
   useEffect(() => {
     let base = [];
     if (verTodasLasListas) {
-      base = listasPrecio; // todas
+      base = listasPrecio;
     } else if (clienteSeleccionado) {
       base = listasPrecio.filter(
         (l) => String(l.client_id) === String(clienteSeleccionado.value.id)
       );
     }
 
-    const uniq = dedupePriceLists(base); // ← Quita duplicados
-
+    const uniq = dedupePriceLists(base);
     setListaPrecioOptions(uniq.map((l) => ({ value: l, label: l.name })));
 
     if (!isEdit) setListaSeleccionada(null);
   }, [listasPrecio, clienteSeleccionado, verTodasLasListas, isEdit]);
 
+  // autocompletar condición venta / cobro con datos del cliente
   useEffect(() => {
     if (!clienteSeleccionado) {
       setSaleCondition(null);
@@ -215,6 +233,121 @@ const LoadNewOrder = () => {
     }
   }, [clienteSeleccionado, saleConditionOptions, paymentConditionOptions]);
 
+  // carga de pedido existente (modo edición)
+  const catalogosListos = useMemo(
+    () =>
+      cortesOptions.length &&
+      clientesOptions.length &&
+      vendedoresOptions.length &&
+      listasPrecio.length &&
+      saleConditionOptions.length &&
+      paymentConditionOptions.length,
+    [
+      cortesOptions,
+      clientesOptions,
+      vendedoresOptions,
+      listasPrecio,
+      saleConditionOptions,
+      paymentConditionOptions,
+    ]
+  );
+
+  useEffect(() => {
+    const cargar = async () => {
+      if (!isEdit || !catalogosListos || cargadoPedido) return;
+      try {
+        setLoading(true);
+        const r = await fetch(ORDER_BY_ID_URL(id));
+        if (!r.ok) {
+          Swal.fire("Error", "No se encontró la orden.", "error");
+          setLoading(false);
+          return;
+        }
+        const header = await r.json();
+
+        setNroComprobante(String(header.id ?? id));
+
+        if (header.date_order) {
+          setFecha(String(header.date_order).slice(0, 10));
+        }
+
+        const cli =
+          clientesOptions.find((c) => c.label === header.client_name) || null;
+        setClienteSeleccionado(cli);
+
+        const vend =
+          vendedoresOptions.find((v) => v.label === header.salesman_name) ||
+          null;
+        setVendedorSeleccionado(vend);
+
+        // en edición mostramos todas las listas
+        setVerTodasLasListas(true);
+
+        const lp = listasPrecio.find((l) => l.name === header.price_list);
+        setListaSeleccionada(lp ? { value: lp, label: lp.name } : null);
+
+        setObservaciones(header.observation_order || "");
+
+        const sc = saleConditionOptions.find(
+          (o) => o.label === header.sell_condition
+        );
+        setSaleCondition(sc || null);
+
+        const pc = paymentConditionOptions.find(
+          (o) => o.label === header.payment_condition
+        );
+        setPaymentCondition(pc || null);
+
+        const r2 = await fetch(ORDER_LINES_URL(id));
+        const lines = r2.ok ? await r2.json() : [];
+        const map = (lines || []).map((p) => {
+          const corteOpt =
+            cortesOptions.find(
+              (opt) => String(opt.value.id) === String(p.product_cod)
+            ) ||
+            cortesOptions.find((opt) => opt.label === p.product_name) ||
+            null;
+
+          const defaultTipo =
+            corteOpt &&
+            corteOpt.value?.category?.category_name === "PRINCIPAL"
+              ? "UN"
+              : corteOpt
+              ? "KG"
+              : "";
+
+          return {
+            corte: corteOpt,
+            precio: p.precio != null ? String(p.precio) : "",
+            cantidad: p.cantidad != null ? String(p.cantidad) : "",
+            tipoMedida: p.tipo_medida || defaultTipo,
+            codigo: corteOpt ? corteOpt.value.id : p.product_cod || "",
+          };
+        });
+
+        setProductos(map.length ? map : productos);
+        setCargadoPedido(true);
+      } catch {
+        Swal.fire("Error", "No se pudo cargar el pedido.", "error");
+      } finally {
+        setLoading(false);
+      }
+    };
+    cargar();
+  }, [
+    isEdit,
+    id,
+    catalogosListos,
+    cargadoPedido,
+    clientesOptions,
+    vendedoresOptions,
+    listasPrecio,
+    saleConditionOptions,
+    paymentConditionOptions,
+    productos,
+  ]);
+
+  // handlers productos
   const handleCorteChange = (selected, idx) => {
     let autoPrecio = "";
     if (selected && listaSeleccionada) {
@@ -265,98 +398,16 @@ const LoadNewOrder = () => {
       ...p,
       { corte: null, precio: "", cantidad: "", tipoMedida: "", codigo: "" },
     ]);
+
   const handleRemoveProduct = (idx) =>
     setProductos((p) => p.filter((_, i) => i !== idx));
 
-  const catalogosListos = useMemo(
-    () =>
-      cortesOptions.length &&
-      clientesOptions.length &&
-      vendedoresOptions.length &&
-      listasPrecio.length &&
-      saleConditionOptions.length &&
-      paymentConditionOptions.length,
-    [
-      cortesOptions,
-      clientesOptions,
-      vendedoresOptions,
-      listasPrecio,
-      saleConditionOptions,
-      paymentConditionOptions,
-    ]
-  );
-
-  useEffect(() => {
-    const cargar = async () => {
-      if (!isEdit || !catalogosListos || cargadoPedido) return;
-      try {
-        setLoading(true);
-        const r = await fetch(ORDER_BY_ID_URL(id));
-        if (!r.ok) {
-          Swal.fire("Error", "No se encontró la orden.", "error");
-          setLoading(false);
-          return;
-        }
-        const header = await r.json();
-        setNroComprobante(String(header.id ?? id));
-        if (header.date_order) setFecha(String(header.date_order).slice(0, 10));
-        const cli =
-          clientesOptions.find((c) => c.label === header.client_name) || null;
-        setClienteSeleccionado(cli);
-        const vend =
-          vendedoresOptions.find((v) => v.label === header.salesman_name) ||
-          null;
-        setVendedorSeleccionado(vend);
-        setVerTodasLasListas(true);
-        const lp = listasPrecio.find((l) => l.name === header.price_list);
-        setListaSeleccionada(lp ? { value: lp, label: lp.name } : null);
-        setObservaciones(header.observation_order || "");
-        const sc = saleConditionOptions.find(
-          (o) => o.label === header.sell_condition
-        );
-        setSaleCondition(sc || null);
-        const pc = paymentConditionOptions.find(
-          (o) => o.label === header.payment_condition
-        );
-        setPaymentCondition(pc || null);
-        const r2 = await fetch(ORDER_LINES_URL(id));
-        const lines = r2.ok ? await r2.json() : [];
-        const map = (lines || []).map((p) => {
-          const corteOpt =
-            cortesOptions.find(
-              (opt) => String(opt.value.id) === String(p.product_cod)
-            ) ||
-            cortesOptions.find((opt) => opt.label === p.product_name) ||
-            null;
-          const defaultTipo =
-            corteOpt &&
-            corteOpt.value?.category?.category_name === "PRINCIPAL"
-              ? "UN"
-              : corteOpt
-              ? "KG"
-              : "";
-          return {
-            corte: corteOpt,
-            precio: p.precio != null ? String(p.precio) : "",
-            cantidad: p.cantidad != null ? String(p.cantidad) : "",
-            tipoMedida: p.tipo_medida || defaultTipo,
-            codigo: corteOpt ? corteOpt.value.id : p.product_cod || "",
-          };
-        });
-        setProductos(map.length ? map : productos);
-        setCargadoPedido(true);
-      } catch {
-        Swal.fire("Error", "No se pudo cargar el pedido.", "error");
-      } finally {
-        setLoading(false);
-      }
-    };
-    cargar();
-  }, [isEdit, id, catalogosListos, cargadoPedido, clientesOptions, vendedoresOptions, listasPrecio, saleConditionOptions, paymentConditionOptions, productos]);
-
+  // submit
   const handleSubmit = async (e) => {
     e.preventDefault();
+
     const productosFiltrados = productos.filter((p) => p.corte);
+
     if (!clienteSeleccionado || !vendedorSeleccionado) {
       Swal.fire("Faltan datos", "Elegí cliente y vendedor.", "warning");
       return;
@@ -378,15 +429,21 @@ const LoadNewOrder = () => {
       return;
     }
     if (productosFiltrados.length === 0) {
-      Swal.fire("Faltan productos", "Agregá al menos un producto.", "warning");
+      Swal.fire(
+        "Faltan productos",
+        "Agregá al menos un producto.",
+        "warning"
+      );
       return;
     }
+
     const productosNormalizados = productosFiltrados.map((p) => ({
       ...p,
       precio: toNumber(p.precio),
       cantidad: toNumber(p.cantidad),
       tipo_medida: p.tipoMedida,
     }));
+
     const hayCero = productosNormalizados.some(
       (p) => p.precio === 0 || p.cantidad === 0
     );
@@ -401,6 +458,7 @@ const LoadNewOrder = () => {
       });
       if (!isConfirmed) return;
     }
+
     const body = {
       date_order: fecha,
       client_name: clienteSeleccionado.label,
@@ -411,13 +469,19 @@ const LoadNewOrder = () => {
       observation_order: observaciones,
       products: productosNormalizados,
     };
+
     try {
-      const res = await fetch(isEdit ? UPDATE_URL(id) : `${API_URL}/create-order`, {
-        method: isEdit ? "PUT" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
+      const res = await fetch(
+        isEdit ? UPDATE_URL(id) : `${API_URL}/create-order`,
+        {
+          method: isEdit ? "PUT" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        }
+      );
+
       const result = await res.json();
+
       if (result.ok) {
         await Swal.fire(
           "¡Éxito!",
@@ -428,7 +492,8 @@ const LoadNewOrder = () => {
       } else {
         Swal.fire(
           "Error",
-          result.msg || (isEdit ? "No se pudo actualizar" : "No se pudo crear"),
+          result.msg ||
+            (isEdit ? "No se pudo actualizar" : "No se pudo crear"),
           "error"
         );
       }
@@ -444,29 +509,92 @@ const LoadNewOrder = () => {
   return (
     <div>
       <Navbar />
+
       <div style={{ margin: "20px" }}>
-        <button className="boton-volver" onClick={() => navigate("/sales-panel")}>
+        <button
+          className="boton-volver"
+          onClick={() => navigate("/sales-panel")}
+        >
           ⬅ Volver
         </button>
       </div>
 
       <div className="order-container">
-        <h2 className="order-title">{isEdit ? "Editar Pedido" : "Nuevo Pedido"}</h2>
+        {/* HEADER */}
+        <div className="order-header">
+          <h2 className="order-title">
+            {isEdit ? "Editar Pedido" : "Nuevo Pedido"}
+          </h2>
+
+          <div className="comprobante-box">
+            <div className="comprobante-label">
+              N° COMPROBANTE AUTOMÁTICO
+            </div>
+            <div className="comprobante-value">{nroComprobante}</div>
+          </div>
+        </div>
 
         {loading ? (
           <div style={{ padding: 20 }}>Cargando datos...</div>
         ) : (
-          <form className="order-form" onSubmit={handleSubmit}>
-            <div className="order-form-row">
-              <div className="order-form-group">
-                <label>N° COMPROBANTE AUTOMÁTICO</label>
-                <input type="text" className="order-input" value={nroComprobante} disabled />
+          <form onSubmit={handleSubmit}>
+            {/* == CAMPOS PRINCIPALES EN 2 COLUMNAS == */}
+            <div className="top-two-cols-grid">
+              {/* Columna izquierda */}
+              <div className="col-block">
+                {/* Fecha */}
+                <div className="row-field">
+                  <label className="field-label">FECHA DE ENTREGA</label>
+                  <div className="field-control">
+                    <input
+                      type="date"
+                      className="order-input"
+                      value={fecha}
+                      onChange={(e) => setFecha(e.target.value)}
+                      min={new Date().toISOString().split("T")[0]}
+                    />
+                  </div>
+                </div>
+
+                {/* Cliente */}
+                <div className="row-field">
+                  <label className="field-label">CLIENTE</label>
+                  <div className="field-control">
+                    <Select
+                      className="order-rs"
+                      classNamePrefix="rs"
+                      options={clientesOptions}
+                      value={clienteSeleccionado}
+                      onChange={setClienteSeleccionado}
+                      placeholder="Seleccionar cliente"
+                      isClearable
+                    />
+                  </div>
+                </div>
+
+                {/* Vendedor */}
+                <div className="row-field">
+                  <label className="field-label">VENDEDOR</label>
+                  <div className="field-control">
+                    <Select
+                      className="order-rs"
+                      classNamePrefix="rs"
+                      options={vendedoresOptions}
+                      value={vendedorSeleccionado}
+                      onChange={setVendedorSeleccionado}
+                      placeholder="Seleccionar vendedor"
+                      isClearable
+                    />
+                  </div>
+                </div>
               </div>
 
-              <div className="order-form-group">
-                <label>LISTA DE PRECIO</label>
-                <div className="inline-field">
-                  <div className="inline-grow">
+              {/* Columna derecha */}
+              <div className="col-block">
+                {/* Lista de precio */}
+                <div className="row-field">
+                  <label className="field-label">LISTA DE PRECIO</label>
+                  <div className="field-control">
                     <Select
                       className="order-rs"
                       classNamePrefix="rs"
@@ -483,91 +611,58 @@ const LoadNewOrder = () => {
                       isDisabled={!verTodasLasListas && !clienteSeleccionado}
                       isClearable
                     />
+
+                    <label className="checkbox-inline-under">
+                      <input
+                        type="checkbox"
+                        checked={verTodasLasListas}
+                        onChange={(e) =>
+                          setVerTodasLasListas(e.target.checked)
+                        }
+                      />
+                      VER TODAS LAS LISTAS DE PRECIOS
+                    </label>
                   </div>
-                  <label className="inline-check">
-                    <input
-                      type="checkbox"
-                      checked={verTodasLasListas}
-                      onChange={(e) => setVerTodasLasListas(e.target.checked)}
+                </div>
+
+                {/* Condición de venta */}
+                <div className="row-field">
+                  <label className="field-label">CONDICIÓN DE VENTA</label>
+                  <div className="field-control">
+                    <Select
+                      className="order-rs"
+                      classNamePrefix="rs"
+                      options={saleConditionOptions}
+                      value={saleCondition}
+                      onChange={setSaleCondition}
+                      placeholder="Seleccionar condición de venta"
+                      isClearable
                     />
-                    Ver todas las listas
-                  </label>
+                  </div>
+                </div>
+
+                {/* Condición de cobro */}
+                <div className="row-field">
+                  <label className="field-label">CONDICIÓN DE COBRO</label>
+                  <div className="field-control">
+                    <Select
+                      className="order-rs"
+                      classNamePrefix="rs"
+                      options={paymentConditionOptions}
+                      value={paymentCondition}
+                      onChange={setPaymentCondition}
+                      placeholder="Seleccionar condición de cobro"
+                      isClearable
+                    />
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div className="order-form-row">
-              <div className="order-form-group">
-                <label>FECHA DE ENTREGA</label>
-                <input
-                  type="date"
-                  className="order-input"
-                  value={fecha}
-                  onChange={(e) => setFecha(e.target.value)}
-                  min={new Date().toISOString().split("T")[0]}
-                />
-              </div>
-
-              <div className="order-form-group">
-                <label>CONDICIÓN DE VENTA</label>
-                <Select
-                  className="order-rs"
-                  classNamePrefix="rs"
-                  options={saleConditionOptions}
-                  value={saleCondition}
-                  onChange={setSaleCondition}
-                  placeholder="Seleccionar condición de venta"
-                  isClearable
-                />
-              </div>
-            </div>
-
-            <div className="order-form-row">
-              <div className="order-form-group">
-                <label>CLIENTE</label>
-                <Select
-                  className="order-rs"
-                  classNamePrefix="rs"
-                  options={clientesOptions}
-                  value={clienteSeleccionado}
-                  onChange={setClienteSeleccionado}
-                  placeholder="Seleccionar cliente"
-                  isClearable
-                />
-              </div>
-
-              <div className="order-form-group">
-                <label>CONDICIÓN DE COBRO</label>
-                <Select
-                  className="order-rs"
-                  classNamePrefix="rs"
-                  options={paymentConditionOptions}
-                  value={paymentCondition}
-                  onChange={setPaymentCondition}
-                  placeholder="Seleccionar condición de cobro"
-                  isClearable
-                />
-              </div>
-            </div>
-
-            <div className="order-form-row">
-              <div className="order-form-group">
-                <label>VENDEDOR</label>
-                <Select
-                  className="order-rs"
-                  classNamePrefix="rs"
-                  options={vendedoresOptions}
-                  value={vendedorSeleccionado}
-                  onChange={setVendedorSeleccionado}
-                  placeholder="Seleccionar vendedor"
-                  isClearable
-                />
-              </div>
-              <div className="order-form-group"></div>
-            </div>
-
+            {/* == PRODUCTOS == */}
             <div className="products-box">
               <div className="products-title">PRODUCTOS SOLICITADOS</div>
+
               <div className="products-grid-header">
                 <div>CODIGO</div>
                 <div>CORTE</div>
@@ -576,9 +671,16 @@ const LoadNewOrder = () => {
                 <div>TIPO DE MEDIDA</div>
                 <div></div>
               </div>
+
               {productos.map((prod, idx) => (
                 <div className="products-grid-row" key={idx}>
-                  <input className="products-input" type="text" value={prod.codigo} disabled />
+                  <input
+                    className="products-input"
+                    type="text"
+                    value={prod.codigo}
+                    disabled
+                  />
+
                   <Select
                     className="products-rs"
                     classNamePrefix="rs"
@@ -588,45 +690,69 @@ const LoadNewOrder = () => {
                     placeholder="Seleccionar"
                     isClearable
                   />
+
                   <input
                     className="products-input"
                     type="text"
                     inputMode="decimal"
                     value={prod.precio}
                     onChange={(e) =>
-                      handleInputChange(idx, "precio", e.target.value.replace(",", "."))
+                      handleInputChange(
+                        idx,
+                        "precio",
+                        e.target.value.replace(",", ".")
+                      )
                     }
                     placeholder="$"
                   />
+
                   <input
                     className="products-input"
                     type="text"
                     inputMode="decimal"
                     value={prod.cantidad}
                     onChange={(e) =>
-                      handleInputChange(idx, "cantidad", e.target.value.replace(",", "."))
+                      handleInputChange(
+                        idx,
+                        "cantidad",
+                        e.target.value.replace(",", ".")
+                      )
                     }
                   />
+
                   <select
                     className="products-input"
                     value={prod.tipoMedida || ""}
-                    onChange={(e) => handleTipoMedidaChange(idx, e.target.value)}
+                    onChange={(e) =>
+                      handleTipoMedidaChange(idx, e.target.value)
+                    }
                   >
-                    <option value="" disabled>Seleccionar</option>
+                    <option value="" disabled>
+                      Seleccionar
+                    </option>
                     <option value="KG">KG</option>
                     <option value="UN">UN</option>
                   </select>
+
                   <div className="row-actions">
                     {idx === productos.length - 1 && (
-                      <button className="add-inline-btn" type="button" onClick={handleAddProduct}>
+                      <button
+                        className="add-inline-btn"
+                        type="button"
+                        onClick={handleAddProduct}
+                      >
                         Agregar
                       </button>
                     )}
+
                     <button
                       className="remove-btn"
                       type="button"
                       onClick={() => handleRemoveProduct(idx)}
-                      style={{ visibility: productos.length > 1 ? "visible" : "hidden" }}
+                      style={{
+                        visibility:
+                          productos.length > 1 ? "visible" : "hidden",
+                      }}
                     >
                       ×
                     </button>
@@ -635,6 +761,7 @@ const LoadNewOrder = () => {
               ))}
             </div>
 
+            {/* == COMENTARIOS == */}
             <div className="comments-block">
               <label>COMENTARIOS</label>
               <textarea
@@ -646,8 +773,13 @@ const LoadNewOrder = () => {
               />
             </div>
 
+            {/* == BOTONES == */}
             <div className="order-form-buttons">
-              <button type="button" className="btn-cancel" onClick={() => navigate(-1)}>
+              <button
+                type="button"
+                className="btn-cancel"
+                onClick={() => navigate(-1)}
+              >
                 Cancelar
               </button>
               <button type="submit" className="btn-save">

@@ -395,6 +395,18 @@
   color: #2d3748;
 }
 
+/* Chrome / Edge / Safari */
+.no-spin::-webkit-outer-spin-button,
+.no-spin::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Firefox */
+.no-spin {
+  -moz-appearance: textfield;
+}
+
 
 /* ----- Responsivo ----- */
 @media (max-width: 768px) {

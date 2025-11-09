@@ -1,132 +1,55 @@
+// src/features/sales/pre-invoicing/PreInvoiceList.jsx
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import Navbar from "../../../components/Navbar";
-import "../../../assets/styles/preInvoiceList.css";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faEye, faPen } from "@fortawesome/free-solid-svg-icons";
+import { faEye, faPen, faXmark, faFilePdf } from "@fortawesome/free-solid-svg-icons";
+import Swal from "sweetalert2";
+import "../../../assets/styles/preInvoiceList.css";
+import Navbar from "../../../components/Navbar";
 
 const API_URL = import.meta.env.VITE_API_URL || "";
 
-// util: YYYY-MM-DD -> DD/MM/YY
-const toDDMMYY = (iso) => {
-  if (!iso) return "-";
-  const [y, m, d] = iso.split("-");
-  return `${d}/${m}/${String(y).slice(2)}`;
-};
-
-const inRange = (date, from, to) => {
-  if (!date) return false;
-  if (from && date < from) return false;
-  if (to && date > to) return false;
-  return true;
+const toDDMMYY = (val) => {
+  if (!val) return "-";
+  if (typeof val === "string") {
+    const m = val.match(/^(\d{2})\/(\d{2})\/(\d{2,4})$/);
+    if (m) return val;
+  }
+  const d = new Date(val);
+  if (Number.isNaN(d.getTime())) return "-";
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yy = String(d.getFullYear()).slice(2);
+  return `${dd}/${mm}/${yy}`;
 };
 
 export default function PreInvoiceList() {
   const navigate = useNavigate();
-  const [destinations, setDestinations] = useState([]);
-  const [selectedDest, setSelectedDest] = useState("");
-  const [prodFrom, setProdFrom] = useState("");
-  const [prodTo, setProdTo] = useState("");
-  const [delFrom, setDelFrom] = useState("");
-  const [delTo, setDelTo] = useState("");
-
-  const [rawRoadmaps, setRawRoadmaps] = useState([]);
+  const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
-
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(5);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch(`${API_URL}/destinations`);
-        if (!res.ok) return;
-        const js = await res.json();
-        const list = js?.data || js?.destinations || [];
-        setDestinations(Array.isArray(list) ? list : []);
-      } catch {}
-    })();
-  }, []);
+  const [pageSize, setPageSize] = useState(10);
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const q = new URLSearchParams();
-      if (selectedDest) q.set("destination_id", selectedDest);
-      if (prodFrom) q.set("production_from", prodFrom);
-      if (prodTo) q.set("production_to", prodTo);
-      if (delFrom) q.set("delivery_from", delFrom);
-      if (delTo) q.set("delivery_to", delTo);
-
-      const url = `${API_URL}/roadmaps/date-groups?${q.toString()}`;
-      const res = await fetch(url);
-      if (!res.ok) {
-        setRawRoadmaps([]);
-        return;
-      }
+      const res = await fetch(`${API_URL}/preinvoices/history`, { credentials: "include" });
       const js = await res.json();
-      setRawRoadmaps(Array.isArray(js) ? js : js?.rows || []);
+      setRows(js?.items || []);
     } catch {
-      setRawRoadmaps([]);
+      setRows([]);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchData();
-  }, [page, pageSize]);
+  useEffect(() => { fetchData(); }, []);
 
-  const groupedRows = useMemo(() => {
-    const normalized = rawRoadmaps.map((item) => {
-      const production_date = (item.created_at || "").slice(0, 10);
-      const delivery_date = (item.delivery_date || "").slice(0, 10);
-      const destination_id = item.destination_id || "";
-      return { production_date, delivery_date, destination_id };
-    });
-
-    const filtered = normalized.filter((r) => {
-      const prodOk = (!prodFrom && !prodTo) || inRange(r.production_date, prodFrom, prodTo);
-      const delOk = (!delFrom && !delTo) || inRange(r.delivery_date, delFrom, delTo);
-      const destOk = !selectedDest || String(r.destination_id) === String(selectedDest);
-      return prodOk && delOk && destOk;
-    });
-
-    const map = new Map();
-    for (const r of filtered) {
-      const key = `${r.production_date}|${r.delivery_date}`;
-      if (!map.has(key)) {
-        map.set(key, { production_date: r.production_date, delivery_date: r.delivery_date, count: 1 });
-      } else {
-        map.get(key).count += 1;
-      }
-    }
-
-    return Array.from(map.values()).sort((a, b) => {
-      if (a.production_date > b.production_date) return -1;
-      if (a.production_date < b.production_date) return 1;
-      if (a.delivery_date > b.delivery_date) return -1;
-      if (a.delivery_date < b.delivery_date) return 1;
-      return 0;
-    });
-  }, [rawRoadmaps, prodFrom, prodTo, delFrom, delTo, selectedDest]);
-
-  const total = groupedRows.length;
+  const total = rows.length;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const start = (page - 1) * pageSize;
   const end = start + pageSize;
-  const pageRows = groupedRows.slice(start, end);
-
-  const onFilter = (e) => {
-    e.preventDefault();
-    setPage(1);
-    fetchData();
-  };
-
-  const goPage = (p) => {
-    if (p < 1 || p > totalPages) return;
-    setPage(p);
-  };
+  const pageRows = rows.slice(start, end);
 
   const pageWindow = useMemo(() => {
     const visible = Math.min(5, totalPages);
@@ -134,11 +57,47 @@ export default function PreInvoiceList() {
     return Array.from({ length: visible }, (_, i) => startAt + i);
   }, [page, totalPages]);
 
+  const handleDelete = async (receipt) => {
+    const confirm = await Swal.fire({
+      title: "¿Eliminar prefacturación?",
+      text: `Se eliminará la prefacturación #${receipt}. Esta acción no se puede deshacer.`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Sí, eliminar",
+      cancelButtonText: "Cancelar",
+      confirmButtonColor: "#d33",
+    });
+    if (!confirm.isConfirmed) return;
+
+    try {
+      const res = await fetch(
+        `${API_URL}/preinvoices/by-receipt/${encodeURIComponent(receipt)}`,
+        { method: "DELETE", credentials: "include" }
+      );
+      const js = await res.json();
+      if (js?.ok) {
+        await Swal.fire("Eliminada", "La prefacturación fue eliminada correctamente.", "success");
+        fetchData();
+      } else {
+        Swal.fire("Error", js?.msg || "No se pudo eliminar la prefacturación.", "error");
+      }
+    } catch {
+      Swal.fire("Error", "Ocurrió un problema al eliminar.", "error");
+    }
+  };
+
+  // 👉 Abrir vista de detalle en modo PDF
+  const handlePdf = (receipt) => {
+    // abre una pestaña con /pre-invoicing-detail/:id?pdf=1
+    window.open(`/pre-invoicing-detail/${encodeURIComponent(receipt)}?pdf=1`, "_blank");
+  };
+
   return (
     <div className="pv-wrap">
       <Navbar />
-      <div style={{ margin: "20px" }}>
-        <button className="boton-volver" onClick={() => navigate("/sales-panel")}>
+
+      <div className="pv-header">
+        <button className="pv-back" onClick={() => navigate("/sales-panel")}>
           ⬅ Volver
         </button>
       </div>
@@ -146,77 +105,68 @@ export default function PreInvoiceList() {
       <div className="pv-container">
         <h1 className="pv-title">PREFACTURACIONES</h1>
 
-        <form className="pv-filters" onSubmit={onFilter}>
-          <div className="pv-field">
-            <label>FECHA DE PRODUCCIÓN</label>
-            <div className="pv-range">
-              <input type="date" value={prodFrom} onChange={(e) => setProdFrom(e.target.value)} />
-              <input type="date" value={prodTo} onChange={(e) => setProdTo(e.target.value)} />
-            </div>
-          </div>
-
-          <div className="pv-field">
-            <label>FECHA DE ENTREGA</label>
-            <div className="pv-range">
-              <input type="date" value={delFrom} onChange={(e) => setDelFrom(e.target.value)} />
-              <input type="date" value={delTo} onChange={(e) => setDelTo(e.target.value)} />
-            </div>
-          </div>
-
-          <div className="pv-field">
-            <label>DESTINO</label>
-            <div className="pv-select">
-              <select value={selectedDest} onChange={(e) => setSelectedDest(e.target.value)}>
-                <option value="">Seleccionar</option>
-                {destinations.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.destination_name || d.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <button className="pv-btn" type="submit" disabled={loading}>
-            {loading ? "Filtrando..." : "Filtrar"}
-          </button>
-        </form>
-
         <div className="pv-table">
           <div className="pv-thead">
-            <div>FECHA DE PRODUCCIÓN</div>
-            <div>FECHA DE ENTREGA</div>
-            <div className="pv-actions">ACCIONES</div>
+            <div>COMPROBANTE</div>
+            <div>CAMIÓN</div>
+            <div>CLIENTE</div>
+            <div>PRODUCCIÓN</div>
+            <div>ITEMS</div>
+            <div>IMPORTE</div>
+            <div>DESTINO</div>
+            <div>ENTREGA</div>
+            <div>ACCIONES</div>
           </div>
 
           <div className="pv-tbody">
-            {pageRows.length === 0 && !loading && <div className="pv-empty">Sin resultados</div>}
+            {pageRows.length === 0 && !loading && (
+              <div className="pv-empty">Sin resultados</div>
+            )}
 
-            {pageRows.map((r, idx) => (
-              <div className="pv-row" key={`${r.production_date}-${r.delivery_date}-${idx}`}>
-                <div>{toDDMMYY(r.production_date)}</div>
+            {pageRows.map((r) => (
+              <div className="pv-row" key={`${r.receipt_number}-${r.roadmap_id || ""}`}>
+                <div>#{r.receipt_number}</div>
+                <div>{r.truck_license_plate || "—"}</div>
+                <div>{r.client_name || "—"}</div>
+                <div>{toDDMMYY(r.production_ts)}</div>
+                <div>{r.lines}</div>
+                <div className="pv-num">
+                  {Number(r.total_amount || 0).toLocaleString("es-AR", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </div>
+                <div>{r.destination || "—"}</div>
                 <div>{toDDMMYY(r.delivery_date)}</div>
+
                 <div className="pv-actions">
-                  {/* Ver (modo lectura) */}
                   <button
-                    className="pv-icon"
-                    title="Ver"
-                    onClick={() =>
-                      navigate(`/pre-invoicing-detail/${r.production_date}/${r.delivery_date}?mode=view`)
-                    }
+                    className="pv-icon-btn btn-eye"
+                    title="Ver detalle"
+                    onClick={() => navigate(`/pre-invoicing-detail/${r.receipt_number}`)}
                   >
                     <FontAwesomeIcon icon={faEye} />
                   </button>
-
-                  {/* Editar */}
                   <button
-                    className="pv-icon"
-                    title="Editar"
-                    onClick={() =>
-                      navigate(`/pre-invoicing-detail/${r.production_date}/${r.delivery_date}?mode=edit`)
-                    }
+                    className="pv-icon-btn btn-edit"
+                    title="Editar prefactura"
+                    onClick={() => navigate(`/pre-invoicing/${r.receipt_number}`)}
                   >
                     <FontAwesomeIcon icon={faPen} />
+                  </button>
+                  <button
+                    className="pv-icon-btn btn-del"
+                    title="Eliminar prefactura"
+                    onClick={() => handleDelete(r.receipt_number)}
+                  >
+                    <FontAwesomeIcon icon={faXmark} />
+                  </button>
+                  <button
+                    className="pv-icon-btn btn-pdf"
+                    title="Exportar a PDF"
+                    onClick={() => handlePdf(r.receipt_number)}
+                  >
+                    <FontAwesomeIcon icon={faFilePdf} />
                   </button>
                 </div>
               </div>
@@ -224,38 +174,43 @@ export default function PreInvoiceList() {
           </div>
         </div>
 
-        <div className="pv-footer">
-          <div className="pv-page-size">
-            <span>Mostrar</span>
-            <select value={pageSize} onChange={(e) => setPageSize(Number(e.target.value))}>
-              {[5, 10, 25, 50, 100].map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
-            <span>de {total} registros por página</span>
-          </div>
+        <div className="pv-pagination">
+          <button
+            className="pv-page-btn"
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page <= 1}
+          >
+            ←
+          </button>
+          {pageWindow.map((p) => (
+            <button
+              key={p}
+              className={`pv-page-btn ${p === page ? "pv-active" : ""}`}
+              onClick={() => setPage(p)}
+            >
+              {p}
+            </button>
+          ))}
+          <button
+            className="pv-page-btn"
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={page >= totalPages}
+          >
+            →
+          </button>
 
-          <div className="pv-pager">
-            <button onClick={() => goPage(1)} disabled={page === 1}>
-              {"«"}
-            </button>
-            <button onClick={() => goPage(page - 1)} disabled={page === 1}>
-              {"‹"}
-            </button>
-            {pageWindow.map((p) => (
-              <button key={p} className={p === page ? "active" : ""} onClick={() => goPage(p)}>
-                {p}
-              </button>
-            ))}
-            <button onClick={() => goPage(page + 1)} disabled={page === totalPages}>
-              {"›"}
-            </button>
-            <button onClick={() => goPage(totalPages)} disabled={page === totalPages}>
-              {"»"}
-            </button>
-          </div>
+          <select
+            className="pv-page-size"
+            value={pageSize}
+            onChange={(e) => {
+              setPageSize(Number(e.target.value));
+              setPage(1);
+            }}
+          >
+            <option value={5}>5 / pág</option>
+            <option value={10}>10 / pág</option>
+            <option value={20}>20 / pág</option>
+          </select>
         </div>
       </div>
     </div>

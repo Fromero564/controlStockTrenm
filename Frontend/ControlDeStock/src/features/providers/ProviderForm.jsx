@@ -26,21 +26,19 @@ const ProviderForm = () => {
     romaneo: "",
   });
 
-  // === NUEVO: numeroRomaneo en cortes (para identification_product)
   const [nuevoCorte, setNuevoCorte] = useState({
     tipo: "",
     cantidad: "",
     cabezas: "",
     pesoRomaneo: "",
-    numeroRomaneo: "", // <—
+    numeroRomaneo: "",
   });
 
-  // === NUEVO: codigo en congelados (para identification_product)
   const [nuevoCongelado, setNuevoCongelado] = useState({
     tipo: "",
     cantidad: "",
     unidades: "",
-    codigo: "", // <—
+    codigo: "",
   });
 
   const cortesPorPagina = 5;
@@ -73,17 +71,16 @@ const ProviderForm = () => {
         const data = await response.json();
         const productos = Array.isArray(data)
           ? data
-            .filter((p) =>
-              ["externo", "ambos"].includes(
-                p.product_general_category?.toLowerCase()
+              .filter((p) =>
+                ["externo", "ambos"].includes(
+                  p.product_general_category?.toLowerCase()
+                )
               )
-            )
-            .map((p) => ({
-              id: p.id,
-              nombre: p.product_name,
-              // Si no tiene categoría, guardamos vacío
-              categoria: p.category?.category_name || "",
-            }))
+              .map((p) => ({
+                id: p.id,
+                nombre: p.product_name,
+                categoria: p.category?.category_name || "",
+              }))
           : [];
         setCortes(productos);
       } catch (e) {
@@ -121,10 +118,11 @@ const ProviderForm = () => {
                 cantidad: Number(d.cantidad) || 0,
                 cabezas: Number(d.cabezas) || 0,
                 cod: prod?.id || "",
-                // Si no hay categoria, dejamos ""
                 categoria: prod?.categoria || "",
                 pesoRomaneo: Number(d.pesoRomaneo ?? d.peso ?? 0),
-                identification_product: Number(d.identification_product ?? 0),
+                identification_product: Number(
+                  d.identification_product ?? 0
+                ),
                 numeroRomaneo: Number(d.identification_product ?? 0),
               };
             });
@@ -144,7 +142,9 @@ const ProviderForm = () => {
                 unidades: Number(g.peso || g.weight) || 0,
                 cod: prod?.id || "",
                 categoria: prod?.categoria || "",
-                identification_product: Number(g.identification_product ?? 0),
+                identification_product: Number(
+                  g.identification_product ?? 0
+                ),
                 codigo: Number(g.identification_product ?? 0),
               };
             });
@@ -158,12 +158,12 @@ const ProviderForm = () => {
       fetchData();
     }
   }, [id, cortes, API_URL]);
+
   useEffect(() => {
     if (mostrarCongelados) {
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
   }, [mostrarCongelados]);
-
 
   const handleCorteChange = (e) => {
     const { name, value } = e.target;
@@ -182,7 +182,6 @@ const ProviderForm = () => {
     const prodSel = cortes.find((c) => c.id === seleccion.value);
     if (!prodSel) return;
 
-
     if (!prodSel.categoria) {
       await Swal.fire({
         title: "Producto sin categoría",
@@ -199,7 +198,6 @@ const ProviderForm = () => {
       cantidad: Number(nuevoCorte.cantidad),
       cabezas: Number(nuevoCorte.cabezas),
       cod: seleccion.value,
-      // Guardamos vacío si no hay categoría
       categoria: prodSel.categoria || "",
       pesoRomaneo: Number(nuevoCorte.pesoRomaneo) || 0,
       identification_product: Number(nuevoCorte.numeroRomaneo) || 0,
@@ -247,7 +245,6 @@ const ProviderForm = () => {
       cantidad: Number(nuevoCongelado.cantidad) || 0,
       unidades: Number(nuevoCongelado.unidades) || 0,
       cod: prod.id,
-      // Guardamos vacío si no hay categoría
       categoria: prod.categoria || "",
       identification_product: Number(nuevoCongelado.codigo) || 0,
       codigo: Number(nuevoCongelado.codigo) || 0,
@@ -346,7 +343,10 @@ const ProviderForm = () => {
 
   const totalUnidadesCortes = useMemo(
     () =>
-      cortesAgregados.reduce((acc, it) => acc + (Number(it.cantidad) || 0), 0),
+      cortesAgregados.reduce(
+        (acc, it) => acc + (Number(it.cantidad) || 0),
+        0
+      ),
     [cortesAgregados]
   );
 
@@ -420,7 +420,6 @@ const ProviderForm = () => {
         0
       );
 
-    // NOTA: cada corte/congelado incluye identification_product
     const formData = {
       proveedor: formState.proveedor.trim(),
       romaneo: romaneoNumber,
@@ -439,7 +438,9 @@ const ProviderForm = () => {
 
     try {
       const res = await fetch(
-        id ? `${API_URL}/update-provider-bill/${id}` : `${API_URL}/uploadProduct`,
+        id
+          ? `${API_URL}/update-provider-bill/${id}`
+          : `${API_URL}/uploadProduct`,
         {
           method: id ? "PUT" : "POST",
           headers: { "Content-Type": "application/json" },
@@ -471,11 +472,15 @@ const ProviderForm = () => {
 
       <div className="new-register-container">
         <form onSubmit={handleSubmit} className="form-container-provider">
-          <h2 className="form-title">{id ? "Editar Registro" : "Nuevo Registro"}</h2>
+          <h2 className="form-title">
+            {id ? "Editar Registro" : "Nuevo Registro"}
+          </h2>
 
           <div className="title-remit-div">
             <label className="label-provider-form">TIPO DE INGRESO</label>
-            <label className="label-provider-form">N° COMPROBANTE: {ultimoRegistroFactura}</label>
+            <label className="label-provider-form">
+              N° COMPROBANTE: {ultimoRegistroFactura}
+            </label>
           </div>
 
           <div className="radio-buttons">
@@ -516,7 +521,7 @@ const ProviderForm = () => {
               Nº COMPROBANTE ROMANEO:
               <input
                 type="number"
-                className="input"
+                className="input no-spin"
                 value={formState.romaneo}
                 onChange={(e) =>
                   setFormState({ ...formState, romaneo: e.target.value })
@@ -536,9 +541,6 @@ const ProviderForm = () => {
             </label>
           </div>
 
-          {/* =========================
-               CONGELADOS AHORA ARRIBA
-              ========================= */}
           {mostrarCongelados && (
             <div className="cortes-section">
               <h4>OTROS PRODUCTOS</h4>
@@ -553,11 +555,15 @@ const ProviderForm = () => {
                   <Select
                     options={opciones}
                     value={
-                      opciones.find((o) => o.value === nuevoCongelado.tipo) ||
-                      null
+                      opciones.find(
+                        (o) => o.value === nuevoCongelado.tipo
+                      ) || null
                     }
                     onChange={(s) =>
-                      setNuevoCongelado({ ...nuevoCongelado, tipo: s?.value || "" })
+                      setNuevoCongelado({
+                        ...nuevoCongelado,
+                        tipo: s?.value || "",
+                      })
                     }
                     placeholder="Producto"
                     isClearable
@@ -567,6 +573,7 @@ const ProviderForm = () => {
                   <label>CANTIDAD</label>
                   <input
                     type="number"
+                    className="no-spin"
                     name="cantidad"
                     value={nuevoCongelado.cantidad}
                     onChange={handleCongeladoChange}
@@ -576,16 +583,17 @@ const ProviderForm = () => {
                   <label>PESO (kg)</label>
                   <input
                     type="number"
+                    className="no-spin"
                     name="unidades"
                     value={nuevoCongelado.unidades}
                     onChange={handleCongeladoChange}
                   />
                 </div>
-                {/* NUEVO: Código (identification_product) */}
                 <div className="input-group">
                   <label>CÓDIGO</label>
                   <input
                     type="number"
+                    className="no-spin"
                     name="codigo"
                     value={nuevoCongelado.codigo}
                     onChange={handleCongeladoChange}
@@ -619,7 +627,9 @@ const ProviderForm = () => {
                       <span className="pill">{item.cantidad}</span>
                       <span className="pill">{item.unidades}</span>
                       <span className="pill">
-                        {item.codigo ?? item.identification_product ?? ""}
+                        {item.codigo ??
+                          item.identification_product ??
+                          ""}
                       </span>
                       <button
                         type="button"
@@ -637,14 +647,17 @@ const ProviderForm = () => {
                   <div className="pager">
                     <button
                       onClick={() =>
-                        setPaginaCongelados((p) => Math.max(1, p - 1))
+                        setPaginaCongelados((p) =>
+                          Math.max(1, p - 1)
+                        )
                       }
                       disabled={paginaCongelados <= 1}
                     >
                       Anterior
                     </button>
                     <span>
-                      Página {paginaCongelados} de {totalPaginasCongelados}
+                      Página {paginaCongelados} de{" "}
+                      {totalPaginasCongelados}
                     </span>
                     <button
                       onClick={() =>
@@ -652,7 +665,9 @@ const ProviderForm = () => {
                           Math.min(totalPaginasCongelados, p + 1)
                         )
                       }
-                      disabled={paginaCongelados >= totalPaginasCongelados}
+                      disabled={
+                        paginaCongelados >= totalPaginasCongelados
+                      }
                     >
                       Siguiente
                     </button>
@@ -661,23 +676,32 @@ const ProviderForm = () => {
               </div>
 
               <div className="totales-linea">
-                <b>Cantidad de unidades: {totalUnidadesCong}</b>
+                <b>
+                  Cantidad de unidades: {totalUnidadesCong}
+                </b>
                 <b>Cantidad de cargas: {totalCargasCong}</b>
-                <b>Peso total: {totalPesoCong.toFixed(2)} kg</b>
+                <b>
+                  Peso total: {totalPesoCong.toFixed(2)} kg
+                </b>
               </div>
             </div>
           )}
 
-          {/* CORTES (queda debajo) */}
           <div className="cortes-section">
             <div className="corte-card">
               <div className="input-group">
                 <label>TIPO</label>
                 <Select
                   options={opciones}
-                  value={opciones.find((o) => o.value === nuevoCorte.tipo) || null}
+                  value={
+                    opciones.find((o) => o.value === nuevoCorte.tipo) ||
+                    null
+                  }
                   onChange={(s) =>
-                    setNuevoCorte({ ...nuevoCorte, tipo: s?.value || "" })
+                    setNuevoCorte({
+                      ...nuevoCorte,
+                      tipo: s?.value || "",
+                    })
                   }
                   placeholder="Producto"
                   isClearable
@@ -687,6 +711,7 @@ const ProviderForm = () => {
                 <label>CANTIDAD</label>
                 <input
                   type="number"
+                  className="no-spin"
                   name="cantidad"
                   value={nuevoCorte.cantidad}
                   onChange={handleCorteChange}
@@ -696,6 +721,7 @@ const ProviderForm = () => {
                 <label>CABEZAS</label>
                 <input
                   type="number"
+                  className="no-spin"
                   name="cabezas"
                   value={nuevoCorte.cabezas}
                   onChange={handleCorteChange}
@@ -705,6 +731,7 @@ const ProviderForm = () => {
                 <label>PESO ROMANEO (kg)</label>
                 <input
                   type="number"
+                  className="no-spin"
                   name="pesoRomaneo"
                   value={nuevoCorte.pesoRomaneo}
                   onChange={handleCorteChange}
@@ -714,9 +741,14 @@ const ProviderForm = () => {
               </div>
 
               <div className="input-group">
-                <label>{tipoIngreso === "manual" ? "N° TROPA" : "Nº GARRON"}</label>
+                <label>
+                  {tipoIngreso === "manual"
+                    ? "N° TROPA"
+                    : "Nº GARRON"}
+                </label>
                 <input
                   type="number"
+                  className="no-spin"
                   name="numeroRomaneo"
                   value={nuevoCorte.numeroRomaneo}
                   onChange={handleCorteChange}
@@ -724,7 +756,11 @@ const ProviderForm = () => {
                 />
               </div>
 
-              <button type="button" onClick={agregarCorte} className="btn-add">
+              <button
+                type="button"
+                onClick={agregarCorte}
+                className="btn-add"
+              >
                 Agregar
               </button>
             </div>
@@ -735,12 +771,19 @@ const ProviderForm = () => {
                 <span>Cantidad</span>
                 <span>Cabezas</span>
                 <span>Peso (kg)</span>
-                <span>{tipoIngreso === "manual" ? "N° Tropa" : "N° Garron"}</span>
+                <span>
+                  {tipoIngreso === "manual"
+                    ? "N° Tropa"
+                    : "N° Garron"}
+                </span>
                 <span></span>
               </div>
 
               {cortesEnPagina.map((corte) => (
-                <div className="corte-row" key={corte.id || corte.idTemp}>
+                <div
+                  className="corte-row"
+                  key={corte.id || corte.idTemp}
+                >
                   <span className="pill">{corte.nombre}</span>
                   <span className="pill">{corte.cantidad}</span>
                   <span className="pill">{corte.cabezas}</span>
@@ -750,11 +793,15 @@ const ProviderForm = () => {
                       : corte.pesoRomaneo}{" "}
                   </span>
                   <span className="pill">
-                    {corte.numeroRomaneo ?? corte.identification_product ?? ""}
+                    {corte.numeroRomaneo ??
+                      corte.identification_product ??
+                      ""}
                   </span>
                   <button
                     type="button"
-                    onClick={() => eliminarCorte(corte.id || corte.idTemp)}
+                    onClick={() =>
+                      eliminarCorte(corte.id || corte.idTemp)
+                    }
                     className="pill pill-danger"
                     title="Eliminar"
                   >
@@ -779,10 +826,15 @@ const ProviderForm = () => {
                   <button
                     onClick={() =>
                       setPaginaCortes((p) =>
-                        Math.min(totalPaginasCortes, p + 1)
+                        Math.min(
+                          totalPaginasCortes,
+                          p + 1
+                        )
                       )
                     }
-                    disabled={paginaCortes >= totalPaginasCortes}
+                    disabled={
+                      paginaCortes >= totalPaginasCortes
+                    }
                   >
                     Siguiente
                   </button>
@@ -791,9 +843,14 @@ const ProviderForm = () => {
             </div>
 
             <div className="totales-linea">
-              <b>Cantidad de unidades: {totalUnidadesCortes}</b>
+              <b>
+                Cantidad de unidades: {totalUnidadesCortes}
+              </b>
               <b>Cantidad de cargas: {totalCargasCortes}</b>
-              <b>Peso romaneo total: {totalPesoRomaneoCortes.toFixed(2)} kg</b>
+              <b>
+                Peso romaneo total:{" "}
+                {totalPesoRomaneoCortes.toFixed(2)} kg
+              </b>
             </div>
           </div>
 

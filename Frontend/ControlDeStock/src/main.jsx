@@ -65,6 +65,7 @@ import PreInvoiceCharge from './features/sales/pre-invoicing/PreInvoiceCharge.js
 import ComparePriceLists from './features/sales/ComparePriceLists.jsx';
 import BulkPriceListUpdate from './features/sales/BulkPriceListUpdate.jsx';
 import OrderWeightInfo from './features/sales/OrderWeightInfo.jsx';
+import PreInvoiceDetail from './features/sales/pre-invoicing/PreInvoiceDetail.jsx';
 
 
 
@@ -579,6 +580,23 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
+  {
+  path: "/pre-invoicing",
+  element: (
+    <ProtectedRoute>
+      <PreInvoiceCharge />
+    </ProtectedRoute>
+  ),
+},
+  {
+    path: "/pre-invoicing/:receipt",
+    element: (
+      <ProtectedRoute>
+        <PreInvoiceCharge />
+      </ProtectedRoute>
+    ),
+  },
+
     {
     path: "/new-roadmap",
     element: (
@@ -620,10 +638,10 @@ const router = createBrowserRouter([
   ),
 },
 {
-  path: "/pre-invoicing-detail/:prod/:del",
+  path: "/pre-invoicing-detail/:id",
   element: (
     <ProtectedRoute>
-      <PreInvoiceCharge/>
+      <PreInvoiceDetail/>
     </ProtectedRoute>
   ),
 },

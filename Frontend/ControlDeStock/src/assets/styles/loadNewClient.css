@@ -181,6 +181,20 @@
   color: #047bb4;
   border: 2px solid #047bb4;
 }
+/* Quitar las flechitas de los input[type=number] */
+
+/* Chrome, Edge, Safari */
+.client-input[type="number"]::-webkit-inner-spin-button,
+.client-input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Firefox */
+.client-input[type="number"] {
+  -moz-appearance: textfield;
+}
+
 
 /* Responsivo */
 @media (max-width: 720px) {

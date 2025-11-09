@@ -11,10 +11,8 @@ const Tareload = () => {
     const esEdicion = Boolean(id); 
     const API_URL = import.meta.env.VITE_API_URL;
 
-    // Cargar datos de la tara si estamos en edición
     useEffect(() => {
         if (esEdicion) {
-            // Traer datos de la tara para precargar formulario
             fetch(`${API_URL}/tareLoadFind/${id}`)
                 .then(res => {
                     if (!res.ok) throw new Error("No se encontró la tara");
@@ -41,14 +39,12 @@ const Tareload = () => {
         try {
             let response;
             if (esEdicion) {
-                // Editar (PUT)
                 response = await fetch(`${API_URL}/tare-edit/${id}`, {
                     method: "PUT",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(formData),
                 });
             } else {
-                
                 response = await fetch(`${API_URL}/tareLoad`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -57,10 +53,10 @@ const Tareload = () => {
             }
 
             if (response.ok) {
-                const data = await response.json();
                 setMensaje(esEdicion ? "✅ Tara editada correctamente." : "✅ Tara cargada correctamente.");
                 setTare({ tareName: "", tareWeight: "" });
                 if (!esEdicion) e.target.reset();
+                navigate("/all-tares");
             } else {
                 setMensaje("❌ Error en el servidor.");
             }
@@ -68,14 +64,12 @@ const Tareload = () => {
             setMensaje("❌ Error en la solicitud.");
             console.error(error);
         }
-
-       navigate("/all-tares");
     };
 
     return (
         <>
             <Navbar />
-              <div style={{ margin: "20px" }}>
+            <div style={{ margin: "20px" }}>
                 <button className="boton-volver" onClick={() => navigate("/product-configuration")}>
                     ⬅ Volver
                 </button>
@@ -103,7 +97,7 @@ const Tareload = () => {
                         placeholder="Peso Kg"
                         step="0.01"
                         required
-                        className="tara-input"
+                        className="tara-input no-spin"
                         defaultValue={tare.tareWeight}
                     />
 

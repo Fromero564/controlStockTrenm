@@ -18,6 +18,16 @@ body {
     margin-bottom: 1rem;
     color: #333;
 }
+/* Quita los botones de subir y bajar del input number */
+.no-spin::-webkit-outer-spin-button,
+.no-spin::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.no-spin {
+  -moz-appearance: textfield; /* Firefox */
+}
 
 .tara-form-message {
     color: red;

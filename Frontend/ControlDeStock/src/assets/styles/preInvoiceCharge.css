@@ -1,238 +1,293 @@
 /* ===== LAYOUT GENERAL ===== */
 .charge-wrap {
-    min-height: 100vh;
-    background: #f7f9fc;
-    display: flex;
-    flex-direction: column;
+  min-height: 100vh;
+  background: #f7f9fc;
+  display: flex;
+  flex-direction: column;
 }
 
 .charge-container {
-    flex: 1;
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 20px;
+  flex: 1;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
 }
 
 .charge-title {
-    font-size: 22px;
-    font-weight: 800;
-    color: #1a2533;
+  font-size: 22px;
+  font-weight: 800;
+  color: #1a2533;
 }
 
 /* ===== BOTONES ===== */
 .charge-btn {
-    background: #0a6baf;
-    color: #fff;
-    border: none;
-    border-radius: 8px;
-    padding: 6px 14px;
-    cursor: pointer;
-    font-size: 14px;
-    transition: .2s;
+  background: #0a6baf;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 14px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: 0.2s;
 }
 
 .charge-btn:hover {
-    background: #084e80;
+  background: #084e80;
 }
 
 .charge-btn-outline {
-    background: #fff;
-    border: 1px solid #0a6baf;
-    color: #0a6baf;
+  background: #fff;
+  border: 1px solid #0a6baf;
+  color: #0a6baf;
 }
 
 /* ===== TABLAS ===== */
 .charge-table {
-    border: 1px solid #dce3ed;
-    border-radius: 10px;
-    overflow: hidden;
-    background: #fff;
-    margin-bottom: 16px;
+  border: 1px solid #dce3ed;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fff;
+  margin-bottom: 16px;
 }
 
 .charge-thead {
-    display: grid;
-    background: #eef3fa;
-    font-weight: 700;
-    font-size: 13px;
-    color: #2f3a4c;
-    padding: 8px 12px;
+  display: grid;
+  background: #eef3fa;
+  font-weight: 700;
+  font-size: 13px;
+  color: #2f3a4c;
+  padding: 8px 12px;
 }
 
 .charge-tbody {
-    display: block;
+  display: block;
 }
 
 .charge-row {
-    display: grid;
-    padding: 10px 12px;
-    border-top: 1px solid #eef2f7;
-    font-size: 14px;
-    align-items: center;
+  display: grid;
+  padding: 10px 12px;
+  border-top: 1px solid #eef2f7;
+  font-size: 14px;
+  align-items: center;
 }
 
 /* ===== INPUTS ===== */
 .charge-inp {
-    height: 32px;
-    border: 1px solid #d6dde6;
-    border-radius: 8px;
-    padding: 0 8px;
-    background: #fff;
-    outline: none;
-    font-size: 14px;
+  height: 32px;
+  border: 1px solid #d6dde6;
+  border-radius: 8px;
+  padding: 0 8px;
+  background: #fff;
+  outline: none;
+  font-size: 14px;
 }
 
 .charge-inp.warn {
-    border-color: #f4b4b4;
-    background: #fff6f6;
+  border-color: #f4b4b4;
+  background: #fff6f6;
 }
 
-/* ===== POPUP ===== */
+/* ===== POPUP (CENTRADO Y MODERNO) ===== */
 .charge-popup-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, .55);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1200;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1200;
+  animation: fadeIn 0.25s ease-out;
 }
 
 .charge-popup {
-    background: #fff;
-    border-radius: 12px;
-    width: 640px;
-    max-width: 95%;
-    box-shadow: 0 8px 28px rgba(0, 0, 0, .25);
-    animation: charge-zoom .2s ease-out;
-    display: flex;
-    flex-direction: column;
-}
-
-@keyframes charge-zoom {
-    from {
-        transform: scale(.9);
-        opacity: 0
-    }
-
-    to {
-        transform: scale(1);
-        opacity: 1
-    }
+  background: #fff;
+  border-radius: 14px;
+  width: 520px;
+  max-width: 95%;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: scaleIn 0.25s ease-out;
 }
 
 .charge-popup-header {
-    padding: 14px 20px;
-    border-bottom: 1px solid #e5e8ee;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+  padding: 16px 22px;
+  border-bottom: 1px solid #e5e8ee;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f2f6fb;
 }
 
 .charge-popup-header h2 {
-    margin: 0;
-    font-size: 18px;
-    color: #223;
-    font-weight: 600;
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #0b4d75;
 }
 
 .charge-popup-close {
-    background: none;
-    border: none;
-    font-size: 20px;
-    cursor: pointer;
-    color: #888;
+  background: none;
+  border: none;
+  font-size: 22px;
+  color: #999;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.charge-popup-close:hover {
+  color: #333;
 }
 
 .charge-popup-body {
-    padding: 18px 20px;
-    max-height: 65vh;
-    overflow-y: auto;
+  padding: 18px 22px;
+  max-height: 65vh;
+  overflow-y: auto;
 }
 
 .charge-popup-footer {
-    padding: 14px 20px;
-    border-top: 1px solid #e5e8ee;
-    display: flex;
-    justify-content: flex-end;
-    gap: 12px;
+  padding: 14px 22px;
+  border-top: 1px solid #e5e8ee;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  background: #f9fbfd;
 }
 
-/* ===== SELECT / TOGGLE / GRID ===== */
+/* ===== BOTONES POPUP ===== */
+.charge-btn.primary {
+  background: #0a6baf;
+  color: #fff;
+}
+
+.charge-btn.primary:hover {
+  background: #0b79d0;
+}
+
+.charge-btn.ghost {
+  background: transparent;
+  color: #0a6baf;
+  border: 1px solid #0a6baf;
+}
+
+.charge-btn.ghost:hover {
+  background: #eaf4ff;
+}
+
+/* ===== ANIMACIONES ===== */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* ===== OTROS ===== */
+.charge-empty {
+  padding: 16px;
+  text-align: center;
+  color: #708096;
+}
+
 .charge-select {
-    border: 1px solid #d6dde6;
-    border-radius: 8px;
-    background: #f3f6fa;
-    padding: 8px 10px;
+  border: 1px solid #d6dde6;
+  border-radius: 8px;
+  background: #f3f6fa;
+  padding: 8px 10px;
 }
 
 .charge-select.disabled {
-    opacity: .75;
-    pointer-events: none;
+  opacity: 0.75;
+  pointer-events: none;
 }
 
 .charge-toggle {
-    display: flex;
-    gap: 12px;
-    margin: 10px 0 16px;
+  display: flex;
+  gap: 12px;
+  margin: 10px 0 16px;
 }
 
 .charge-chip {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    border: 1px solid #cfd8e3;
-    border-radius: 20px;
-    padding: 6px 12px;
-    cursor: pointer;
-    font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #cfd8e3;
+  border-radius: 20px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 13px;
 }
 
 .charge-chip input {
-    display: none;
+  display: none;
 }
 
 .charge-chip.active {
-    border-color: #0a6baf;
-    background: #e6f2fb;
-    color: #0a6baf;
+  border-color: #0a6baf;
+  background: #e6f2fb;
+  color: #0a6baf;
 }
 
 .charge-grid3 {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 12px;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
 }
 
 .charge-field label {
-    font-size: 12px;
-    font-weight: 600;
-    color: #4a5568;
-    margin-bottom: 4px;
-    display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #4a5568;
+  margin-bottom: 4px;
+  display: block;
 }
 
 .charge-field small {
-    display: block;
-    font-size: 11px;
-    color: #7a8aa0;
-    margin-top: 2px;
+  display: block;
+  font-size: 11px;
+  color: #7a8aa0;
+  margin-top: 2px;
 }
 
-/* ===== VACÍOS ===== */
-.charge-empty {
-    padding: 16px;
-    text-align: center;
-    color: #708096;
-}
-/* Select de clientes dentro del popup */
 .charge-select--readonly {
   border: 1px solid #d6dde6;
   border-radius: 8px;
   background: #f3f6fa;
   padding: 8px 10px;
 }
+
 .charge-select-input {
   width: 100%;
-  appearance: auto; /* que se vea como select nativo */
+  appearance: auto;
+}
+
+/* ===== EFECTO DE SALIDA SUAVE ===== */
+.charge-popup.fade-out {
+  animation: fadeOut 0.25s ease-in forwards;
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.9);
+  }
 }

@@ -250,7 +250,7 @@ const ListFinalOrders = () => {
                           </button>
                           {/* 👁️ Ver pesaje */}
                           <button className="lfo-icon" onClick={() => onView(id)} title="Ver">👁</button>
-                          <button className="lfo-icon" onClick={() => onPDF(id)} title="PDF">PDF</button>
+                          {/* <button className="lfo-icon" onClick={() => onPDF(id)} title="PDF">PDF</button> */}
                         </div>
                       </td>
                     </tr>
