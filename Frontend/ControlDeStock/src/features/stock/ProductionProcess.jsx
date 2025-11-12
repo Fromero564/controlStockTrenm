@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom"; // ← agregado: usamos processNumber o id
 import Select from "react-select";
 import Swal from "sweetalert2";
 import Navbar from "../../components/Navbar.jsx";
@@ -23,6 +23,9 @@ const safeParse = (str, fallback) => {
 
 const ProductionProcess = () => {
   const navigate = useNavigate();
+  const { processNumber, id } = useParams();             // ← leemos ambos
+  const processParam = processNumber ?? id;               // ← unificamos
+  const isEdit = !!processParam;                          // ← modo edición si viene param
   const API_URL = import.meta.env.VITE_API_URL;
 
   const [cortes, setCortes] = useState([]);
@@ -54,33 +57,37 @@ const ProductionProcess = () => {
 
   // ---------- PERSISTENCIA: Cargar desde localStorage al montar ----------
   useEffect(() => {
+    if (isEdit) return; // en edición, no pisamos con LS
     const cortesGuardados = safeParse(localStorage.getItem(LS_KEYS.CORTES), []);
     const productosGuardados = safeParse(localStorage.getItem(LS_KEYS.SIN_REMITO), []);
     const comprobantesGuardados = safeParse(localStorage.getItem(LS_KEYS.COMPROBANTES), []);
-
     if (cortesGuardados.length) setCortesAgregados(cortesGuardados);
     if (productosGuardados.length) setProductosSinRemito(productosGuardados);
     if (comprobantesGuardados.length) setComprobantesAgregados(comprobantesGuardados);
-  }, []);
+  }, [isEdit]);
 
   // ---------- PERSISTENCIA: Guardar en localStorage cuando cambian ----------
   useEffect(() => {
+    if (isEdit) return;
     localStorage.setItem(LS_KEYS.CORTES, JSON.stringify(cortesAgregados));
-  }, [cortesAgregados]);
+  }, [cortesAgregados, isEdit]);
 
   useEffect(() => {
+    if (isEdit) return;
     localStorage.setItem(LS_KEYS.SIN_REMITO, JSON.stringify(productosSinRemito));
-  }, [productosSinRemito]);
+  }, [productosSinRemito, isEdit]);
 
   useEffect(() => {
+    if (isEdit) return;
     localStorage.setItem(LS_KEYS.COMPROBANTES, JSON.stringify(comprobantesAgregados));
-  }, [comprobantesAgregados]);
+  }, [comprobantesAgregados, isEdit]);
 
-  // Seguridad: aseguramos array
+  // Seguridad
   useEffect(() => {
     if (!Array.isArray(productosSinRemito)) setProductosSinRemito([]);
   }, []);
 
+  // Productos disponibles (para selects)
   useEffect(() => {
     const fetchProductos = async () => {
       try {
@@ -99,11 +106,12 @@ const ProductionProcess = () => {
             label: prod.product_name,
           }))
         );
-      } catch {}
+      } catch { }
     };
     fetchProductos();
   }, [API_URL]);
 
+  // Taras
   useEffect(() => {
     const fetchTares = async () => {
       try {
@@ -115,11 +123,12 @@ const ProductionProcess = () => {
           peso: item.tare_weight,
         }));
         setTares(tarasConIndex);
-      } catch {}
+      } catch { }
     };
     fetchTares();
   }, [API_URL]);
 
+  // Comprobantes disponibles (sin proceso) con piezas agrupadas
   useEffect(() => {
     const fetchComprobantesSinProcesoConTipo = async () => {
       try {
@@ -133,10 +142,10 @@ const ProductionProcess = () => {
               const detalleData = await resDetalle.json();
               const piezasAgrupadas = Array.isArray(detalleData)
                 ? detalleData.reduce((acc, d) => {
-                    const tipo = d.type?.trim();
-                    acc[tipo] = (acc[tipo] || 0) + Number(d.quantity || 0);
-                    return acc;
-                  }, {})
+                  const tipo = d.type?.trim();
+                  acc[tipo] = (acc[tipo] || 0) + Number(d.quantity || 0);
+                  return acc;
+                }, {})
                 : {};
               return { ...comp, piezasAgrupadas: piezasAgrupadas || {} };
             } catch {
@@ -145,7 +154,7 @@ const ProductionProcess = () => {
           })
         );
         setComprobantesDisponibles(sinProcesoConTipo);
-      } catch {}
+      } catch { }
     };
     fetchComprobantesSinProcesoConTipo();
   }, [API_URL]);
@@ -175,17 +184,91 @@ const ProductionProcess = () => {
     }
   };
 
-  const handleAgregarComprobante = async (id) => {
-    if (!id) {
+  // ---------- PRECARGA PARA EDICIÓN ----------
+  useEffect(() => {
+    if (!isEdit) return;
+    const precargar = async () => {
+      try {
+        // Cortes guardados para el processParam
+        const resProc = await fetch(`${API_URL}/all-process-products`);
+        const all = await resProc.json();
+        const rows = (Array.isArray(all) ? all : []).filter(
+          (r) => String(r.process_number) === String(processParam)
+        );
+        const mapeados = rows.map((r) => ({
+          tipo: r.type || "",
+          promedio: Number(r.average || 0),
+          cantidad: Number(r.quantity || 0),
+          pesoBruto: Number(r.gross_weight || 0),
+          tara: Number(r.tares || 0),
+          pesoNeto: Number(r.net_weight || Number(r.gross_weight || 0) - Number(r.tares || 0)),
+        }));
+        setCortesAgregados(mapeados);
+
+        // Subproducción del proceso
+        try {
+          const resSub = await fetch(
+            `${API_URL}/productionprocess-subproduction?process_number=${processParam}`
+          );
+          if (resSub.ok) {
+            const subRows = await resSub.json();
+            const mapped = (Array.isArray(subRows) ? subRows : []).map((s) => ({
+              producto: s.cut_name,
+              cantidad: Number(s.quantity || 0),
+              subproductos: [],
+            }));
+            setProductosSinRemito(mapped);
+          }
+        } catch { }
+
+        // Bills asociados al proceso → para volver a mostrar sus piezas
+        try {
+          const resPN = await fetch(`${API_URL}/all-process-number`);
+          const list = await resPN.json();
+          const billIds = (Array.isArray(list) ? list : [])
+            .filter((x) => String(x.process_number) === String(processParam))
+            .map((x) => x.bill_id);
+
+          const agregados = await Promise.all(
+            billIds.map(async (bid) => {
+              try {
+                const d = await fetch(`${API_URL}/bill-details/${bid}`);
+                const detalles = await d.json();
+                const resInfo = await fetch(`${API_URL}/allproducts`);
+                const allProd = await resInfo.json();
+                const remito = allProd.find((p) => p.id === Number(bid));
+                let subs = [];
+                for (const det of detalles) {
+                  const sps = await fetchSubproductos(det.type, det.quantity);
+                  subs = subs.concat(sps);
+                }
+                return { id: bid, remito, detalles, subproductos: subs };
+              } catch {
+                return { id: bid, remito: null, detalles: [], subproductos: [] };
+              }
+            })
+          );
+          setComprobantesAgregados(agregados);
+        } catch { }
+      } catch (e) {
+        console.error("Precarga edición error:", e);
+        Swal.fire("Error", "No se pudo cargar el proceso para edición.", "error");
+      }
+    };
+    precargar();
+  }, [isEdit, processParam, API_URL]);
+
+  const handleAgregarComprobante = async (idSel) => {
+    if (!idSel) {
       Swal.fire("Atención", "Debe ingresar un ID o seleccionar un comprobante.", "warning");
       return;
     }
-    if (comprobantesAgregados.some((c) => c.id === id)) {
+    if (comprobantesAgregados.some((c) => c.id === idSel)) {
       Swal.fire("Atención", "Este comprobante ya fue agregado.", "warning");
       return;
     }
     try {
-      const response = await fetch(`${API_URL}/bill-details/${id}`);
+      const response = await fetch(`${API_URL}/bill-details/${idSel}`);
       const detalles = await response.json();
       if (!detalles || detalles.length === 0) {
         Swal.fire("Error", "No se encontró detalle para ese comprobante.", "error");
@@ -193,7 +276,7 @@ const ProductionProcess = () => {
       }
       const resInfo = await fetch(`${API_URL}/allproducts`);
       const allProducts = await resInfo.json();
-      const remito = allProducts.find((p) => p.id === Number(id));
+      const remito = allProducts.find((p) => p.id === Number(idSel));
       let subproductosTotales = [];
       for (const detalle of detalles) {
         const subs = await fetchSubproductos(detalle.type, detalle.quantity);
@@ -201,7 +284,7 @@ const ProductionProcess = () => {
       }
       setComprobantesAgregados((prev) => [
         ...prev,
-        { id, remito, detalles, subproductos: subproductosTotales },
+        { id: idSel, remito, detalles, subproductos: subproductosTotales },
       ]);
       setComprobanteSeleccionado("");
       setSubproductosEsperados([]);
@@ -210,8 +293,8 @@ const ProductionProcess = () => {
     }
   };
 
-  const eliminarComprobante = (id) => {
-    setComprobantesAgregados((prev) => prev.filter((c) => c.id !== id));
+  const eliminarComprobante = (idDel) => {
+    setComprobantesAgregados((prev) => prev.filter((c) => c.id !== idDel));
   };
 
   const cortesTotales = () => {
@@ -445,18 +528,39 @@ const ProductionProcess = () => {
         }))
         .filter((r) => r.cut_name && r.quantity > 0);
 
-      const response = await fetch(`${API_URL}/uploadProcessMeat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cortes: cortesPayload, bill_ids, subproduction }),
-      });
+      if (isEdit) {
+        const putRes = await fetch(`${API_URL}/process/${processParam}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ cortes: cortesPayload, bill_ids, subproduction }),
+        });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Error al guardar el proceso productivo.");
+        if (!putRes.ok) {
+          const txt = await putRes.text().catch(() => "");
+          console.warn("PUT edición falló:", txt);
+          Swal.fire(
+            "Atención",
+            "No se pudo actualizar el proceso (PUT). Si tu backend aún no tiene esta ruta, avisame y lo agregamos.",
+            "warning"
+          );
+          return;
+        }
+
+        Swal.fire("Éxito", "Proceso actualizado correctamente.", "success");
+      } else {
+        const response = await fetch(`${API_URL}/uploadProcessMeat`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ cortes: cortesPayload, bill_ids, subproduction }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || "Error al guardar el proceso productivo.");
+        }
+
+        Swal.fire("Éxito", "Datos guardados correctamente.", "success");
       }
-
-      Swal.fire("Éxito", "Datos guardados correctamente.", "success");
 
       setCortesAgregados([]);
       setProductosSinRemito([]);
@@ -498,7 +602,7 @@ const ProductionProcess = () => {
       <div className="pp-main-container">
         {/* ---------------- SECCIÓN COMPROBANTES ---------------- */}
         <section className="pp-despostar-section">
-          <h2>Buscar y Agregar Comprobante</h2>
+          <h2>{isEdit ? `Editar proceso #${processParam}` : "Buscar y Agregar Comprobante"}</h2>
           <div
             className="pp-form-group"
             style={{ display: "flex", flexWrap: "wrap", alignItems: "end", gap: "10px" }}
@@ -548,7 +652,7 @@ const ProductionProcess = () => {
             <div style={{ marginTop: "20px" }}>
               <div style={{ fontWeight: 600, fontSize: 20, marginBottom: 8 }}>Comprobantes agregados</div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 20 }}>
-                {comprobantesAgregados.map(({ id, remito, detalles }) => {
+                {comprobantesAgregados.map(({ id: idComp, remito, detalles }) => {
                   const piezasAgrupadas = detalles.reduce((acc, { type, quantity }) => {
                     const key = type.trim();
                     acc[key] = (acc[key] || 0) + Number(quantity);
@@ -556,7 +660,7 @@ const ProductionProcess = () => {
                   }, {});
                   return (
                     <div
-                      key={id}
+                      key={idComp}
                       style={{
                         border: "1.5px solid #cae1fd",
                         background: "#fafdff",
@@ -571,7 +675,7 @@ const ProductionProcess = () => {
                       }}
                     >
                       <button
-                        onClick={() => eliminarComprobante(id)}
+                        onClick={() => eliminarComprobante(idComp)}
                         style={{
                           position: "absolute",
                           top: 8,
@@ -589,7 +693,7 @@ const ProductionProcess = () => {
                       </button>
                       <div style={{ fontWeight: 600, marginBottom: 4 }}>
                         <span style={{ color: "#155ca4" }}>📄 {remito?.supplier || "Proveedor Desconocido"}</span>
-                        <span style={{ fontWeight: 400, color: "#777", marginLeft: 10 }}>ID: {id}</span>
+                        <span style={{ fontWeight: 400, color: "#777", marginLeft: 10 }}>ID: {idComp}</span>
                       </div>
                       <div style={{ margin: "5px 0 0 2px", color: "#244b79", fontWeight: 500 }}>
                         <span>Piezas:</span>
@@ -888,7 +992,7 @@ const ProductionProcess = () => {
               </div>
 
               <button className="pp-btn-guardar" onClick={handleGuardar}>
-                Guardar y terminar carga
+                {isEdit ? "Guardar cambios" : "Guardar y terminar carga"}
               </button>
             </div>
           </div>

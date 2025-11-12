@@ -48,7 +48,7 @@ router.get("/bill-details-readonly/:id", apiOperatorController.billDetailsReadon
 router.get("/bill-details/:id", apiOperatorController.billDetails);
 router.get("/productionprocess-subproduction",apiOperatorController.getAllSubproduction
 );
-
+router.get("/process/:process_number", operatorApiController.getProcessByNumber);
 
 //Api para crear nuevas categorias
 router.post("/uploadCategory",operatorApiController.loadNewCategory);
@@ -86,7 +86,7 @@ router.put("/observations-edit/:id",apiOperatorController.updateObservationMeatI
 //Api para actualizar los cortes cargados en un remito
 router.put("/meat-income-edit/:id",apiOperatorController.editAddIncome);
 router.put("/stock/manual/:id", apiOperatorController.updateStockManual); 
-
+router.put("/process/:process_number", operatorApiController.updateProcessByNumber);
 
 
 //Api eliminar corte de la bd cuando se modifica detalle del proveedor

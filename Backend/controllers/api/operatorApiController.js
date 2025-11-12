@@ -1811,35 +1811,48 @@ getAllSubproduction :async (req, res) => {
 },
 
 
- billDetailsReadonly:async (req, res) => {
+billDetailsReadonly: async (req, res) => {
   try {
     const id = req.params.id;
     const bill = await billSupplier.findOne({ where: { id } });
 
-    if (!bill) return res.status(404).json({ message: "Comprobante no encontrado" });
+    if (!bill) {
+      return res.status(404).json({ message: "Comprobante no encontrado" });
+    }
+
+    let data = [];
 
     if (bill.income_state === "manual") {
-      // Leer de meat_manual_income
+      // 📦 Si el comprobante es MANUAL → leer de meat_manual_income
       const rows = await meatIncome.findAll({ where: { id_bill_suppliers: id } });
-      const data = rows.map(r => ({
-        type: r.products_name,                 // nombre del producto
-        quantity: Number(r.products_quantity||0)
+
+      data = rows.map(r => ({
+        type: r.products_name,                          // nombre del producto
+        quantity: Number(r.products_quantity || 0),      // cantidad
+        weight: Number(r.gross_weight || 0),             // peso bruto (equivale al neto cargado)
+        source: "manual"
       }));
-      return res.json(data);
+
     } else {
-      // Leer de bill_details (romaneo)
+      // 📦 Si el comprobante es ROMANEO → leer de bill_details
       const rows = await billDetail.findAll({ where: { bill_supplier_id: id } });
-      const data = rows.map(r => ({
-        type: r.type,
-        quantity: Number(r.quantity||0)
+
+      data = rows.map(r => ({
+        type: r.type,                                    // nombre del producto
+        quantity: Number(r.quantity || 0),               // cantidad
+        weight: Number(r.weight || 0),                   // peso romaneo (neto)
+        source: "romaneo"
       }));
-      return res.json(data);
     }
+
+    return res.json(data);
+
   } catch (err) {
     console.error("billDetailsReadonly error:", err);
     return res.status(500).json({ message: "Error interno del servidor" });
   }
 },
+
 
 billDetails:async (req, res) => {
   try {
@@ -1877,7 +1890,74 @@ billDetails:async (req, res) => {
   }
 },
 
+// === Leer un proceso por process_number (cortes, bills, subproducción)
+getProcessByNumber: async (req, res) => {
+  try {
+    const process_number = Number(req.params.process_number);
+    if (!process_number) return res.status(400).json({ message: "process_number requerido" });
 
+    const cuts = await ProcessMeat.findAll({ where: { process_number }, order: [["id","ASC"]] });
+    const pn = await ProcessNumber.findAll({ where: { process_number } });
+    const bills = pn.map(r => r.bill_id);
+    const sub = await ProductionProcessSubproduction.findAll({ where: { process_number }, order: [["id","ASC"]] });
+
+    return res.json({ cuts, bills, subproduction: sub });
+  } catch (err) {
+    console.error("getProcessByNumber error:", err);
+    return res.status(500).json({ message: "Error interno del servidor" });
+  }
+},
+
+// === Actualizar (reemplazar) un proceso existente por process_number
+updateProcessByNumber: async (req, res) => {
+  const t = await sequelize.transaction();
+  try {
+    const process_number = Number(req.params.process_number);
+    if (!process_number) {
+      await t.rollback();
+      return res.status(400).json({ message: "process_number requerido" });
+    }
+
+    const { cortes = [], bill_ids = [], subproduction = [] } = req.body;
+
+    // 1) borrar lo anterior
+    await ProcessMeat.destroy({ where: { process_number }, transaction: t });
+    await ProductionProcessSubproduction.destroy({ where: { process_number }, transaction: t });
+    await ProcessNumber.destroy({ where: { process_number }, transaction: t });
+
+    // 2) recrear con datos nuevos
+    for (const c of cortes) {
+      await ProcessMeat.create({
+        process_number,
+        type: String(c.type || "").trim(),
+        average: Number(c.average || 0),
+        quantity: Number(c.quantity || 0),
+        gross_weight: Number(c.gross_weight || 0),
+        tares: Number(c.tares || 0),
+        net_weight: Number(c.net_weight || 0),
+      }, { transaction: t });
+    }
+
+    for (const id of bill_ids) {
+      await ProcessNumber.create({ process_number, bill_id: Number(id) }, { transaction: t });
+    }
+
+    for (const s of subproduction) {
+      const cut_name = String(s.cut_name || "").trim();
+      const quantity = Number(s.quantity || 0);
+      if (cut_name && quantity > 0) {
+        await ProductionProcessSubproduction.create({ process_number, cut_name, quantity }, { transaction: t });
+      }
+    }
+
+    await t.commit();
+    return res.json({ ok: true, process_number });
+  } catch (err) {
+    console.error("updateProcessByNumber error:", err);
+    try { await t.rollback(); } catch {}
+    return res.status(500).json({ message: "Error interno del servidor" });
+  }
+},
 
 
 

@@ -503,7 +503,7 @@ const router = createBrowserRouter([
     path: "/trucks",
     element: (
       <ProtectedRoute>
-        <ListTruck/>
+        <ListTruck />
       </ProtectedRoute>
     ),
   },
@@ -568,7 +568,7 @@ const router = createBrowserRouter([
     path: "/roadmap-list",
     element: (
       <ProtectedRoute>
-      <RoadmapList/>
+        <RoadmapList />
       </ProtectedRoute>
     ),
   },
@@ -581,13 +581,13 @@ const router = createBrowserRouter([
     ),
   },
   {
-  path: "/pre-invoicing",
-  element: (
-    <ProtectedRoute>
-      <PreInvoiceCharge />
-    </ProtectedRoute>
-  ),
-},
+    path: "/pre-invoicing",
+    element: (
+      <ProtectedRoute>
+        <PreInvoiceCharge />
+      </ProtectedRoute>
+    ),
+  },
   {
     path: "/pre-invoicing/:receipt",
     element: (
@@ -597,87 +597,104 @@ const router = createBrowserRouter([
     ),
   },
 
-    {
+  {
     path: "/new-roadmap",
     element: (
       <ProtectedRoute>
-        <Roadmap/>
-      </ProtectedRoute>
-    ),
-  },
-     {
-    path: "/new-roadmap/:id",
-    element: (
-      <ProtectedRoute>
-        <Roadmap/>
+        <Roadmap />
       </ProtectedRoute>
     ),
   },
   {
-  path: "/roadmaps/:id/detail",
-  element: (
-    <ProtectedRoute>
-      <RoadmapDetail/>
-    </ProtectedRoute>
-  ),
-},
-{
-  path: "/price-list-general",
-  element: (
-    <ProtectedRoute>
-      <AllPriceList/>
-    </ProtectedRoute>
-  ),
-},
-{
-  path: "/pre-invoicing-list",
-  element: (
-    <ProtectedRoute>
-      <PreInvoiceList/>
-    </ProtectedRoute>
-  ),
-},
-{
-  path: "/pre-invoicing-detail/:id",
-  element: (
-    <ProtectedRoute>
-      <PreInvoiceDetail/>
-    </ProtectedRoute>
-  ),
-},
-{
-  path: "/compare-price-lists",
-  element: (
-    <ProtectedRoute>
-      <ComparePriceLists/>
-    </ProtectedRoute>
-  ),
-},
-{
-  path: "/edit-price-list",
-  element: (
-    <ProtectedRoute>
-      <LoadNewPriceList />
-    </ProtectedRoute>
-  ),
-},
-{
-  path: "/bulk-price-list-update",
-  element: (
-    <ProtectedRoute>
-      <BulkPriceListUpdate/>
-    </ProtectedRoute>
-  ),
-},
+    path: "/new-roadmap/:id",
+    element: (
+      <ProtectedRoute>
+        <Roadmap />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/roadmaps/:id/detail",
+    element: (
+      <ProtectedRoute>
+        <RoadmapDetail />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/price-list-general",
+    element: (
+      <ProtectedRoute>
+        <AllPriceList />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/pre-invoicing-list",
+    element: (
+      <ProtectedRoute>
+        <PreInvoiceList />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/pre-invoicing-detail/:id",
+    element: (
+      <ProtectedRoute>
+        <PreInvoiceDetail />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/compare-price-lists",
+    element: (
+      <ProtectedRoute>
+        <ComparePriceLists />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/edit-price-list",
+    element: (
+      <ProtectedRoute>
+        <LoadNewPriceList />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/bulk-price-list-update",
+    element: (
+      <ProtectedRoute>
+        <BulkPriceListUpdate />
+      </ProtectedRoute>
+    ),
+  },
 
-{
-  path: "/order-weight-info/:id",
-  element: (
-    <ProtectedRoute>
-      <OrderWeightInfo/>
-    </ProtectedRoute>
-  ),
-},
+  {
+    path: "/order-weight-info/:id",
+    element: (
+      <ProtectedRoute>
+        <OrderWeightInfo />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/production-process/:processNumber",
+    element: (
+      <ProtectedRoute>
+        <ProductionProcess />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/production-process/:processNumber/edit",
+    element: (
+      <ProtectedRoute>
+        <ProductionProcess />
+      </ProtectedRoute>
+    ),
+  },
+
 ]);
 
 
