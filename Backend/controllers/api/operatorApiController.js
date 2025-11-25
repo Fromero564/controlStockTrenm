@@ -64,39 +64,47 @@ const operatorApiController = {
             res.status(500).json({ error: "No se pudo crear la categoría" });
         }
     },
-    getProductStock: async (req, res) => {
-        try {
-            const AllProductStock = await ProductStock.findAll({
-                include: [
-                    {
-                        model: ProductsAvailable,
-                        as: "productAvailable",
-                        attributes: ["min_stock", "max_stock"],
-                    },
-                ],
-            });
+ getProductStock: async (req, res) => {
+  try {
+    const AllProductStock = await ProductStock.findAll({
+      include: [
+        {
+          model: ProductsAvailable,
+          as: "productAvailable",
+          attributes: ["min_stock", "max_stock", "unit_measure"],
+        },
+      ],
+    });
 
+    const result = AllProductStock.map((stock) => {
+      const unitFromProduct =
+        stock.productAvailable && stock.productAvailable.unit_measure
+          ? String(stock.productAvailable.unit_measure).toUpperCase()
+          : "UN";
 
-            const result = AllProductStock.map(stock => {
-                return {
-                    id: stock.id,
-                    product_name: stock.product_name,
-                    product_quantity: stock.product_quantity,
-                    product_cod: stock.product_cod,
-                    product_category: stock.product_category,
-                    product_total_weight: stock.product_total_weight,
-                    min_stock: stock.productAvailable?.min_stock || 0,
-                    max_stock: stock.productAvailable?.max_stock || 0,
+      // Unidad base del producto: UN o KG (viene desde products_available)
+      const unit_type = unitFromProduct === "KG" ? "KG" : "UN";
 
-                };
-            });
+      return {
+        id: stock.id,
+        product_name: stock.product_name,
+        product_quantity: stock.product_quantity,
+        product_cod: stock.product_cod,
+        product_category: stock.product_category,
+        product_total_weight: stock.product_total_weight,
+        min_stock: stock.productAvailable?.min_stock || 0,
+        max_stock: stock.productAvailable?.max_stock || 0,
+        unit_type, // 👈 esto usa el front para saber si trabajar en KG o UN
+      };
+    });
 
-            res.json(result);
-        } catch (error) {
-            console.error("Error al obtener los productos", error);
-            res.status(500).json({ error: "Error al obtener los productos" });
-        }
-    },
+    res.json(result);
+  } catch (error) {
+    console.error("Error al obtener los productos", error);
+    res.status(500).json({ error: "Error al obtener los productos" });
+  }
+},
+
 
 
     loadLastBillSupplier: async (req, res) => {
@@ -1173,6 +1181,157 @@ getAllSubproduction :async (req, res) => {
             return res.status(500).json({ mensaje: "Error interno del servidor", error: error.message });
         }
     },
+    deactivateProduct: async (req, res) => {
+  try {
+    const id = req.params.id;
+
+    const bill = await billSupplier.findOne({ where: { id } });
+    if (!bill) {
+      return res.status(404).json({ mensaje: "El comprobante no existe" });
+    }
+    if (bill.bill_state === false) {
+      return res.status(400).json({ mensaje: "El comprobante ya está dado de baja" });
+    }
+
+    // Cortes cargados por manual
+    const meatIncomes = await meatIncome.findAll({
+      where: { id_bill_suppliers: id },
+    });
+
+    // Detalles del romaneo
+    const billDetails = await billDetail.findAll({
+      where: { bill_supplier_id: id },
+    });
+
+    // 🔻 Restar del stock cortes manuales
+    for (const item of meatIncomes) {
+      const stock = await ProductStock.findOne({
+        where: { product_name: item.products_name },
+      });
+
+      if (stock) {
+        const cantidad = Number(item.products_quantity || 0);
+        const peso = Number(item.net_weight || 0);
+
+        stock.product_quantity -= cantidad;
+        stock.product_total_weight -= peso;
+
+        if (stock.product_quantity < 0) stock.product_quantity = 0;
+        if (stock.product_total_weight < 0) stock.product_total_weight = 0;
+
+        await stock.save();
+      }
+    }
+
+    // 🔻 Restar del stock detalles del romaneo
+    for (const detail of billDetails) {
+      const stock = await ProductStock.findOne({
+        where: { product_name: detail.type },
+      });
+
+      if (stock) {
+        const cantidad = Number(detail.quantity || 0);
+        const peso = Number(detail.weight || 0);
+
+        stock.product_quantity -= cantidad;
+        stock.product_total_weight -= peso;
+
+        if (stock.product_quantity < 0) stock.product_quantity = 0;
+        if (stock.product_total_weight < 0) stock.product_total_weight = 0;
+
+        await stock.save();
+      }
+    }
+
+    // ✅ Marcar como dado de baja (NO se borran los registros)
+    await billSupplier.update(
+      { bill_state: false },
+      { where: { id } }
+    );
+
+    return res
+      .status(200)
+      .json({ mensaje: "Ingreso dado de baja. Stock actualizado correctamente." });
+  } catch (error) {
+    console.error("deactivateProduct error:", error);
+    return res.status(500).json({
+      mensaje: "Error al dar de baja el ingreso",
+      error: error.message || error.toString(),
+    });
+  }
+},
+reactivateProduct: async (req, res) => {
+  try {
+    const id = req.params.id;
+
+    const bill = await billSupplier.findOne({ where: { id } });
+    if (!bill) {
+      return res.status(404).json({ mensaje: "El comprobante no existe" });
+    }
+    if (bill.bill_state === true) {
+      return res.status(400).json({ mensaje: "El comprobante ya está activo" });
+    }
+
+    const meatIncomes = await meatIncome.findAll({
+      where: { id_bill_suppliers: id },
+    });
+
+    const billDetails = await billDetail.findAll({
+      where: { bill_supplier_id: id },
+    });
+
+    // 🔺 Volver a sumar al stock cortes manuales
+    for (const item of meatIncomes) {
+      const stock = await ProductStock.findOne({
+        where: { product_name: item.products_name },
+      });
+
+      if (stock) {
+        const cantidad = Number(item.products_quantity || 0);
+        const peso = Number(item.net_weight || 0);
+
+        stock.product_quantity += cantidad;
+        stock.product_total_weight += peso;
+
+        await stock.save();
+      }
+    }
+
+    // 🔺 Volver a sumar al stock detalles del romaneo
+    for (const detail of billDetails) {
+      const stock = await ProductStock.findOne({
+        where: { product_name: detail.type },
+      });
+
+      if (stock) {
+        const cantidad = Number(detail.quantity || 0);
+        const peso = Number(detail.weight || 0);
+
+        stock.product_quantity += cantidad;
+        stock.product_total_weight += peso;
+
+        await stock.save();
+      }
+    }
+
+    // ✅ Marcar como activo de nuevo
+    await billSupplier.update(
+      { bill_state: true },
+      { where: { id } }
+    );
+
+    return res
+      .status(200)
+      .json({ mensaje: "Ingreso reactivado. Stock actualizado correctamente." });
+  } catch (error) {
+    console.error("reactivateProduct error:", error);
+    return res.status(500).json({
+      mensaje: "Error al reactivar el ingreso",
+      error: error.message || error.toString(),
+    });
+  }
+},
+
 
 
 
@@ -1958,6 +2117,50 @@ updateProcessByNumber: async (req, res) => {
     return res.status(500).json({ message: "Error interno del servidor" });
   }
 },
+    // NUEVO: marcar / desmarcar que un comprobante necesita proceso productivo
+    toggleProductionProcessFlag: async (req, res) => {
+        const { id } = req.params;
+
+        try {
+            // Busco el comprobante
+            const bill = await billSupplier.findOne({ where: { id } });
+            if (!bill) {
+                return res
+                    .status(404)
+                    .json({ ok: false, message: "Comprobante no encontrado" });
+            }
+
+            // ¿Tiene algún proceso productivo asociado en process_number?
+            const proceso = await ProcessNumber.findOne({ where: { bill_id: id } });
+
+            // Si YA tiene proceso registrado y estoy intentando sacar el check,
+            // no lo permito.
+            if (proceso && bill.production_process) {
+                return res.status(400).json({
+                    ok: false,
+                    message:
+                        "Este comprobante ya tiene un proceso productivo asociado y no se puede quitar el check.",
+                });
+            }
+
+            const nuevoValor = !bill.production_process;
+
+            await bill.update({ production_process: nuevoValor });
+
+            return res.json({
+                ok: true,
+                production_process: nuevoValor,
+            });
+        } catch (err) {
+            console.error("toggleProductionProcessFlag error:", err);
+            return res
+                .status(500)
+                .json({
+                    ok: false,
+                    message: "Error actualizando estado de proceso productivo",
+                });
+        }
+    },
 
 
 

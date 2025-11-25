@@ -46,6 +46,11 @@ module.exports = (sequelize, dataTypes) => {
             type: dataTypes.BOOLEAN,
             allowNull: false,
             defaultValue: false
+        },
+           bill_state: {
+            type: dataTypes.BOOLEAN,
+            allowNull: false,
+            defaultValue: true   
         }
     };
     let config = {

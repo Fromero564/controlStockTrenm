@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 09-11-2025 a las 04:17:58
+-- Tiempo de generación: 25-11-2025 a las 10:11:12
 -- Versión del servidor: 10.4.28-MariaDB
 -- Versión de PHP: 8.2.4
 
@@ -46,7 +46,15 @@ CREATE TABLE `bill_details` (
 INSERT INTO `bill_details` (`id`, `bill_supplier_id`, `type`, `quantity`, `heads`, `createdAt`, `updatedAt`, `weight`, `identification_product`) VALUES
 (1, 1, 'Media Res Capon', 10, 10, '2025-10-25 10:43:02', '2025-10-25 10:43:02', 12000, 13),
 (2, 2, 'Media Res Capon', 10, 10, '2025-10-25 10:46:43', '2025-10-25 10:46:43', 10000, 152),
-(3, 3, 'Media Res Chancha', 10, 10, '2025-10-25 10:47:25', '2025-10-25 10:47:25', 14200, 152);
+(3, 3, 'Media Res Chancha', 10, 10, '2025-10-25 10:47:25', '2025-10-25 10:47:25', 14200, 152),
+(4, 4, 'Media Res Capon', 10, 10, '2025-11-12 14:26:26', '2025-11-12 14:26:26', 10000, 10),
+(5, 5, 'Media Res Chancha', 10, 10, '2025-11-13 17:45:30', '2025-11-13 17:45:30', 10000, 1000),
+(6, 6, 'Media Res Chancha', 100, 100, '2025-11-13 18:59:33', '2025-11-13 18:59:33', 15200, 424),
+(7, 7, 'Media Res Chancha', 5, 5, '2025-11-13 19:29:30', '2025-11-13 19:29:30', 5236, 21),
+(8, 8, 'Media Res Chancha', 1, 1, '2025-11-14 15:32:23', '2025-11-14 15:32:23', 1100, 1361),
+(9, 9, 'Media Res Chancha', 10, 10, '2025-11-17 14:01:24', '2025-11-17 14:01:24', 1000, 10),
+(10, 10, 'Patitas de pollo', 10, 0, '2025-11-17 18:32:44', '2025-11-17 18:32:44', 1000, 100),
+(11, 11, 'Patitas de pollo', 10, 0, '2025-11-18 16:05:07', '2025-11-18 16:05:07', 1000, 1000);
 
 -- --------------------------------------------------------
 
@@ -67,17 +75,26 @@ CREATE TABLE `bill_suppliers` (
   `check_state` tinyint(1) NOT NULL,
   `fresh_quantity` int(11) NOT NULL,
   `fresh_weight` int(11) NOT NULL,
-  `production_process` tinyint(1) NOT NULL DEFAULT 0
+  `production_process` tinyint(1) NOT NULL DEFAULT 0,
+  `bill_state` tinyint(1) NOT NULL DEFAULT 1
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `bill_suppliers`
 --
 
-INSERT INTO `bill_suppliers` (`id`, `supplier`, `total_weight`, `head_quantity`, `quantity`, `romaneo_number`, `income_state`, `createdAt`, `updatedAt`, `check_state`, `fresh_quantity`, `fresh_weight`, `production_process`) VALUES
-(1, 'EMPRESASOFT', '12000', 10, 10, 1, 'romaneo', '2025-10-25 10:43:02', '2025-10-25 10:43:02', 1, 0, 0, 0),
-(2, 'EMPRESASOFT', '10000', 10, 10, 53, 'romaneo', '2025-10-25 10:46:43', '2025-10-25 10:52:53', 1, 0, 0, 1),
-(3, 'EMPRESASOFT', '14200', 10, 10, 251, 'romaneo', '2025-10-25 10:47:25', '2025-10-25 10:52:53', 1, 0, 0, 1);
+INSERT INTO `bill_suppliers` (`id`, `supplier`, `total_weight`, `head_quantity`, `quantity`, `romaneo_number`, `income_state`, `createdAt`, `updatedAt`, `check_state`, `fresh_quantity`, `fresh_weight`, `production_process`, `bill_state`) VALUES
+(1, 'EMPRESASOFT', '12000', 10, 10, 1, 'romaneo', '2025-10-25 10:43:02', '2025-11-17 22:47:12', 1, 0, 0, 0, 1),
+(2, 'EMPRESASOFT', '10000', 10, 10, 53, 'romaneo', '2025-10-25 10:46:43', '2025-10-25 10:52:53', 1, 0, 0, 1, 1),
+(3, 'EMPRESASOFT', '14200', 10, 10, 251, 'romaneo', '2025-10-25 10:47:25', '2025-10-25 10:52:53', 1, 0, 0, 1, 1),
+(4, 'EMPRESASOFT', '10000', 10, 10, 11, 'manual', '2025-11-12 14:26:26', '2025-11-12 14:27:29', 0, 0, 0, 1, 1),
+(5, 'EMPRESASOFT', '10000', 10, 10, 10100, 'romaneo', '2025-11-13 17:45:30', '2025-11-13 18:24:30', 1, 0, 0, 1, 1),
+(6, 'EMPRESASOFT', '15200', 100, 100, 100, 'romaneo', '2025-11-13 18:59:33', '2025-11-13 19:00:11', 1, 0, 0, 1, 1),
+(7, 'EMPRESASOFT', '5236', 5, 5, 3, 'romaneo', '2025-11-13 19:29:30', '2025-11-13 19:30:14', 1, 0, 0, 1, 1),
+(8, 'EMPRESASOFT', '1100', 1, 1, 10, 'romaneo', '2025-11-14 15:32:23', '2025-11-14 15:33:01', 1, 0, 0, 1, 1),
+(9, 'EMPRESASOFT', '1000', 10, 10, 1, 'manual', '2025-11-17 14:01:24', '2025-11-17 14:01:24', 0, 0, 0, 0, 1),
+(10, 'EMPRESASOFT', '1000', 0, 0, 152, 'manual', '2025-11-17 18:32:44', '2025-11-17 18:32:44', 0, 10, 1000, 0, 1),
+(11, 'EMPRESASOFT', '1000', 0, 0, 10, 'romaneo', '2025-11-18 16:05:07', '2025-11-21 18:13:53', 1, 10, 1000, 1, 0);
 
 -- --------------------------------------------------------
 
@@ -138,7 +155,9 @@ CREATE TABLE `cuts_detail` (
 INSERT INTO `cuts_detail` (`id`, `receipt_number`, `header_id`, `sub_item`, `packaging_type`, `units_count`, `lot_number`, `tare_weight`, `gross_weight`, `net_weight`, `created_at`, `updated_at`) VALUES
 (1, 1, 1, 1, 'bolsa', 20, '125', 1.50, 12000.00, 11998.50, '2025-10-28 16:34:16', '2025-10-28 16:34:16'),
 (2, 2, 2, 1, '', 10, '10', 1.50, 130.00, 128.50, '2025-10-28 22:29:19', '2025-10-28 22:29:19'),
-(3, 3, 3, 1, 'Bolsa', 90, '12', 1.50, 300.00, 298.50, '2025-10-28 23:39:22', '2025-10-28 23:39:22');
+(3, 3, 3, 1, 'Bolsa', 90, '12', 1.50, 300.00, 298.50, '2025-10-28 23:39:22', '2025-10-28 23:39:22'),
+(4, 4, 4, 1, 'Bolsa', 2, '10', 1.50, 1250.00, 1248.50, '2025-11-25 09:06:42', '2025-11-25 09:06:42'),
+(5, 4, 5, 1, 'bolsa', 1, '1200', 1.50, 12002.00, 12000.50, '2025-11-25 09:06:42', '2025-11-25 09:06:42');
 
 -- --------------------------------------------------------
 
@@ -170,7 +189,9 @@ CREATE TABLE `cuts_header` (
 INSERT INTO `cuts_header` (`id`, `receipt_number`, `product_code`, `product_name`, `unit_price`, `qty_requested`, `qty_weighed`, `total_tare_weight`, `total_gross_weight`, `total_net_weight`, `avg_weight`, `qty_pending`, `created_at`, `updated_at`) VALUES
 (1, 1, '3', 'Matambre', 4377.78, 20, 20, 1.50, 12000.00, 11998.50, 599.93, 0, '2025-10-28 16:34:16', '2025-10-28 16:34:16'),
 (2, 2, '5', 'Hueso', 309.76, 10, 10, 1.50, 130.00, 128.50, 12.85, 0, '2025-10-28 22:29:19', '2025-10-28 22:29:19'),
-(3, 3, '5', 'Hueso', 309.90, 90, 90, 1.50, 300.00, 298.50, 3.32, 0, '2025-10-28 23:39:22', '2025-10-28 23:39:22');
+(3, 3, '5', 'Hueso', 309.90, 90, 90, 1.50, 300.00, 298.50, 3.32, 0, '2025-10-28 23:39:22', '2025-10-28 23:39:22'),
+(4, 4, '3', 'Matambre', 4377.78, 2, 2, 1.50, 1250.00, 1248.50, 624.25, 0, '2025-11-25 09:06:42', '2025-11-25 09:06:42'),
+(5, 4, '5', 'Hueso', 309.76, 10, 1, 1.50, 12002.00, 12000.50, 12000.50, 9, '2025-11-25 09:06:42', '2025-11-25 09:06:42');
 
 -- --------------------------------------------------------
 
@@ -245,7 +266,8 @@ CREATE TABLE `final_remits` (
 INSERT INTO `final_remits` (`id`, `order_id`, `receipt_number`, `client_name`, `salesman_name`, `price_list`, `sell_condition`, `payment_condition`, `generated_by`, `note`, `total_items`, `total_amount`, `created_at`, `updated_at`) VALUES
 (1, 1, 1, 'FERNANDO', 'Sergio', 'Mayorista', 'EFECTIVO', '7 DIAS FECHA FACT', 'system', '', 20, 52526793.33, '2025-10-28 16:35:48', '2025-10-28 16:35:48'),
 (2, 2, 2, 'FERNANDO', 'Sergio', 'Mayorista', 'EFECTIVO', '7 DIAS FECHA FACT', 'system', '', 10, 39804.16, '2025-10-28 22:29:30', '2025-10-28 22:29:30'),
-(3, 3, 3, 'FERNANDO', 'Sergio', 'Mayorista', 'EFECTIVO', '7 DIAS FECHA FACT', 'system', '', 90, 92505.15, '2025-10-28 23:41:54', '2025-10-28 23:41:54');
+(3, 3, 3, 'FERNANDO', 'Sergio', 'Mayorista', 'EFECTIVO', '7 DIAS FECHA FACT', 'system', '', 90, 92505.15, '2025-10-28 23:41:54', '2025-10-28 23:41:54'),
+(4, 4, 4, 'FERNANDO', 'Sergio', 'Mayorista', 'EFECTIVO', '7 DIAS FECHA FACT', 'system', '', 12, 9182933.21, '2025-11-25 09:07:01', '2025-11-25 09:07:01');
 
 -- --------------------------------------------------------
 
@@ -275,7 +297,9 @@ CREATE TABLE `final_remit_products` (
 INSERT INTO `final_remit_products` (`id`, `final_remit_id`, `product_id`, `product_name`, `unit_price`, `qty`, `unit_measure`, `gross_weight`, `net_weight`, `avg_weight`, `created_at`, `updated_at`) VALUES
 (1, 1, '3', 'Matambre', 4377.78, 20.00, 'KG', 12000.00, 11998.50, 599.93, '2025-10-28 16:35:48', '2025-10-28 16:35:48'),
 (2, 2, '5', 'Hueso', 309.76, 10.00, 'KG', 130.00, 128.50, 12.85, '2025-10-28 22:29:30', '2025-10-28 22:29:30'),
-(3, 3, '5', 'Hueso', 309.90, 90.00, 'KG', 300.00, 298.50, 3.32, '2025-10-28 23:41:54', '2025-10-28 23:41:54');
+(3, 3, '5', 'Hueso', 309.90, 90.00, 'KG', 300.00, 298.50, 3.32, '2025-10-28 23:41:54', '2025-10-28 23:41:54'),
+(4, 4, '3', 'Matambre', 4377.78, 2.00, 'KG', 1250.00, 1248.50, 624.25, '2025-11-25 09:07:01', '2025-11-25 09:07:01'),
+(5, 4, '5', 'Hueso', 309.76, 10.00, 'KG', 12002.00, 12000.50, 12000.50, '2025-11-25 09:07:01', '2025-11-25 09:07:01');
 
 -- --------------------------------------------------------
 
@@ -290,6 +314,13 @@ CREATE TABLE `meat_income_manual_weight` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Volcado de datos para la tabla `meat_income_manual_weight`
+--
+
+INSERT INTO `meat_income_manual_weight` (`id`, `bill_supplier_id`, `total_weight`, `created_at`, `updated_at`) VALUES
+(1, 4, 9498.50, '2025-11-12 14:27:03', '2025-11-12 14:27:03');
 
 -- --------------------------------------------------------
 
@@ -310,6 +341,13 @@ CREATE TABLE `meat_manual_income` (
   `net_weight` float NOT NULL,
   `decrease` decimal(8,2) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Volcado de datos para la tabla `meat_manual_income`
+--
+
+INSERT INTO `meat_manual_income` (`id`, `id_bill_suppliers`, `products_name`, `products_garron`, `products_quantity`, `product_head`, `provider_weight`, `gross_weight`, `tare`, `net_weight`, `decrease`) VALUES
+(1, 4, 'Media Res Capon', 10, '10', 10, 10000, 9500, 1.5, 9498.5, -5.01);
 
 -- --------------------------------------------------------
 
@@ -339,7 +377,8 @@ CREATE TABLE `new_orders` (
 INSERT INTO `new_orders` (`id`, `date_order`, `client_name`, `salesman_name`, `price_list`, `sell_condition`, `payment_condition`, `observation_order`, `order_check`, `order_weight_check`, `created_at`, `updated_at`) VALUES
 (1, '2025-10-29', 'FERNANDO', 'Sergio', 'Mayorista', 'EFECTIVO', '7 DIAS FECHA FACT', 'Estoy probando observacion, agrego esto', 1, 1, '2025-10-28 16:28:43', '2025-10-28 16:34:21'),
 (2, '2025-10-30', 'FERNANDO', 'Sergio', 'Mayorista', 'EFECTIVO', '7 DIAS FECHA FACT', '', 1, 1, '2025-10-28 22:28:49', '2025-10-28 22:29:22'),
-(3, '2025-10-29', 'FERNANDO', 'Sergio', 'Mayorista', 'EFECTIVO', '7 DIAS FECHA FACT', 'Me pidio 5kg de hueso', 1, 1, '2025-10-28 23:21:20', '2025-10-28 23:39:26');
+(3, '2025-10-29', 'FERNANDO', 'Sergio', 'Mayorista', 'EFECTIVO', '7 DIAS FECHA FACT', 'Me pidio 5kg de hueso', 1, 1, '2025-10-28 23:21:20', '2025-10-28 23:39:26'),
+(4, '2025-11-26', 'FERNANDO', 'Sergio', 'Mayorista', 'EFECTIVO', '7 DIAS FECHA FACT', '', 1, 1, '2025-11-25 08:59:25', '2025-11-25 09:06:45');
 
 -- --------------------------------------------------------
 
@@ -351,6 +390,13 @@ CREATE TABLE `observations_meatincome` (
   `id` int(11) NOT NULL,
   `observation` varchar(255) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Volcado de datos para la tabla `observations_meatincome`
+--
+
+INSERT INTO `observations_meatincome` (`id`, `observation`) VALUES
+(4, '');
 
 -- --------------------------------------------------------
 
@@ -375,7 +421,9 @@ CREATE TABLE `order_products_client` (
 INSERT INTO `order_products_client` (`id`, `order_id`, `product_cod`, `product_name`, `precio`, `cantidad`, `tipo_medida`) VALUES
 (5, 1, '3', 'Matambre', 4377.78, 1000.00, 'KG'),
 (6, 2, '5', 'Hueso', 309.76, 10.00, 'KG'),
-(13, 3, '5', 'Hueso', 309.90, 200.00, 'KG');
+(13, 3, '5', 'Hueso', 309.90, 200.00, 'KG'),
+(14, 4, '3', 'Matambre', 4377.78, 2.00, 'UN'),
+(15, 4, '5', 'Hueso', 309.76, 10.00, 'KG');
 
 -- --------------------------------------------------------
 
@@ -537,7 +585,13 @@ CREATE TABLE `process_meats` (
 INSERT INTO `process_meats` (`id`, `type`, `average`, `quantity`, `gross_weight`, `tares`, `net_weight`, `process_number`, `createdAt`, `updatedAt`) VALUES
 (1, 'Higado', 59.92, 20, 1200, 1.5, 1198.5, 1, '2025-10-25 10:52:53', '2025-10-25 10:52:53'),
 (2, 'Hueso', 0.98, 100, 100, 2, 98, 1, '2025-10-25 10:52:53', '2025-10-25 10:52:53'),
-(3, 'Matambre', 74.92, 20, 1500, 1.5, 1498.5, 1, '2025-10-25 10:52:53', '2025-10-25 10:52:53');
+(3, 'Matambre', 74.92, 20, 1500, 1.5, 1498.5, 1, '2025-10-25 10:52:53', '2025-10-25 10:52:53'),
+(6, 'Matambre', 179.8, 10, 1800, 2, 1798, 2, '2025-11-12 16:49:15', '2025-11-12 16:49:15'),
+(7, 'Hueso', 0, 8, 10, 1.5, 8.5, 3, '2025-11-13 18:24:30', '2025-11-13 18:24:30'),
+(8, 'Hueso', 0, 98, 100, 1.5, 98.5, 4, '2025-11-13 19:00:11', '2025-11-13 19:00:11'),
+(9, 'Hueso', 0, 0, 50, 1.5, 48.5, 5, '2025-11-13 19:30:14', '2025-11-13 19:30:14'),
+(10, 'Hueso', 0, 0, 11, 1.5, 9.5, 6, '2025-11-14 15:33:01', '2025-11-14 15:33:01'),
+(11, 'Patitas de pollo', 10.77, 11, 120, 1.5, 118.5, 7, '2025-11-18 19:57:45', '2025-11-18 19:57:45');
 
 -- --------------------------------------------------------
 
@@ -557,7 +611,13 @@ CREATE TABLE `process_number` (
 
 INSERT INTO `process_number` (`id`, `process_number`, `bill_id`) VALUES
 (1, 1, 3),
-(2, 1, 2);
+(2, 1, 2),
+(5, 2, 4),
+(6, 3, 5),
+(7, 4, 6),
+(8, 5, 7),
+(9, 6, 8),
+(10, 7, 11);
 
 -- --------------------------------------------------------
 
@@ -587,19 +647,22 @@ CREATE TABLE `products_available` (
   `category_id` int(11) DEFAULT NULL,
   `min_stock` int(11) DEFAULT NULL,
   `max_stock` int(11) DEFAULT NULL,
-  `alicuota` decimal(5,2) DEFAULT NULL
+  `alicuota` decimal(5,2) DEFAULT NULL,
+  `unit_measure` varchar(10) NOT NULL DEFAULT 'UN'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `products_available`
 --
 
-INSERT INTO `products_available` (`id`, `product_name`, `product_general_category`, `category_id`, `min_stock`, `max_stock`, `alicuota`) VALUES
-(1, 'Media Res Chancha', 'externo', 1, 1, 100, 21.00),
-(2, 'Media Res Capon', 'externo', 1, 1, 100, 10.50),
-(3, 'Matambre', 'propio', 2, 1, 400, 21.00),
-(4, 'Higado', 'propio', 2, 1, 100, 21.00),
-(5, 'Hueso', 'propio', 2, 1, 100, 21.00);
+INSERT INTO `products_available` (`id`, `product_name`, `product_general_category`, `category_id`, `min_stock`, `max_stock`, `alicuota`, `unit_measure`) VALUES
+(1, 'Media Res Chancha', 'externo', 1, 1, 100, 21.00, 'UN'),
+(2, 'Media Res Capon', 'externo', 1, 1, 100, 10.50, 'UN'),
+(3, 'Matambre', 'propio', 2, 1, 400, 21.00, 'UN'),
+(4, 'Higado', 'propio', 2, 1, 100, 21.00, 'UN'),
+(5, 'Hueso', 'propio', 2, 1, 100, 21.00, 'KG'),
+(6, 'Patitas de pollo', 'externo', 3, 0, 0, 10.50, 'UN'),
+(7, 'Vacio', 'propio', 2, 0, 0, 10.50, 'KG');
 
 -- --------------------------------------------------------
 
@@ -625,7 +688,9 @@ CREATE TABLE `products_sell_order` (
 INSERT INTO `products_sell_order` (`id`, `sell_order_id`, `product_id`, `product_name`, `product_price`, `product_quantity`, `created_at`, `updated_at`) VALUES
 (1, 1, 3, 'Matambre', 4377.78, 20, '2025-10-28 16:29:41', '2025-10-28 16:29:41'),
 (2, 2, 5, 'Hueso', 309.76, 10, '2025-10-28 22:28:59', '2025-10-28 22:28:59'),
-(3, 3, 5, 'Hueso', 309.9, 90, '2025-10-28 23:32:49', '2025-10-28 23:32:49');
+(3, 3, 5, 'Hueso', 309.9, 90, '2025-10-28 23:32:49', '2025-10-28 23:32:49'),
+(4, 4, 3, 'Matambre', 4377.78, 2, '2025-11-25 08:59:44', '2025-11-25 08:59:44'),
+(5, 4, 5, 'Hueso', 309.76, 10, '2025-11-25 08:59:44', '2025-11-25 08:59:44');
 
 -- --------------------------------------------------------
 
@@ -643,6 +708,7 @@ CREATE TABLE `product_categories` (
 --
 
 INSERT INTO `product_categories` (`id`, `category_name`) VALUES
+(3, 'CONGELADOS'),
 (1, 'PRINCIPAL'),
 (2, 'SECUNDARIA');
 
@@ -666,11 +732,12 @@ CREATE TABLE `product_stock` (
 --
 
 INSERT INTO `product_stock` (`id`, `product_name`, `product_quantity`, `product_cod`, `product_category`, `product_total_weight`) VALUES
-(1, 'Media Res Capon', 0, 2, 'PRINCIPAL', 20602.5),
-(2, 'Media Res Chancha', 0, 1, 'PRINCIPAL', 12802.5),
+(1, 'Media Res Capon', 0, 2, 'PRINCIPAL', 29501.8),
+(2, 'Media Res Chancha', 105, 1, 'PRINCIPAL', 43632.2),
 (3, 'Higado', 20, 4, 'SECUNDARIA', 1198.5),
-(4, 'Hueso', 0, 5, 'SECUNDARIA', 0),
-(5, 'Matambre', 0, 3, 'SECUNDARIA', 0);
+(4, 'Hueso', 98, 5, 'SECUNDARIA', 0),
+(5, 'Matambre', 8, 3, 'SECUNDARIA', 0),
+(6, 'Patitas de pollo', 11, 6, 'CONGELADOS', 118.5);
 
 -- --------------------------------------------------------
 
@@ -714,15 +781,16 @@ CREATE TABLE `providers` (
   `provider_adress` varchar(255) NOT NULL,
   `provider_country` varchar(255) NOT NULL,
   `provider_province` varchar(255) NOT NULL,
-  `provider_location` varchar(255) NOT NULL
+  `provider_location` varchar(255) NOT NULL,
+  `provider_state` tinyint(1) NOT NULL DEFAULT 1
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `providers`
 --
 
-INSERT INTO `providers` (`id`, `provider_name`, `provider_type_id`, `provider_id_number`, `provider_iva_condition`, `provider_email`, `provider_phone`, `provider_adress`, `provider_country`, `provider_province`, `provider_location`) VALUES
-(1, 'EMPRESASOFT', 'CUIT', '20200200', 'IVA RESPONSABLE INSCRIPTO', 'empresasoft@empresasoft', '3364202020', 'CALLE 123', 'ARGENTINA', 'BUENOS AIRES', 'SAN NICOLAS');
+INSERT INTO `providers` (`id`, `provider_name`, `provider_type_id`, `provider_id_number`, `provider_iva_condition`, `provider_email`, `provider_phone`, `provider_adress`, `provider_country`, `provider_province`, `provider_location`, `provider_state`) VALUES
+(1, 'EMPRESASOFT', 'CUIT', '20200200', 'IVA RESPONSABLE INSCRIPTO', 'empresasoft@empresasoft', '3364202020', 'CALLE 123', 'Argentina', 'Buenos Aires', 'San Nicolas', 0);
 
 -- --------------------------------------------------------
 
@@ -745,7 +813,8 @@ CREATE TABLE `roadmap_info` (
 INSERT INTO `roadmap_info` (`id`, `delivery_date`, `truck_license_plate`, `driver`, `created_at`) VALUES
 (1, '2025-10-29', 'AC530GN', 'Alan Paredes', '2025-10-28 16:37:58'),
 (2, '2025-10-29', 'AC530GN', 'Alan Paredes', '2025-10-28 22:30:01'),
-(3, '2025-10-28', '000', 'Carlo Ramirez', '2025-10-28 23:44:38');
+(3, '2025-10-28', '000', 'Carlo Ramirez', '2025-10-28 23:44:38'),
+(4, '2025-11-26', 'AC530GN', 'Alan Paredes', '2025-11-25 09:07:31');
 
 -- --------------------------------------------------------
 
@@ -768,7 +837,8 @@ CREATE TABLE `roadmap_info_destinations` (
 INSERT INTO `roadmap_info_destinations` (`id`, `roadmap_info_id`, `id_remit`, `client_name`, `destination`) VALUES
 (1, 1, 1, 'FERNANDO', 'SAN NICOLAS'),
 (2, 2, 2, 'FERNANDO', 'SAN NICOLAS'),
-(3, 3, 3, 'FERNANDO', 'PLANTA');
+(3, 3, 3, 'FERNANDO', 'PLANTA'),
+(4, 4, 4, 'FERNANDO', 'SAN NICOLAS');
 
 -- --------------------------------------------------------
 
@@ -1174,13 +1244,13 @@ ALTER TABLE `warehouse_stock`
 -- AUTO_INCREMENT de la tabla `bill_details`
 --
 ALTER TABLE `bill_details`
-  MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
 
 --
 -- AUTO_INCREMENT de la tabla `bill_suppliers`
 --
 ALTER TABLE `bill_suppliers`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
 
 --
 -- AUTO_INCREMENT de la tabla `clients`
@@ -1192,13 +1262,13 @@ ALTER TABLE `clients`
 -- AUTO_INCREMENT de la tabla `cuts_detail`
 --
 ALTER TABLE `cuts_detail`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT de la tabla `cuts_header`
 --
 ALTER TABLE `cuts_header`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT de la tabla `destinations`
@@ -1216,37 +1286,37 @@ ALTER TABLE `drivers`
 -- AUTO_INCREMENT de la tabla `final_remits`
 --
 ALTER TABLE `final_remits`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT de la tabla `final_remit_products`
 --
 ALTER TABLE `final_remit_products`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT de la tabla `meat_income_manual_weight`
 --
 ALTER TABLE `meat_income_manual_weight`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT de la tabla `meat_manual_income`
 --
 ALTER TABLE `meat_manual_income`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT de la tabla `new_orders`
 --
 ALTER TABLE `new_orders`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT de la tabla `order_products_client`
 --
 ALTER TABLE `order_products_client`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
 
 --
 -- AUTO_INCREMENT de la tabla `other_product_manual`
@@ -1288,13 +1358,13 @@ ALTER TABLE `price_list_products`
 -- AUTO_INCREMENT de la tabla `process_meats`
 --
 ALTER TABLE `process_meats`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
 
 --
 -- AUTO_INCREMENT de la tabla `process_number`
 --
 ALTER TABLE `process_number`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- AUTO_INCREMENT de la tabla `productionprocess_subproduction`
@@ -1306,19 +1376,19 @@ ALTER TABLE `productionprocess_subproduction`
 -- AUTO_INCREMENT de la tabla `products_sell_order`
 --
 ALTER TABLE `products_sell_order`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT de la tabla `product_categories`
 --
 ALTER TABLE `product_categories`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT de la tabla `product_stock`
 --
 ALTER TABLE `product_stock`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT de la tabla `product_subproducts`
@@ -1336,13 +1406,13 @@ ALTER TABLE `providers`
 -- AUTO_INCREMENT de la tabla `roadmap_info`
 --
 ALTER TABLE `roadmap_info`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT de la tabla `roadmap_info_destinations`
 --
 ALTER TABLE `roadmap_info_destinations`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT de la tabla `sale_conditions`

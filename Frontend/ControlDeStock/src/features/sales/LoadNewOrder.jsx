@@ -308,13 +308,8 @@ const LoadNewOrder = () => {
             cortesOptions.find((opt) => opt.label === p.product_name) ||
             null;
 
-          const defaultTipo =
-            corteOpt &&
-            corteOpt.value?.category?.category_name === "PRINCIPAL"
-              ? "UN"
-              : corteOpt
-              ? "KG"
-              : "";
+          // AHORA usamos unit_measure del producto como tipo por defecto
+          const defaultTipo = corteOpt?.value?.unit_measure || "";
 
           return {
             corte: corteOpt,
@@ -359,13 +354,10 @@ const LoadNewOrder = () => {
       );
       if (match) autoPrecio = String(match.precio_con_iva ?? "");
     }
-    const defaultTipo =
-      selected &&
-      selected.value?.category?.category_name === "PRINCIPAL"
-        ? "UN"
-        : selected
-        ? "KG"
-        : "";
+
+    // AHORA usamos unit_measure del producto
+    const defaultTipo = selected?.value?.unit_measure || "";
+
     setProductos((prev) =>
       prev.map((it, i) =>
         i === idx
@@ -720,18 +712,15 @@ const LoadNewOrder = () => {
                     }
                   />
 
+                  {/* Select de tipo de medida: se completa con unit_measure y NO se puede modificar */}
                   <select
                     className="products-input"
                     value={prod.tipoMedida || ""}
-                    onChange={(e) =>
-                      handleTipoMedidaChange(idx, e.target.value)
-                    }
+                    disabled
                   >
-                    <option value="" disabled>
-                      Seleccionar
+                    <option value={prod.tipoMedida || ""}>
+                      {prod.tipoMedida || "Sin unidad"}
                     </option>
-                    <option value="KG">KG</option>
-                    <option value="UN">UN</option>
                   </select>
 
                   <div className="row-actions">

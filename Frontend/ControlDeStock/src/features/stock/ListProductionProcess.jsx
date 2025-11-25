@@ -17,10 +17,14 @@ const ListProductionProcess = () => {
   const [processNumberBills, setProcessNumberBills] = useState({}); // process_number -> [bill_id,...]
   const [clientByBill, setClientByBill] = useState({}); // bill_id -> supplier/cliente
 
+  // 🔹 Ingreso al proceso (por número de proceso)
+  // { [process_number]: [ { type, quantity }, ... ] }
+  const [inputByProcess, setInputByProcess] = useState({});
+
   // Filtros
   const [searchTerm, setSearchTerm] = useState(""); // Nº proceso
-  const [fromDate, setFromDate] = useState("");     // yyyy-mm-dd
-  const [toDate, setToDate] = useState("");         // yyyy-mm-dd
+  const [fromDate, setFromDate] = useState(""); // yyyy-mm-dd
+  const [toDate, setToDate] = useState(""); // yyyy-mm-dd
 
   // Paginación
   const [currentPage, setCurrentPage] = useState(1);
@@ -91,7 +95,7 @@ const ListProductionProcess = () => {
               const res = await fetch(`${API_URL}/find-remit/${billId}`);
               if (!res.ok) return [billId, null];
               const remit = await res.json();
-   
+
               const supplier = remit?.supplier ?? null;
               return [billId, supplier];
             } catch {
@@ -110,6 +114,57 @@ const ListProductionProcess = () => {
 
     loadClients();
   }, [processNumberBills]); // eslint-disable-line
+
+  // 4) 🔹 Armar INGRESO al proceso por número de proceso,
+  // usando bill-details-readonly de cada bill_id
+  useEffect(() => {
+    const buildInputs = async () => {
+      const result = {};
+
+      const entries = Object.entries(processNumberBills); // [[procNum, [billIds]], ...]
+
+      for (const [procNum, billIds] of entries) {
+        const agg = {}; // { type: totalQuantity }
+
+        for (const billId of billIds || []) {
+          try {
+            const res = await fetch(
+              `${API_URL}/bill-details-readonly/${billId}`
+            );
+            if (!res.ok) continue;
+            const details = await res.json();
+            (Array.isArray(details) ? details : []).forEach((d) => {
+              const type = String(d.type || "").trim();
+              const qty = Number(d.quantity || 0);
+              if (!type || !qty) return;
+              agg[type] = (agg[type] || 0) + qty;
+            });
+          } catch (e) {
+            console.error(
+              "Error al obtener detalles de bill para proceso",
+              procNum,
+              "bill",
+              billId,
+              e
+            );
+          }
+        }
+
+        result[procNum] = Object.entries(agg).map(([type, quantity]) => ({
+          type,
+          quantity,
+        }));
+      }
+
+      setInputByProcess(result);
+    };
+
+    if (Object.keys(processNumberBills).length > 0) {
+      buildInputs();
+    } else {
+      setInputByProcess({});
+    }
+  }, [processNumberBills]);
 
   // ---------- Filtros (Nº proceso + fechas) ----------
   const applyFilters = () => {
@@ -309,6 +364,7 @@ const ListProductionProcess = () => {
             <th>Fecha</th>
             <th>Comprobantes asociados</th>
             <th>Proveedor(es)</th>
+            <th>Ingreso productivo</th>
             <th>Acciones</th>
           </tr>
         </thead>
@@ -319,8 +375,7 @@ const ListProductionProcess = () => {
 
             // Comprobantes (cuántos y/o ids)
             const bills = processNumberBills[procNum] || [];
-            const comprobantesLabel =
-              bills.length > 0 ? bills.length : 0;
+            const comprobantesLabel = bills.length > 0 ? bills.length : 0;
 
             // Clientes únicos a partir de bill_ids -> clientByBill
             const uniqueClients = Array.from(
@@ -331,6 +386,8 @@ const ListProductionProcess = () => {
               )
             );
 
+            const inputs = inputByProcess[procNum] || [];
+
             return (
               <tr key={procNum}>
                 <td>{procNum}</td>
@@ -340,6 +397,17 @@ const ListProductionProcess = () => {
                   {uniqueClients.length > 0
                     ? uniqueClients.join(", ")
                     : "—"}
+                </td>
+                <td>
+                  {inputs.length > 0 ? (
+                    inputs.map((item, idx) => (
+                      <div key={idx}>
+                        {item.type} — {item.quantity}
+                      </div>
+                    ))
+                  ) : (
+                    "—"
+                  )}
                 </td>
                 <td>
                   <button
@@ -370,7 +438,7 @@ const ListProductionProcess = () => {
 
           {paginatedProcessNumbers.length === 0 && (
             <tr>
-              <td colSpan="5">No hay procesos para mostrar.</td>
+              <td colSpan="6">No hay procesos para mostrar.</td>
             </tr>
           )}
         </tbody>

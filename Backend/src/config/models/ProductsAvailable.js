@@ -30,6 +30,11 @@ module.exports = (sequelize, dataTypes) => {
             type: dataTypes.FLOAT,
             allowNull: false,
         },
+        unit_measure: {
+            type: dataTypes.STRING, 
+            allowNull: false,
+            defaultValue: 'UN',
+        },
     };
 
     let config = {

@@ -87,6 +87,16 @@ router.put("/observations-edit/:id",apiOperatorController.updateObservationMeatI
 router.put("/meat-income-edit/:id",apiOperatorController.editAddIncome);
 router.put("/stock/manual/:id", apiOperatorController.updateStockManual); 
 router.put("/process/:process_number", operatorApiController.updateProcessByNumber);
+router.put(
+  "/bill-production-flag/:id",
+  operatorApiController.toggleProductionProcessFlag
+);
+// Dar de baja un comprobante (soft-delete)
+router.put("/products-bill/deactivate/:id", apiOperatorController.deactivateProduct);
+
+// Dar de alta nuevamente un comprobante dado de baja
+router.put("/products-bill/reactivate/:id", apiOperatorController.reactivateProduct);
+
 
 
 //Api eliminar corte de la bd cuando se modifica detalle del proveedor

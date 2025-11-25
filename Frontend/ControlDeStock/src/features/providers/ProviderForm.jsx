@@ -53,7 +53,7 @@ const ProviderForm = () => {
         setProviders(Array.isArray(data) ? data : data.providers || [])
       )
       .catch((err) => console.error("Error proveedores:", err));
-  }, []);
+  }, [API_URL]);
 
   useEffect(() => {
     if (!id) {
@@ -62,7 +62,7 @@ const ProviderForm = () => {
         .then((data) => setUltimoRegistroFactura(data?.id ? data.id + 1 : 1))
         .catch((err) => console.error("Error última factura:", err));
     }
-  }, [id]);
+  }, [id, API_URL]);
 
   useEffect(() => {
     const fetchProductos = async () => {
@@ -88,11 +88,50 @@ const ProviderForm = () => {
       }
     };
     fetchProductos();
-  }, []);
+  }, [API_URL]);
 
+  // 🔹 Normalizar categoría (may/minus, tildes, espacios)
+  const normalizarCategoria = (nombre) =>
+    (nombre || "")
+      .toString()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toUpperCase()
+      .trim();
+
+  // 🔹 Opciones SOLO cortes normales (EXCLUIMOS congelados/otros)
   const opciones = useMemo(
-    () => cortes.map((c) => ({ value: c.id, label: c.nombre })),
+    () =>
+      cortes
+        .filter((c) => {
+          const cat = normalizarCategoria(c.categoria);
+          return cat !== "CONGELADOS" && cat !== "OTROS";
+        })
+        .map((c) => ({ value: c.id, label: c.nombre })),
     [cortes]
+  );
+
+  // 🔹 Opciones SOLO para "Otros productos" (CONGELADOS u OTROS)
+  const opcionesOtros = useMemo(
+    () =>
+      cortes
+        .filter((c) => {
+          const cat = normalizarCategoria(c.categoria);
+          return cat === "CONGELADOS" || cat === "OTROS";
+        })
+        .map((c) => ({ value: c.id, label: c.nombre })),
+    [cortes]
+  );
+
+  // 🔹 Proveedores activos (oculta los inactivos)
+  const activeProviders = useMemo(
+    () =>
+      providers.filter((p) =>
+        p.provider_state === false || p.provider_state === 0 || p.provider_state === "0"
+          ? false // explícitamente inactivo
+          : true  // todo lo demás se considera activo
+      ),
+    [providers]
   );
 
   useEffect(() => {
@@ -509,7 +548,7 @@ const ProviderForm = () => {
                 }
               >
                 <option value="">Seleccionar proveedor</option>
-                {providers.map((p) => (
+                {activeProviders.map((p) => (
                   <option key={p.id} value={p.provider_name}>
                     {p.provider_name}
                   </option>
@@ -553,9 +592,9 @@ const ProviderForm = () => {
                 <div className="input-group">
                   <label>TIPO</label>
                   <Select
-                    options={opciones}
+                    options={opcionesOtros}
                     value={
-                      opciones.find(
+                      opcionesOtros.find(
                         (o) => o.value === nuevoCongelado.tipo
                       ) || null
                     }

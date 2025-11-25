@@ -92,7 +92,10 @@ const ProviderList = () => {
     <div className="providers-root">
       <Navbar />
       <div className="topbar-wrap">
-        <button className="boton-volver" onClick={() => navigate('/operator-panel')}>
+        <button
+          className="boton-volver"
+          onClick={() => navigate("/operator-panel")}
+        >
           ⬅ Volver
         </button>
       </div>
@@ -151,38 +154,84 @@ const ProviderList = () => {
                 <th className="col-actions">Acciones</th>
               </tr>
             </thead>
+
             <tbody>
-              {currentProviders.map((p) => (
-                <tr key={p.id}>
-                  <td>{p.id}</td>
-                  <td>{p.provider_name?.toUpperCase()}</td>
-                  <td>{p.provider_type_id?.toUpperCase()}</td>
-                  <td>{p.provider_id_number}</td>
-                  <td>{p.provider_iva_condition?.toUpperCase()}</td>
-                  <td className="truncate">{p.provider_email?.toUpperCase()}</td>
-                  <td>{p.provider_phone}</td>
-                  <td className="truncate">{p.provider_adress?.toUpperCase()}</td>
-                  <td>{p.provider_country?.toUpperCase()}</td>
-                  <td>{p.provider_province?.toUpperCase()}</td>
-                  <td>{p.provider_location?.toUpperCase()}</td>
-                  <td>
-                    <button
-                      className="edit-button"
-                      onClick={() => navigate(`/provider-load/${p.id}`)}
-                      title="Editar"
-                    >
-                      <FontAwesomeIcon icon={faPen} />
-                    </button>
-                    <button
-                      className="delete-button"
-                      onClick={() => handleDelete(p)}
-                      title="Eliminar"
-                    >
-                      <FontAwesomeIcon icon={faXmark} />
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {currentProviders.map((p) => {
+                const inactive =
+                  p.provider_state === false ||
+                  p.provider_state === 0 ||
+                  p.provider_state === "0";
+
+                return (
+                  <tr
+                    key={p.id}
+                    className={inactive ? "inactive-row" : ""}
+                    style={
+                      inactive
+                        ? {
+                            backgroundColor: "#ffe6e6",
+                            color: "#777",
+                          }
+                        : {}
+                    }
+                  >
+                    <td>{p.id}</td>
+
+                    <td>
+                      {p.provider_name?.toUpperCase()}{" "}
+                      {inactive && (
+                        <span
+                          style={{
+                            background: "#ff4d4d",
+                            color: "#fff",
+                            padding: "2px 6px",
+                            borderRadius: "4px",
+                            fontSize: "10px",
+                            marginLeft: "5px",
+                          }}
+                        >
+                          INACTIVO
+                        </span>
+                      )}
+                    </td>
+
+                    <td>{p.provider_type_id?.toUpperCase()}</td>
+                    <td>{p.provider_id_number}</td>
+                    <td>{p.provider_iva_condition?.toUpperCase()}</td>
+                    <td className="truncate">
+                      {p.provider_email?.toUpperCase()}
+                    </td>
+                    <td>{p.provider_phone}</td>
+                    <td className="truncate">
+                      {p.provider_adress?.toUpperCase()}
+                    </td>
+                    <td>{p.provider_country?.toUpperCase()}</td>
+                    <td>{p.provider_province?.toUpperCase()}</td>
+                    <td>{p.provider_location?.toUpperCase()}</td>
+
+                    <td>
+                      <button
+                        className="edit-button"
+                        onClick={() =>
+                          navigate(`/provider-load/${p.id}`)
+                        }
+                        title="Editar"
+                      >
+                        <FontAwesomeIcon icon={faPen} />
+                      </button>
+
+                      <button
+                        className="delete-button"
+                        onClick={() => handleDelete(p)}
+                        title="Eliminar"
+                      >
+                        <FontAwesomeIcon icon={faXmark} />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+
               {currentProviders.length === 0 && (
                 <tr>
                   <td colSpan={12} className="empty-cell">

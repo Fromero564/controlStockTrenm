@@ -17,16 +17,19 @@ const MeatManualIncome = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [opcionesProductos, setOpcionesProductos] = useState([]);
-  const [saving, setSaving] = useState(false);
 
+  // 🔹 Lista base de productos (ya procesados con id, nombre, categoría)
+  const [productos, setProductos] = useState([]);
+
+  const [saving, setSaving] = useState(false);
   const [cortesAgregados, setCortesAgregados] = useState([]);
   const [tares, setTares] = useState([]);
   const [tabActiva, setTabActiva] = useState("detallado");
   const [paginaActual, setPaginaActual] = useState(1);
   const [taraSeleccionadaId, setTaraSeleccionadaId] = useState("");
   const [isEditing, setIsEditing] = useState(false);
-  const [taraSeleccionadaIdCongelado, setTaraSeleccionadaIdCongelado] = useState("");
+  const [taraSeleccionadaIdCongelado, setTaraSeleccionadaIdCongelado] =
+    useState("");
 
   const [modalOpen, setModalOpen] = useState(false);
   const [congeladosAgregados, setCongeladosAgregados] = useState([]);
@@ -42,7 +45,6 @@ const MeatManualIncome = () => {
 
   const [formData, setFormData] = useState({
     tipo: "",
-
     cabeza: 0,
     cantidad: 0,
     pesoProveedor: 0,
@@ -58,16 +60,24 @@ const MeatManualIncome = () => {
   const congeladosPorPagina = 5;
   const indiceUltimoCongelado = paginaActualCongelados * congeladosPorPagina;
   const indicePrimerCongelado = indiceUltimoCongelado - congeladosPorPagina;
-  const congeladosPaginados = congeladosInvertidos.slice(indicePrimerCongelado, indiceUltimoCongelado);
+  const congeladosPaginados = congeladosInvertidos.slice(
+    indicePrimerCongelado,
+    indiceUltimoCongelado
+  );
 
   const handleChangeCongelado = (e) => {
     const { name, value } = e.target;
     const numericValue = parseFloat(value);
     setFormCongelado((prev) => ({
       ...prev,
-      [name]: ["tipo", "lote"].includes(name) ? value : isNaN(numericValue) ? "" : Math.abs(numericValue),
+      [name]: ["tipo", "lote"].includes(name)
+        ? value
+        : isNaN(numericValue)
+        ? ""
+        : Math.abs(numericValue),
     }));
   };
+
   const agregarCongelado = () => {
     const { tipo, lote, cantidad, pesoBruto, tara } = formCongelado;
 
@@ -87,7 +97,10 @@ const MeatManualIncome = () => {
       categoria: formCongelado.product_category || "",
       decrease:
         formCongelado.pesoProveedor > 0
-          ? ((formCongelado.pesoProveedor - (formCongelado.pesoBruto - formCongelado.tara)) / formCongelado.pesoProveedor) * 100
+          ? ((formCongelado.pesoProveedor -
+              (formCongelado.pesoBruto - formCongelado.tara)) /
+              formCongelado.pesoProveedor) *
+            100
           : 0,
     };
 
@@ -108,7 +121,9 @@ const MeatManualIncome = () => {
       if (!data?.id) return;
 
       try {
-        const response = await fetch(`${API_URL}/getOtherProductsFromRemito/${data.id}`);
+        const response = await fetch(
+          `${API_URL}/getOtherProductsFromRemito/${data.id}`
+        );
         if (!response.ok) throw new Error("Error al obtener congelados.");
 
         const result = await response.json();
@@ -124,7 +139,6 @@ const MeatManualIncome = () => {
           decrease: parseFloat(item.decrease) || 0,
         }));
 
-
         setCongeladosAgregados(congeladosFormateados);
 
         if (congeladosFormateados.length > 0) {
@@ -137,8 +151,6 @@ const MeatManualIncome = () => {
 
     fetchCongelados();
   }, [data]);
-
-
 
   useEffect(() => {
     const fetchData = async () => {
@@ -181,7 +193,8 @@ const MeatManualIncome = () => {
           tara: parseFloat(item.tare) || 0,
           garron: item.products_garron || "",
           pesoNeto:
-            (parseFloat(item.gross_weight) || 0) - (parseFloat(item.tare) || 0),
+            (parseFloat(item.gross_weight) || 0) -
+            (parseFloat(item.tare) || 0),
         });
         const cortesFormateados =
           result.cortes?.map(mapearCorteDesdeBackend) || [];
@@ -219,38 +232,59 @@ const MeatManualIncome = () => {
     }));
   }, [formData.pesoProveedor, formData.pesoBruto, formData.tara]);
 
+  // 🔹 Normalizar categoría (sin acentos, minúsculas)
+  const normalizarCategoria = (txt) =>
+    (txt || "")
+      .toString()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .trim();
 
-useEffect(() => {
-  const fetchProductos = async () => {
-    try {
-      const res = await fetch(`${API_URL}/product-name`);
-      if (!res.ok) throw new Error("Error al cargar productos");
-      const data = await res.json();
-
-      // Mismo criterio que ProviderForm: solo "externo" y "ambos"
-      const opciones = (Array.isArray(data) ? data : [])
-        .filter((p) =>
-          ["externo", "ambos"].includes(
-            (p.product_general_category || "").toLowerCase()
-          )
-        )
-        .map((p) => ({
-          value: p.product_name,           // lo que muestra el Select
-          label: p.product_name,
-          id: p.id,                        // cod del producto (lo usás como product_cod)
-          categoria: p.category?.category_name || "", // nombre de categoría
-        }));
-
-      setOpcionesProductos(opciones);
-    } catch (err) {
-      console.error("Error productos:", err);
-    }
+  const esCongeladoOuOtro = (cat) => {
+    const c = normalizarCategoria(cat);
+    return c.includes("congelado") || c.includes("otro");
   };
 
-  fetchProductos();
-}, [API_URL]);
+  // 🔹 Cargar productos desde API y preparar lista base
+  useEffect(() => {
+    const fetchProductos = async () => {
+      try {
+        const res = await fetch(`${API_URL}/product-name`);
+        if (!res.ok) throw new Error("Error al cargar productos");
+        const data = await res.json();
 
+        const productosProcesados = (Array.isArray(data) ? data : [])
+          .filter((p) =>
+            ["externo", "ambos"].includes(
+              (p.product_general_category || "").toLowerCase()
+            )
+          )
+          .map((p) => ({
+            value: p.product_name,
+            label: p.product_name,
+            id: p.id,
+            categoria: p.category?.category_name || "",
+          }));
 
+        setProductos(productosProcesados);
+      } catch (err) {
+        console.error("Error productos:", err);
+      }
+    };
+
+    fetchProductos();
+  }, [API_URL]);
+
+  // 🔹 Opciones para select de cortes (NORMALES: excluye congelados/otros)
+  const opcionesProductosCortes = productos.filter(
+    (p) => !esCongeladoOuOtro(p.categoria)
+  );
+
+  // 🔹 Opciones para select de congelados/otros (solo esas categorías)
+  const opcionesProductosCongelados = productos.filter((p) =>
+    esCongeladoOuOtro(p.categoria)
+  );
 
   useEffect(() => {
     const fetchCantidad = async () => {
@@ -261,7 +295,9 @@ useEffect(() => {
         console.log("Data del remito:", data);
         console.log("Productos recibidos:", allData);
 
-        const cortesDelRemito = allData.filter((item) => item.id === data?.id);
+        const cortesDelRemito = allData.filter(
+          (item) => item.id === data?.id
+        );
         console.log("Filtrados por remito:", cortesDelRemito);
 
         const cantidadTotal = cortesDelRemito.reduce(
@@ -280,8 +316,6 @@ useEffect(() => {
       fetchCantidad();
     }
   }, [data]);
-
-
 
   useEffect(() => {
     const fetchTares = async () => {
@@ -334,7 +368,7 @@ useEffect(() => {
       console.error("Error al crear observación:", error);
       throw error;
     }
-  }
+  };
 
   const actualizarObservacion = async (observacionId, nuevoTexto) => {
     try {
@@ -360,21 +394,18 @@ useEffect(() => {
       throw error;
     }
   };
-  // const opcionesCortes = cortes.map((corte) => ({
-  //   value: corte.nombre,
-  //   label: corte.nombre,
-  // }));
 
   const handleGuardarObservacion = async () => {
     const texto = formData.observaciones?.trim() ?? "";
 
     try {
       if (formData.observacionId) {
-        // Siempre actualizar, incluso si el texto está vacío
-        const resultado = await actualizarObservacion(formData.observacionId, texto);
+        const resultado = await actualizarObservacion(
+          formData.observacionId,
+          texto
+        );
         console.log("Observación actualizada:", resultado);
       } else {
-        // Crear nueva observación aunque el texto esté vacío
         const resultado = await crearObservacionNueva(data.id, texto);
         console.log("Observación creada:", resultado);
 
@@ -391,8 +422,6 @@ useEffect(() => {
     }
   };
 
-
-
   const handleGuardar = async () => {
     setSaving(true);
 
@@ -401,8 +430,14 @@ useEffect(() => {
       await handleGuardarObservacion();
       console.log("Observación guardada correctamente.");
 
-      const pesoTotalCortes = cortesAgregados.reduce((acc, item) => acc + (item.pesoNeto || 0), 0);
-      const pesoTotalCongelados = congeladosAgregados.reduce((acc, item) => acc + (item.pesoNeto || 0), 0);
+      const pesoTotalCortes = cortesAgregados.reduce(
+        (acc, item) => acc + (item.pesoNeto || 0),
+        0
+      );
+      const pesoTotalCongelados = congeladosAgregados.reduce(
+        (acc, item) => acc + (item.pesoNeto || 0),
+        0
+      );
       const pesoTotalCombinado = pesoTotalCortes + pesoTotalCongelados;
 
       const updatePayload = {
@@ -413,7 +448,6 @@ useEffect(() => {
         fresh_weight: totalWeightCongelados,
       };
 
-
       if (cortesAgregados.length > 0) {
         const payloadCortes = {
           cortes: cortesAgregados,
@@ -421,13 +455,16 @@ useEffect(() => {
 
         if (isEditing) {
           console.log("Editando cortes...");
-          const response = await fetch(`${API_URL}/meat-income-edit/${data.id}`, {
-            method: "PUT",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(payloadCortes),
-          });
+          const response = await fetch(
+            `${API_URL}/meat-income-edit/${data.id}`,
+            {
+              method: "PUT",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify(payloadCortes),
+            }
+          );
 
           if (!response.ok) {
             const err = await response.text();
@@ -437,13 +474,16 @@ useEffect(() => {
           console.log("Cortes editados correctamente.");
         } else {
           console.log("Guardando cortes nuevos...");
-          const response = await fetch(`${API_URL}/addProducts/${data.id}`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(payloadCortes),
-          });
+          const response = await fetch(
+            `${API_URL}/addProducts/${data.id}`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify(payloadCortes),
+            }
+          );
 
           if (!response.ok) {
             const err = await response.text();
@@ -455,7 +495,6 @@ useEffect(() => {
       } else {
         console.log("No hay cortes para guardar.");
       }
-
 
       if (congeladosAgregados.length > 0) {
         const payloadCongelados = congeladosAgregados.map((item) => ({
@@ -470,7 +509,7 @@ useEffect(() => {
           product_category: item.categoria || null,
         }));
 
-        console.log("Productos que se envian:", payloadCongelados)
+        console.log("Productos que se envian:", payloadCongelados);
 
         const endpoint = isEditing
           ? `${API_URL}/editOtherProductsManual/${data.id}`
@@ -493,11 +532,9 @@ useEffect(() => {
         }
 
         console.log("Congelados guardados correctamente.");
-      }
-      else {
+      } else {
         console.log("No hay congelados para guardar.");
       }
-
 
       console.log("Actualizando resumen...");
       const updateResponse = await fetch(
@@ -522,7 +559,6 @@ useEffect(() => {
       setCortesAgregados([]);
       setCongeladosAgregados([]);
       navigate("/operator-panel");
-
     } catch (err) {
       console.error("Error al guardar los datos:", err);
       alert("Ocurrió un error al guardar los datos.");
@@ -531,19 +567,15 @@ useEffect(() => {
     }
   };
 
-
-
   const handleChange = (e) => {
     const { name, value } = e.target;
 
     if (["tipo", "observaciones", "garron"].includes(name)) {
-      // estos campos son texto
       setFormData((prev) => ({
         ...prev,
         [name]: value,
       }));
     } else {
-      // estos campos son números
       const numericValue = parseFloat(value);
       setFormData((prev) => ({
         ...prev,
@@ -592,6 +624,7 @@ useEffect(() => {
 
     setTaraSeleccionadaId("");
   };
+
   const eliminarCorte = async (index) => {
     const corte = cortesAgregados[index];
 
@@ -607,18 +640,21 @@ useEffect(() => {
     if (!confirm.isConfirmed) return;
 
     try {
-      // Si el corte existe en la base de datos (tiene ID), eliminá en backend
       if (corte.id) {
-        const res = await fetch(`${API_URL}/provider-item-delete/${corte.id}`, {
-          method: "DELETE",
-        });
+        const res = await fetch(
+          `${API_URL}/provider-item-delete/${corte.id}`,
+          {
+            method: "DELETE",
+          }
+        );
 
         if (!res.ok) {
-          throw new Error("No se pudo eliminar el corte de la base de datos.");
+          throw new Error(
+            "No se pudo eliminar el corte de la base de datos."
+          );
         }
       }
 
-      // Siempre lo eliminamos del estado del frontend
       setCortesAgregados((prev) => prev.filter((_, i) => i !== index));
 
       Swal.fire("Eliminado", "Corte eliminado con éxito.", "success");
@@ -627,8 +663,6 @@ useEffect(() => {
       Swal.fire("Error", err.message, "error");
     }
   };
-
-
 
   const formatTime = (dateString) => {
     const date = new Date(dateString);
@@ -643,9 +677,16 @@ useEffect(() => {
     DropdownIndicator: () => null,
     IndicatorSeparator: () => null,
   };
+
   const totalKgNeto =
-    cortesAgregados.reduce((acc, item) => acc + (Number(item.pesoNeto) || 0), 0) +
-    congeladosAgregados.reduce((acc, item) => acc + (Number(item.pesoNeto) || 0), 0);
+    cortesAgregados.reduce(
+      (acc, item) => acc + (Number(item.pesoNeto) || 0),
+      0
+    ) +
+    congeladosAgregados.reduce(
+      (acc, item) => acc + (Number(item.pesoNeto) || 0),
+      0
+    );
 
   const pesoTotalRomaneo = data?.total_weight ?? 0;
 
@@ -658,13 +699,11 @@ useEffect(() => {
   if (porcentajeDiferencia < 0) colorDiferencia = "red";
   else if (porcentajeDiferencia > 0) colorDiferencia = "green";
 
-  // Suma total de animales cargados (cantidad)
   const totalAnimalesCargados = cortesAgregados.reduce(
     (acc, item) => acc + item.cantidad,
     0
   );
 
-  // Suma total de cabezas cargadas
   const totalCabezasCargadas = cortesAgregados.reduce(
     (acc, item) => acc + item.cabeza,
     0
@@ -691,9 +730,7 @@ useEffect(() => {
   }, {});
 
   const cortesPorPagina = 5;
-
   const cortesInvertidos = [...cortesAgregados].reverse();
-
   const indiceUltimoCorte = paginaActual * cortesPorPagina;
   const indicePrimerCorte = indiceUltimoCorte - cortesPorPagina;
   const cortesPaginados = cortesInvertidos.slice(
@@ -702,40 +739,19 @@ useEffect(() => {
   );
 
   const handleModalClose = () => {
-    setModalOpen(false)
+    setModalOpen(false);
     handleActualizarDesdeMemoria();
   };
 
-
-
-
-
   useEffect(() => {
     if (cortesAgregados.length > 0) {
-      localStorage.setItem("cortes_en_edicion", JSON.stringify(cortesAgregados));
+      localStorage.setItem(
+        "cortes_en_edicion",
+        JSON.stringify(cortesAgregados)
+      );
     }
-
   }, [cortesAgregados]);
-  // useEffect(() => {
-  //   const saved = localStorage.getItem("cortes_en_edicion");
-  //   if (saved) {
-  //     const mapearCorteDesdeBackend = (item) => ({
-  //       id: item.id,
-  //       tipo: item.products_name || "",
-  //       cabeza: item.product_head ?? 0,
-  //       cantidad: parseFloat(item.products_quantity) || 0,
-  //       pesoProveedor: parseFloat(item.provider_weight) || 0,
-  //       pesoBruto: parseFloat(item.gross_weight) || 0,
-  //       tara: parseFloat(item.tare) || 0,
-  //       garron: item.products_garron || "",
-  //       pesoNeto:
-  //         (parseFloat(item.gross_weight) || 0) - (parseFloat(item.tare) || 0),
-  //     });
-  //     const cortesGuardados = JSON.parse(saved);
-  //     const cortesFormateados = cortesGuardados.map(mapearCorteDesdeBackend);
-  //     setCortesAgregados(cortesFormateados);
-  //   }
-  // }, []);
+
   const eliminarCongelado = async (index) => {
     const producto = congeladosAgregados[index];
 
@@ -752,26 +768,31 @@ useEffect(() => {
 
     try {
       if (producto.id) {
-        // Eliminar de la base de datos
-        const response = await fetch(`${API_URL}/other-product-delete/${producto.id}`, {
-          method: "DELETE",
-        });
+        const response = await fetch(
+          `${API_URL}/other-product-delete/${producto.id}`,
+          {
+            method: "DELETE",
+          }
+        );
 
         if (!response.ok) {
           throw new Error("No se pudo eliminar el producto congelado.");
         }
       }
 
-      // Eliminar del array local
       setCongeladosAgregados((prev) => prev.filter((_, i) => i !== index));
 
-      Swal.fire("Eliminado", "El producto fue eliminado correctamente.", "success");
+      Swal.fire(
+        "Eliminado",
+        "El producto fue eliminado correctamente.",
+        "success"
+      );
     } catch (error) {
       console.error("Error al eliminar congelado:", error);
       Swal.fire("Error", "No se pudo eliminar el producto.", "error");
     }
   };
-  // Totales de congelados
+
   const totalQuantityCongelados = congeladosAgregados.reduce(
     (acc, item) => acc + Number(item.cantidad || 0),
     0
@@ -782,16 +803,17 @@ useEffect(() => {
     0
   );
 
-  // Mermas en base a fresh_quantity y fresh_weight del remito
-  const mermaCantidadCongelados = data?.fresh_quantity > 0
-    ? ((data.fresh_quantity - totalQuantityCongelados) / data.fresh_quantity) * 100
-    : 0;
+  const mermaCantidadCongelados =
+    data?.fresh_quantity > 0
+      ? ((data.fresh_quantity - totalQuantityCongelados) /
+          data.fresh_quantity) *
+        100
+      : 0;
 
-  const mermaPesoCongelados = data?.fresh_weight > 0
-    ? ((data.fresh_weight - totalWeightCongelados) / data.fresh_weight) * 100
-    : 0;
-
-
+  const mermaPesoCongelados =
+    data?.fresh_weight > 0
+      ? ((data.fresh_weight - totalWeightCongelados) / data.fresh_weight) * 100
+      : 0;
 
   if (loading) return <p>Cargando...</p>;
   if (error) return <p>Error: {error}</p>;
@@ -874,9 +896,9 @@ useEffect(() => {
               }));
             }}
           />
-
         </div>
 
+        {/* FORM CORTES NORMALES */}
         <div className="formulario-corte">
           <div className="form-group">
             <div>
@@ -884,7 +906,7 @@ useEffect(() => {
               <Select
                 className="custom-select"
                 classNamePrefix="mi-select"
-                options={opcionesProductos}
+                options={opcionesProductosCortes}
                 onChange={(selected) => {
                   setFormData((prev) => ({
                     ...prev,
@@ -893,9 +915,10 @@ useEffect(() => {
                     product_category: selected?.categoria || "",
                   }));
                 }}
-
                 value={
-                  opcionesProductos.find((o) => o.value === formData.tipo) || null
+                  opcionesProductosCortes.find(
+                    (o) => o.value === formData.tipo
+                  ) || null
                 }
                 placeholder=""
                 isClearable
@@ -1047,9 +1070,11 @@ useEffect(() => {
           </button>
 
           <div className="cortes-lista">
-
             {cortesPaginados.map((corte, index) => (
-              <div key={index + indicePrimerCorte} className="corte-mostrado">
+              <div
+                key={index + indicePrimerCorte}
+                className="corte-mostrado"
+              >
                 <div>
                   <p className="dato">{corte.tipo}</p>
                 </div>
@@ -1078,7 +1103,9 @@ useEffect(() => {
 
                 <div>
                   <button
-                    onClick={() => eliminarCorte(index + indicePrimerCorte)}
+                    onClick={() =>
+                      eliminarCorte(index + indicePrimerCorte)
+                    }
                     className="btn-eliminar"
                   >
                     X
@@ -1089,7 +1116,9 @@ useEffect(() => {
 
             <div style={{ marginTop: "1rem", textAlign: "center" }}>
               <button
-                onClick={() => setPaginaActual((prev) => Math.max(prev - 1, 1))}
+                onClick={() =>
+                  setPaginaActual((prev) => Math.max(prev - 1, 1))
+                }
                 disabled={paginaActual === 1}
                 style={{ marginRight: "1rem" }}
               >
@@ -1104,7 +1133,8 @@ useEffect(() => {
                   )
                 }
                 disabled={
-                  paginaActual * cortesPorPagina >= cortesAgregados.length
+                  paginaActual * cortesPorPagina >=
+                  cortesAgregados.length
                 }
               >
                 Siguiente
@@ -1113,7 +1143,7 @@ useEffect(() => {
           </div>
         </div>
 
-
+        {/* FORM CONGELADOS / OTROS */}
         <div className="formulario-corte">
           <h2>Productos Congelados / Otros</h2>
           <div className="form-group">
@@ -1122,7 +1152,7 @@ useEffect(() => {
               <Select
                 className="custom-select"
                 classNamePrefix="mi-select"
-                options={opcionesProductos}
+                options={opcionesProductosCongelados}
                 onChange={(selected) => {
                   setFormCongelado((prev) => ({
                     ...prev,
@@ -1132,7 +1162,9 @@ useEffect(() => {
                   }));
                 }}
                 value={
-                  opcionesProductos.find((o) => o.value === formCongelado.tipo) || null
+                  opcionesProductosCongelados.find(
+                    (o) => o.value === formCongelado.tipo
+                  ) || null
                 }
                 placeholder=""
                 isClearable
@@ -1194,7 +1226,6 @@ useEffect(() => {
                 }}
               />
             </div>
-
 
             <div>
               <label>LOTE</label>
@@ -1260,7 +1291,6 @@ useEffect(() => {
                   </option>
                 ))}
               </select>
-
             </div>
           </div>
 
@@ -1271,26 +1301,54 @@ useEffect(() => {
           <div className="cortes-lista">
             {congeladosPaginados.map((item, index) => (
               <div key={index} className="corte-mostrado">
-                <div><p className="dato">{item.product_name || item.tipo}</p></div>
-                <div><p className="dato">{item.product_portion || item.lote}</p></div>
-
-                <div><p className="dato">{item.product_quantity || item.cantidad}</p></div>
-                <div><p className="dato">{item.product_gross_weight || item.pesoBruto}</p></div>
-                <div><p className="dato">{item.product_net_weight || item.pesoNeto}</p></div>
                 <div>
-                  <p className="dato" style={{
-                    color:
-                      item.decrease > 0
-                        ? "orange"
-                        : item.decrease < 0
+                  <p className="dato">
+                    {item.product_name || item.tipo}
+                  </p>
+                </div>
+                <div>
+                  <p className="dato">
+                    {item.product_portion || item.lote}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="dato">
+                    {item.product_quantity || item.cantidad}
+                  </p>
+                </div>
+                <div>
+                  <p className="dato">
+                    {item.product_gross_weight || item.pesoBruto}
+                  </p>
+                </div>
+                <div>
+                  <p className="dato">
+                    {item.product_net_weight || item.pesoNeto}
+                  </p>
+                </div>
+                <div>
+                  <p
+                    className="dato"
+                    style={{
+                      color:
+                        item.decrease > 0
+                          ? "orange"
+                          : item.decrease < 0
                           ? "green"
                           : "inherit",
-                  }}>
+                    }}
+                  >
                     {(item.decrease || 0).toFixed(2)}%
                   </p>
                 </div>
                 <div>
-                  <button onClick={() => eliminarCongelado(index + indicePrimerCongelado)} className="btn-eliminar">
+                  <button
+                    onClick={() =>
+                      eliminarCongelado(index + indicePrimerCongelado)
+                    }
+                    className="btn-eliminar"
+                  >
                     X
                   </button>
                 </div>
@@ -1298,7 +1356,11 @@ useEffect(() => {
             ))}
             <div style={{ marginTop: "1rem", textAlign: "center" }}>
               <button
-                onClick={() => setPaginaActualCongelados((prev) => Math.max(prev - 1, 1))}
+                onClick={() =>
+                  setPaginaActualCongelados((prev) =>
+                    Math.max(prev - 1, 1)
+                  )
+                }
                 disabled={paginaActualCongelados === 1}
                 style={{ marginRight: "1rem" }}
               >
@@ -1307,137 +1369,178 @@ useEffect(() => {
               <button
                 onClick={() =>
                   setPaginaActualCongelados((prev) =>
-                    prev * congeladosPorPagina < congeladosAgregados.length ? prev + 1 : prev
+                    prev * congeladosPorPagina <
+                    congeladosAgregados.length
+                      ? prev + 1
+                      : prev
                   )
                 }
                 disabled={
-                  paginaActualCongelados * congeladosPorPagina >= congeladosAgregados.length
+                  paginaActualCongelados * congeladosPorPagina >=
+                  congeladosAgregados.length
                 }
               >
                 Siguiente
               </button>
             </div>
-
           </div>
-        </div>
 
-
-
-        <div className="info-weight-observations">
-          <div style={{ display: "flex", gap: "1rem", marginBottom: "1rem" }}>
-            <button
-              onClick={() => setTabActiva("detallado")}
+          <div className="info-weight-observations">
+            <div
               style={{
-                backgroundColor:
-                  tabActiva === "detallado" ? "#007bff" : "#e0e0e0",
-                color: tabActiva === "detallado" ? "white" : "black",
-                padding: "0.5rem 1rem",
-                border: "none",
-                borderRadius: "4px",
-                cursor: "pointer",
+                display: "flex",
+                gap: "1rem",
+                marginBottom: "1rem",
               }}
             >
-              Resumen detallado por pieza
-            </button>
-            <button
-              onClick={() => setTabActiva("agrupado")}
-              style={{
-                backgroundColor:
-                  tabActiva === "agrupado" ? "#007bff" : "#e0e0e0",
-                color: tabActiva === "agrupado" ? "white" : "black",
-                padding: "0.5rem 1rem",
-                border: "none",
-                borderRadius: "4px",
-                cursor: "pointer",
-              }}
-            >
-              Resumen agrupado por piezas
-            </button>
-          </div>
-          {tabActiva === "detallado" && (
-            <div>
-              <h3>RESUMEN</h3>
-              <div className="table-wrapper">
-                <table className="stock-table">
-                  <thead>
-                    <tr>
-                      <th>TIPO</th>
-                      <th>NUMERO GARRON</th>
-                      <th>PESO ETIQUETA</th>
-                      <th>CANTIDAD</th>
-                      <th>CABEZAS</th>
-                      <th>KG NETO</th>
-                      <th>MERMA (%)</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {cortesAgregados.map((corte, index) => {
-                      // CAMBIO: merma como (neto - proveedor) / proveedor
-                      const merma =
-                        corte.pesoProveedor && corte.pesoNeto
-                          ? ((corte.pesoNeto - corte.pesoProveedor) /
-                            corte.pesoProveedor) *
-                          100
-                          : 0;
-
-                      return (
-                        <tr key={index}>
-                          <td>{corte.tipo}</td>
-                          <td>{corte.garron}</td>
-                          <td>{corte.pesoProveedor}</td>
-                          <td>{corte.cantidad}</td>
-                          <td>{corte.cabeza}</td>
-                          <td>{Number(corte.pesoNeto || 0).toFixed(2)}</td>
-                          <td
-                            style={{
-                              // CAMBIO: verde si ≥ 0, rojo si < 0
-                              color: Number(merma) < 0 ? "red" : "green",
-                            }}
-                          >
-                            {Number(merma || 0) > 0 ? "+" : ""}
-                            {Number(merma || 0).toFixed(2)}%
-                          </td>
-                        </tr>
-                      );
-                    })}
-                    <tr>
-                      <td>
-                        <strong>Diferencia declarado en romaneo</strong>
-                      </td>
-                      <td></td>
-                      <td></td>
-                      <td style={{ color: cantidad > totalAnimalesCargados ? "red" : "green" }}>
-                        {cantidad - totalAnimalesCargados}{" "}
-                        <span>
-                          ({cantidad > 0
-                            ? (
-                              ((cantidad - totalAnimalesCargados) / cantidad) * 100
-                            ).toFixed(0)
-                            : 0}%)
-                        </span>
-                      </td>
-                      <td style={{ color: data.head_quantity > totalCabezasCargadas ? "red" : "green" }}>
-                        {data.head_quantity - totalCabezasCargadas}{" "}
-                        <span>
-                          ({(
-                            ((data.head_quantity - totalCabezasCargadas) / data.head_quantity
-                            ) * 100).toFixed(0)}%)
-                        </span>
-                      </td>
-                      <td style={{ color: diferenciaPeso < 0 ? "red" : "green" }}>
-                        {diferenciaPeso.toFixed(2)}{" "}
-                        <span>
-                          ({porcentajeDiferencia > 0 ? "+" : ""}
-                          {porcentajeDiferencia.toFixed(2)}%)
-                        </span>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
+              <button
+                onClick={() => setTabActiva("detallado")}
+                style={{
+                  backgroundColor:
+                    tabActiva === "detallado" ? "#007bff" : "#e0e0e0",
+                  color:
+                    tabActiva === "detallado" ? "white" : "black",
+                  padding: "0.5rem 1rem",
+                  border: "none",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                }}
+              >
+                Resumen detallado por pieza
+              </button>
+              <button
+                onClick={() => setTabActiva("agrupado")}
+                style={{
+                  backgroundColor:
+                    tabActiva === "agrupado" ? "#007bff" : "#e0e0e0",
+                  color: tabActiva === "agrupado" ? "white" : "black",
+                  padding: "0.5rem 1rem",
+                  border: "none",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                }}
+              >
+                Resumen agrupado por piezas
+              </button>
             </div>
-          )}
-          <div>
+            {tabActiva === "detallado" && (
+              <div>
+                <h3>RESUMEN</h3>
+                <div className="table-wrapper">
+                  <table className="stock-table">
+                    <thead>
+                      <tr>
+                        <th>TIPO</th>
+                        <th>NUMERO GARRON</th>
+                        <th>PESO ETIQUETA</th>
+                        <th>CANTIDAD</th>
+                        <th>CABEZAS</th>
+                        <th>KG NETO</th>
+                        <th>MERMA (%)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {cortesAgregados.map((corte, index) => {
+                        const merma =
+                          corte.pesoProveedor && corte.pesoNeto
+                            ? ((corte.pesoNeto -
+                                corte.pesoProveedor) /
+                                corte.pesoProveedor) *
+                              100
+                            : 0;
+
+                        return (
+                          <tr key={index}>
+                            <td>{corte.tipo}</td>
+                            <td>{corte.garron}</td>
+                            <td>{corte.pesoProveedor}</td>
+                            <td>{corte.cantidad}</td>
+                            <td>{corte.cabeza}</td>
+                            <td>
+                              {Number(corte.pesoNeto || 0).toFixed(2)}
+                            </td>
+                            <td
+                              style={{
+                                color:
+                                  Number(merma) < 0 ? "red" : "green",
+                              }}
+                            >
+                              {Number(merma || 0) > 0 ? "+" : ""}
+                              {Number(merma || 0).toFixed(2)}%
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      <tr>
+                        <td>
+                          <strong>
+                            Diferencia declarado en romaneo
+                          </strong>
+                        </td>
+                        <td></td>
+                        <td></td>
+                        <td
+                          style={{
+                            color:
+                              cantidad > totalAnimalesCargados
+                                ? "red"
+                                : "green",
+                          }}
+                        >
+                          {cantidad - totalAnimalesCargados}{" "}
+                          <span>
+                            (
+                            {cantidad > 0
+                              ? (
+                                  ((cantidad -
+                                    totalAnimalesCargados) /
+                                    cantidad) *
+                                  100
+                                ).toFixed(0)
+                              : 0}
+                            %)
+                          </span>
+                        </td>
+                        <td
+                          style={{
+                            color:
+                              data.head_quantity >
+                              totalCabezasCargadas
+                                ? "red"
+                                : "green",
+                          }}
+                        >
+                          {data.head_quantity - totalCabezasCargadas}{" "}
+                          <span>
+                            (
+                            {(
+                              ((data.head_quantity -
+                                totalCabezasCargadas) /
+                                data.head_quantity) *
+                              100
+                            ).toFixed(0)}
+                            %)
+                          </span>
+                        </td>
+                        <td
+                          style={{
+                            color:
+                              diferenciaPeso < 0 ? "red" : "green",
+                          }}
+                        >
+                          {diferenciaPeso.toFixed(2)}{" "}
+                          <span>
+                            ({porcentajeDiferencia > 0 ? "+" : ""}
+                            {porcentajeDiferencia.toFixed(2)}%)
+                          </span>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
             {tabActiva === "agrupado" && (
               <div>
                 <h3 style={{ marginTop: "2rem" }}>
@@ -1455,120 +1558,164 @@ useEffect(() => {
                       </tr>
                     </thead>
                     <tbody>
-                      {Object.values(cortesAgrupados).map((corte, index) => {
-                        // CAMBIO: merma agrupada como (neto - proveedor) / proveedor
-                        const merma =
-                          corte.pesoProveedor > 0
-                            ? ((corte.pesoNeto - corte.pesoProveedor) /
-                              corte.pesoProveedor) *
-                            100
-                            : 0;
+                      {Object.values(cortesAgrupados).map(
+                        (corte, index) => {
+                          const merma =
+                            corte.pesoProveedor > 0
+                              ? ((corte.pesoNeto -
+                                  corte.pesoProveedor) /
+                                  corte.pesoProveedor) *
+                                100
+                              : 0;
 
-                        return (
-                          <tr key={index}>
-                            <td>{corte.tipo}</td>
-                            <td>{corte.cantidad}</td>
-                            <td>{corte.cabezas}</td>
-                            <td>{corte.pesoNeto.toFixed(2)}</td>
-                            <td
-                              style={{ color: merma < 0 ? "red" : "green" }}
-                            >
-                              {merma > 0 ? "+" : ""}{merma.toFixed(2)}%
-                            </td>
-                          </tr>
-                        );
-                      })}
+                          return (
+                            <tr key={index}>
+                              <td>{corte.tipo}</td>
+                              <td>{corte.cantidad}</td>
+                              <td>{corte.cabezas}</td>
+                              <td>{corte.pesoNeto.toFixed(2)}</td>
+                              <td
+                                style={{
+                                  color:
+                                    merma < 0 ? "red" : "green",
+                                }}
+                              >
+                                {merma > 0 ? "+" : ""}
+                                {merma.toFixed(2)}%
+                              </td>
+                            </tr>
+                          );
+                        }
+                      )}
                     </tbody>
                   </table>
                 </div>
               </div>
             )}
+
+            <h3>RESUMEN DE CONGELADOS / OTROS</h3>
+            <div className="table-wrapper">
+              <table className="stock-table">
+                <thead>
+                  <tr>
+                    <th>LOTE</th>
+                    <th>CANTIDAD</th>
+                    <th>KG NETO</th>
+                    <th>MERMA CANTIDAD (%)</th>
+                    <th>MERMA PESO (%)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {congeladosAgregados.map((item, index) => {
+                    const mermaCantidadItem =
+                      data?.fresh_quantity > 0
+                        ? ((data.fresh_quantity - item.cantidad) /
+                            data.fresh_quantity) *
+                          100
+                        : 0;
+
+                    const mermaPesoItem =
+                      data?.fresh_weight > 0
+                        ? ((data.fresh_weight - item.pesoNeto) /
+                            data.fresh_weight) *
+                          100
+                        : 0;
+
+                    return (
+                      <tr key={index}>
+                        <td>{item.lote}</td>
+                        <td>{item.cantidad}</td>
+                        <td>{item.pesoNeto?.toFixed(2)}</td>
+                        <td
+                          style={{
+                            color:
+                              mermaCantidadItem > 0
+                                ? "red"
+                                : "green",
+                          }}
+                        >
+                          {mermaCantidadItem > 0 ? "+" : ""}
+                          {mermaCantidadItem.toFixed(2)}%
+                        </td>
+                        <td
+                          style={{
+                            color:
+                              mermaPesoItem > 0 ? "red" : "green",
+                          }}
+                        >
+                          {mermaPesoItem > 0 ? "+" : ""}
+                          {mermaPesoItem.toFixed(2)}%
+                        </td>
+                      </tr>
+                    );
+                  })}
+
+                  <tr>
+                    <td>
+                      <strong>TOTALES</strong>
+                    </td>
+                    <td>{totalQuantityCongelados}</td>
+                    <td>{totalWeightCongelados.toFixed(2)}</td>
+                    <td
+                      style={{
+                        color:
+                          mermaCantidadCongelados > 0
+                            ? "red"
+                            : "green",
+                      }}
+                    >
+                      {mermaCantidadCongelados > 0 ? "+" : ""}
+                      {mermaCantidadCongelados.toFixed(2)}%
+                    </td>
+                    <td
+                      style={{
+                        color:
+                          mermaPesoCongelados > 0
+                            ? "red"
+                            : "green",
+                      }}
+                    >
+                      {mermaPesoCongelados > 0 ? "+" : ""}
+                      {mermaPesoCongelados.toFixed(2)}%
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <label
+              htmlFor="observaciones"
+              style={{ display: "block", marginTop: "1rem" }}
+            >
+              OBSERVACIONES
+            </label>
+            <textarea
+              name="observaciones"
+              placeholder="Observaciones"
+              value={formData.observaciones}
+              onChange={handleChange}
+              style={{
+                width: "100%",
+                minHeight: "80px",
+                marginBottom: "1rem",
+              }}
+            ></textarea>
+
+            <button
+              className="btn-agregar"
+              onClick={handleGuardar}
+              style={{
+                backgroundColor: "#0077b6",
+                color: "white",
+                padding: "0.5rem 1rem",
+                border: "none",
+                borderRadius: "4px",
+              }}
+              disabled={saving}
+            >
+              {saving ? "Guardando..." : "Guardar y terminar carga"}
+            </button>
           </div>
-
-
-          <h3>RESUMEN DE CONGELADOS / OTROS</h3>
-          <div className="table-wrapper">
-            <table className="stock-table">
-              <thead>
-                <tr>
-                  <th>LOTE</th>
-                  <th>CANTIDAD</th>
-                  <th>KG NETO</th>
-                  <th>MERMA CANTIDAD (%)</th>
-                  <th>MERMA PESO (%)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {congeladosAgregados.map((item, index) => {
-                  // Merma individual por producto (opcional, o podés mostrar solo la general)
-                  const mermaCantidadItem = data?.fresh_quantity > 0
-                    ? ((data.fresh_quantity - item.cantidad) / data.fresh_quantity) * 100
-                    : 0;
-
-                  const mermaPesoItem = data?.fresh_weight > 0
-                    ? ((data.fresh_weight - item.pesoNeto) / data.fresh_weight) * 100
-                    : 0;
-
-                  return (
-                    <tr key={index}>
-                      <td>{item.lote}</td>
-                      <td>{item.cantidad}</td>
-                      <td>{item.pesoNeto?.toFixed(2)}</td>
-                      <td style={{ color: mermaCantidadItem > 0 ? "red" : "green" }}>
-                        {mermaCantidadItem > 0 ? '+' : ''}{mermaCantidadItem.toFixed(2)}%
-                      </td>
-                      <td style={{ color: mermaPesoItem > 0 ? "red" : "green" }}>
-                        {mermaPesoItem > 0 ? '+' : ''}{mermaPesoItem.toFixed(2)}%
-                      </td>
-
-                    </tr>
-                  );
-                })}
-
-                {/* Fila totales */}
-                <tr>
-                  <td><strong>TOTALES</strong></td>
-                  <td>{totalQuantityCongelados}</td>
-                  <td>{totalWeightCongelados.toFixed(2)}</td>
-                  <td style={{ color: mermaCantidadCongelados > 0 ? "red" : "green" }}>
-                    {mermaCantidadCongelados > 0 ? '+' : ''}{mermaCantidadCongelados.toFixed(2)}%
-                  </td>
-                  <td style={{ color: mermaPesoCongelados > 0 ? "red" : "green" }}>
-                    {mermaPesoCongelados > 0 ? '+' : ''}{mermaPesoCongelados.toFixed(2)}%
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          <label
-            htmlFor="observaciones"
-            style={{ display: "block", marginTop: "1rem" }}
-          >
-            OBSERVACIONES
-          </label>
-          <textarea
-            name="observaciones"
-            placeholder="Observaciones"
-            value={formData.observaciones}
-            onChange={handleChange}
-            style={{ width: "100%", minHeight: "80px", marginBottom: "1rem" }}
-          ></textarea>
-
-          <button
-            className="btn-agregar"
-            onClick={handleGuardar}
-            style={{
-              backgroundColor: "#0077b6",
-              color: "white",
-              padding: "0.5rem 1rem",
-              border: "none",
-              borderRadius: "4px",
-            }}
-            disabled={saving}
-          >
-            {saving ? "Guardando..." : "Guardar y terminar carga"}
-          </button>
         </div>
       </div>
     </div>

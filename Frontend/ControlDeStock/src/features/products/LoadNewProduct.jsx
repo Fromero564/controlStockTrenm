@@ -13,7 +13,7 @@ const LoadNewProduct = () => {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [categoriasDisponibles, setCategoriasDisponibles] = useState([]);
-  const [defaultCategoryId, setDefaultCategoryId] = useState(null); // id de "Sin categoría"
+  const [defaultCategoryId, setDefaultCategoryId] = useState(null);
   const [allProducts, setAllProducts] = useState([]);
   const [subproductos, setSubproductos] = useState([]);
 
@@ -29,9 +29,9 @@ const LoadNewProduct = () => {
     min_stock: "",
     max_stock: "",
     alicuota: "",
+    unit_measure: "UN",
   });
 
-  // Errores visuales por campo
   const [errors, setErrors] = useState({
     nombre: false,
     alicuota: false,
@@ -44,27 +44,20 @@ const LoadNewProduct = () => {
 
   const API_URL = import.meta.env.VITE_API_URL;
 
-  // Helper: normaliza y formatea cantidades al renderizar
   const formatQuantity = (q, unit) => {
     const n = Number(q);
-    if (Number.isNaN(n)) return q; // fallback
+    if (Number.isNaN(n)) return q;
     if (unit === "kg") return n.toFixed(2);
-    // unidad: entero sin decimales; si no, con 2 decimales
     return Number.isInteger(n) ? String(n) : n.toFixed(2);
   };
 
-  // Normaliza la alícuota proveniente del backend para que coincida con los <option value="">
-  // Acepta 10.5 / "10.50" / "10,5" / 21 / "0" / 0, etc. y devuelve "10.5", "21", "27" o "0"
   const normalizeAlicuota = (val) => {
     if (val === null || val === undefined || val === "") return "";
     const s = String(val).trim().replace(",", ".");
     const n = Number(s);
     if (!Number.isFinite(n)) return "";
-    // Redondeo a 2 decimales y eliminación de ceros sobrantes
     const fixed = Number(n.toFixed(2));
-    // Si es entero (21, 27, 0)
     if (Number.isInteger(fixed)) return String(fixed);
-    // Si tiene decimales (10.5)
     return String(parseFloat(fixed.toString()));
   };
 
@@ -88,7 +81,6 @@ const LoadNewProduct = () => {
         const data = await res.json();
         setCategoriasDisponibles(data);
 
-        // Detectar "Sin categoría" con distintas variantes
         const norm = (s) =>
           (s || "")
             .toString()
@@ -124,18 +116,17 @@ const LoadNewProduct = () => {
           tipo: data.product_general_category || "externo",
           min_stock: data.min_stock?.toString() || "",
           max_stock: data.max_stock?.toString() || "",
-          // 🔧 Normalización aquí:
           alicuota: normalizeAlicuota(data.alicuota),
+          unit_measure: (data.unit_measure || "UN").toUpperCase(),
         });
 
-        // Normalizar cantidades a Number
         if (Array.isArray(data.subproducts) && data.subproducts.length > 0) {
           const mapped = data.subproducts
             .filter((sp) => sp && sp.subproduct_id && sp.quantity != null)
             .map((sp) => ({
               id: sp.id?.toString() || "",
               subproductId: sp.subproduct_id?.toString() || "",
-              quantity: Number(sp.quantity), // ← normalizado a número
+              quantity: Number(sp.quantity),
               unit: sp.unit || "kg",
             }));
           setSubproductos(mapped);
@@ -151,47 +142,49 @@ const LoadNewProduct = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    // Para alícuota, ya viene del <select> como string que coincide con los option.value
     setProductData((prev) => ({ ...prev, [name]: value }));
-    // limpiar error del campo editado
     setErrors((prev) => ({ ...prev, [name]: false }));
   };
 
   const validateRequired = () => {
     const missing = [];
-    const nextErrors = { nombre: false, alicuota: false, min_stock: false, max_stock: false };
+    const nextErrors = {
+      nombre: false,
+      alicuota: false,
+      min_stock: false,
+      max_stock: false,
+    };
 
     if (!productData.nombre?.trim()) {
       missing.push("Nombre del producto");
       nextErrors.nombre = true;
     }
-    if (productData.alicuota === "" || productData.alicuota === null || productData.alicuota === undefined) {
+    if (
+      productData.alicuota === "" ||
+      productData.alicuota === null ||
+      productData.alicuota === undefined
+    ) {
       missing.push("Alícuota");
       nextErrors.alicuota = true;
     }
-    if (productData.min_stock === "") {
-      missing.push("Stock mínimo");
-      nextErrors.min_stock = true;
-    }
-    if (productData.max_stock === "") {
-      missing.push("Stock máximo");
-      nextErrors.max_stock = true;
-    }
 
-    // Validaciones numéricas adicionales
-    const minVal = Number(productData.min_stock);
-    const maxVal = Number(productData.max_stock);
+    const minRaw = productData.min_stock === "" ? "0" : productData.min_stock;
+    const maxRaw = productData.max_stock === "" ? "0" : productData.max_stock;
+
+    const minVal = Number(minRaw);
+    const maxVal = Number(maxRaw);
 
     const numericIssues = [];
-    if (productData.min_stock !== "" && (Number.isNaN(minVal) || minVal < 0 || !Number.isInteger(minVal))) {
+
+    if (Number.isNaN(minVal) || minVal < 0 || !Number.isInteger(minVal)) {
       numericIssues.push("El stock mínimo debe ser un entero ≥ 0");
       nextErrors.min_stock = true;
     }
-    if (productData.max_stock !== "" && (Number.isNaN(maxVal) || maxVal < 0 || !Number.isInteger(maxVal))) {
+    if (Number.isNaN(maxVal) || maxVal < 0 || !Number.isInteger(maxVal)) {
       numericIssues.push("El stock máximo debe ser un entero ≥ 0");
       nextErrors.max_stock = true;
     }
-    if (productData.min_stock !== "" && productData.max_stock !== "" && !Number.isNaN(minVal) && !Number.isNaN(maxVal) && minVal > maxVal) {
+    if (!Number.isNaN(minVal) && !Number.isNaN(maxVal) && minVal > maxVal) {
       numericIssues.push("El stock mínimo no puede ser mayor que el stock máximo");
       nextErrors.min_stock = true;
       nextErrors.max_stock = true;
@@ -207,13 +200,24 @@ const LoadNewProduct = () => {
     if (isSubmitting) return;
     setIsSubmitting(true);
 
-    // Validaciones
     const { missing, numericIssues } = validateRequired();
 
     if (missing.length || numericIssues.length) {
       const listHtml = `
-        ${missing.length ? `<p><b>Campos obligatorios sin completar:</b></p><ul>${missing.map((m) => `<li>${m}</li>`).join("")}</ul>` : ""}
-        ${numericIssues.length ? `<p style="margin-top:8px"><b>Revisá estos valores:</b></p><ul>${numericIssues.map((m) => `<li>${m}</li>`).join("")}</ul>` : ""}
+        ${
+          missing.length
+            ? `<p><b>Campos obligatorios sin completar:</b></p><ul>${missing
+                .map((m) => `<li>${m}</li>`)
+                .join("")}</ul>`
+            : ""
+        }
+        ${
+          numericIssues.length
+            ? `<p style="margin-top:8px"><b>Revisá estos valores:</b></p><ul>${numericIssues
+                .map((m) => `<li>${m}</li>`)
+                .join("")}</ul>`
+            : ""
+        }
       `;
       await Swal.fire({
         icon: "warning",
@@ -221,7 +225,6 @@ const LoadNewProduct = () => {
         html: listHtml,
         confirmButtonText: "Entendido",
       });
-      // Llevar al primer error visible
       setTimeout(() => {
         const el = document.querySelector(".input-error");
         if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -231,7 +234,6 @@ const LoadNewProduct = () => {
       return;
     }
 
-    // Confirmar flujo sin categoría
     let categoryIdToSend = null;
     if (productData.categoriaId) {
       categoryIdToSend = parseInt(productData.categoriaId, 10);
@@ -253,31 +255,34 @@ const LoadNewProduct = () => {
       categoryIdToSend = defaultCategoryId ? parseInt(defaultCategoryId, 10) : null;
     }
 
-    // Limpiar subproductos inválidos + asegurar Números
     const subproductosValidos = Array.isArray(subproductos)
       ? subproductos
-        .filter(
-          (sp) =>
-            sp &&
-            typeof sp.subproductId === "string" &&
-            sp.subproductId.trim() !== "" &&
-            sp.quantity != null &&
-            !Number.isNaN(Number(sp.quantity)) &&
-            Number(sp.quantity) > 0
-        )
-        .map((sp) => ({
-          ...sp,
-          quantity: Number(sp.quantity), // asegurar número en payload
-        }))
+          .filter(
+            (sp) =>
+              sp &&
+              typeof sp.subproductId === "string" &&
+              sp.subproductId.trim() !== "" &&
+              sp.quantity != null &&
+              !Number.isNaN(Number(sp.quantity)) &&
+              Number(sp.quantity) > 0
+          )
+          .map((sp) => ({
+            ...sp,
+            quantity: Number(sp.quantity),
+          }))
       : [];
 
     const payload = {
       product_name: productData.nombre.trim(),
-      category_id: categoryIdToSend, // id de "Sin categoría" o NULL
+      category_id: categoryIdToSend,
       product_general_category: productData.tipo,
-      min_stock: productData.min_stock !== "" ? parseInt(productData.min_stock, 10) : null,
-      max_stock: productData.max_stock !== "" ? parseInt(productData.max_stock, 10) : null,
-      alicuota: productData.alicuota !== "" ? parseFloat(productData.alicuota) : null,
+      min_stock:
+        productData.min_stock === "" ? 0 : parseInt(productData.min_stock, 10),
+      max_stock:
+        productData.max_stock === "" ? 0 : parseInt(productData.max_stock, 10),
+      alicuota:
+        productData.alicuota !== "" ? parseFloat(productData.alicuota) : null,
+      unit_measure: (productData.unit_measure || "UN").toUpperCase(),
       subproducts: subproductosValidos,
     };
 
@@ -296,7 +301,11 @@ const LoadNewProduct = () => {
       });
 
       if (res.ok) {
-        await Swal.fire("Éxito", `Producto ${id ? "actualizado" : "creado"} correctamente.`, "success");
+        await Swal.fire(
+          "Éxito",
+          `Producto ${id ? "actualizado" : "creado"} correctamente.`,
+          "success"
+        );
         navigate("/all-products-availables");
       } else {
         const err = await res.json().catch(() => ({}));
@@ -334,11 +343,17 @@ const LoadNewProduct = () => {
       Number.isNaN(Number(cantidad)) ||
       Number(cantidad) <= 0
     ) {
-      Swal.fire("Atención", "Debes seleccionar un subproducto, una cantidad válida y una unidad", "warning");
+      Swal.fire(
+        "Atención",
+        "Debes seleccionar un subproducto, una cantidad válida y una unidad",
+        "warning"
+      );
       return;
     }
 
-    const existe = subproductos.some((sp) => sp.subproductId === selectedSubproducto.value);
+    const existe = subproductos.some(
+      (sp) => sp.subproductId === selectedSubproducto.value
+    );
     if (existe) {
       Swal.fire("Atención", "Ese subproducto ya fue agregado.", "warning");
       return;
@@ -346,7 +361,7 @@ const LoadNewProduct = () => {
 
     setSubproductos((prev) => [
       ...prev,
-      { subproductId: selectedSubproducto.value, quantity: Number(cantidad), unit: unidad }, // quantity número
+      { subproductId: selectedSubproducto.value, quantity: Number(cantidad), unit: unidad },
     ]);
     setSelectedSubproducto(null);
     setCantidad("");
@@ -378,7 +393,11 @@ const LoadNewProduct = () => {
             setSubproductos(updated);
             Swal.fire("Eliminado", "Subproducto eliminado correctamente.", "success");
           } else {
-            Swal.fire("Error", data.message || "Error al eliminar subproducto.", "error");
+            Swal.fire(
+              "Error",
+              data.message || "Error al eliminar subproducto.",
+              "error"
+            );
           }
         } catch (err) {
           console.error("Error al eliminar subproducto:", err);
@@ -396,23 +415,21 @@ const LoadNewProduct = () => {
     <div>
       <Navbar />
 
-      {/* Estilos en línea para: 1) ocultar flechas de inputs number, 2) remarcar errores, 3) asteriscos */}
       <style>{`
-        /* Ocultar flechas en Chrome, Safari, Edge */
         input[type=number]::-webkit-outer-spin-button,
         input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-        /* Ocultar flechas en Firefox */
         input[type=number] { -moz-appearance: textfield; }
-        /* Borde rojo para inputs con error */
         .input-error { border: 2px solid #dc3545 !important; outline: none; }
         .input-error:focus { box-shadow: 0 0 0 3px rgba(220,53,69,.25); }
         .label-error { color: #dc3545; }
-        /* Asterisco de requerido */
         .required-asterisk { color: #dc3545; margin-left: 4px; }
       `}</style>
 
       <div style={{ margin: "20px" }}>
-        <button className="boton-volver" onClick={() => navigate("/product-configuration")}>
+        <button
+          className="boton-volver"
+          onClick={() => navigate("/product-configuration")}
+        >
           ⬅ Volver
         </button>
       </div>
@@ -435,7 +452,8 @@ const LoadNewProduct = () => {
 
             <div className="form-group name-row">
               <label className={errors.nombre ? "label-error" : undefined}>
-                Nombre del Producto<span className="required-asterisk">*</span>
+                Nombre del Producto
+                <span className="required-asterisk">*</span>
               </label>
               <input
                 type="text"
@@ -509,6 +527,18 @@ const LoadNewProduct = () => {
               </select>
             </div>
 
+            <div className="form-group">
+              <label>Unidad de venta</label>
+              <select
+                name="unit_measure"
+                value={productData.unit_measure}
+                onChange={handleChange}
+              >
+                <option value="UN">UNIDAD</option>
+                <option value="KG">KG</option>
+              </select>
+            </div>
+
             <div className="form-group span-2">
               <fieldset className="radio-group">
                 <legend>Tipo de Producto</legend>
@@ -553,17 +583,34 @@ const LoadNewProduct = () => {
                 <Select
                   classNamePrefix="react-select"
                   value={selectedSubproducto}
-                  onChange={(opt) => setSelectedSubproducto(opt)}
+                  onChange={(opt) => {
+                    setSelectedSubproducto(opt);
+                    if (opt) {
+                      const prod = allProducts.find(
+                        (p) => p.id.toString() === opt.value
+                      );
+                      if (prod && prod.unit_measure) {
+                        const base = String(prod.unit_measure).toUpperCase();
+                        setUnidad(base === "KG" ? "kg" : "unidad");
+                      } else {
+                        setUnidad("kg");
+                      }
+                    } else {
+                      setUnidad("kg");
+                    }
+                  }}
                   options={productOptions}
                   placeholder="Buscar subproducto..."
                   isClearable
                 />
               </div>
 
+              {/* 👇 Bloqueado cuando hay un subproducto seleccionado */}
               <select
                 className="subproduct-unit"
                 value={unidad}
                 onChange={(e) => setUnidad(e.target.value)}
+                disabled={!!selectedSubproducto}
               >
                 <option value="kg">KG</option>
                 <option value="unidad">UNIDAD</option>
@@ -605,7 +652,11 @@ const LoadNewProduct = () => {
                         <FontAwesomeIcon
                           icon={faTrash}
                           onClick={() => eliminarSubproducto(globalIndex, item)}
-                          style={{ cursor: "pointer", marginLeft: "10px", color: "#dc3545" }}
+                          style={{
+                            cursor: "pointer",
+                            marginLeft: "10px",
+                            color: "#dc3545",
+                          }}
                         />
                       </li>
                     );
@@ -653,3 +704,4 @@ const LoadNewProduct = () => {
 };
 
 export default LoadNewProduct;
+

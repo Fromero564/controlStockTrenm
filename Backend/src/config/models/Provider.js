@@ -48,6 +48,12 @@ module.exports = (sequelize, dataTypes) => {
             type: dataTypes.STRING(255),
             allowNull: false
         },
+        provider_state: {
+            type: dataTypes.BOOLEAN,
+            allowNull: false,
+            defaultValue: true,
+        },
+
 
     };
 

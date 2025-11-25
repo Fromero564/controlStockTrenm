@@ -40,9 +40,11 @@ const AvailableStockOrders = () => {
         ]);
 
         const headersAll = Array.isArray(hJson) ? hJson : [];
+        // Solo pedidos NO chequeados
         const headersUnchecked = headersAll.filter((h) => h?.order_check === false);
 
         const uncheckedIds = new Set(headersUnchecked.map((h) => h.id));
+
         const orderLinesAll = Array.isArray(oJson) ? oJson : [];
         const orderLinesUnchecked = orderLinesAll.filter((l) =>
           uncheckedIds.has(l.order_id)
@@ -51,7 +53,8 @@ const AvailableStockOrders = () => {
         setStock(Array.isArray(sJson) ? sJson : []);
         setOrderHeaders(headersUnchecked);
         setOrders(orderLinesUnchecked);
-      } catch {
+      } catch (error) {
+        console.error("Error cargando disponibilidad:", error);
         setStock([]);
         setOrders([]);
         setOrderHeaders([]);
@@ -59,6 +62,7 @@ const AvailableStockOrders = () => {
         setLoading(false);
       }
     };
+
     loadAll();
   }, []);
 
@@ -66,37 +70,69 @@ const AvailableStockOrders = () => {
     if (v === null || v === undefined) return 0;
     if (typeof v === "number") return v;
     const n = parseFloat(String(v).replace(",", "."));
-    return isNaN(n) ? 0 : n;
+    return Number.isNaN(n) ? 0 : n;
   };
 
+  // Agrego demanda en KG y en UN por producto
   const ordersAgg = useMemo(() => {
     const map = new Map();
+
     for (const line of orders) {
       const key = String(line.product_cod ?? line.product_id ?? line.product_name);
-      const prev = map.get(key) || { demand: 0, unit: "", count: 0 };
-      map.set(key, {
-        demand: prev.demand + toNumber(line.cantidad),
-        unit: prev.unit || line.tipo_medida || "",
+      const prev = map.get(key) || { demandKG: 0, demandUN: 0, count: 0 };
+
+      const qty = toNumber(line.cantidad);
+      const unit = String(line.tipo_medida || "").toUpperCase();
+
+      const next = {
+        demandKG: prev.demandKG,
+        demandUN: prev.demandUN,
         count: prev.count + 1,
-      });
+      };
+
+      if (unit === "KG") {
+        next.demandKG += qty;
+      } else {
+        // cualquier cosa que no sea KG la tomamos como unidad
+        next.demandUN += qty;
+      }
+
+      map.set(key, next);
     }
+
     return map;
   }, [orders]);
 
   const rows = useMemo(() => {
     const list = stock.map((p) => {
       const code = String(p.product_cod ?? p.id ?? p.product_name);
-      const agg = ordersAgg.get(code) || { demand: 0, unit: "", count: 0 };
+      const agg = ordersAgg.get(code) || { demandKG: 0, demandUN: 0, count: 0 };
 
       const productName = p.product_name;
-      const stockQty = toNumber(p.product_quantity);
-      const demand = toNumber(agg.demand);
-      const existence = stockQty - demand;
 
-      const unit = agg.unit || (p.product_category === "PRINCIPAL" ? "UN" : "KG");
+      // unidad base del producto (UN o KG) viene desde products_available.unit_measure
+      const baseUnit = String(p.unit_type || p.unit_measure || "UN").toUpperCase();
+      const unit = baseUnit === "KG" ? "KG" : "UN";
+
+      // STOCK:
+      // - si unidad es KG → usamos product_total_weight
+      // - si unidad es UN → usamos product_quantity
+      const stockQty =
+        unit === "KG"
+          ? toNumber(p.product_total_weight)
+          : toNumber(p.product_quantity);
+
+      // DEMANDA:
+      // - si unidad es KG → usamos demanda en KG
+      // - si unidad es UN → usamos demanda en UN
+      const demand =
+        unit === "KG" ? toNumber(agg.demandKG) : toNumber(agg.demandUN);
+
+      const existence = stockQty - demand;
 
       let statusText = "Stock suficiente";
       let statusTone = "ok";
+
       if (demand > 0) {
         if (existence >= 0) {
           statusText = `Disponible ${existence}`;
@@ -171,7 +207,8 @@ const AvailableStockOrders = () => {
 
     try {
       await patchQty(entry.lineId, newQty);
-    } catch {
+    } catch (error) {
+      console.error("Error actualizando cantidad:", error);
       setOrders(prevOrders);
       setModalRows(prevModal);
       alert("No se pudo actualizar la cantidad en el servidor.");
@@ -200,7 +237,9 @@ const AvailableStockOrders = () => {
       `}</style>
 
       <div className="oa-tabs">
-        <button className="oa-tab" onClick={() => navigate(-1)}>Pedidos</button>
+        <button className="oa-tab" onClick={() => navigate(-1)}>
+          Pedidos
+        </button>
         <button className="oa-tab active">Disponibilidad</button>
       </div>
 
@@ -230,7 +269,9 @@ const AvailableStockOrders = () => {
                   <div className="av-row" key={r.code}>
                     <div className="av-product">{r.productName}</div>
                     <div className="av-center">
-                      <span className={`av-badge ${r.demand > r.stockQty ? "warn" : ""}`}>{r.demand}</span>
+                      <span className={`av-badge ${r.demand > r.stockQty ? "warn" : ""}`}>
+                        {r.demand}
+                      </span>
                     </div>
                     <div className="av-center">
                       <span className="av-badge ok">{r.stockQty}</span>
@@ -258,7 +299,9 @@ const AvailableStockOrders = () => {
           <div className="av-modal" onClick={(e) => e.stopPropagation()}>
             <div className="av-modal-head">
               <div className="av-modal-title">{modalProduct.name}</div>
-              <button className="av-close" onClick={() => setShowModal(false)}>✕</button>
+              <button className="av-close" onClick={() => setShowModal(false)}>
+                ✕
+              </button>
             </div>
 
             {modalRows.length === 0 ? (
@@ -267,13 +310,23 @@ const AvailableStockOrders = () => {
               <div className="av-modal-list">
                 {modalRows.map((r) => (
                   <div className="av-modal-item" key={r.lineId}>
-                    <div>{r.client} — Comp. {r.orderId}</div>
+                    <div>
+                      {r.client} — Comp. {r.orderId}
+                    </div>
                     <div className="av-controls">
-                      <button className="av-round" onClick={() => adjustClientQty(r, -1)}>
+                      <button
+                        className="av-round"
+                        type="button"
+                        onClick={() => adjustClientQty(r, -1)}
+                      >
                         <FontAwesomeIcon icon={faMinus} />
                       </button>
                       <div className="av-qty">{r.qty}</div>
-                      <button className="av-round" onClick={() => adjustClientQty(r, +1)}>
+                      <button
+                        className="av-round"
+                        type="button"
+                        onClick={() => adjustClientQty(r, +1)}
+                      >
                         <FontAwesomeIcon icon={faPlus} />
                       </button>
                     </div>
@@ -289,3 +342,4 @@ const AvailableStockOrders = () => {
 };
 
 export default AvailableStockOrders;
+

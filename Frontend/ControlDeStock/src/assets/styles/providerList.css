@@ -42,7 +42,6 @@
 
 /* ===== TABLA ===== */
 .pv-table {
-  /* 9 columnas, anchos generosos y fijos para alinear perfecto */
   --cols: 120px 180px 220px 160px 100px 220px 260px 160px 220px;
   background: #fff;
   border: 1px solid #e5e9f2;
@@ -74,8 +73,7 @@
   display: block;
 }
 
-/* celdas: que no hagan salto de línea para que la grilla no se mueva */
-.pv-row>div {
+.pv-row > div {
   white-space: nowrap;
 }
 
@@ -83,11 +81,6 @@
   padding: 14px;
   border-bottom: 1px solid #eef2f7;
   color: #1f2937;
-}
-
-.pv-num {
-  text-align: right;
-  padding-right: 6px;
 }
 
 /* ===== ACCIONES ===== */
@@ -110,27 +103,23 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, .08);
 }
 
-/* Colores exactos */
 .pv-icon-btn.btn-eye {
   background: #28a745;
 }
 
-/* verde */
 .pv-icon-btn.btn-edit {
   background: #0d6efd;
 }
 
-/* azul */
 .pv-icon-btn.btn-del {
   background: #dc3545;
 }
 
-/* rojo */
 .pv-icon-btn.btn-pdf {
   background: #6c757d;
 }
 
-/* gris */
+/* Hover */
 .pv-icon-btn:hover {
   filter: brightness(.95);
 }
@@ -165,4 +154,36 @@
   padding: 6px 8px;
   background: #fff;
   font-weight: 600;
+}
+
+/* ========================================================= */
+/*                NUEVO: PROVEEDORES INACTIVOS               */
+/* ========================================================= */
+
+/* Fila marcada en rojo suave */
+.inactive-row {
+  background: #ffe6e6 !important;
+  color: #777 !important;
+}
+
+/* Desactivar hover en filas inactivas */
+.inactive-row:hover {
+  background: #ffe6e6 !important;
+}
+
+/* Etiqueta INACTIVO */
+.inactive-badge {
+  background: #ff4d4d;
+  color: #fff;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 6px;
+  font-weight: 700;
+  display: inline-block;
+}
+
+/* Texto apagado */
+.inactive-row div {
+  color: #777 !important;
 }

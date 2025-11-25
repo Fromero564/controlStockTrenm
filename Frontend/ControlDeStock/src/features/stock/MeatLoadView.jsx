@@ -98,6 +98,7 @@ const MeatLoadView = () => {
               </div>
             </div>
 
+            {/* Cortes declarados en el remito */}
             <h3 className="mlv-subtitle">Detalle de Cortes declarados</h3>
             <div className="mlv-tablewrap">
               <table className="mlv-table">
@@ -107,7 +108,9 @@ const MeatLoadView = () => {
                     <th className="mlv-num">Cantidad</th>
                     <th className="mlv-num">Peso declarado (Kg)</th>
                     <th className="mlv-num">Cabezas</th>
-                    <th className="mlv-num">{esManual ? "N° de Tropa" : "N° Romaneo / Código"}</th>
+                    <th className="mlv-num">
+                      {esManual ? "N° de Tropa" : "N° Romaneo / Código"}
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -119,8 +122,8 @@ const MeatLoadView = () => {
                       c.peso_declarado ??
                       "—";
                     const identificador = esManual
-                      ? (c.numero_tropa ?? c.identification_product ?? "—")
-                      : (c.identification_product ?? c.numero_tropa ?? "—");
+                      ? c.numero_tropa ?? c.identification_product ?? "—"
+                      : c.identification_product ?? c.numero_tropa ?? "—";
                     return (
                       <tr key={c.id}>
                         <td>{c.tipo}</td>
@@ -135,6 +138,48 @@ const MeatLoadView = () => {
               </table>
             </div>
 
+            {/* NUEVO: otros productos / congelados declarados en el comprobante */}
+            {(remito.congelados || []).length > 0 && (
+              <>
+                <h3 className="mlv-subtitle">
+                  Otros productos / congelados declarados
+                </h3>
+                <div className="mlv-tablewrap">
+                  <table className="mlv-table">
+                    <thead>
+                      <tr>
+                        <th>Tipo</th>
+                        <th className="mlv-num">Cantidad</th>
+                        <th className="mlv-num">Peso (Kg)</th>
+                        <th className="mlv-num">N° Romaneo / Código</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {remito.congelados.map((c) => {
+                        const pesoCongelado =
+                          c.pesoRomaneo ??
+                          c.peso ??
+                          c.weight ??
+                          c.peso_declarado ??
+                          "—";
+                        return (
+                          <tr key={c.id}>
+                            <td>{c.tipo}</td>
+                            <td className="mlv-num">{c.cantidad}</td>
+                            <td className="mlv-num">{pesoCongelado}</td>
+                            <td className="mlv-num">
+                              {c.identification_product ?? "—"}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+
+            {/* Cortes ingresados manualmente (MeatManualIncome) */}
             {esManual && cortesStock.length > 0 && (
               <>
                 <h3 className="mlv-subtitle">Cortes Ingresados Manualmente</h3>
@@ -173,9 +218,12 @@ const MeatLoadView = () => {
               </>
             )}
 
+            {/* Otros productos manuales (tabla OtherProductManual) */}
             {otrosProductos.length > 0 && (
               <>
-                <h3 className="mlv-subtitle">Otros Productos Congelados (Manual)</h3>
+                <h3 className="mlv-subtitle">
+                  Otros Productos Congelados (Manual)
+                </h3>
                 <div className="mlv-tablewrap">
                   <table className="mlv-table">
                     <thead>
@@ -195,7 +243,9 @@ const MeatLoadView = () => {
                           <td className="mlv-num">{p.product_quantity}</td>
                           <td className="mlv-num">{p.product_net_weight}</td>
                           <td className="mlv-num">{p.product_gross_weight}</td>
-                          <td className="mlv-num">{p.product_portion || "-"}</td>
+                          <td className="mlv-num">
+                            {p.product_portion || "-"}
+                          </td>
                           <td className="mlv-num">{p.decrease}%</td>
                         </tr>
                       ))}
@@ -206,7 +256,9 @@ const MeatLoadView = () => {
             )}
 
             <h3 className="mlv-subtitle">Observación</h3>
-            <div className="mlv-observation">{observacion ? observacion : "—"}</div>
+            <div className="mlv-observation">
+              {observacion ? observacion : "—"}
+            </div>
           </div>
         </div>
       )}

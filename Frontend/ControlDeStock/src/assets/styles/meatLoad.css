@@ -84,11 +84,17 @@
   border-bottom: 1px solid #ccc;
 }
 
+/* FILA INACTIVA */
 .red-row {
-  background-color: rgb(181, 180, 180);
-  color: black;
+  background-color: #ffe0e0; /* rojo suave */
+  color: #444;
 }
 
+.red-row:hover {
+  background-color: #ffd1d1; /* un poco más oscuro al hover */
+}
+
+/* SweetAlert custom popup & botones */
 .custom-popup {
   border-radius: 10px;
   padding: 20px;
@@ -109,6 +115,24 @@
 
 .custom-confirm-button:hover {
   background-color: #860f0f;
+}
+
+/* BOTÓN PARA DAR DE BAJA / DAR DE ALTA */
+.custom-deny-button {
+  background-color: #ffb300; /* amarillo/naranja */
+  color: #4a3000;
+  padding: 10px 20px;
+  border-radius: 5px;
+  font-weight: bold;
+  font-size: 16px;
+  width: 100%;
+  border: none;
+  cursor: pointer;
+  margin: 10px 0;
+}
+
+.custom-deny-button:hover {
+  background-color: #ffa000;
 }
 
 .custom-cancel-button {
@@ -210,6 +234,34 @@
 
 .action-buttons .delete-button:hover {
   background-color: #c9302c;
+}
+
+/* BOTÓN PROC. PRODUCTIVO */
+.process-flag-button {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.process-flag-button.on {
+  background-color: #6c757d; /* apagado / no aparece en proceso productivo */
+  color: #fff;
+}
+
+.process-flag-button.off {
+  background-color: #ffc107; /* pendiente proceso productivo */
+  color: #4a3000;
+}
+
+.process-flag-button:hover {
+  transform: scale(1.05);
 }
 
 /* Tablets (≤1024px) */
