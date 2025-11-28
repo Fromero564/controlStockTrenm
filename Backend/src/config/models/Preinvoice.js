@@ -10,6 +10,7 @@ module.exports = (sequelize, DataTypes) => {
         expected_kg: { type: DataTypes.DECIMAL(12, 3), defaultValue: 0 },
         received_units: { type: DataTypes.DECIMAL(12, 3), defaultValue: 0 },
         received_kg: { type: DataTypes.DECIMAL(12, 3), defaultValue: 0 },
+        missing_units: { type: DataTypes.DECIMAL(12, 3), defaultValue: 0 },
         note: DataTypes.TEXT,
     }, {
         tableName: 'preinvoices',

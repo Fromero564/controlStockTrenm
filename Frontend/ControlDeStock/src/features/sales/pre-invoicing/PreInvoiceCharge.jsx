@@ -126,9 +126,8 @@ export default function PreInvoiceCharge() {
         const tentative = normalized.map((rm) => {
           const label = `#${rm.id} • ${toDDMMYY(rm.created_at)} → ${toDDMMYY(
             rm.delivery_date
-          )} · ${(rm.destinations?.[0] || "s/dest").toUpperCase()} · ${
-            rm.truck_license_plate || "camión?"
-          }`;
+          )} · ${(rm.destinations?.[0] || "s/dest").toUpperCase()} · ${rm.truck_license_plate || "camión?"
+            }`;
           return { value: rm.id, label, meta: rm };
         });
 
@@ -265,9 +264,8 @@ export default function PreInvoiceCharge() {
             roadmapRow.production_date
           )} → ${toDDMMYY(roadmapRow.delivery_date)} · ${(
             header.destination || "s/dest"
-          ).toUpperCase()} · ${
-            roadmapRow.truck_license_plate || "camión?"
-          }`;
+          ).toUpperCase()} · ${roadmapRow.truck_license_plate || "camión?"
+            }`;
           const option = { value: roadmapRow.roadmap_id, label };
           setSelectedRoadmaps([option]);
           setAllRoadmapOptions((prev) => {
@@ -383,7 +381,7 @@ export default function PreInvoiceCharge() {
           label: c.client_name || c.name || `ID ${c.id}`,
         }));
         setClientsOptions(opts);
-      } catch {}
+      } catch { }
     })();
   }, []);
 
@@ -434,8 +432,8 @@ export default function PreInvoiceCharge() {
     const editIdx =
       to === "client"
         ? entries.findIndex(
-            (e) => e.type === "client" && e.client_name === targetName
-          )
+          (e) => e.type === "client" && e.client_name === targetName
+        )
         : entries.findIndex((e) => e.type === "stock");
     const others = entries.filter((_, i) => i !== editIdx);
     const othersU = others.reduce((a, e) => a + Number(e.units || 0), 0);
@@ -534,10 +532,10 @@ export default function PreInvoiceCharge() {
         const idx =
           payload.to === "client"
             ? list.findIndex(
-                (e) =>
-                  e.type === "client" &&
-                  e.client_name === payload.client_name
-              )
+              (e) =>
+                e.type === "client" &&
+                e.client_name === payload.client_name
+            )
             : list.findIndex((e) => e.type === "stock");
 
         let newList = [...list];
@@ -657,7 +655,7 @@ export default function PreInvoiceCharge() {
         >
           <div style={{ flexGrow: 1 }}>
             <h1 className="charge-title" style={{ margin: 0 }}>
-              {title} {isReadOnly && <span style={{fontSize:12,color:"#6b7280"}}>(solo lectura)</span>}
+              {title} {isReadOnly && <span style={{ fontSize: 12, color: "#6b7280" }}>(solo lectura)</span>}
             </h1>
             {!isEditMode && (
               <div
@@ -832,6 +830,7 @@ export default function PreInvoiceCharge() {
                                 <th style={{ textAlign: "right", padding: "8px 10px" }}>UNI.RECEP</th>
                                 <th style={{ textAlign: "right", padding: "8px 10px" }}>KG REM</th>
                                 <th style={{ textAlign: "right", padding: "8px 10px" }}>KG RECEP</th>
+                                <th style={{ textAlign: "right", padding: "8px 10px" }}>MERMA</th>
                                 <th style={{ textAlign: "right", padding: "8px 10px" }}>P. UNIT</th>
                                 <th style={{ textAlign: "right", padding: "8px 10px" }}>TOTAL</th>
                               </tr>
@@ -856,6 +855,8 @@ export default function PreInvoiceCharge() {
                                   Number(rec.units || 0) < Number(it.qty || it.expected_units || 0);
                                 const warnKg =
                                   Number(rec.kg || 0) < Number(it.net_weight || it.expected_kg || 0);
+                                const expectedUnits = Number(it.qty ?? it.expected_units ?? 0);
+                                const mermaUnits = Math.max(0, expectedUnits - Number(rec.units || 0));
 
                                 return (
                                   <tr key={it.id} style={{ borderTop: "1px solid #eef2f7" }}>
@@ -898,6 +899,12 @@ export default function PreInvoiceCharge() {
                                         style={{ width: 110, textAlign: "right" }}
                                       />
                                     </td>
+
+                                    {/* MERMA */}
+                                    <td style={{ padding: "8px 10px", textAlign: "right" }}>
+                                      {mermaUnits.toFixed(0)}
+                                    </td>
+
                                     <td style={{ padding: "8px 10px", textAlign: "right" }}>
                                       {money(it.unit_price)}
                                     </td>
@@ -910,6 +917,7 @@ export default function PreInvoiceCharge() {
                             </tbody>
                           </table>
                         </div>
+
                       </div>
 
                       {shortages.length > 0 && (

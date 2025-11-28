@@ -964,122 +964,152 @@ const saleApiController = {
             return res.status(500).json({ ok: false, msg: "Error al encontrar los productos" });
         }
     },
-    generateSalesOrder: async (req, res) => {
-        const { id } = req.params;
+generateSalesOrder: async (req, res) => {
+  const { id } = req.params;
 
-        // Usá tu helper si ya lo tenés definido globalmente
-        const toNumber = (v) => {
-            const n = parseFloat(String(v ?? "").replace(",", "."));
-            return isNaN(n) ? 0 : n;
-        };
+  const toNumber = (v) => {
+    const n = parseFloat(String(v ?? "").replace(",", "."));
+    return isNaN(n) ? 0 : n;
+  };
 
-        const t = await sequelize.transaction();
-        try {
-            const header = await NewOrder.findByPk(id, { transaction: t });
-            if (!header) {
-                await t.rollback();
-                return res.status(404).json({ ok: false, msg: "Orden no encontrada" });
-            }
+  const t = await sequelize.transaction();
+  try {
+    const header = await NewOrder.findByPk(id, { transaction: t });
+    if (!header) {
+      await t.rollback();
+      return res
+        .status(404)
+        .json({ ok: false, msg: "Orden no encontrada" });
+    }
 
-            const lines = await OrderProductClient.findAll({
-                where: { order_id: id },
-                transaction: t
-            });
+    // Productos del pedido (OrderProductClient)
+    const lines = await OrderProductClient.findAll({
+      where: { order_id: id },
+      transaction: t,
+    });
 
-            if (!lines.length) {
-                await t.rollback();
-                return res.status(400).json({ ok: false, msg: "La orden no tiene productos" });
-            }
+    if (!lines.length) {
+      await t.rollback();
+      return res
+        .status(400)
+        .json({ ok: false, msg: "La orden no tiene productos" });
+    }
 
-            const noStock = [];
-            const prepared = [];
+    const noStock = [];
+    const prepared = [];
 
-            for (const ln of lines) {
-                const code = ln.product_cod ?? ln.product_id ?? null;
-                const name = ln.product_name ?? "";
-                const requested = toNumber(ln.cantidad);
-                const price = toNumber(ln.precio);
+    for (const ln of lines) {
+      const code = ln.product_cod ?? ln.product_id ?? null;
+      const name = ln.product_name ?? "";
+      const requested = toNumber(ln.cantidad); // puede ser UN o KG
+      const price = toNumber(ln.precio);
+      const unit = String(ln.tipo_medida || "").toUpperCase() || "UN"; // "KG" o unidades
 
-                // NOTA: seguimos consultando stock para validar, pero NO lo descontamos
-                let stockRow = null;
+      let stockRow = null;
 
-                if (code != null) {
-                    stockRow = await ProductStock.findOne({
-                        where: { product_cod: code },
-                        transaction: t,
-                        // Podés quitar el lock si no vas a actualizar stock
-                        // lock: t.LOCK.UPDATE
-                    });
-                }
-                if (!stockRow) {
-                    stockRow = await ProductStock.findOne({
-                        where: { product_name: name },
-                        transaction: t,
-                        // lock: t.LOCK.UPDATE
-                    });
-                }
+      if (code != null) {
+        stockRow = await ProductStock.findOne({
+          where: { product_cod: code },
+          transaction: t,
+        });
+      }
+      if (!stockRow) {
+        stockRow = await ProductStock.findOne({
+          where: { product_name: name },
+          transaction: t,
+        });
+      }
 
-                const available = toNumber(stockRow?.product_quantity);
-
-                if (!stockRow || available <= 0) {
-                    noStock.push({ product_id: code, product_name: name });
-                    continue;
-                }
-
-                // Si querés seguir “capando” al disponible, mantenemos Math.min
-                const sendQty = Math.min(requested, available);
-
-                prepared.push({ ln, stockRow, sendQty, price, code, name, available, requested });
-            }
-
-            if (noStock.length) {
-                await t.rollback();
-                return res.status(400).json({
-                    ok: false,
-                    msg: "Hay productos sin stock, no se puede generar la orden.",
-                    noStock
-                });
-            }
-
-            // Creamos las líneas de la orden de venta, PERO NO tocamos ProductStock
-            for (const item of prepared) {
-                await ProductsSellOrder.create({
-                    sell_order_id: Number(id),
-                    product_id: item.code ?? null,
-                    product_name: item.name,
-                    product_price: item.price,
-                    product_quantity: item.sendQty
-                }, { transaction: t });
-
-                // ⛔️ Eliminado: NO descontamos stock
-                // item.stockRow.product_quantity = Math.max(0, toNumber(item.stockRow.product_quantity) - item.sendQty);
-                // await item.stockRow.save({ transaction: t });
-            }
-
-            // Marcar la orden como chequeada
-            await NewOrder.update(
-                { order_check: true },
-                { where: { id }, transaction: t }
-            );
-
-            await t.commit();
-
-            return res.status(201).json({
-                ok: true,
-                msg: "Orden generada correctamente.",
-                items: prepared.map(p => ({
-                    product_name: p.name,
-                    solicitado: p.requested,
-                    enviado: p.sendQty,
-                    restante_en_stock: Math.max(0, p.available - p.sendQty)
-                }))
-            });
-        } catch (error) {
-            await t.rollback();
-            console.error(error);
-            return res.status(500).json({ ok: false, msg: "Error al generar la orden" });
+      let available = 0;
+      if (stockRow) {
+        if (unit === "KG") {
+          // productos que se trabajan en kilos
+          available = toNumber(stockRow.product_total_weight);
+        } else {
+          // productos por unidad
+          available = toNumber(stockRow.product_quantity);
         }
-    },
+      }
+
+      if (!stockRow || available <= 0 || available < requested) {
+        noStock.push({
+          product_id: code,
+          product_name: name,
+          unit,
+          requested,
+          available,
+        });
+        continue;
+      }
+
+      const sendQty = requested; // vendemos lo pedido (ya validado que hay stock)
+
+      prepared.push({
+        ln,
+        stockRow,
+        sendQty,
+        price,
+        code,
+        name,
+        available,
+        requested,
+        unit,
+      });
+    }
+
+    if (noStock.length) {
+      await t.rollback();
+      return res.status(400).json({
+        ok: false,
+        msg: "Hay productos sin stock, no se puede generar la orden.",
+        noStock,
+      });
+    }
+
+    // Crear líneas de la orden de venta (NO descontamos stock acá)
+    for (const item of prepared) {
+      await ProductsSellOrder.create(
+        {
+          sell_order_id: Number(id),
+          product_id: item.code ?? null,
+          product_name: item.name,
+          product_price: item.price,
+          product_quantity: item.sendQty, // unidades o kg, según tipo_medida
+          tipo_medida: item.unit, // "KG" o unidades
+        },
+        { transaction: t }
+      );
+    }
+
+    // Marcar la orden como chequeada
+    await NewOrder.update(
+      { order_check: true },
+      { where: { id }, transaction: t }
+    );
+
+    await t.commit();
+
+    return res.status(201).json({
+      ok: true,
+      msg: "Orden generada correctamente.",
+      items: prepared.map((p) => ({
+        product_name: p.name,
+        unidad: p.unit,
+        solicitado: p.requested,
+        enviado: p.sendQty,
+        restante_en_stock: Math.max(0, p.available - p.sendQty),
+      })),
+    });
+  } catch (error) {
+    await t.rollback();
+    console.error(error);
+    return res
+      .status(500)
+      .json({ ok: false, msg: "Error al generar la orden" });
+  }
+},
+
+
 
     updateOrder: async (req, res) => {
         const { id } = req.params;
@@ -1455,20 +1485,113 @@ const saleApiController = {
     },
 
 
-    setOrderWeightChecked: async (req, res) => {
-        try {
-            const { id } = req.params;
-            const [updated] = await NewOrder.update(
-                { order_weight_check: true },
-                { where: { id } }
-            );
-            if (!updated) return res.status(404).json({ ok: false, msg: "Orden no encontrada" });
-            return res.json({ ok: true, msg: "Orden marcada como pesada" });
-        } catch (e) {
-            console.error(e);
-            return res.status(500).json({ ok: false, msg: "Error al marcar como pesada" });
+   setOrderWeightChecked: async (req, res) => {
+    const t = await sequelize.transaction();
+    try {
+        const { id } = req.params;
+
+        // 1) Buscar la orden
+        const order = await NewOrder.findByPk(id, { transaction: t });
+        if (!order) {
+            await t.rollback();
+            return res.status(404).json({ ok: false, msg: "Orden no encontrada" });
         }
-    },
+
+        // Si ya estaba pesada, no vuelvas a descontar stock
+        if (order.order_weight_check === true) {
+            await t.rollback();
+            return res
+                .status(400)
+                .json({ ok: false, msg: "La orden ya estaba marcada como pesada." });
+        }
+
+        // 2) Traer líneas de la orden de venta
+        const lines = await ProductsSellOrder.findAll({
+            where: { sell_order_id: id },
+            order: [["id", "ASC"]],
+            transaction: t,
+        });
+
+        // 3) Por cada producto, sumar lo pesado y descontar stock
+        for (const l of lines) {
+            const headers = await CutsHeader.findAll({
+                where: { receipt_number: id, product_code: String(l.product_id) },
+                include: [{ model: CutsDetail, as: "details" }],
+                order: [["id", "ASC"]],
+                transaction: t,
+            });
+
+            let qtyRequestedTotal = 0;
+            let netWeight = 0;
+
+            for (const h of headers) {
+                qtyRequestedTotal += Number(h.qty_requested || 0);
+                for (const d of (h.details || [])) {
+                    netWeight += Number(d.net_weight || 0);
+                }
+            }
+
+            const qty = qtyRequestedTotal;
+            const netKg = netWeight;
+
+            // Si no hay nada pesado para ese producto, sigo con el siguiente
+            if (qty === 0 && netKg === 0) continue;
+
+            // ------- Buscar stock -------
+            let stockRow = null;
+            if (l.product_id != null) {
+                stockRow = await ProductStock.findOne({
+                    where: { product_cod: String(l.product_id) },
+                    transaction: t,
+                    lock: t.LOCK.UPDATE,
+                });
+            }
+            if (!stockRow) {
+                stockRow = await ProductStock.findOne({
+                    where: { product_name: l.product_name },
+                    transaction: t,
+                    lock: t.LOCK.UPDATE,
+                });
+            }
+
+            if (!stockRow) {
+                await t.rollback();
+                return res.status(400).json({
+                    ok: false,
+                    msg: `No existe stock para ${l.product_name} (id ${l.product_id ?? "-"})`,
+                });
+            }
+
+            const currentQty = Number(stockRow.product_quantity || 0);
+            const currentKilos = Number(stockRow.product_total_weight || 0);
+
+            const newQty = Math.max(0, currentQty - qty);
+            const newKilos = Math.max(0, currentKilos - netKg);
+
+            await stockRow.update(
+                { product_quantity: newQty, product_total_weight: newKilos },
+                { transaction: t }
+            );
+        }
+
+        // 4) Marcar la orden como pesada
+        await order.update({ order_weight_check: true }, { transaction: t });
+
+        await t.commit();
+        return res.json({
+            ok: true,
+            msg: "Orden marcada como pesada y stock actualizado.",
+        });
+    } catch (e) {
+        console.error(e);
+        try { await t.rollback(); } catch (_) {}
+        return res.status(500).json({
+            ok: false,
+            msg: "Error al marcar como pesada / actualizar stock",
+        });
+    }
+},
+
 
     getOrderHeaderForWeighing: async (req, res) => {
         try {
@@ -1916,161 +2039,169 @@ const saleApiController = {
     },
 
 
-    createRemitFromOrder: async (req, res) => {
-        const t = await sequelize.transaction();
-        try {
-            const { id } = req.params;
-            const note = (req.body?.note ?? null);
+   createRemitFromOrder: async (req, res) => {
+    const t = await sequelize.transaction();
+    try {
+        const { id } = req.params;
+        const note = (req.body?.note ?? null);
 
-            // Evitar duplicado
-            const exists = await FinalRemit.findOne({
-                where: { order_id: id },
+        // Evitar duplicado
+        const exists = await FinalRemit.findOne({
+            where: { order_id: id },
+            transaction: t,
+            lock: t.LOCK.UPDATE,
+        });
+        if (exists) {
+            await t.rollback();
+            return res.status(400).json({ ok: false, msg: "La orden ya está remitada" });
+        }
+
+        const order = await NewOrder.findByPk(id, { transaction: t });
+        if (!order) {
+            await t.rollback();
+            return res.status(404).json({ ok: false, msg: "Orden no encontrada" });
+        }
+
+        // Header
+        const remit = await FinalRemit.create({
+            order_id: order.id,
+            receipt_number: order.id,
+            client_name: order.client_name,
+            salesman_name: order.salesman_name,
+            price_list: order.price_list,
+            sell_condition: order.sell_condition,
+            payment_condition: order.payment_condition,
+            generated_by: "system",
+            note,
+            total_items: 0,
+            total_amount: 0,
+        }, { transaction: t });
+
+        // Detalle
+        const lines = await ProductsSellOrder.findAll({
+            where: { sell_order_id: id },
+            order: [["id", "ASC"]],
+            transaction: t,
+        });
+
+        const detailRows = [];
+        let totalItems = 0;
+        let totalAmount = 0;
+
+        for (const l of lines) {
+            const unit_price = Number(l.product_price || 0);
+
+            const priceRow = await PriceListProduct.findOne({
+                where: { product_id: String(l.product_id) },
+                order: [["id", "ASC"]],
                 transaction: t,
-                lock: t.LOCK.UPDATE,
             });
-            if (exists) {
-                await t.rollback();
-                return res.status(400).json({ ok: false, msg: "La orden ya está remitada" });
-            }
+            const unit_measure = priceRow?.unidad_venta || null;
+            const isKG = String(unit_measure || "").toUpperCase() === "KG";
 
-            const order = await NewOrder.findByPk(id, { transaction: t });
-            if (!order) {
-                await t.rollback();
-                return res.status(404).json({ ok: false, msg: "Orden no encontrada" });
-            }
-
-            // Header
-            const remit = await FinalRemit.create({
-                order_id: order.id,
-                receipt_number: order.id,
-                client_name: order.client_name,
-                salesman_name: order.salesman_name,
-                price_list: order.price_list,
-                sell_condition: order.sell_condition,
-                payment_condition: order.payment_condition,
-                generated_by: "system",
-                note,
-                total_items: 0,
-                total_amount: 0,
-            }, { transaction: t });
-
-            // Detalle
-            const lines = await ProductsSellOrder.findAll({
-                where: { sell_order_id: id },
+            const headers = await CutsHeader.findAll({
+                where: { receipt_number: id, product_code: String(l.product_id) },
+                include: [{ model: CutsDetail, as: "details" }],
                 order: [["id", "ASC"]],
                 transaction: t,
             });
 
-            const detailRows = [];
-            let totalItems = 0;
-            let totalAmount = 0;
+            let qty_requested_total = 0;
+            let net_weight = 0;
+            let gross_weight = 0;
+            let units_count = 0;
 
-            for (const l of lines) {
-                const unit_price = Number(l.product_price || 0);
-
-                const priceRow = await PriceListProduct.findOne({
-                    where: { product_id: String(l.product_id) },
-                    order: [["id", "ASC"]],
-                    transaction: t,
-                });
-                const unit_measure = priceRow?.unidad_venta || null;
-                const isKG = String(unit_measure || "").toUpperCase() === "KG";
-
-                const headers = await CutsHeader.findAll({
-                    where: { receipt_number: id, product_code: String(l.product_id) },
-                    include: [{ model: CutsDetail, as: "details" }],
-                    order: [["id", "ASC"]],
-                    transaction: t,
-                });
-
-                let qty_requested_total = 0;
-                let net_weight = 0;
-                let gross_weight = 0;
-                let units_count = 0;
-
-                for (const h of headers) {
-                    qty_requested_total += Number(h.qty_requested || 0);
-                    for (const d of (h.details || [])) {
-                        units_count += Number(d.units_count || 0);
-                        gross_weight += Number(d.gross_weight || 0);
-                        net_weight += Number(d.net_weight || 0);
-                    }
+            for (const h of headers) {
+                qty_requested_total += Number(h.qty_requested || 0);
+                for (const d of (h.details || [])) {
+                    units_count += Number(d.units_count || 0);
+                    gross_weight += Number(d.gross_weight || 0);
+                    net_weight += Number(d.net_weight || 0);
                 }
-
-                const qty = qty_requested_total;
-                const avg_weight = units_count > 0 ? net_weight / units_count : 0;
-                const lineTotal = isKG ? unit_price * net_weight : unit_price * qty;
-
-                detailRows.push({
-                    final_remit_id: remit.id,
-                    product_id: l.product_id ?? null,
-                    product_name: l.product_name,
-                    unit_price,
-                    qty,
-                    unit_measure,
-                    gross_weight,
-                    net_weight,
-                    avg_weight,
-                });
-
-                totalItems += qty;
-                totalAmount += lineTotal;
-
-                // 🔥 Actualizar stock
-                let stockRow = null;
-                if (l.product_id != null) {
-                    stockRow = await ProductStock.findOne({
-                        where: { product_cod: String(l.product_id) },
-                        transaction: t,
-                        lock: t.LOCK.UPDATE,
-                    });
-                }
-                if (!stockRow) {
-                    stockRow = await ProductStock.findOne({
-                        where: { product_name: l.product_name },
-                        transaction: t,
-                        lock: t.LOCK.UPDATE,
-                    });
-                }
-
-                if (!stockRow) {
-                    await t.rollback();
-                    return res.status(400).json({
-                        ok: false,
-                        msg: `No existe stock para ${l.product_name} (id ${l.product_id ?? "-"})`,
-                    });
-                }
-
-                const currentQty = Number(stockRow.product_quantity || 0);
-                const currentKilos = Number(stockRow.product_total_weight || 0);
-
-                const newQty = Math.max(0, currentQty - qty);
-                const newKilos = Math.max(0, currentKilos - net_weight);
-
-                await stockRow.update(
-                    { product_quantity: newQty, product_total_weight: newKilos },
-                    { transaction: t }
-                );
             }
 
-            if (detailRows.length) {
-                await FinalRemitProduct.bulkCreate(detailRows, { transaction: t });
+            const qty = qty_requested_total;
+            const avg_weight = units_count > 0 ? net_weight / units_count : 0;
+            const lineTotal = isKG ? unit_price * net_weight : unit_price * qty;
+
+            detailRows.push({
+                final_remit_id: remit.id,
+                product_id: l.product_id ?? null,
+                product_name: l.product_name,
+                unit_price,
+                qty,
+                unit_measure,
+                gross_weight,
+                net_weight,
+                avg_weight,
+            });
+
+            totalItems += qty;
+            totalAmount += lineTotal;
+
+            /*
+            // 🔥 Actualizar stock (ANTES se descontaba cuando se generaba el remito)
+            // Ahora lo vas a hacer desde OrderWeight, así que dejamos esto comentado.
+
+            let stockRow = null;
+            if (l.product_id != null) {
+                stockRow = await ProductStock.findOne({
+                    where: { product_cod: String(l.product_id) },
+                    transaction: t,
+                    lock: t.LOCK.UPDATE,
+                });
+            }
+            if (!stockRow) {
+                stockRow = await ProductStock.findOne({
+                    where: { product_name: l.product_name },
+                    transaction: t,
+                    lock: t.LOCK.UPDATE,
+                });
             }
 
-            // Totales del header
-            await remit.update({
+            if (!stockRow) {
+                await t.rollback();
+                return res.status(400).json({
+                    ok: false,
+                    msg: `No existe stock para ${l.product_name} (id ${l.product_id ?? "-"})`,
+                });
+            }
+
+            const currentQty = Number(stockRow.product_quantity || 0);
+            const currentKilos = Number(stockRow.product_total_weight || 0);
+
+            const newQty = Math.max(0, currentQty - qty);
+            const newKilos = Math.max(0, currentKilos - net_weight);
+
+            await stockRow.update(
+                { product_quantity: newQty, product_total_weight: newKilos },
+                { transaction: t }
+            );
+            */
+        }
+
+        if (detailRows.length) {
+            await FinalRemitProduct.bulkCreate(detailRows, { transaction: t });
+        }
+
+        // Totales del header
+        await remit.update(
+            {
                 total_items: totalItems,
                 total_amount: totalAmount,
-            }, { transaction: t });
+            },
+            { transaction: t }
+        );
 
-            await t.commit();
-            return res.json({ ok: true, remit_id: remit.id });
-        } catch (err) {
-            console.error("createRemitFromOrder error:", err);
-            try { await t.rollback(); } catch (_) { }
-            return res.status(500).json({ ok: false, msg: "Error al generar remito" });
-        }
-    },
+        await t.commit();
+        return res.json({ ok: true, remit_id: remit.id });
+    } catch (err) {
+        console.error("createRemitFromOrder error:", err);
+        try { await t.rollback(); } catch (_) { }
+        return res.status(500).json({ ok: false, msg: "Error al generar remito" });
+    }
+},
+
 
 
     // ===== DESTINOS =====
@@ -3772,71 +3903,101 @@ deleteRoadmap: async (req, res) => {
     },
 
     // POST /preinvoices/save/by-roadmaps
-    // body: { roadmap_ids:[...], items:[ { item_id, units_received, kg_received }, ... ] }
-    // Guarda recepción (UNI.RECEP / KG RECEP) en Preinvoice, igual que savePreinvoice pero para varias hojas
-    savePreinvoiceByRoadmapIds: async (req, res) => {
-        const t = await sequelize.transaction();
-        try {
-            const { roadmap_ids = [], items = [] } = req.body || {};
+   // body: { roadmap_ids:[...], items:[ { item_id, units_received, kg_received }, ... ] }
+// Guarda recepción (UNI.RECEP / KG RECEP) en Preinvoice y calcula merma (missing_units)
+savePreinvoiceByRoadmapIds: async (req, res) => {
+  const t = await sequelize.transaction();
+  try {
+    const { roadmap_ids = [], items = [] } = req.body || {};
 
-            if (!Array.isArray(roadmap_ids) || roadmap_ids.length === 0) {
-                await t.rollback();
-                return res.status(400).json({ ok: false, msg: "Faltan roadmap_ids" });
-            }
+    if (!Array.isArray(roadmap_ids) || roadmap_ids.length === 0) {
+      await t.rollback();
+      return res
+        .status(400)
+        .json({ ok: false, msg: "Faltan roadmap_ids" });
+    }
 
-            // Por cada item recibido actualizamos / creamos la fila de Preinvoice (misma lógica que savePreinvoice) 
-            for (const row of items) {
-                const { item_id, units_received = 0, kg_received = 0 } = row;
+    // Por cada item recibido actualizamos / creamos la fila de Preinvoice
+    for (const row of items) {
+      const { item_id, units_received = 0, kg_received = 0 } = row || {};
+      if (!item_id) continue;
 
-                // Busco el producto en el remito final
-                const frItem = await FinalRemitProduct.findOne({
-                    where: { id: item_id },
-                    transaction: t,
-                });
-                if (!frItem) continue;
+      // Busco el producto en el remito final
+      const frItem = await FinalRemitProduct.findOne({
+        where: { id: item_id },
+        transaction: t,
+      });
+      if (!frItem) continue;
 
-                const expUnits = Number(frItem.qty || 0);
-                const expKg = Number(frItem.net_weight || 0);
+      const expUnits = Number(frItem.qty || 0);
+      const expKg = Number(frItem.net_weight || 0);
 
-                // upsert en Preinvoice para ese item
-                let pre = await Preinvoice.findOne({
-                    where: { final_remit_item_id: item_id },
-                    transaction: t,
-                });
+      const recUnits = Number(units_received || 0);
+      const recKg = Number(kg_received || 0);
 
-                if (!pre) {
-                    pre = await Preinvoice.create(
-                        {
-                            receipt_number: null,
-                            final_remit_id: frItem.final_remit_id,
-                            final_remit_item_id: item_id,
-                            product_id: frItem.product_id,
-                            product_name: frItem.product_name,
-                            unit_measure: frItem.unit_measure,
-                            expected_units: expUnits,
-                            expected_kg: expKg,
-                            received_units: Number(units_received || 0),
-                            received_kg: Number(kg_received || 0),
-                        },
-                        { transaction: t }
-                    );
-                } else {
-                    pre.received_units = Number(units_received || 0);
-                    pre.received_kg = Number(kg_received || 0);
-                    await pre.save({ transaction: t });
-                }
-            }
+      // MERMA en unidades = esperadas - recibidas (no negativa)
+      const missUnits = Math.max(0, expUnits - recUnits);
 
-            await t.commit();
-            return res.status(201).json({ ok: true, msg: "Prefacturación guardada (by-roadmaps)" });
-        } catch (e) {
-            console.error(e);
-            try { await t.rollback(); } catch {}
-            return res
-                .status(500)
-                .json({ ok: false, msg: "Error al guardar prefacturación (by-roadmaps)" });
-        }
-    },
+      // upsert en Preinvoice para ese item
+      let pre = await Preinvoice.findOne({
+        where: { final_remit_item_id: item_id },
+        transaction: t,
+      });
+
+      if (!pre) {
+        // CREATE
+        pre = await Preinvoice.create(
+          {
+            receipt_number: null,
+            final_remit_id: frItem.final_remit_id,
+            final_remit_item_id: item_id,
+            product_id: frItem.product_id,
+            product_name: frItem.product_name,
+            unit_measure: frItem.unit_measure,
+
+            // esperados desde el remito
+            expected_units: expUnits,
+            expected_kg: expKg,
+
+            // recibidos
+            received_units: recUnits,
+            received_kg: recKg,
+
+            // MERMA guardada
+            missing_units: missUnits,
+          },
+          { transaction: t }
+        );
+      } else {
+        // UPDATE: solo recibidos y merma, NO tocamos expected_*
+        pre.received_units = recUnits;
+        pre.received_kg = recKg;
+
+        const baseExpUnits = Number(
+          pre.expected_units != null ? pre.expected_units : expUnits
+        );
+        pre.missing_units = Math.max(0, baseExpUnits - recUnits);
+
+        await pre.save({ transaction: t });
+      }
+    }
+
+    await t.commit();
+    return res
+      .status(201)
+      .json({ ok: true, msg: "Prefacturación guardada (by-roadmaps)" });
+  } catch (e) {
+    console.error("savePreinvoiceByRoadmapIds:", e);
+    try {
+      await t.rollback();
+    } catch {}
+    return res.status(500).json({
+      ok: false,
+      msg: "Error al guardar prefacturación (by-roadmaps)",
+    });
+  }
+},
+
 
     // POST /preinvoices/redirect/by-roadmaps
     // body: {
@@ -4850,88 +5011,130 @@ getPreinvoiceEditPayloadByReceipt: async (req, res) => {
 // =========================
 // PREFAC - GUARDAR EDICIÓN POR RECIBO
 // =========================
+// PUT /preinvoices/edit/by-receipt/:receipt
+// body: { items:[{ id, received_units, received_kg }], returns:[...] }
 savePreinvoiceEditsByReceipt: async (req, res) => {
   const { receipt } = req.params;
   const { items = [], returns = null } = req.body || {};
-  if (!receipt) return res.status(400).json({ ok: false, msg: "Falta receipt" });
+
+  if (!receipt) {
+    return res
+      .status(400)
+      .json({ ok: false, msg: "Falta receipt" });
+  }
+
+  if (!Array.isArray(items) || items.length === 0) {
+    return res
+      .status(400)
+      .json({ ok: false, msg: "Faltan items a actualizar" });
+  }
+
+  const t = await sequelize.transaction();
 
   try {
-    const models = require("../database/models");
-    const { Preinvoice, PreinvoiceReturn, sequelize } = models;
+    let updatedCount = 0;
 
-    if (!Array.isArray(items) || items.length === 0) {
-      return res.status(400).json({ ok: false, msg: "Faltan items a actualizar" });
-    }
+    // Actualizo recibidos + merma por cada línea
+    for (const it of items) {
+      if (!it || !it.id) continue;
 
-    const t = await sequelize.transaction();
+      const payload = {};
+      let newRecUnits = null;
 
-    try {
-      let updatedCount = 0;
-
-      for (const it of items) {
-        if (!it?.id) continue;
-        const payload = {};
-        if (typeof it.received_units !== "undefined")
-          payload.received_units = Number(it.received_units) || 0;
-        if (typeof it.received_kg !== "undefined")
-          payload.received_kg = Number(it.received_kg) || 0;
-
-        if (Object.keys(payload).length > 0) {
-          const [aff] = await Preinvoice.update(payload, {
-            where: { id: it.id, receipt_number: receipt },
-            transaction: t,
-          });
-          updatedCount += Number(aff || 0);
-        }
+      if (typeof it.received_units !== "undefined") {
+        newRecUnits = Number(it.received_units) || 0;
+        payload.received_units = newRecUnits;
       }
 
-      let returnsCreated = 0;
-      if (returns && Array.isArray(returns) && PreinvoiceReturn) {
-        const existing = await Preinvoice.findAll({
-          where: { receipt_number: receipt },
-          attributes: ["id"],
+      if (typeof it.received_kg !== "undefined") {
+        payload.received_kg = Number(it.received_kg) || 0;
+      }
+
+      // Si vino received_units recalculo missing_units = expected_units - received_units
+      if (newRecUnits !== null) {
+        const row = await Preinvoice.findOne({
+          where: { id: it.id, receipt_number: receipt },
+          attributes: ["expected_units"],
           transaction: t,
         });
-        const lineIds = existing.map(r => r.id);
 
-        if (lineIds.length) {
-          await PreinvoiceReturn.destroy({
-            where: { preinvoice_id: lineIds },
-            transaction: t,
-          });
-        }
-
-        if (returns.length) {
-          const toCreate = returns
-            .filter(r => r && r.preinvoice_id && lineIds.includes(Number(r.preinvoice_id)))
-            .map(r => ({
-              preinvoice_id: Number(r.preinvoice_id),
-              client_id: r.client_id || null,
-              client_name: r.client_name || null,
-              units_redirected: Number(r.units_redirected || 0),
-              kg_redirected: Number(r.kg_redirected || 0),
-              reason: r.reason || null,
-            }));
-
-          if (toCreate.length) {
-            const created = await PreinvoiceReturn.bulkCreate(toCreate, { transaction: t });
-            returnsCreated = created.length;
-          }
+        if (row) {
+          const expUnits = Number(row.expected_units || 0);
+          payload.missing_units = Math.max(0, expUnits - newRecUnits);
         }
       }
 
-      await t.commit();
-      return res.json({ ok: true, updated: updatedCount, returns_created: returnsCreated });
-    } catch (err) {
-      await t.rollback();
-      console.error("savePreinvoiceEditsByReceipt TX:", err);
-      return res.status(500).json({ ok: false, msg: "No se pudieron guardar los cambios" });
+      if (Object.keys(payload).length > 0) {
+        const [aff] = await Preinvoice.update(payload, {
+          where: { id: it.id, receipt_number: receipt },
+          transaction: t,
+        });
+        updatedCount += Number(aff || 0);
+      }
     }
-  } catch (e) {
-    console.error("savePreinvoiceEditsByReceipt:", e);
-    return res.status(500).json({ ok: false, msg: "Error al guardar edición" });
+
+    // =============================
+    // Devoluciones (PreinvoiceReturn)
+    // =============================
+    let returnsCreated = 0;
+
+    if (Array.isArray(returns) && returns.length && PreinvoiceReturn) {
+      // Busco las líneas de esta prefactura
+      const existingLines = await Preinvoice.findAll({
+        where: { receipt_number: receipt },
+        attributes: ["id"],
+        transaction: t,
+      });
+
+      const lineIds = existingLines.map((r) => Number(r.id)).filter(Boolean);
+
+      if (lineIds.length) {
+        // Borro devoluciones anteriores
+        await PreinvoiceReturn.destroy({
+          where: { preinvoice_id: { [Op.in]: lineIds } },
+          transaction: t,
+        });
+      }
+
+      const toCreate = returns
+        .filter(
+          (r) =>
+            r &&
+            r.preinvoice_id &&
+            lineIds.includes(Number(r.preinvoice_id))
+        )
+        .map((r) => ({
+          preinvoice_id: Number(r.preinvoice_id),
+          client_id: r.client_id || null,
+          client_name: r.client_name || null,
+          units_redirected: Number(r.units_redirected || 0),
+          kg_redirected: Number(r.kg_redirected || 0),
+          reason: r.reason || null, // "client" / "stock" etc.
+        }));
+
+      if (toCreate.length) {
+        await PreinvoiceReturn.bulkCreate(toCreate, { transaction: t });
+        returnsCreated = toCreate.length;
+      }
+    }
+
+    await t.commit();
+    return res.json({
+      ok: true,
+      updated: updatedCount,
+      returns_created: returnsCreated,
+    });
+  } catch (err) {
+    console.error("savePreinvoiceEditsByReceipt:", err);
+    try {
+      await t.rollback();
+    } catch {}
+    return res
+      .status(500)
+      .json({ ok: false, msg: "No se pudieron guardar los cambios" });
   }
 },
+
 
 // Borrar TODA una prefacturación por número de comprobante (receipt)
 deletePreinvoiceByReceipt: async (req, res) => {

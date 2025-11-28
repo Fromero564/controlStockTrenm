@@ -11,8 +11,15 @@ const API_BASE = (import.meta.env.VITE_API_URL || "").replace(/\/+$/, "");
 
 // Helpers
 const isCaponLike = (name = "") => {
-  const s = (name || "").toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "");
-  return s.includes("capon") || s.includes("capo") || s.includes("media res capon");
+  const s = (name || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "");
+  return (
+    s.includes("capon") ||
+    s.includes("capo") ||
+    s.includes("media res capon")
+  );
 };
 const fmt = (v) => (v === 0 || v ? String(v) : "—");
 const n2 = (v) => Number(v || 0).toFixed(2);
@@ -96,7 +103,11 @@ export default function OrderWeight() {
         autoAddedRef.current = {};
       } catch (e) {
         console.error(e);
-        Swal.fire("Error", e.message || "No se pudieron cargar los datos.", "error");
+        Swal.fire(
+          "Error",
+          e.message || "No se pudieron cargar los datos.",
+          "error"
+        );
       } finally {
         setLoadingHeader(false);
         setLoadingLines(false);
@@ -121,19 +132,16 @@ export default function OrderWeight() {
     loadTares();
   }, []);
 
-  // Cálculos por línea
+  // Cálculos por línea (adaptado a KG / unidades)
   const computedByLine = useMemo(() => {
     const group = {};
     lines.forEach((ln) => {
-      const solicitada = Number(ln.product_quantity || 0);
       const detalles = draft[ln.id] || [];
+      const isKg = String(ln.tipo_medida || "").toUpperCase() === "KG";
 
-      // piezas pesadas = suma de "cant" válidos (>0)
-      const piezasPesadas = detalles.reduce((acc, d) => {
-        const n = Number(d.cant);
-        return acc + (Number.isFinite(n) && n > 0 ? n : 0);
-      }, 0);
-
+      let solicitada = Number(ln.product_quantity || 0);
+      let piezasPesadas = 0;
+      let pendiente = 0;
       let netoTotal = 0;
       let taraTotal = 0;
       let brutoTotal = 0;
@@ -152,8 +160,31 @@ export default function OrderWeight() {
         netoTotal += netoAdj;
       });
 
-      const pendiente = Math.max(0, solicitada - piezasPesadas);
-      const promedio = piezasPesadas > 0 ? netoTotal / piezasPesadas : 0;
+      if (isKg) {
+        // Para productos por KG:
+        // - solicitada = kg solicitados (product_quantity)
+        // - piezasPesadas = cantidad de filas con algún peso/tara
+        // - pendiente = kg pendientes (solicitada - netoTotal)
+        piezasPesadas = detalles.reduce((acc, d) => {
+          const b = Number(d.bruto);
+          const t = Number(d.tara);
+          const hasWeight =
+            (Number.isFinite(b) && b > 0) ||
+            (Number.isFinite(t) && t > 0);
+          return acc + (hasWeight ? 1 : 0);
+        }, 0);
+        pendiente = Math.max(0, solicitada - netoTotal);
+      } else {
+        // Productos por unidades (lógica original)
+        piezasPesadas = detalles.reduce((acc, d) => {
+          const n = Number(d.cant);
+          return acc + (Number.isFinite(n) && n > 0 ? n : 0);
+        }, 0);
+        pendiente = Math.max(0, solicitada - piezasPesadas);
+      }
+
+      const promedio =
+        piezasPesadas > 0 ? netoTotal / piezasPesadas : 0;
 
       group[ln.id] = {
         solicitada,
@@ -161,9 +192,10 @@ export default function OrderWeight() {
         pendiente,
         taraTotal,
         brutoTotal,
-        netoTotal, // ya viene ajustado si corresponde
+        netoTotal,
         promedio,
         addPct,
+        isKg,
       };
     });
     return group;
@@ -174,6 +206,22 @@ export default function OrderWeight() {
     setDraft((old) => {
       const current = old[lineId] || [];
       const line = lines.find((l) => l.id === lineId);
+      const isKg = String(line?.tipo_medida || "").toUpperCase() === "KG";
+
+      // Para productos en KG no limitamos por "cantidad solicitada":
+      // podés agregar las filas de pesaje que quieras.
+      if (isKg) {
+        const toAdd = Math.max(1, Number(count || 1) || 1);
+        const extra = Array.from({ length: toAdd }, () => ({
+          cant: "",
+          garron: "",
+          tara: 0,
+          bruto: "",
+        }));
+        return { ...old, [lineId]: [...current, ...extra] };
+      }
+
+      // Para productos por unidades, se mantiene la lógica original
       const solicitada = Number(line?.product_quantity || 0);
 
       // piezas ya cargadas (sumando "cant" válidos)
@@ -184,7 +232,10 @@ export default function OrderWeight() {
       const pendiente = Math.max(0, solicitada - piezasActuales);
       if (pendiente <= 0) return old;
 
-      const toAdd = Math.min(Math.max(1, Number(count || 1)), pendiente);
+      const toAdd = Math.min(
+        Math.max(1, Number(count || 1)),
+        pendiente
+      );
 
       // Filas nuevas con cant = "" (para completar)
       const extra = Array.from({ length: toAdd }, () => ({
@@ -227,6 +278,19 @@ export default function OrderWeight() {
     }
 
     const line = lines.find((l) => l.id === lineId);
+    const isKg = String(line?.tipo_medida || "").toUpperCase() === "KG";
+
+    // Para productos en KG no limitamos por cantidad solicitada
+    if (isKg) {
+      const val = Number(str);
+      setDraft((old) => {
+        const arr = [...(old[lineId] || [])];
+        arr[index] = { ...(arr[index] || {}), cant: String(val) };
+        return { ...old, [lineId]: arr };
+      });
+      return;
+    }
+
     const solicitada = Number(line?.product_quantity || 0);
 
     setDraft((old) => {
@@ -237,7 +301,10 @@ export default function OrderWeight() {
         return acc + (Number.isFinite(n) && n > 0 ? n : 0);
       }, 0);
       const maxForThis = Math.max(0, solicitada - others);
-      const val = Math.min(Math.max(Number(str), 1), Math.max(1, maxForThis));
+      const val = Math.min(
+        Math.max(Number(str), 1),
+        Math.max(1, maxForThis)
+      );
       arr[index] = { ...(arr[index] || {}), cant: String(val) };
       return { ...old, [lineId]: arr };
     });
@@ -257,7 +324,10 @@ export default function OrderWeight() {
         setTimeout(() => {
           const el = subRefs.current[lineId];
           if (el && typeof el.scrollIntoView === "function") {
-            el.scrollIntoView({ behavior: "smooth", block: "center" });
+            el.scrollIntoView({
+              behavior: "smooth",
+              block: "center",
+            });
           }
         }, 0);
       }
@@ -269,10 +339,14 @@ export default function OrderWeight() {
     const raw = addQtyMap[ln.id] ?? "0";
     const typed = toNumberOr(toDigits(raw), 0);
     if (!typed || typed <= 0) {
-      Swal.fire("Cantidad inválida", "Ingresá un número mayor a 0.", "warning");
+      Swal.fire(
+        "Cantidad inválida",
+        "Ingresá un número mayor a 0.",
+        "warning"
+      );
       return;
     }
-    addDetail(ln.id, typed); // addDetail ya limita por pendiente
+    addDetail(ln.id, typed); // addDetail ya limita por pendiente (si corresponde)
     setAddQtyMap((m) => ({ ...m, [ln.id]: "0" })); // vuelve a 0
   };
 
@@ -295,6 +369,7 @@ export default function OrderWeight() {
         qty_requested: Number(ln.product_quantity || 0),
         packaging_type: String(pkgByLine[ln.id] || "").trim(), // empaque por línea
         is_capon_like: isCaponLike(ln.product_name),
+        tipo_medida: ln.tipo_medida || null,
         details,
       };
     });
@@ -319,7 +394,11 @@ export default function OrderWeight() {
       return true;
     } catch (e) {
       console.error(e);
-      await Swal.fire("Error", e.message || "No se pudo guardar el pesaje", "error");
+      await Swal.fire(
+        "Error",
+        e.message || "No se pudo guardar el pesaje",
+        "error"
+      );
       return false;
     }
   };
@@ -343,7 +422,8 @@ export default function OrderWeight() {
         method: "PUT",
       });
       const data = await res.json();
-      if (!res.ok || !data?.ok) throw new Error(data?.msg || "No se pudo finalizar");
+      if (!res.ok || !data?.ok)
+        throw new Error(data?.msg || "No se pudo finalizar");
 
       await Swal.fire(
         "Listo",
@@ -353,7 +433,11 @@ export default function OrderWeight() {
       navigate(-1);
     } catch (e) {
       console.error(e);
-      Swal.fire("Error", e.message || "No se pudo finalizar", "error");
+      Swal.fire(
+        "Error",
+        e.message || "No se pudo finalizar",
+        "error"
+      );
     }
   };
 
@@ -362,7 +446,10 @@ export default function OrderWeight() {
     <div className="ow">
       <Navbar />
       <div className="ow-topbar">
-        <button className="ow-btn-back" onClick={() => navigate("/sales-panel")}>
+        <button
+          className="ow-btn-back"
+          onClick={() => navigate("/sales-panel")}
+        >
           ⬅ Volver
         </button>
       </div>
@@ -371,7 +458,9 @@ export default function OrderWeight() {
         <h2 className="ow-pageTitle">DETALLE ORDEN DE VENTA</h2>
         {!header || loadingHeader ? (
           <p className="ow-muted">
-            {loadingHeader ? "Cargando encabezado…" : "Sin datos de encabezado."}
+            {loadingHeader
+              ? "Cargando encabezado…"
+              : "Sin datos de encabezado."}
           </p>
         ) : (
           <div className="ow-infoGrid">
@@ -415,7 +504,9 @@ export default function OrderWeight() {
         {loadingLines ? (
           <p className="ow-muted">Cargando productos…</p>
         ) : lines.length === 0 ? (
-          <p className="ow-muted">No hay productos generados para esta orden.</p>
+          <p className="ow-muted">
+            No hay productos generados para esta orden.
+          </p>
         ) : (
           <>
             <table className="ow-table">
@@ -446,14 +537,19 @@ export default function OrderWeight() {
                     netoTotal: 0,
                     promedio: 0,
                     addPct: 0,
+                    isKg:
+                      String(ln.tipo_medida || "").toUpperCase() === "KG",
                   };
 
+                  const isKg = comp.isKg;
                   const addQty = addQtyMap[ln.id] ?? "0";
 
                   return (
                     <Fragment key={ln.id}>
                       <tr>
-                        <td className="ow-code">{ln.product_id ?? "-"}</td>
+                        <td className="ow-code">
+                          {ln.product_id ?? "-"}
+                        </td>
                         <td className="ow-cut">{ln.product_name}</td>
 
                         {/* Empaque por línea */}
@@ -464,14 +560,23 @@ export default function OrderWeight() {
                               placeholder="Tipo de empaque"
                               value={pkgByLine[ln.id] ?? ""}
                               onChange={(e) =>
-                                setPkgByLine((m) => ({ ...m, [ln.id]: e.target.value }))
+                                setPkgByLine((m) => ({
+                                  ...m,
+                                  [ln.id]: e.target.value,
+                                }))
                               }
                             />
                           </div>
                         </td>
 
-                        <td className="ow-money">${n2(ln.product_price)}</td>
-                        <td className="ow-number">{comp.solicitada}</td>
+                        <td className="ow-money">
+                          ${n2(ln.product_price)}
+                        </td>
+                        <td className="ow-number">
+                          {isKg
+                            ? n2(comp.solicitada)
+                            : comp.solicitada}
+                        </td>
 
                         <td>
                           <button
@@ -480,19 +585,29 @@ export default function OrderWeight() {
                             onClick={() => toggleOpen(ln.id)}
                             title="Abrir detalle"
                           >
-                            {comp.piezasPesadas}
+                            {isKg
+                              ? n2(comp.netoTotal)
+                              : comp.piezasPesadas}
                           </button>
                         </td>
 
-                        <td className="ow-number">{n2(comp.taraTotal)}</td>
-                        <td className="ow-number">{n2(comp.brutoTotal)}</td>
+                        <td className="ow-number">
+                          {n2(comp.taraTotal)}
+                        </td>
+                        <td className="ow-number">
+                          {n2(comp.brutoTotal)}
+                        </td>
 
                         <td className="ow-number">
                           {n2(comp.netoTotal)}
-                          {comp.addPct > 0 && <span className="ow-extra"> (+2%)</span>}
+                          {comp.addPct > 0 && (
+                            <span className="ow-extra"> (+2%)</span>
+                          )}
                         </td>
 
-                        <td className="ow-number">{n2(comp.promedio)}</td>
+                        <td className="ow-number">
+                          {n2(comp.promedio)}
+                        </td>
 
                         {/* PENDIENTE */}
                         <td>
@@ -500,16 +615,25 @@ export default function OrderWeight() {
                             style={{
                               display: "inline-block",
                               padding: "4px 10px",
-                              backgroundColor: comp.pendiente > 0 ? "#fff3cd" : "#d4edda",
-                              color: comp.pendiente > 0 ? "#856404" : "#155724",
+                              backgroundColor:
+                                comp.pendiente > 0
+                                  ? "#fff3cd"
+                                  : "#d4edda",
+                              color:
+                                comp.pendiente > 0
+                                  ? "#856404"
+                                  : "#155724",
                               borderRadius: "10px",
                               fontWeight: "bold",
                               minWidth: "36px",
                               textAlign: "center",
-                              border: "1px solid rgba(0,0,0,0.08)",
+                              border:
+                                "1px solid rgba(0,0,0,0.08)",
                             }}
                           >
-                            {comp.pendiente}
+                            {isKg
+                              ? n2(comp.pendiente)
+                              : comp.pendiente}
                           </span>
                         </td>
 
@@ -526,9 +650,17 @@ export default function OrderWeight() {
 
                       {open[ln.id] && (
                         <tr className="ow-subrow">
-                          <td colSpan={12} style={{ overflow: "visible", paddingTop: 6 }}>
+                          <td
+                            colSpan={12}
+                            style={{
+                              overflow: "visible",
+                              paddingTop: 6,
+                            }}
+                          >
                             <div
-                              ref={(el) => (subRefs.current[ln.id] = el)}
+                              ref={(el) =>
+                                (subRefs.current[ln.id] = el)
+                              }
                               style={{ overflow: "visible" }}
                             >
                               {/* Barra “Agregar filas” */}
@@ -543,24 +675,39 @@ export default function OrderWeight() {
                                   background: "#f8fafc",
                                   border: "1px solid #e5e7eb",
                                   borderRadius: 12,
-                                  boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
+                                  boxShadow:
+                                    "0 1px 2px rgba(0,0,0,0.04)",
                                 }}
                               >
-                                <span className="ow-muted" style={{ fontWeight: 600 }}>
+                                <span
+                                  className="ow-muted"
+                                  style={{ fontWeight: 600 }}
+                                >
                                   Agregar filas
                                 </span>
 
-                                <div className="ow-pillInput" style={{ width: 120 }}>
+                                <div
+                                  className="ow-pillInput"
+                                  style={{ width: 120 }}
+                                >
                                   <input
                                     type="text"
                                     inputMode="numeric"
                                     placeholder="0"
                                     value={addQty}
                                     onChange={(e) => {
-                                      const v = toDigits(e.target.value);
-                                      setAddQtyMap((m) => ({ ...m, [ln.id]: v }));
+                                      const v = toDigits(
+                                        e.target.value
+                                      );
+                                      setAddQtyMap((m) => ({
+                                        ...m,
+                                        [ln.id]: v,
+                                      }));
                                     }}
-                                    style={{ textAlign: "center", fontWeight: 600 }}
+                                    style={{
+                                      textAlign: "center",
+                                      fontWeight: 600,
+                                    }}
                                   />
                                 </div>
 
@@ -568,19 +715,40 @@ export default function OrderWeight() {
                                   type="button"
                                   className="ow-btn-xs"
                                   onClick={() => onClickAddRows(ln)}
-                                  disabled={computedByLine[ln.id]?.pendiente === 0}
+                                  disabled={
+                                    !isKg &&
+                                    computedByLine[ln.id]
+                                      ?.pendiente === 0
+                                  }
                                   title={
-                                    computedByLine[ln.id]?.pendiente === 0
+                                    isKg
+                                      ? "Agregar filas de pesaje"
+                                      : computedByLine[ln.id]
+                                          ?.pendiente === 0
                                       ? "No hay pendiente"
-                                      : `Agregar hasta ${computedByLine[ln.id]?.pendiente}`
+                                      : `Agregar hasta ${
+                                          computedByLine[ln.id]
+                                            ?.pendiente
+                                        }`
                                   }
                                   style={{ minWidth: 92 }}
                                 >
                                   Agregar
                                 </button>
 
-                                <span className="ow-muted" style={{ fontWeight: 600 }}>
-                                  Pendiente: {computedByLine[ln.id]?.pendiente ?? 0}
+                                <span
+                                  className="ow-muted"
+                                  style={{ fontWeight: 600 }}
+                                >
+                                  {isKg
+                                    ? `Pendiente (kg): ${n2(
+                                        computedByLine[ln.id]
+                                          ?.pendiente ?? 0
+                                      )}`
+                                    : `Pendiente: ${
+                                        computedByLine[ln.id]
+                                          ?.pendiente ?? 0
+                                      }`}
                                 </span>
                               </div>
 
@@ -599,109 +767,229 @@ export default function OrderWeight() {
                                   </tr>
                                 </thead>
                                 <tbody>
-                                  {(draft[ln.id] || []).map((d, idx) => {
-                                    const addPct = isCaponLike(ln.product_name) ? 0.02 : 0;
-                                    const neto = Math.max(
-                                      0,
-                                      toNumberOr(d.bruto, 0) - toNumberOr(d.tara, 0)
-                                    );
-                                    const netoAdj = neto * (1 + addPct);
+                                  {(draft[ln.id] || []).map(
+                                    (d, idx) => {
+                                      const addPct =
+                                        isCaponLike(
+                                          ln.product_name
+                                        )
+                                          ? 0.02
+                                          : 0;
+                                      const neto = Math.max(
+                                        0,
+                                        toNumberOr(
+                                          d.bruto,
+                                          0
+                                        ) -
+                                          toNumberOr(
+                                            d.tara,
+                                            0
+                                          )
+                                      );
+                                      const netoAdj =
+                                        neto *
+                                        (1 + addPct);
 
-                                    return (
-                                      <tr key={`${ln.id}-${idx + 1}`}>
-                                        <td className="center">{idx + 1}</td>
+                                      return (
+                                        <tr
+                                          key={`${ln.id}-${
+                                            idx + 1
+                                          }`}
+                                        >
+                                          <td className="center">
+                                            {idx + 1}
+                                          </td>
 
-                                        <td>
-                                          <div className="ow-pillInput ow-w-cant">
-                                            <input
-                                              type="text"
-                                              inputMode="numeric"
-                                              placeholder="—"
-                                              value={d.cant === 0 ? "" : String(d.cant ?? "")}
-                                              onChange={(e) => setCantSafe(ln.id, idx, e.target.value)}
-                                              style={{ textAlign: "center" }}
-                                            />
-                                          </div>
-                                        </td>
+                                          <td>
+                                            <div className="ow-pillInput ow-w-cant">
+                                              <input
+                                                type="text"
+                                                inputMode="numeric"
+                                                placeholder="—"
+                                                value={
+                                                  d.cant ===
+                                                  0
+                                                    ? ""
+                                                    : String(
+                                                        d.cant ??
+                                                          ""
+                                                      )
+                                                }
+                                                onChange={(
+                                                  e
+                                                ) =>
+                                                  setCantSafe(
+                                                    ln.id,
+                                                    idx,
+                                                    e
+                                                      .target
+                                                      .value
+                                                  )
+                                                }
+                                                style={{
+                                                  textAlign:
+                                                    "center",
+                                                }}
+                                              />
+                                            </div>
+                                          </td>
 
-                                        <td>
-                                          <div className="ow-pillInput ow-w-garron">
-                                            <input
-                                              type="text"
-                                              inputMode="numeric"
-                                              placeholder="0"
-                                              value={String(d.garron ?? "")}
-                                              onChange={(e) =>
-                                                setField(ln.id, idx, "garron", toDigits(e.target.value))
-                                              }
-                                              style={{ textAlign: "center" }}
-                                            />
-                                          </div>
-                                        </td>
+                                          <td>
+                                            <div className="ow-pillInput ow-w-garron">
+                                              <input
+                                                type="text"
+                                                inputMode="numeric"
+                                                placeholder="0"
+                                                value={String(
+                                                  d.garron ??
+                                                    ""
+                                                )}
+                                                onChange={(
+                                                  e
+                                                ) =>
+                                                  setField(
+                                                    ln.id,
+                                                    idx,
+                                                    "garron",
+                                                    toDigits(
+                                                      e
+                                                        .target
+                                                        .value
+                                                    )
+                                                  )
+                                                }
+                                                style={{
+                                                  textAlign:
+                                                    "center",
+                                                }}
+                                              />
+                                            </div>
+                                          </td>
 
-                                        <td>
-                                          <div className="ow-pillSelect ow-w-tara">
-                                            <select
-                                              value={toNumberOr(d.tara, 0)}
-                                              onChange={(e) =>
-                                                setField(ln.id, idx, "tara", Number(e.target.value))
-                                              }
-                                            >
-                                              <option value={0}>0</option>
-                                              {tares.map((t) => (
-                                                <option key={t.id} value={t.tare_weight}>
-                                                  {t.tare_name} ({t.tare_weight})
+                                          <td>
+                                            <div className="ow-pillSelect ow-w-tara">
+                                              <select
+                                                value={toNumberOr(
+                                                  d.tara,
+                                                  0
+                                                )}
+                                                onChange={(
+                                                  e
+                                                ) =>
+                                                  setField(
+                                                    ln.id,
+                                                    idx,
+                                                    "tara",
+                                                    Number(
+                                                      e
+                                                        .target
+                                                        .value
+                                                    )
+                                                  )
+                                                }
+                                              >
+                                                <option value={0}>
+                                                  0
                                                 </option>
-                                              ))}
-                                            </select>
-                                          </div>
-                                        </td>
+                                                {tares.map(
+                                                  (t) => (
+                                                    <option
+                                                      key={t.id}
+                                                      value={
+                                                        t.tare_weight
+                                                      }
+                                                    >
+                                                      {
+                                                        t.tare_name
+                                                      }{" "}
+                                                      (
+                                                      {
+                                                        t.tare_weight
+                                                      }
+                                                      )
+                                                    </option>
+                                                  )
+                                                )}
+                                              </select>
+                                            </div>
+                                          </td>
 
-                                        <td className="center" style={{ fontWeight: 600 }}>
-                                          {addPct > 0 ? "2 %" : "0 %"}
-                                        </td>
-
-                                        <td>
-                                          <div className="ow-pillInput ow-w-bruto">
-                                            <input
-                                              type="text"
-                                              inputMode="numeric"
-                                              placeholder="0"
-                                              value={String(d.bruto ?? "")}
-                                              onChange={(e) =>
-                                                setField(
-                                                  ln.id,
-                                                  idx,
-                                                  "bruto",
-                                                  e.target.value.replace(/[^\d.]/g, "")
-                                                )
-                                              }
-                                              style={{ textAlign: "center" }}
-                                            />
-                                          </div>
-                                        </td>
-
-                                        <td className="ow-number">{n2(netoAdj)}</td>
-
-                                        <td className="center">
-                                          <button
-                                            type="button"
-                                            onClick={() => removeDetail(ln.id, idx)}
-                                            title="Eliminar fila"
+                                          <td
+                                            className="center"
                                             style={{
-                                              background: "none",
-                                              border: "none",
-                                              cursor: "pointer",
-                                              fontSize: "16px",
-                                              color: "red",
+                                              fontWeight: 600,
                                             }}
                                           >
-                                            <FontAwesomeIcon icon={faTrash} />
-                                          </button>
-                                        </td>
-                                      </tr>
-                                    );
-                                  })}
+                                            {addPct > 0
+                                              ? "2 %"
+                                              : "0 %"}
+                                          </td>
+
+                                          <td>
+                                            <div className="ow-pillInput ow-w-bruto">
+                                              <input
+                                                type="text"
+                                                inputMode="numeric"
+                                                placeholder="0"
+                                                value={String(
+                                                  d.bruto ??
+                                                    ""
+                                                )}
+                                                onChange={(
+                                                  e
+                                                ) =>
+                                                  setField(
+                                                    ln.id,
+                                                    idx,
+                                                    "bruto",
+                                                    e.target.value.replace(
+                                                      /[^\d.]/g,
+                                                      ""
+                                                    )
+                                                  )
+                                                }
+                                                style={{
+                                                  textAlign:
+                                                    "center",
+                                                }}
+                                              />
+                                            </div>
+                                          </td>
+
+                                          <td className="ow-number">
+                                            {n2(netoAdj)}
+                                          </td>
+
+                                          <td className="center">
+                                            <button
+                                              type="button"
+                                              onClick={() =>
+                                                removeDetail(
+                                                  ln.id,
+                                                  idx
+                                                )
+                                              }
+                                              title="Eliminar fila"
+                                              style={{
+                                                background:
+                                                  "none",
+                                                border: "none",
+                                                cursor:
+                                                  "pointer",
+                                                fontSize:
+                                                  "16px",
+                                                color: "red",
+                                              }}
+                                            >
+                                              <FontAwesomeIcon
+                                                icon={faTrash}
+                                              />
+                                            </button>
+                                          </td>
+                                        </tr>
+                                      );
+                                    }
+                                  )}
                                 </tbody>
                               </table>
                             </div>
@@ -728,7 +1016,10 @@ export default function OrderWeight() {
 
             {/* Acciones */}
             <div className="ow-actions">
-              <button className="ow-btn-primary" onClick={finalize}>
+              <button
+                className="ow-btn-primary"
+                onClick={finalize}
+              >
                 Finalizar y guardar
               </button>
             </div>

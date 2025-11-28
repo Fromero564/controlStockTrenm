@@ -79,7 +79,7 @@ const GenerateSalesOrder = () => {
     return () => {
       cancel = true;
     };
-  }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [id]); 
 
   const header = useMemo(
     () => ({
@@ -94,21 +94,34 @@ const GenerateSalesOrder = () => {
     [order]
   );
 
+  // ✔️ **CAMBIO REALIZADO ACÁ**
   const rows = useMemo(() => {
-    const getStockFor = (code, name) => {
+    const getStockFor = (code, name, unit) => {
       const key = String(code ?? "");
-      const byCode =
+
+      const found =
         stock.find(
           (p) =>
             String(p.product_cod ?? p.id ?? p.product_name) === key
-        ) || null;
-      if (byCode) return toNumber(byCode.product_quantity);
-
-      const byName =
+        ) ||
         stock.find(
-          (p) => String(p.product_name).toLowerCase() === String(name).toLowerCase()
-        ) || null;
-      return byName ? toNumber(byName.product_quantity) : 0;
+          (p) =>
+            String(p.product_name).toLowerCase() ===
+            String(name).toLowerCase()
+        ) ||
+        null;
+
+      if (!found) return 0;
+
+      const unitUpper = String(unit || found.unit_type || "").toUpperCase();
+
+      // ✔️ si es KG → usar peso total
+      if (unitUpper === "KG") {
+        return toNumber(found.product_total_weight);
+      }
+
+      // sino usar cantidad unitaria
+      return toNumber(found.product_quantity);
     };
 
     return lines.map((ln) => {
@@ -118,7 +131,7 @@ const GenerateSalesOrder = () => {
       const qty = toNumber(ln.cantidad);
       const unit = ln.tipo_medida || "";
 
-      const stockQty = getStockFor(code, name);
+      const stockQty = getStockFor(code, name, unit);
       const existence = stockQty - qty;
 
       let statusText = "Stock suficiente";
@@ -167,9 +180,9 @@ const GenerateSalesOrder = () => {
       });
 
       if (result.isConfirmed) {
-        navigate("/list-final-orders"); 
+        navigate("/list-final-orders");
       } else {
-        navigate("/sales-panel"); 
+        navigate("/sales-panel");
       }
     } catch {
       await Swal.fire({

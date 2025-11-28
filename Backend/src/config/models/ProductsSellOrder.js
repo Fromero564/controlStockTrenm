@@ -34,7 +34,12 @@ module.exports = (sequelize, DataTypes) => {
     updated_at: {
       type: DataTypes.DATE,
       allowNull: true
-    }
+    },
+    tipo_medida: {
+      type: DataTypes.STRING(10),
+      allowNull: true,
+    },
+
   };
 
   const config = {

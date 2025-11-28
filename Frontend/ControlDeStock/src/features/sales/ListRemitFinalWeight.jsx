@@ -26,8 +26,12 @@ export default function ListRemitFinalWeight() {
   const [number, setNumber] = useState("");
   const [client, setClient] = useState("");
 
+  // pestaña activa: "pending" (a remitir) | "remitted" (lista de remitos)
+  const [activeTab, setActiveTab] = useState("pending");
+
   const queryString = useMemo(() => {
     const p = new URLSearchParams();
+    // solo órdenes con order_check = true (orden de venta generada)
     p.set("status", "generated");
     if (date) {
       p.set("date_from", date);
@@ -38,20 +42,19 @@ export default function ListRemitFinalWeight() {
     return p.toString();
   }, [date, number, client]);
 
- 
+  // Chequear si la orden ya tiene remito final
   const checkHasFinalRemit = async (orderId) => {
     try {
       const res = await fetch(`${ENDPOINT_FINAL_REMIT}?order_id=${orderId}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      // backend responde { exists: boolean }
+      // backend puede responder { exists: boolean } o lista
       if (typeof data?.exists === "boolean") return data.exists;
-      // compat:
       if (Array.isArray(data)) return data.length > 0;
       if (Array.isArray(data?.rows)) return data.rows.length > 0;
       return false;
     } catch {
-      // ❗ Ante error de red, NO marcar remitido por defecto
+      // Ante error de red NO lo marcamos remitido
       return false;
     }
   };
@@ -63,13 +66,21 @@ export default function ListRemitFinalWeight() {
       const res = await fetch(`${ENDPOINT_ORDERS}?${queryString}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
+
       const list = Array.isArray(data) ? data : data?.rows || [];
 
+      // Agrego flags: hasRemit y normalizo order_id
       const withFlags = await Promise.all(
         list.map(async (r) => {
           const orderId = r.order_id ?? r.id;
           const hasRemit = await checkHasFinalRemit(orderId);
-          return { ...r, order_id: orderId, hasRemit };
+          return {
+            ...r,
+            order_id: orderId,
+            hasRemit,
+            // me aseguro que order_weight_check sea boolean real
+            order_weight_check: !!r.order_weight_check,
+          };
         })
       );
 
@@ -86,17 +97,36 @@ export default function ListRemitFinalWeight() {
     load();
   }, [queryString]);
 
+  // 🔍 Filtrado según pestaña:
+  // A REMITIR → solo órdenes PESADAS y sin remito
+  // LISTA DE REMITOS → solo órdenes con remito
+  const filteredRows = useMemo(() => {
+    if (activeTab === "pending") {
+      return rows.filter(
+        (r) => !r.hasRemit && r.order_weight_check === true
+      );
+    }
+    return rows.filter((r) => r.hasRemit);
+  }, [rows, activeTab]);
+
   const onRemit = (orderId) => navigate(`/remit-control-state/${orderId}`);
   const onView = (orderId) => navigate(`/remits/preview/${orderId}`);
   const onPDF = (orderId) => {
-    window.open(`${API_BASE}/remits/from-order/${orderId}/pdf`, "_blank", "noopener");
+    window.open(
+      `${API_BASE}/remits/from-order/${orderId}/pdf`,
+      "_blank",
+      "noopener"
+    );
   };
 
   return (
     <div className="lrf">
       <Navbar />
       <div className="lrf-back">
-        <button className="boton-volver" onClick={() => navigate('/sales-panel')}>
+        <button
+          className="boton-volver"
+          onClick={() => navigate("/sales-panel")}
+        >
           ⬅ Volver
         </button>
       </div>
@@ -104,13 +134,23 @@ export default function ListRemitFinalWeight() {
       <div className="lrf-container">
         <h1>REMITOS</h1>
 
+        {/* Pestañas */}
         <div className="tabs">
-          <button className="tab active">A REMITIR</button>
-          <button className="tab" onClick={() => navigate("/sales-panel")}>
+          <button
+            className={`tab ${activeTab === "pending" ? "active" : ""}`}
+            onClick={() => setActiveTab("pending")}
+          >
+            A REMITIR
+          </button>
+          <button
+            className={`tab ${activeTab === "remitted" ? "active" : ""}`}
+            onClick={() => setActiveTab("remitted")}
+          >
             LISTA DE REMITOS
           </button>
         </div>
 
+        {/* Filtros */}
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -120,7 +160,11 @@ export default function ListRemitFinalWeight() {
         >
           <div>
             <label>FECHA</label>
-            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+            />
           </div>
           <div>
             <label>NÚMERO ORDEN</label>
@@ -141,10 +185,13 @@ export default function ListRemitFinalWeight() {
             />
           </div>
           <div className="filters-submit">
-            <button type="submit" className="btn-secondary">Buscar</button>
+            <button type="submit" className="btn-secondary">
+              Buscar
+            </button>
           </div>
         </form>
 
+        {/* Tabla */}
         <div className="table-wrapper">
           <table className="table">
             <thead>
@@ -157,28 +204,68 @@ export default function ListRemitFinalWeight() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={4} className="text-center">Cargando…</td></tr>
+                <tr>
+                  <td colSpan={4} className="text-center">
+                    Cargando…
+                  </td>
+                </tr>
               ) : err ? (
-                <tr><td colSpan={4} className="text-center error">{err}</td></tr>
-              ) : rows.length === 0 ? (
-                <tr><td colSpan={4} className="text-center">No hay órdenes para remitar.</td></tr>
+                <tr>
+                  <td colSpan={4} className="text-center error">
+                    {err}
+                  </td>
+                </tr>
+              ) : filteredRows.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="text-center">
+                    {activeTab === "pending"
+                      ? "No hay órdenes pendientes de remitar (o aún no fueron pesadas)."
+                      : "No hay remitos generados para los filtros seleccionados."}
+                  </td>
+                </tr>
               ) : (
-                rows.map((r) => (
+                filteredRows.map((r) => (
                   <tr key={r.order_id}>
                     <td>{fmtDate(r.date_order)}</td>
                     <td>{r.order_id}</td>
                     <td>{r.client_name}</td>
                     <td className="text-right">
                       <div className="actions">
-                        {!r.hasRemit ? (
-                          <button className="btn-primary" onClick={() => onRemit(r.order_id)}>
+                        {activeTab === "pending" && !r.hasRemit && (
+                          <button
+                            className="btn-primary"
+                            onClick={() => onRemit(r.order_id)}
+                          >
                             Remitar
                           </button>
-                        ) : (
-                          <span style={{ opacity: 0.6, marginRight: 8 }}>Ya remitido</span>
                         )}
-                        <button className="btn-icon" title="Ver" onClick={() => onView(r.order_id)}>👁</button>
-                        <button className="btn-icon danger" title="PDF" onClick={() => onPDF(r.order_id)}>PDF</button>
+
+                        {activeTab === "remitted" && r.hasRemit && (
+                          <span
+                            style={{
+                              opacity: 0.7,
+                              marginRight: 8,
+                              fontSize: 13,
+                            }}
+                          >
+                            Ya remitido
+                          </span>
+                        )}
+
+                        <button
+                          className="btn-icon"
+                          title="Ver"
+                          onClick={() => onView(r.order_id)}
+                        >
+                          👁
+                        </button>
+                        <button
+                          className="btn-icon danger"
+                          title="PDF"
+                          onClick={() => onPDF(r.order_id)}
+                        >
+                          PDF
+                        </button>
                       </div>
                     </td>
                   </tr>

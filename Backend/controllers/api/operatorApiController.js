@@ -605,33 +605,46 @@ const operatorApiController = {
         }
     },
 
- uploadProductsProcess: async (req, res) => {
+uploadProductsProcess: async (req, res) => {
   let t;
   try {
-    // 👇 1) ahora también recibimos subproduction
     const { cortes, bill_ids, subproduction = [] } = req.body;
 
+    // Validaciones básicas
     if (
-      !Array.isArray(cortes) || cortes.length === 0 ||
-      !Array.isArray(bill_ids) || bill_ids.length === 0
+      !Array.isArray(cortes) ||
+      cortes.length === 0 ||
+      !Array.isArray(bill_ids) ||
+      bill_ids.length === 0
     ) {
-      return res.status(400).json({ message: "Faltan cortes o comprobantes para asociar." });
+      return res
+        .status(400)
+        .json({ message: "Faltan cortes o comprobantes para asociar." });
     }
 
     t = await sequelize.transaction();
 
-    const ultimoProceso = await ProcessNumber.findOne({ order: [["process_number", "DESC"]] });
-    const nuevoProcessNumber = ultimoProceso ? ultimoProceso.process_number + 1 : 1;
+    // === 1) Obtener / generar número de proceso ===
+    const ultimoProceso = await ProcessNumber.findOne({
+      order: [["process_number", "DESC"]],
+      transaction: t,
+    });
+    const nuevoProcessNumber = ultimoProceso
+      ? ultimoProceso.process_number + 1
+      : 1;
 
+    // Guardar la relación proceso ↔ remitos
     for (const bill_id of bill_ids) {
-      await ProcessNumber.create({ process_number: nuevoProcessNumber, bill_id }, { transaction: t });
+      await ProcessNumber.create(
+        { process_number: nuevoProcessNumber, bill_id },
+        { transaction: t }
+      );
     }
 
-    const childTotalsQty = {};
-    let totalNetAdded = 0;
-
+    // === 2) Guardar cortes (subproductos) y sumar stock de subproductos ===
     for (const corte of cortes) {
       let { type, average, quantity, gross_weight, tares, net_weight } = corte;
+
       const avg = Number(average);
       const qty = Number(quantity);
       const gross = Number(gross_weight);
@@ -640,40 +653,65 @@ const operatorApiController = {
 
       if (
         type == null ||
-        Number.isNaN(avg) || Number.isNaN(qty) ||
-        Number.isNaN(gross) || Number.isNaN(tare) ||
+        Number.isNaN(avg) ||
+        Number.isNaN(qty) ||
+        Number.isNaN(gross) ||
+        Number.isNaN(tare) ||
         Number.isNaN(net)
       ) {
         await t.rollback();
-        return res.status(400).json({ message: "Faltan campos obligatorios o hay valores inválidos en algún corte." });
+        return res.status(400).json({
+          message:
+            "Faltan campos obligatorios o hay valores inválidos en algún corte.",
+        });
       }
 
+      // type puede venir como ID o como nombre
       let baseProduct = null;
       let productName = null;
 
       if (!Number.isNaN(Number(type))) {
+        // viene como ID de products_available
         baseProduct = await ProductsAvailable.findByPk(type, {
-          include: [{ model: ProductCategories, as: "category", attributes: ["category_name"] }],
+          include: [
+            {
+              model: ProductCategories,
+              as: "category",
+              attributes: ["category_name"],
+            },
+          ],
           transaction: t,
         });
         if (!baseProduct) {
           await t.rollback();
-          return res.status(400).json({ message: `No se encontró ningún producto con ID ${type}` });
+          return res
+            .status(400)
+            .json({ message: `No se encontró ningún producto con ID ${type}` });
         }
         productName = baseProduct.product_name;
       } else {
+        // viene como nombre
         baseProduct = await ProductsAvailable.findOne({
           where: { product_name: type },
-          include: [{ model: ProductCategories, as: "category", attributes: ["category_name"] }],
+          include: [
+            {
+              model: ProductCategories,
+              as: "category",
+              attributes: ["category_name"],
+            },
+          ],
           transaction: t,
         });
         if (!baseProduct) {
           await t.rollback();
-          return res.status(400).json({ message: `No se pudo identificar el producto "${type}".` });
+          return res.status(400).json({
+            message: `No se pudo identificar el producto "${type}".`,
+          });
         }
         productName = baseProduct.product_name;
       }
 
+      // Guardar corte en tabla de procesos
       await ProcessMeat.create(
         {
           type: productName,
@@ -687,10 +725,18 @@ const operatorApiController = {
         { transaction: t }
       );
 
-      const existingChild = await ProductStock.findOne({ where: { product_name: productName }, transaction: t });
+      // Actualizar stock del SUBPRODUCTO (lo que sale del proceso)
+      const existingChild = await ProductStock.findOne({
+        where: { product_name: productName },
+        transaction: t,
+      });
+
       if (existingChild) {
         await existingChild.increment(
-          { product_quantity: qty, product_total_weight: net },
+          {
+            product_quantity: qty,
+            product_total_weight: net,
+          },
           { transaction: t }
         );
       } else {
@@ -705,58 +751,80 @@ const operatorApiController = {
           { transaction: t }
         );
       }
-
-      childTotalsQty[productName] = (childTotalsQty[productName] || 0) + qty;
-      totalNetAdded += net;
     }
 
-    const parentMap = {};
-    for (const childName of Object.keys(childTotalsQty)) {
-      const subs = await ProductSubproduct.findAll({
-        include: [{ model: ProductsAvailable, as: "subProduct", attributes: [], where: { product_name: childName } }],
+    // === 3) Descontar STOCK PRINCIPAL usando lo que vino en los remitos ===
+    //    - bill_details  → romaneo
+    //    - meat_manual_income → ingreso manual
+    const validBillIds = bill_ids
+      .map((id) => Number(id))
+      .filter((id) => Number.isFinite(id) && id > 0);
+
+    if (validBillIds.length) {
+      const usageByParent = {}; // { [nombreProducto]: { qty, weight } }
+
+      // 3.a) Romaneo: tabla bill_details
+      const romaneoRows = await billDetail.findAll({
+        where: { bill_supplier_id: { [Op.in]: validBillIds } },
         transaction: t,
       });
 
-      for (const sp of subs) {
-        const parent = await ProductsAvailable.findByPk(sp.parent_product_id, {
-          attributes: ["product_name"],
+      for (const row of romaneoRows) {
+        const name = (row.type || "").trim();
+        if (!name) continue;
+
+        if (!usageByParent[name]) {
+          usageByParent[name] = { qty: 0, weight: 0 };
+        }
+
+        usageByParent[name].qty += Number(row.quantity || 0);
+        usageByParent[name].weight += Number(row.weight || 0);
+      }
+
+      // 3.b) Manual: tabla meat_manual_income (peso neto por producto)
+      const manualRows = await meatIncome.findAll({
+        where: { id_bill_suppliers: { [Op.in]: validBillIds } },
+        transaction: t,
+      });
+
+      for (const row of manualRows) {
+        const name = (row.products_name || "").trim();
+        if (!name) continue;
+
+        if (!usageByParent[name]) {
+          usageByParent[name] = { qty: 0, weight: 0 };
+        }
+
+        usageByParent[name].qty += Number(row.products_quantity || 0);
+        usageByParent[name].weight += Number(row.net_weight || 0);
+      }
+
+      // 3.c) Aplicar el descuento en product_stock
+      for (const [parentName, used] of Object.entries(usageByParent)) {
+        const stockParent = await ProductStock.findOne({
+          where: { product_name: parentName },
           transaction: t,
         });
-        if (!parent) continue;
-        const parentName = parent.product_name;
-        if (!parentMap[parentName]) parentMap[parentName] = {};
-        parentMap[parentName][childName] = Number(sp.quantity) || 0;
-      }
-    }
 
-    const parentUsage = {};
-    for (const parentName of Object.keys(parentMap)) {
-      let required = 0;
-      for (const [childName, perParent] of Object.entries(parentMap[parentName])) {
-        if (perParent > 0) {
-          const need = Math.ceil((childTotalsQty[childName] || 0) / perParent);
-          if (need > required) required = need;
-        }
-      }
-      if (required > 0) parentUsage[parentName] = required;
-    }
+        if (!stockParent) continue;
 
-    const totalParentUnits = Object.values(parentUsage).reduce((a, b) => a + b, 0);
+        const currentQty = Number(stockParent.product_quantity || 0);
+        const currentWeight = Number(stockParent.product_total_weight || 0);
 
-    for (const [parentName, usedUnits] of Object.entries(parentUsage)) {
-      const weightShare =
-        totalParentUnits > 0 ? Number(((totalNetAdded * usedUnits) / totalParentUnits).toFixed(2)) : 0;
-      const stockParent = await ProductStock.findOne({ where: { product_name: parentName }, transaction: t });
-      if (stockParent) {
-        const newQty = Math.max(0, Number(stockParent.product_quantity || 0) - usedUnits);
-        const newWeight = Math.max(0, Number(stockParent.product_total_weight || 0) - weightShare);
+        const newQty = Math.max(0, currentQty - used.qty);
+        const newWeight = Math.max(0, currentWeight - used.weight);
+
         await stockParent.update(
-          { product_quantity: newQty, product_total_weight: newWeight },
+          {
+            product_quantity: newQty,
+            product_total_weight: newWeight,
+          },
           { transaction: t }
         );
       }
     }
 
+    // === 4) Marcar remitos como procesados ===
     for (const bill_id of bill_ids) {
       if (Number(bill_id) > 0) {
         await billSupplier.update(
@@ -766,9 +834,8 @@ const operatorApiController = {
       }
     }
 
-    // 👇 2) NUEVO: guardar subproducción (solo persistencia, sin tocar stock)
+    // === 5) Guardar SUBPRODUCCIÓN adicional (solo info, no toca stock) ===
     if (Array.isArray(subproduction) && subproduction.length) {
-      // Acepta tanto {cut_name, quantity} como {tipo|producto, cantidad}
       const rows = subproduction
         .map((s) => ({
           process_number: nuevoProcessNumber,
@@ -778,14 +845,17 @@ const operatorApiController = {
         .filter((r) => r.cut_name && !Number.isNaN(r.quantity));
 
       if (rows.length) {
-        await ProductionProcessSubproduction.bulkCreate(rows, { transaction: t });
+        await ProductionProcessSubproduction.bulkCreate(rows, {
+          transaction: t,
+        });
       }
     }
 
     await t.commit();
-    return res
-      .status(201)
-      .json({ message: "Cortes y proceso guardados, stock ajustado.", process_number: nuevoProcessNumber });
+    return res.status(201).json({
+      message: "Cortes y proceso guardados, stock ajustado.",
+      process_number: nuevoProcessNumber,
+    });
   } catch (error) {
     if (t) {
       try {
@@ -793,9 +863,15 @@ const operatorApiController = {
       } catch {}
     }
     console.error("uploadProductsProcess error:", error);
-    return res.status(500).json({ message: "Error interno del servidor", error: error.message });
+    return res.status(500).json({
+      message: "Error interno del servidor",
+      error: error.message,
+    });
   }
 },
+
+
+
 getAllSubproduction :async (req, res) => {
   try {
     const {
