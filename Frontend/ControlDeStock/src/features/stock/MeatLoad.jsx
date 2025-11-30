@@ -1,7 +1,12 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPen, faXmark, faEye, faIndustry } from "@fortawesome/free-solid-svg-icons";
+import {
+  faPen,
+  faXmark,
+  faEye,
+  faIndustry,
+} from "@fortawesome/free-solid-svg-icons";
 import Navbar from "../../components/Navbar.jsx";
 import Swal from "sweetalert2";
 import "../../assets/styles/meatLoad.css";
@@ -60,30 +65,48 @@ const MeatLoad = () => {
       },
       buttonsStyling: false,
     }).then(async (result) => {
-      // 🔴 Eliminar definitivo
+      // 🔴 Eliminar definitivo (primera confirmación)
       if (result.isConfirmed) {
-        try {
-          const response = await fetch(`${API_URL}/products-bill/${id}`, {
-            method: "DELETE",
-          });
-          if (response.ok) {
-            setProducts((prev) => prev.filter((p) => p.id !== id));
+        // Segunda confirmación
+        Swal.fire({
+          title: "¿Estás seguro?",
+          text: "Esta acción eliminará definitivamente el ingreso y no se podrá deshacer.",
+          icon: "warning",
+          showCancelButton: true,
+          confirmButtonText: "Sí, eliminar",
+          cancelButtonText: "Cancelar",
+          customClass: {
+            popup: "custom-popup",
+            confirmButton: "custom-confirm-button",
+            cancelButton: "custom-cancel-button",
+          },
+          buttonsStyling: false,
+        }).then(async (finalConfirm) => {
+          if (!finalConfirm.isConfirmed) return;
+
+          try {
+            const response = await fetch(`${API_URL}/products-bill/${id}`, {
+              method: "DELETE",
+            });
+            if (response.ok) {
+              setProducts((prev) => prev.filter((p) => p.id !== id));
+              Swal.fire(
+                "Eliminado",
+                "El ingreso ha sido eliminado definitivamente.",
+                "success"
+              );
+            } else {
+              Swal.fire("Error", "No se pudo eliminar el ingreso.", "error");
+            }
+          } catch (error) {
+            console.error("Error al eliminar:", error);
             Swal.fire(
-              "Eliminado",
-              "El ingreso ha sido eliminado definitivamente.",
-              "success"
+              "Error",
+              "Ocurrió un error al eliminar el ingreso.",
+              "error"
             );
-          } else {
-            Swal.fire("Error", "No se pudo eliminar el ingreso.", "error");
           }
-        } catch (error) {
-          console.error("Error al eliminar:", error);
-          Swal.fire(
-            "Error",
-            "Ocurrió un error al eliminar el ingreso.",
-            "error"
-          );
-        }
+        });
       }
 
       // 🟡 Dar de baja o de alta
@@ -149,9 +172,12 @@ const MeatLoad = () => {
       if (!result.isConfirmed) return;
 
       try {
-        const res = await fetch(`${API_URL}/bill-production-flag/${product.id}`, {
-          method: "PUT",
-        });
+        const res = await fetch(
+          `${API_URL}/bill-production-flag/${product.id}`,
+          {
+            method: "PUT",
+          }
+        );
         const data = await res.json().catch(() => ({}));
 
         if (!res.ok || data.ok === false) {

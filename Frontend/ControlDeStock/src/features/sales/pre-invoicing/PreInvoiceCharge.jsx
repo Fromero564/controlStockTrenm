@@ -51,7 +51,6 @@ export default function PreInvoiceCharge() {
   const editReceipt = receiptParam || urlReceipt || null;
   const isEditMode = Boolean(editReceipt);
 
-  // 🔒 Solo lectura (si la URL trae ?readonly=1)
   const isReadOnly =
     new URLSearchParams(location.search).get("readonly") === "1";
 
@@ -63,6 +62,7 @@ export default function PreInvoiceCharge() {
 
   const [received, setReceived] = useState({});
   const [redirectMap, setRedirectMap] = useState({});
+  const [expandedItems, setExpandedItems] = useState({});
 
   const [clientsOptions, setClientsOptions] = useState([]);
 
@@ -75,9 +75,16 @@ export default function PreInvoiceCharge() {
   const [popupMaxUnits, setPopupMaxUnits] = useState(0);
   const [popupMaxKg, setPopupMaxKg] = useState(0);
 
-  // ----- Título -----
+  const popupIsKg =
+    popupCtx &&
+    String(popupCtx.shortage?.unit_measure || "")
+      .toUpperCase()
+      .trim() === "KG";
+
+  // ---------- TÍTULO ----------
   const title = useMemo(() => {
-    if (isEditMode && isReadOnly) return `VISUALIZAR PREFACTURACIÓN #${editReceipt}`;
+    if (isEditMode && isReadOnly)
+      return `VISUALIZAR PREFACTURACIÓN #${editReceipt}`;
     if (isEditMode) return `EDITAR PREFACTURACIÓN #${editReceipt}`;
     if (!selectedRoadmaps.length) return "CARGAR PREFACTURACIÓN";
     if (selectedRoadmaps.length === 1) {
@@ -87,9 +94,10 @@ export default function PreInvoiceCharge() {
     return `CARGAR PREFACTURACIÓN • ${selectedRoadmaps.length} hojas seleccionadas`;
   }, [selectedRoadmaps, isEditMode, isReadOnly, editReceipt]);
 
-  // === Carga de opciones de hojas (solo alta) ===
+  // ---------- OPCIONES DE HOJAS (ALTA) ----------
   useEffect(() => {
     if (isEditMode) return;
+
     (async () => {
       try {
         const res = await fetch(`${API_URL}/roadmaps?search=`);
@@ -126,12 +134,12 @@ export default function PreInvoiceCharge() {
         const tentative = normalized.map((rm) => {
           const label = `#${rm.id} • ${toDDMMYY(rm.created_at)} → ${toDDMMYY(
             rm.delivery_date
-          )} · ${(rm.destinations?.[0] || "s/dest").toUpperCase()} · ${rm.truck_license_plate || "camión?"
-            }`;
+          )} · ${(rm.destinations?.[0] || "s/dest").toUpperCase()} · ${
+            rm.truck_license_plate || "camión?"
+          }`;
           return { value: rm.id, label, meta: rm };
         });
 
-        // Verifica cuáles tienen remitos visibles
         const ids = tentative.map((t) => t.value);
         const chunk = 25;
         const eligible = new Set();
@@ -161,7 +169,7 @@ export default function PreInvoiceCharge() {
     })();
   }, [isEditMode]);
 
-  // === MODO EDICIÓN ===
+  // ---------- MODO EDICIÓN ----------
   useEffect(() => {
     if (!isEditMode) return;
     let cancel = false;
@@ -185,12 +193,14 @@ export default function PreInvoiceCharge() {
           setData({ ok: false, roadmaps: [] });
           setReceived({});
           setRedirectMap({});
+          setExpandedItems({});
           return;
         }
 
-        // Armar remit y roadmap
         const remitItems = items.map((it) => {
-          const unit = String(it.unit_measure || it.unidad_venta || "KG").toUpperCase();
+          const unit = String(
+            it.unit_measure || it.unidad_venta || "KG"
+          ).toUpperCase();
           const qty = Number(it.expected_units ?? it.qty ?? 0);
           const kg = Number(it.expected_kg ?? it.net_weight ?? 0);
           const price = Number(it.unit_price ?? it.price ?? 0);
@@ -250,7 +260,10 @@ export default function PreInvoiceCharge() {
           const key = Number(row.item_id || row.preinvoice_id);
           if (!mapRedir[key]) mapRedir[key] = { entries: [] };
           mapRedir[key].entries.push({
-            type: row.reason === "client" ? "client" : "stock",
+            type:
+              row.reason === "CLIENT" || row.reason === "client"
+                ? "client"
+                : "stock",
             client_name: row.client_name || null,
             units: Number(row.units_redirected || 0),
             kg: Number(row.kg_redirected || 0),
@@ -259,13 +272,20 @@ export default function PreInvoiceCharge() {
         });
         setRedirectMap(mapRedir);
 
+        const initialExpanded = {};
+        Object.keys(mapRedir).forEach((id) => {
+          initialExpanded[id] = true;
+        });
+        setExpandedItems(initialExpanded);
+
         if (roadmapRow.roadmap_id) {
           const label = `#${roadmapRow.roadmap_id} • ${toDDMMYY(
             roadmapRow.production_date
           )} → ${toDDMMYY(roadmapRow.delivery_date)} · ${(
             header.destination || "s/dest"
-          ).toUpperCase()} · ${roadmapRow.truck_license_plate || "camión?"
-            }`;
+          ).toUpperCase()} · ${
+            roadmapRow.truck_license_plate || "camión?"
+          }`;
           const option = { value: roadmapRow.roadmap_id, label };
           setSelectedRoadmaps([option]);
           setAllRoadmapOptions((prev) => {
@@ -277,6 +297,7 @@ export default function PreInvoiceCharge() {
         setData({ ok: false, roadmaps: [] });
         setReceived({});
         setRedirectMap({});
+        setExpandedItems({});
       } finally {
         if (!cancel) setLoadingData(false);
       }
@@ -287,7 +308,7 @@ export default function PreInvoiceCharge() {
     };
   }, [isEditMode, editReceipt]);
 
-  // === MODO ALTA ===
+  // ---------- MODO ALTA ----------
   useEffect(() => {
     if (isEditMode) return;
 
@@ -298,6 +319,7 @@ export default function PreInvoiceCharge() {
         setData({ ok: true, roadmaps: [] });
         setReceived({});
         setRedirectMap({});
+        setExpandedItems({});
         return;
       }
 
@@ -325,7 +347,17 @@ export default function PreInvoiceCharge() {
           .forEach((roadmap) => {
             (roadmap.remits || []).forEach((rm) => {
               (rm.items || []).forEach((it) => {
-                base[it.id] = { units: 0, kg: 0 };
+                const isKG =
+                  String(it.unit_measure || "")
+                    .toUpperCase()
+                    .trim() === "KG";
+                base[it.id] = {
+                  // en productos por KG, las unidades las consideramos completas
+                  units: isKG
+                    ? Number(it.qty || it.expected_units || 0)
+                    : 0,
+                  kg: 0,
+                };
               });
             });
           });
@@ -336,27 +368,36 @@ export default function PreInvoiceCharge() {
         )}`;
         const r2 = await fetch(urlReturns);
         const js2 = await r2.json();
+
+        const mapRedir = {};
         if (js2?.ok && Array.isArray(js2.items)) {
-          const mapRedir = {};
           js2.items.forEach((row) => {
             if (!mapRedir[row.item_id]) mapRedir[row.item_id] = { entries: [] };
             mapRedir[row.item_id].entries.push({
-              type: row.reason === "client" ? "client" : "stock",
+              type:
+                row.reason === "CLIENT" || row.reason === "client"
+                  ? "client"
+                  : "stock",
               client_name: row.client_name || null,
               units: Number(row.units_redirected || 0),
               kg: Number(row.kg_redirected || 0),
               ts: Date.parse(row.updated_at || row.created_at || Date.now()),
             });
           });
-          setRedirectMap(mapRedir);
-        } else {
-          setRedirectMap({});
         }
+        setRedirectMap(mapRedir);
+
+        const initialExpanded = {};
+        Object.keys(mapRedir).forEach((id) => {
+          initialExpanded[id] = true;
+        });
+        setExpandedItems(initialExpanded);
       } catch {
         if (!cancel) {
           setData({ ok: false, roadmaps: [] });
           setReceived({});
           setRedirectMap({});
+          setExpandedItems({});
         }
       } finally {
         if (!cancel) setLoadingData(false);
@@ -368,7 +409,7 @@ export default function PreInvoiceCharge() {
     };
   }, [selectedRoadmaps, isEditMode]);
 
-  // === Clientes posibles ===
+  // ---------- CLIENTES ----------
   useEffect(() => {
     (async () => {
       try {
@@ -381,12 +422,12 @@ export default function PreInvoiceCharge() {
           label: c.client_name || c.name || `ID ${c.id}`,
         }));
         setClientsOptions(opts);
-      } catch { }
+      } catch {}
     })();
   }, []);
 
   const updateReceived = (itemId, field, value) => {
-    if (isReadOnly) return; // 🔒 no modificar estado en solo lectura
+    if (isReadOnly) return;
     setReceived((prev) => ({
       ...prev,
       [itemId]: {
@@ -399,54 +440,47 @@ export default function PreInvoiceCharge() {
     }));
   };
 
-  const shortagesForRemit = (rm) => {
-    const out = [];
-    (rm.items || []).forEach((it) => {
-      const expU = Number(it.qty || it.expected_units || 0);
-      const expK = Number(it.net_weight || it.expected_kg || 0);
-      const rec = received[it.id] || { units: 0, kg: 0 };
-      const missU = Math.max(0, expU - Number(rec.units || 0));
-      const missK = Math.max(0, expK - Number(rec.kg || 0));
-      if (missU > 0 || missK > 0) {
-        out.push({
-          item_id: it.id,
-          product_id: it.product_id,
-          product_name: it.product_name,
-          unit_measure: it.unit_measure,
-          expected_units: expU,
-          expected_kg: expK,
-          received_units: Number(rec.units || 0),
-          received_kg: Number(rec.kg || 0),
-          missing_units: missU,
-          missing_kg: missK,
-        });
-      }
-    });
-    return out;
-  };
-
   const calcPopupState = (ctx, to, clientOpt) => {
     if (!ctx) return { maxU: 0, maxK: 0, seedU: "", seedK: "" };
+
     const entries = redirectMap[ctx.shortage.item_id]?.entries || [];
     const targetName = to === "client" ? (clientOpt?.label || "") : null;
+
     const editIdx =
       to === "client"
         ? entries.findIndex(
-          (e) => e.type === "client" && e.client_name === targetName
-        )
+            (e) => e.type === "client" && e.client_name === targetName
+          )
         : entries.findIndex((e) => e.type === "stock");
+
     const others = entries.filter((_, i) => i !== editIdx);
     const othersU = others.reduce((a, e) => a + Number(e.units || 0), 0);
     const othersK = others.reduce((a, e) => a + Number(e.kg || 0), 0);
-    const maxU = Math.max(0, Number(ctx.shortage.missing_units) - othersU);
-    const maxK = Math.max(0, Number(ctx.shortage.missing_kg) - othersK);
-    const seedU = editIdx >= 0 ? String(entries[editIdx].units ?? "") : "";
-    const seedK = editIdx >= 0 ? String(entries[editIdx].kg ?? "") : "";
+
+    let maxU = Math.max(0, Number(ctx.shortage.missing_units) - othersU);
+    let maxK = Math.max(0, Number(ctx.shortage.missing_kg) - othersK);
+    let seedU = editIdx >= 0 ? String(entries[editIdx].units ?? "") : "";
+    let seedK = editIdx >= 0 ? String(entries[editIdx].kg ?? "") : "";
+
+    const isKgItem =
+      String(ctx.shortage.unit_measure || "")
+        .toUpperCase()
+        .trim() === "KG";
+
+    if (isKgItem) {
+      maxU = 0;
+      seedU = "";
+    } else {
+      maxK = 0;
+      seedK = "";
+    }
+
     return { maxU, maxK, seedU, seedK };
   };
 
   const openPopup = (rm, shortage) => {
-    if (isReadOnly) return; // 🔒 no abrir popup en lectura
+    if (isReadOnly) return;
+
     const lastClientName = (redirectMap[shortage.item_id]?.entries || [])
       .slice()
       .reverse()
@@ -467,6 +501,11 @@ export default function PreInvoiceCharge() {
     setPopupTo("client");
     setPopupClientOpt(initialClient);
     setPopupOpen(true);
+
+    setExpandedItems((prev) => ({
+      ...prev,
+      [shortage.item_id]: true,
+    }));
   };
 
   useEffect(() => {
@@ -499,15 +538,26 @@ export default function PreInvoiceCharge() {
   };
 
   const confirmRedirect = async () => {
-    if (isReadOnly) return; // 🔒 no confirmar en lectura
+    if (isReadOnly) return;
     if (!popupCtx) return;
     if (popupTo === "client" && !popupClientOpt) {
       alert("Seleccioná un cliente para redirigir.");
       return;
     }
 
-    const units = clamp(popupUnits === "" ? 0 : popupUnits, popupMaxUnits);
-    const kg = clamp(popupKg === "" ? 0 : popupKg, popupMaxKg);
+    const isKgItem =
+      String(popupCtx.shortage.unit_measure || "")
+        .toUpperCase()
+        .trim() === "KG";
+
+    const unitsRaw = clamp(
+      popupUnits === "" ? 0 : popupUnits,
+      popupMaxUnits
+    );
+    const kgRaw = clamp(popupKg === "" ? 0 : popupKg, popupMaxKg);
+
+    const units = isKgItem ? 0 : unitsRaw;
+    const kg = isKgItem ? kgRaw : 0;
 
     const payload = {
       roadmap_ids: selectedRoadmaps.map((o) => o.value),
@@ -532,10 +582,10 @@ export default function PreInvoiceCharge() {
         const idx =
           payload.to === "client"
             ? list.findIndex(
-              (e) =>
-                e.type === "client" &&
-                e.client_name === payload.client_name
-            )
+                (e) =>
+                  e.type === "client" &&
+                  e.client_name === payload.client_name
+              )
             : list.findIndex((e) => e.type === "stock");
 
         let newList = [...list];
@@ -574,7 +624,7 @@ export default function PreInvoiceCharge() {
   };
 
   const saveAll = async () => {
-    if (isReadOnly) return; // 🔒 no guardar en lectura
+    if (isReadOnly) return;
     const items = Object.entries(received).map(([itemId, v]) => ({
       id: Number(itemId),
       item_id: Number(itemId),
@@ -638,7 +688,10 @@ export default function PreInvoiceCharge() {
       <Navbar />
 
       <div style={{ margin: "20px" }}>
-        <button className="boton-volver" onClick={() => navigate("/sales-panel")}>
+        <button
+          className="boton-volver"
+          onClick={() => navigate("/sales-panel")}
+        >
           <FontAwesomeIcon icon={faArrowLeftLong} /> Volver
         </button>
       </div>
@@ -655,7 +708,12 @@ export default function PreInvoiceCharge() {
         >
           <div style={{ flexGrow: 1 }}>
             <h1 className="charge-title" style={{ margin: 0 }}>
-              {title} {isReadOnly && <span style={{ fontSize: 12, color: "#6b7280" }}>(solo lectura)</span>}
+              {title}{" "}
+              {isReadOnly && (
+                <span style={{ fontSize: 12, color: "#6b7280" }}>
+                  (solo lectura)
+                </span>
+              )}
             </h1>
             {!isEditMode && (
               <div
@@ -687,7 +745,7 @@ export default function PreInvoiceCharge() {
               </label>
               <Select
                 isMulti
-                isDisabled={isReadOnly}            // 🔒 deshabilitado en lectura
+                isDisabled={isReadOnly}
                 classNamePrefix="charge-rs"
                 options={allRoadmapOptions}
                 value={selectedRoadmaps}
@@ -750,7 +808,8 @@ export default function PreInvoiceCharge() {
                     </div>
                     <div>
                       <FontAwesomeIcon icon={faFileInvoice} /> Hoja:{" "}
-                      <b>{r.roadmap_id || "-"}</b> · Prod {toDDMMYY(r.production_date)} → Entrega{" "}
+                      <b>{r.roadmap_id || "-"}</b> · Prod{" "}
+                      {toDDMMYY(r.production_date)} → Entrega{" "}
                       {toDDMMYY(r.delivery_date)}
                     </div>
                   </div>
@@ -758,8 +817,7 @@ export default function PreInvoiceCharge() {
               </div>
 
               {(r.remits || []).map((rm) => {
-                const shortages = shortagesForRemit(rm);
-                const filas = (rm.items || []).length; // 👈 filas por pedido
+                const filas = (rm.items || []).length;
 
                 return (
                   <div
@@ -797,7 +855,6 @@ export default function PreInvoiceCharge() {
                         <div>{rm.destination || "-"}</div>
                         <div>{rm.order_id || "-"}</div>
                         <div style={{ textAlign: "right" }}>
-                          {/* 👇 mostramos cantidad de filas del pedido, no cantidad de productos */}
                           Filas: <b>{filas}</b> · ${" "}
                           <b>{money(rm.total_amount ?? r.total_amount)}</b>
                         </div>
@@ -823,16 +880,94 @@ export default function PreInvoiceCharge() {
                               }}
                             >
                               <tr>
-                                <th style={{ textAlign: "left", padding: "8px 10px" }}>CÓDIGO</th>
-                                <th style={{ textAlign: "left", padding: "8px 10px" }}>PRODUCTO</th>
-                                <th style={{ textAlign: "center", padding: "8px 10px" }}>UNIDAD</th>
-                                <th style={{ textAlign: "right", padding: "8px 10px" }}>UNI.REM</th>
-                                <th style={{ textAlign: "right", padding: "8px 10px" }}>UNI.RECEP</th>
-                                <th style={{ textAlign: "right", padding: "8px 10px" }}>KG REM</th>
-                                <th style={{ textAlign: "right", padding: "8px 10px" }}>KG RECEP</th>
-                                <th style={{ textAlign: "right", padding: "8px 10px" }}>MERMA</th>
-                                <th style={{ textAlign: "right", padding: "8px 10px" }}>P. UNIT</th>
-                                <th style={{ textAlign: "right", padding: "8px 10px" }}>TOTAL</th>
+                                <th
+                                  style={{
+                                    textAlign: "left",
+                                    padding: "8px 10px",
+                                  }}
+                                >
+                                  CÓDIGO
+                                </th>
+                                <th
+                                  style={{
+                                    textAlign: "left",
+                                    padding: "8px 10px",
+                                  }}
+                                >
+                                  PRODUCTO
+                                </th>
+                                <th
+                                  style={{
+                                    textAlign: "center",
+                                    padding: "8px 10px",
+                                  }}
+                                >
+                                  UNIDAD
+                                </th>
+                                <th
+                                  style={{
+                                    textAlign: "right",
+                                    padding: "8px 10px",
+                                  }}
+                                >
+                                  UNI.REM
+                                </th>
+                                <th
+                                  style={{
+                                    textAlign: "right",
+                                    padding: "8px 10px",
+                                  }}
+                                >
+                                  UNI.RECEP
+                                </th>
+                                <th
+                                  style={{
+                                    textAlign: "right",
+                                    padding: "8px 10px",
+                                  }}
+                                >
+                                  KG REM
+                                </th>
+                                <th
+                                  style={{
+                                    textAlign: "right",
+                                    padding: "8px 10px",
+                                  }}
+                                >
+                                  KG RECEP
+                                </th>
+                                <th
+                                  style={{
+                                    textAlign: "right",
+                                    padding: "8px 10px",
+                                  }}
+                                >
+                                  MERMA
+                                </th>
+                                <th
+                                  style={{
+                                    textAlign: "right",
+                                    padding: "8px 10px",
+                                  }}
+                                >
+                                  P. UNIT
+                                </th>
+                                <th
+                                  style={{
+                                    textAlign: "right",
+                                    padding: "8px 10px",
+                                  }}
+                                >
+                                  TOTAL
+                                </th>
+                                <th
+                                  style={{
+                                    textAlign: "right",
+                                    padding: "8px 10px",
+                                  }}
+                                >
+                                  DEVOLUCIONES
+                                </th>
                               </tr>
                             </thead>
                             <tbody>
@@ -841,190 +976,511 @@ export default function PreInvoiceCharge() {
                                   String(it.unit_measure || "")
                                     .toUpperCase()
                                     .trim() === "KG";
+
+                                const expectedUnits = Number(
+                                  it.qty ?? it.expected_units ?? 0
+                                );
+                                const expectedKg = Number(
+                                  it.net_weight ?? it.expected_kg ?? 0
+                                );
+
                                 const total =
                                   Number(it.unit_price || 0) *
-                                  (isKG
-                                    ? Number(it.net_weight || it.expected_kg || 0)
-                                    : Number(it.qty || it.expected_units || 0));
-                                const rec =
+                                  (isKG ? expectedKg : expectedUnits);
+
+                                const recState =
                                   received[it.id] || {
                                     units: 0,
                                     kg: 0,
                                   };
-                                const warnUnits =
-                                  Number(rec.units || 0) < Number(it.qty || it.expected_units || 0);
-                                const warnKg =
-                                  Number(rec.kg || 0) < Number(it.net_weight || it.expected_kg || 0);
-                                const expectedUnits = Number(it.qty ?? it.expected_units ?? 0);
-                                const mermaUnits = Math.max(0, expectedUnits - Number(rec.units || 0));
 
-                                return (
-                                  <tr key={it.id} style={{ borderTop: "1px solid #eef2f7" }}>
-                                    <td style={{ padding: "8px 10px" }}>{it.product_id ?? ""}</td>
-                                    <td style={{ padding: "8px 10px" }}>{it.product_name ?? ""}</td>
-                                    <td style={{ padding: "8px 10px", textAlign: "center" }}>
+                                // para KG, internamente usamos unidades completas,
+                                // pero el usuario no las toca
+                                const recUnits = isKG
+                                  ? expectedUnits
+                                  : Number(recState.units || 0);
+                                const recKg = Number(recState.kg || 0);
+
+                                const warnUnits = isKG
+                                  ? false
+                                  : recUnits <
+                                    Number(
+                                      it.qty || it.expected_units || 0
+                                    );
+                                const warnKg =
+                                  recKg <
+                                  Number(
+                                    it.net_weight || it.expected_kg || 0
+                                  );
+
+                                // merma: unidades para UN, kilos para KG
+                                const missingUnits = isKG
+                                  ? 0
+                                  : Math.max(
+                                      0,
+                                      expectedUnits - recUnits
+                                    );
+                                const missingKg = Math.max(
+                                  0,
+                                  expectedKg - recKg
+                                );
+                                const mermaDisplay = isKG
+                                  ? missingKg.toFixed(2)
+                                  : missingUnits.toFixed(0);
+
+                                const shortage = {
+                                  item_id: it.id,
+                                  product_id: it.product_id,
+                                  product_name: it.product_name,
+                                  unit_measure: it.unit_measure,
+                                  expected_units: expectedUnits,
+                                  expected_kg: expectedKg,
+                                  received_units: recUnits,
+                                  received_kg: recKg,
+                                  missing_units: missingUnits,
+                                  missing_kg: missingKg,
+                                };
+
+                                const logs =
+                                  redirectMap[it.id]?.entries || [];
+                                const assignedUnits = logs.reduce(
+                                  (a, e) =>
+                                    a + Number(e.units || 0),
+                                  0
+                                );
+                                const assignedKg = logs.reduce(
+                                  (a, e) => a + Number(e.kg || 0),
+                                  0
+                                );
+                                const remainingUnits = Math.max(
+                                  0,
+                                  missingUnits - assignedUnits
+                                );
+                                const remainingKg = Math.max(
+                                  0,
+                                  missingKg - assignedKg
+                                );
+                                const fullyAssigned =
+                                  remainingUnits === 0 &&
+                                  remainingKg === 0;
+
+                                const clientLines = logs
+                                  .filter(
+                                    (e) =>
+                                      e.type === "client" &&
+                                      (e.units || e.kg)
+                                  )
+                                  .map(
+                                    (e) =>
+                                      `Redirigió a ${
+                                        e.client_name ?? "—"
+                                      } ${nf3(e.kg)} KG, ${nf2(
+                                        e.units
+                                      )} UN`
+                                  );
+
+                                const stockKg = logs
+                                  .filter((e) => e.type === "stock")
+                                  .reduce(
+                                    (a, e) =>
+                                      a + Number(e.kg || 0),
+                                    0
+                                  );
+                                const stockUn = logs
+                                  .filter((e) => e.type === "stock")
+                                  .reduce(
+                                    (a, e) =>
+                                      a + Number(e.units || 0),
+                                    0
+                                  );
+                                const stockLine =
+                                  stockKg > 0 || stockUn > 0
+                                    ? `Volvió a stock ${nf3(
+                                        stockKg
+                                      )} KG, ${nf2(stockUn)} UN`
+                                    : null;
+
+                                const rightLines = [
+                                  ...clientLines,
+                                  ...(stockLine ? [stockLine] : []),
+                                ];
+
+                                const hasDeviation =
+                                  missingUnits > 0 ||
+                                  missingKg > 0 ||
+                                  rightLines.length > 0;
+
+                                const showInfo =
+                                  expandedItems[it.id] ||
+                                  rightLines.length > 0;
+
+                                return [
+                                  <tr
+                                    key={it.id}
+                                    style={{
+                                      borderTop:
+                                        "1px solid #eef2f7",
+                                    }}
+                                  >
+                                    <td
+                                      style={{
+                                        padding:
+                                          "8px 10px",
+                                      }}
+                                    >
+                                      {it.product_id ?? ""}
+                                    </td>
+                                    <td
+                                      style={{
+                                        padding:
+                                          "8px 10px",
+                                      }}
+                                    >
+                                      {it.product_name ?? ""}
+                                    </td>
+                                    <td
+                                      style={{
+                                        padding:
+                                          "8px 10px",
+                                        textAlign:
+                                          "center",
+                                      }}
+                                    >
                                       {it.unit_measure || "-"}
                                     </td>
-                                    <td style={{ padding: "8px 10px", textAlign: "right" }}>
-                                      {Number(it.qty ?? it.expected_units ?? 0)}
+                                    <td
+                                      style={{
+                                        padding:
+                                          "8px 10px",
+                                        textAlign:
+                                          "right",
+                                      }}
+                                    >
+                                      {expectedUnits}
                                     </td>
-                                    <td style={{ padding: "6px 8px", textAlign: "right" }}>
+                                    <td
+                                      style={{
+                                        padding:
+                                          "6px 8px",
+                                        textAlign:
+                                          "right",
+                                      }}
+                                    >
                                       <input
                                         type="number"
-                                        className={`charge-inp ${warnUnits ? "warn" : ""}`}
+                                        className={`charge-inp ${
+                                          warnUnits
+                                            ? "warn"
+                                            : ""
+                                        }`}
                                         min={0}
                                         step="1"
-                                        value={rec.units ?? 0}
-                                        disabled={isReadOnly} // 🔒
-                                        onChange={(e) =>
-                                          !isReadOnly && updateReceived(it.id, "units", e.target.value)
+                                        value={
+                                          isKG
+                                            ? expectedUnits
+                                            : recUnits
                                         }
-                                        style={{ width: 90, textAlign: "right" }}
+                                        disabled={
+                                          isReadOnly || isKG
+                                        }
+                                        onChange={(e) =>
+                                          !isReadOnly &&
+                                          !isKG &&
+                                          updateReceived(
+                                            it.id,
+                                            "units",
+                                            e
+                                              .target
+                                              .value
+                                          )
+                                        }
+                                        style={{
+                                          width: 90,
+                                          textAlign:
+                                            "right",
+                                        }}
                                       />
                                     </td>
-                                    <td style={{ padding: "8px 10px", textAlign: "right" }}>
-                                      {Number(it.net_weight ?? it.expected_kg ?? 0).toFixed(2)}
+                                    <td
+                                      style={{
+                                        padding:
+                                          "8px 10px",
+                                        textAlign:
+                                          "right",
+                                      }}
+                                    >
+                                      {expectedKg.toFixed(
+                                        2
+                                      )}
                                     </td>
-                                    <td style={{ padding: "6px 8px", textAlign: "right" }}>
+                                    <td
+                                      style={{
+                                        padding:
+                                          "6px 8px",
+                                        textAlign:
+                                          "right",
+                                      }}
+                                    >
                                       <input
                                         type="number"
-                                        className={`charge-inp ${warnKg ? "warn" : ""}`}
+                                        className={`charge-inp ${
+                                          warnKg
+                                            ? "warn"
+                                            : ""
+                                        }`}
                                         min={0}
                                         step="0.01"
-                                        value={rec.kg ?? 0}
-                                        disabled={isReadOnly} // 🔒
-                                        onChange={(e) =>
-                                          !isReadOnly && updateReceived(it.id, "kg", e.target.value)
+                                        value={recKg}
+                                        disabled={
+                                          isReadOnly
                                         }
-                                        style={{ width: 110, textAlign: "right" }}
+                                        onChange={(e) =>
+                                          !isReadOnly &&
+                                          updateReceived(
+                                            it.id,
+                                            "kg",
+                                            e
+                                              .target
+                                              .value
+                                          )
+                                        }
+                                        style={{
+                                          width: 110,
+                                          textAlign:
+                                            "right",
+                                        }}
                                       />
                                     </td>
+                                    <td
+                                      style={{
+                                        padding:
+                                          "8px 10px",
+                                        textAlign:
+                                          "right",
+                                      }}
+                                    >
+                                      {mermaDisplay}
+                                    </td>
+                                    <td
+                                      style={{
+                                        padding:
+                                          "8px 10px",
+                                        textAlign:
+                                          "right",
+                                      }}
+                                    >
+                                      {money(
+                                        it.unit_price
+                                      )}
+                                    </td>
+                                    <td
+                                      style={{
+                                        padding:
+                                          "8px 10px",
+                                        textAlign:
+                                          "right",
+                                      }}
+                                    >
+                                      {money(
+                                        total
+                                      )}
+                                    </td>
+                                    <td
+                                      style={{
+                                        padding:
+                                          "8px 10px",
+                                        textAlign:
+                                          "right",
+                                      }}
+                                    >
+                                      {!isReadOnly &&
+                                        hasDeviation && (
+                                          <button
+                                            className="charge-btn"
+                                            disabled={
+                                              fullyAssigned
+                                            }
+                                            onClick={() =>
+                                              openPopup(
+                                                rm,
+                                                shortage
+                                              )
+                                            }
+                                            style={{
+                                              fontSize: 12,
+                                              padding:
+                                                "4px 10px",
+                                            }}
+                                          >
+                                            {fullyAssigned
+                                              ? "Redirigido"
+                                              : "Redirigir"}
+                                          </button>
+                                        )}
+                                    </td>
+                                  </tr>,
 
-                                    {/* MERMA */}
-                                    <td style={{ padding: "8px 10px", textAlign: "right" }}>
-                                      {mermaUnits.toFixed(0)}
-                                    </td>
+                                  showInfo ? (
+                                    <tr
+                                      key={`${it.id}-info`}
+                                      style={{
+                                        background:
+                                          "#fafbff",
+                                      }}
+                                    >
+                                      <td
+                                        colSpan={
+                                          11
+                                        }
+                                        style={{
+                                          padding:
+                                            "8px 10px 10px",
+                                        }}
+                                      >
+                                        <div
+                                          style={{
+                                            display:
+                                              "flex",
+                                            alignItems:
+                                              "flex-start",
+                                            justifyContent:
+                                              "space-between",
+                                            border:
+                                              "1px solid #eef2f7",
+                                            borderRadius: 10,
+                                            padding:
+                                              "8px 10px",
+                                          }}
+                                        >
+                                          <div>
+                                            <div
+                                              style={{
+                                                fontWeight: 700,
+                                              }}
+                                            >
+                                              Devoluciones
+                                              –{" "}
+                                              {
+                                                it.product_name
+                                              }
+                                            </div>
+                                            <div
+                                              style={{
+                                                fontSize: 12,
+                                                color:
+                                                  "#7a8aa0",
+                                                marginTop: 2,
+                                              }}
+                                            >
+                                              Faltan:{" "}
+                                              {nf2(
+                                                remainingUnits
+                                              )}{" "}
+                                              UN ·{" "}
+                                              {nf3(
+                                                remainingKg
+                                              )}{" "}
+                                              KG (Recibido{" "}
+                                              {nf2(
+                                                shortage.received_units
+                                              )}{" "}
+                                              UN ·{" "}
+                                              {nf3(
+                                                shortage.received_kg
+                                              )}{" "}
+                                              KG de{" "}
+                                              {nf2(
+                                                shortage.expected_units
+                                              )}{" "}
+                                              UN ·{" "}
+                                              {nf3(
+                                                shortage.expected_kg
+                                              )}{" "}
+                                              KG)
+                                            </div>
 
-                                    <td style={{ padding: "8px 10px", textAlign: "right" }}>
-                                      {money(it.unit_price)}
-                                    </td>
-                                    <td style={{ padding: "8px 10px", textAlign: "right" }}>
-                                      {money(total)}
-                                    </td>
-                                  </tr>
-                                );
+                                            {clientLines.length >
+                                              0 && (
+                                              <div
+                                                style={{
+                                                  marginTop: 6,
+                                                }}
+                                              >
+                                                {clientLines.map(
+                                                  (
+                                                    line,
+                                                    i
+                                                  ) => (
+                                                    <div
+                                                      key={
+                                                        i
+                                                      }
+                                                      className="charge-devol-line"
+                                                    >
+                                                      {
+                                                        line
+                                                      }
+                                                    </div>
+                                                  )
+                                                )}
+                                              </div>
+                                            )}
+                                            {stockLine && (
+                                              <div className="charge-devol-line">
+                                                {
+                                                  stockLine
+                                                }
+                                              </div>
+                                            )}
+                                          </div>
+
+                                          {rightLines.length >
+                                            0 && (
+                                            <div
+                                              style={{
+                                                fontSize: 12,
+                                                color:
+                                                  "#2f4b66",
+                                                background:
+                                                  "#f0f6ff",
+                                                border:
+                                                  "1px solid #d6e6ff",
+                                                padding:
+                                                  "6px 8px",
+                                                borderRadius: 8,
+                                                maxWidth: 260,
+                                                textAlign:
+                                                  "right",
+                                              }}
+                                            >
+                                              {rightLines.map(
+                                                (
+                                                  ln,
+                                                  i
+                                                ) => (
+                                                  <div
+                                                    key={
+                                                      i
+                                                    }
+                                                  >
+                                                    {
+                                                      ln
+                                                    }
+                                                  </div>
+                                                )
+                                              )}
+                                            </div>
+                                          )}
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  ) : null,
+                                ];
                               })}
                             </tbody>
                           </table>
                         </div>
-
                       </div>
-
-                      {shortages.length > 0 && (
-                        <div className="charge-row" style={{ display: "block", background: "#fff" }}>
-                          <div style={{ padding: "10px 12px", color: "#4a4a4a", fontWeight: 700 }}>
-                            Devoluciones
-                          </div>
-                          <div style={{ padding: "0 12px 12px" }}>
-                            {shortages.map((s) => {
-                              const logs = redirectMap[s.item_id]?.entries || [];
-                              const assignedUnits = logs.reduce((a, e) => a + Number(e.units || 0), 0);
-                              const assignedKg = logs.reduce((a, e) => a + Number(e.kg || 0), 0);
-                              const remainingUnits = Math.max(0, Number(s.missing_units) - assignedUnits);
-                              const remainingKg = Math.max(0, Number(s.missing_kg) - assignedKg);
-                              const fullyAssigned = remainingUnits === 0 && remainingKg === 0;
-
-                              const clientLines = logs
-                                .filter((e) => e.type === "client" && (e.units || e.kg))
-                                .map((e) => `Redirigió a ${e.client_name ?? "—"} ${nf3(e.kg)} KG, ${nf2(e.units)} UN`);
-
-                              const stockKg = logs
-                                .filter((e) => e.type === "stock")
-                                .reduce((a, e) => a + Number(e.kg || 0), 0);
-                              const stockUn = logs
-                                .filter((e) => e.type === "stock")
-                                .reduce((a, e) => a + Number(e.units || 0), 0);
-                              const stockLine = stockKg > 0 || stockUn > 0
-                                ? `Volvió a stock ${nf3(stockKg)} KG, ${nf2(stockUn)} UN`
-                                : null;
-
-                              const rightLines = [...clientLines, ...(stockLine ? [stockLine] : [])];
-
-                              return (
-                                <div
-                                  key={s.item_id}
-                                  style={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "space-between",
-                                    border: "1px solid #eef2f7",
-                                    borderRadius: 10,
-                                    padding: "10px 12px",
-                                    margin: "8px 0",
-                                  }}
-                                >
-                                  <div>
-                                    <div style={{ fontWeight: 700 }}>{s.product_name}</div>
-                                    <div style={{ fontSize: 12, color: "#7a8aa0", marginTop: 2 }}>
-                                      Faltan: {nf2(remainingUnits)} UN · {nf3(remainingKg)} KG (Recibido{" "}
-                                      {nf2(s.received_units)} UN · {nf3(s.received_kg)} KG de {nf2(s.expected_units)} UN ·{" "}
-                                      {nf3(s.expected_kg)} KG)
-                                    </div>
-                                    {clientLines.length > 0 && (
-                                      <div style={{ marginTop: 6 }}>
-                                        {clientLines.map((line, i) => (
-                                          <div key={i} className="charge-devol-line">
-                                            {line}
-                                          </div>
-                                        ))}
-                                      </div>
-                                    )}
-                                    {stockLine && <div className="charge-devol-line">{stockLine}</div>}
-                                  </div>
-
-                                  <div
-                                    style={{
-                                      display: "flex",
-                                      flexDirection: "column",
-                                      alignItems: "flex-end",
-                                      gap: 8,
-                                    }}
-                                  >
-                                    {rightLines.length > 0 && (
-                                      <div
-                                        style={{
-                                          fontSize: 12,
-                                          color: "#2f4b66",
-                                          background: "#f0f6ff",
-                                          border: "1px solid #d6e6ff",
-                                          padding: "6px 8px",
-                                          borderRadius: 8,
-                                          maxWidth: 260,
-                                          textAlign: "right",
-                                        }}
-                                      >
-                                        {rightLines.map((ln, i) => (
-                                          <div key={i}>{ln}</div>
-                                        ))}
-                                      </div>
-                                    )}
-
-                                    {!isReadOnly && (
-                                      <button
-                                        className="charge-btn"
-                                        disabled={fullyAssigned}
-                                        onClick={() => openPopup(rm, s)}
-                                      >
-                                        {fullyAssigned ? "Redirigido" : "Redirigir"}
-                                      </button>
-                                    )}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
                     </div>
                   </div>
                 );
@@ -1042,64 +1498,118 @@ export default function PreInvoiceCharge() {
         >
           {!isReadOnly && (
             <button className="charge-btn" onClick={saveAll}>
-              {isEditMode ? "Guardar cambios" : "Guardar toda la prefacturación"}
+              {isEditMode
+                ? "Guardar cambios"
+                : "Guardar toda la prefacturación"}
             </button>
           )}
         </div>
       </div>
 
-      {/* Popup NO se muestra en solo lectura */}
       {!isReadOnly && popupOpen && popupCtx && (
-        <div className="charge-popup-backdrop" onClick={closePopup}>
-          <div className="charge-popup" onClick={(e) => e.stopPropagation()}>
-            <div className="charge-popup-title">Redirigir faltante</div>
+        <div className="charge-popup-overlay" onClick={closePopup}>
+          <div
+            className="charge-popup"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="charge-popup-header">
+              <h2>Redirigir faltante</h2>
+              <button
+                type="button"
+                className="charge-popup-close"
+                onClick={closePopup}
+              >
+                ×
+              </button>
+            </div>
 
-            <div className="charge-popup-row">
-              <label>Destino</label>
-              <div style={{ display: "flex", gap: 8 }}>
-                <button
-                  className={`charge-btn ${popupTo === "client" ? "primary" : "ghost"}`}
+            <div className="charge-popup-body">
+              <div className="charge-toggle">
+                <div
+                  className={`charge-chip ${
+                    popupTo === "client" ? "active" : ""
+                  }`}
                   onClick={() => setPopupTo("client")}
                 >
+                  <input
+                    type="radio"
+                    checked={popupTo === "client"}
+                    readOnly
+                  />
                   Cliente
-                </button>
-                <button
-                  className={`charge-btn ${popupTo === "stock" ? "primary" : "ghost"}`}
+                </div>
+                <div
+                  className={`charge-chip ${
+                    popupTo === "stock" ? "active" : ""
+                  }`}
                   onClick={() => setPopupTo("stock")}
                 >
+                  <input
+                    type="radio"
+                    checked={popupTo === "stock"}
+                    readOnly
+                  />
                   Stock
-                </button>
+                </div>
               </div>
+
+              {popupTo === "client" && (
+                <div className="charge-field">
+                  <label>Cliente destino</label>
+                  <Select
+                    classNamePrefix="charge-rs"
+                    options={clientsOptions}
+                    value={popupClientOpt}
+                    onChange={setPopupClientOpt}
+                    placeholder="Seleccionar cliente…"
+                  />
+                </div>
+              )}
+
+              {!popupIsKg && (
+                <div className="charge-field">
+                  <label>Unidades a redirigir</label>
+                  <input
+                    type="number"
+                    min={0}
+                    step="1"
+                    value={popupUnits}
+                    onChange={onUnitsChange}
+                    className="charge-inp"
+                  />
+                  <small>Máx: {nf2(popupMaxUnits)} UN</small>
+                </div>
+              )}
+
+              {popupIsKg && (
+                <div className="charge-field">
+                  <label>Kilos a redirigir</label>
+                  <input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={popupKg}
+                    onChange={onKgChange}
+                    className="charge-inp"
+                  />
+                  <small>Máx: {nf3(popupMaxKg)} KG</small>
+                </div>
+              )}
             </div>
 
-            {popupTo === "client" && (
-              <div className="charge-popup-row">
-                <label>Cliente</label>
-                <Select
-                  classNamePrefix="charge-rs"
-                  options={clientsOptions}
-                  value={popupClientOpt}
-                  onChange={setPopupClientOpt}
-                  placeholder="Seleccionar cliente…"
-                />
-              </div>
-            )}
-
-            <div className="charge-popup-row">
-              <label>Unidades</label>
-              <input type="number" min={0} step="1" value={popupUnits} onChange={onUnitsChange} />
-            </div>
-
-            <div className="charge-popup-row">
-              <label>Kilos</label>
-              <input type="number" min={0} step="0.01" value={popupKg} onChange={onKgChange} />
-            </div>
-
-            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button className="charge-btn ghost" onClick={closePopup}>
+            <div className="charge-popup-footer">
+              <button
+                type="button"
+                className="charge-btn ghost"
+                onClick={closePopup}
+              >
                 Cancelar
               </button>
-              <button className="charge-btn" onClick={confirmRedirect}>
+              <button
+                type="button"
+                className="charge-btn primary"
+                onClick={confirmRedirect}
+              >
                 Guardar
               </button>
             </div>

@@ -610,7 +610,7 @@ uploadProductsProcess: async (req, res) => {
   try {
     const { cortes, bill_ids, subproduction = [] } = req.body;
 
-    // Validaciones básicas
+    // Validaciones básicas de arrays
     if (
       !Array.isArray(cortes) ||
       cortes.length === 0 ||
@@ -621,6 +621,16 @@ uploadProductsProcess: async (req, res) => {
         .status(400)
         .json({ message: "Faltan cortes o comprobantes para asociar." });
     }
+
+    // Helpers para validar / convertir valores
+    const esTextoValido = (v) =>
+      typeof v === "string" && v.trim().length > 0;
+
+    const toNumero = (v, defecto = 0) => {
+      if (v === null || v === undefined || v === "") return defecto;
+      const n = Number(v);
+      return Number.isFinite(n) ? n : defecto;
+    };
 
     t = await sequelize.transaction();
 
@@ -636,42 +646,61 @@ uploadProductsProcess: async (req, res) => {
     // Guardar la relación proceso ↔ remitos
     for (const bill_id of bill_ids) {
       await ProcessNumber.create(
-        { process_number: nuevoProcessNumber, bill_id },
+        {
+          bill_id,
+          process_number: nuevoProcessNumber,
+        },
         { transaction: t }
       );
     }
 
-    // === 2) Guardar cortes (subproductos) y sumar stock de subproductos ===
+    // === 2) Guardar cortes + sumar stock de productos "hijo" ===
     for (const corte of cortes) {
-      let { type, average, quantity, gross_weight, tares, net_weight } = corte;
+      const {
+        type,
+        description,
+        unit_type,
+        quantity,
+        net_weight,
+        head_count,
+        romaneo_weight,
+        average,
+        gross_weight,
+        tares,
+      } = corte;
 
-      const avg = Number(average);
-      const qty = Number(quantity);
-      const gross = Number(gross_weight);
-      const tare = Number(tares);
-      const net = Number(net_weight);
-
-      if (
-        type == null ||
-        Number.isNaN(avg) ||
-        Number.isNaN(qty) ||
-        Number.isNaN(gross) ||
-        Number.isNaN(tare) ||
-        Number.isNaN(net)
-      ) {
+      // --- VALIDACIÓN LÓGICA, PERMITIENDO CEROS ---
+      if (!esTextoValido(type)) {
         await t.rollback();
         return res.status(400).json({
           message:
-            "Faltan campos obligatorios o hay valores inválidos en algún corte.",
+            "Falta el tipo de corte (type) o es inválido en algún corte.",
         });
       }
 
-      // type puede venir como ID o como nombre
+      const qtyNum = toNumero(quantity, 0); // puede ser 0 (por ejemplo en productos en kg)
+      const netNum = toNumero(net_weight, 0);
+
+      // El peso neto sí debe ser > 0 para que tenga sentido guardar el corte
+      if (netNum <= 0) {
+        await t.rollback();
+        return res.status(400).json({
+          message:
+            "El peso neto (net_weight) es obligatorio y debe ser mayor a 0 en cada corte.",
+        });
+      }
+
+      const avgNum = toNumero(average, 0);
+      const grossNum = toNumero(gross_weight, 0);
+      const taresNum = toNumero(tares, 0);
+      const headCountNum = toNumero(head_count, 0); // opcional, default 0
+      const romaneoNum = toNumero(romaneo_weight, 0); // opcional, default 0
+
       let baseProduct = null;
       let productName = null;
 
+      // Si viene un ID numérico en "type", buscamos por PK; si no, por nombre
       if (!Number.isNaN(Number(type))) {
-        // viene como ID de products_available
         baseProduct = await ProductsAvailable.findByPk(type, {
           include: [
             {
@@ -682,6 +711,7 @@ uploadProductsProcess: async (req, res) => {
           ],
           transaction: t,
         });
+
         if (!baseProduct) {
           await t.rollback();
           return res
@@ -690,7 +720,6 @@ uploadProductsProcess: async (req, res) => {
         }
         productName = baseProduct.product_name;
       } else {
-        // viene como nombre
         baseProduct = await ProductsAvailable.findOne({
           where: { product_name: type },
           include: [
@@ -702,6 +731,7 @@ uploadProductsProcess: async (req, res) => {
           ],
           transaction: t,
         });
+
         if (!baseProduct) {
           await t.rollback();
           return res.status(400).json({
@@ -711,22 +741,95 @@ uploadProductsProcess: async (req, res) => {
         productName = baseProduct.product_name;
       }
 
-      // Guardar corte en tabla de procesos
+      // Valores por defecto si no vienen description / unit_type desde el front
+      const finalDescription = esTextoValido(description)
+        ? description.trim()
+        : productName; // por defecto usamos el nombre del producto
+
+      const finalUnitType = esTextoValido(unit_type)
+        ? unit_type.trim()
+        : baseProduct.unit_measure || baseProduct.unit_type || "kg"; // fallback
+
+      // Guardamos el corte en ProcessMeat (TODOS los NOT NULL cubiertos)
       await ProcessMeat.create(
         {
-          type: productName,
-          average: avg,
-          quantity: qty,
-          gross_weight: gross,
-          tares: tare,
-          net_weight: net,
+          // campos NOT NULL del modelo
+          type: productName,          // columna type en ProcessMeat
+          average: avgNum,            // NOT NULL
+          gross_weight: grossNum,     // NOT NULL
+          tares: taresNum,            // NOT NULL
+
+          // resto de la info
+          product_name: productName,
+          description: finalDescription,
+          unit_type: finalUnitType,
+          quantity: qtyNum,
+          net_weight: netNum,
+          head_count: headCountNum,
+          romaneo_weight: romaneoNum,
           process_number: nuevoProcessNumber,
         },
         { transaction: t }
       );
 
-      // Actualizar stock del SUBPRODUCTO (lo que sale del proceso)
-      const existingChild = await ProductStock.findOne({
+      // Guardar subproducción (si viene) y sumar stock de subproductos
+      if (Array.isArray(subproduction) && subproduction.length > 0) {
+        for (const sub of subproduction) {
+          const {
+            subproduct_name,
+            subproduct_quantity,
+            subproduct_weight,
+            category,
+          } = sub;
+
+          const subQty = toNumero(subproduct_quantity, 0);
+          const subWeight = toNumero(subproduct_weight, 0);
+
+          if (!esTextoValido(subproduct_name) || subQty <= 0 || subWeight <= 0) {
+            // si hay datos inválidos en un subproducto, lo ignoramos
+            continue;
+          }
+
+          await Subproduction.create(
+            {
+              process_number: nuevoProcessNumber,
+              subproduct_name,
+              subproduct_quantity: subQty,
+              subproduct_weight: subWeight,
+              category,
+            },
+            { transaction: t }
+          );
+
+          let stockSub = await ProductStock.findOne({
+            where: { product_name: subproduct_name },
+            transaction: t,
+          });
+
+          if (stockSub) {
+            await stockSub.increment(
+              {
+                product_quantity: subQty,
+                product_total_weight: subWeight,
+              },
+              { transaction: t }
+            );
+          } else {
+            await ProductStock.create(
+              {
+                product_name: subproduct_name,
+                product_quantity: subQty,
+                product_total_weight: subWeight,
+                product_cod: null,
+              },
+              { transaction: t }
+            );
+          }
+        }
+      }
+
+      // Sumar stock del producto resultante del desposte (producto "hijo")
+      let existingChild = await ProductStock.findOne({
         where: { product_name: productName },
         transaction: t,
       });
@@ -734,8 +837,8 @@ uploadProductsProcess: async (req, res) => {
       if (existingChild) {
         await existingChild.increment(
           {
-            product_quantity: qty,
-            product_total_weight: net,
+            product_quantity: qtyNum,
+            product_total_weight: netNum,
           },
           { transaction: t }
         );
@@ -743,8 +846,8 @@ uploadProductsProcess: async (req, res) => {
         await ProductStock.create(
           {
             product_name: productName,
-            product_quantity: qty,
-            product_total_weight: net,
+            product_quantity: qtyNum,
+            product_total_weight: netNum,
             product_cod: baseProduct.id,
             product_category: baseProduct.category?.category_name ?? null,
           },
@@ -754,8 +857,6 @@ uploadProductsProcess: async (req, res) => {
     }
 
     // === 3) Descontar STOCK PRINCIPAL usando lo que vino en los remitos ===
-    //    - bill_details  → romaneo
-    //    - meat_manual_income → ingreso manual
     const validBillIds = bill_ids
       .map((id) => Number(id))
       .filter((id) => Number.isFinite(id) && id > 0);
@@ -763,40 +864,54 @@ uploadProductsProcess: async (req, res) => {
     if (validBillIds.length) {
       const usageByParent = {}; // { [nombreProducto]: { qty, weight } }
 
-      // 3.a) Romaneo: tabla bill_details
-      const romaneoRows = await billDetail.findAll({
-        where: { bill_supplier_id: { [Op.in]: validBillIds } },
+      // Traemos los comprobantes para saber si son romaneo o manual
+      const bills = await billSupplier.findAll({
+        where: { id: { [Op.in]: validBillIds } },
+        attributes: ["id", "income_state"],
         transaction: t,
       });
 
-      for (const row of romaneoRows) {
-        const name = (row.type || "").trim();
-        if (!name) continue;
+      for (const bill of bills) {
+        const billId = bill.id;
+        const tipoIngreso = bill.income_state; // "romaneo" | "manual" | etc.
 
-        if (!usageByParent[name]) {
-          usageByParent[name] = { qty: 0, weight: 0 };
+        if (tipoIngreso === "manual") {
+          // Si el comprobante es MANUAL → leer solo MeatIncome
+          const manualRows = await meatIncome.findAll({
+            where: { id_bill_suppliers: billId },
+            transaction: t,
+          });
+
+          for (const row of manualRows) {
+            const name = (row.products_name || "").trim();
+            if (!name) continue;
+
+            if (!usageByParent[name]) {
+              usageByParent[name] = { qty: 0, weight: 0 };
+            }
+
+            usageByParent[name].qty += Number(row.products_quantity || 0);
+            usageByParent[name].weight += Number(row.net_weight || 0);
+          }
+        } else {
+          // En cualquier otro caso (romaneo, etc.) → leer solo BillDetail
+          const romaneoRows = await billDetail.findAll({
+            where: { bill_supplier_id: billId },
+            transaction: t,
+          });
+
+          for (const row of romaneoRows) {
+            const name = (row.type || "").trim();
+            if (!name) continue;
+
+            if (!usageByParent[name]) {
+              usageByParent[name] = { qty: 0, weight: 0 };
+            }
+
+            usageByParent[name].qty += Number(row.quantity || 0);
+            usageByParent[name].weight += Number(row.weight || 0);
+          }
         }
-
-        usageByParent[name].qty += Number(row.quantity || 0);
-        usageByParent[name].weight += Number(row.weight || 0);
-      }
-
-      // 3.b) Manual: tabla meat_manual_income (peso neto por producto)
-      const manualRows = await meatIncome.findAll({
-        where: { id_bill_suppliers: { [Op.in]: validBillIds } },
-        transaction: t,
-      });
-
-      for (const row of manualRows) {
-        const name = (row.products_name || "").trim();
-        if (!name) continue;
-
-        if (!usageByParent[name]) {
-          usageByParent[name] = { qty: 0, weight: 0 };
-        }
-
-        usageByParent[name].qty += Number(row.products_quantity || 0);
-        usageByParent[name].weight += Number(row.net_weight || 0);
       }
 
       // 3.c) Aplicar el descuento en product_stock
@@ -824,23 +939,24 @@ uploadProductsProcess: async (req, res) => {
       }
     }
 
-    // === 4) Marcar remitos como procesados ===
-    for (const bill_id of bill_ids) {
-      if (Number(bill_id) > 0) {
-        await billSupplier.update(
-          { production_process: true },
-          { where: { id: bill_id }, transaction: t }
-        );
-      }
+    // === 4) Marcar remitos como procesados (si aplica en tu lógica)
+    if (validBillIds.length) {
+      await billSupplier.update(
+        { process_state: "procesado" },
+        {
+          where: { id: { [Op.in]: validBillIds } },
+          transaction: t,
+        }
+      );
     }
 
-    // === 5) Guardar SUBPRODUCCIÓN adicional (solo info, no toca stock) ===
-    if (Array.isArray(subproduction) && subproduction.length) {
+    // Tabla intermedia opcional de subproducción por proceso/remito
+    if (Array.isArray(subproduction) && subproduction.length > 0) {
       const rows = subproduction
         .map((s) => ({
           process_number: nuevoProcessNumber,
           cut_name: String(s.cut_name || s.tipo || s.producto || "").trim(),
-          quantity: Number(s.quantity ?? s.cantidad ?? 0),
+          quantity: toNumero(s.quantity ?? s.cantidad, 0),
         }))
         .filter((r) => r.cut_name && !Number.isNaN(r.quantity));
 
@@ -860,7 +976,7 @@ uploadProductsProcess: async (req, res) => {
     if (t) {
       try {
         await t.rollback();
-      } catch {}
+      } catch (e) {}
     }
     console.error("uploadProductsProcess error:", error);
     return res.status(500).json({
@@ -869,6 +985,7 @@ uploadProductsProcess: async (req, res) => {
     });
   }
 },
+
 
 
 

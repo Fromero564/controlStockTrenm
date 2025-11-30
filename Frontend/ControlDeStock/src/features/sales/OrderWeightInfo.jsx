@@ -31,16 +31,14 @@ const normalizeHeader = (h = {}) => {
     product_code: h.product_code ?? h.product_id ?? "",
     product_name: h.product_name ?? "",
     unit_price: h.unit_price ?? null,
-    packaging_type: h.packaging_type ?? "",
+    // 👇 único cambio: si no viene en el header, lo toma del primer detalle
+    packaging_type: h.packaging_type ?? details[0]?.packaging_type ?? "",
     qty_requested,
     qty_weighed,
     qty_pending:
       h.qty_pending ??
       (Number.isFinite(Number(qty_requested))
-        ? Math.max(
-            0,
-            Number(qty_requested) - Number(qty_weighed)
-          )
+        ? Math.max(0, Number(qty_requested) - Number(qty_weighed))
         : null),
     gross_total,
     tare_total,
@@ -171,9 +169,7 @@ export default function OrderWeightInfo() {
                 key={h.id ?? idx}
                 style={{
                   borderBottom:
-                    idx < rows.length - 1
-                      ? "1px solid #eef2f6"
-                      : "none",
+                    idx < rows.length - 1 ? "1px solid #eef2f6" : "none",
                   paddingBottom: 16,
                   marginBottom: 16,
                 }}
@@ -203,10 +199,7 @@ export default function OrderWeightInfo() {
                   <Info label="TARA (KG)" value={f2(h.tare_total)} />
                   <Info label="BRUTO (KG)" value={f2(h.gross_total)} />
                   <Info label="NETO (KG)" value={f2(h.net_total)} />
-                  <Info
-                    label="PROMEDIO (KG/UN)"
-                    value={f2(h.avg_weight)}
-                  />
+                  <Info label="PROMEDIO (KG/UN)" value={f2(h.avg_weight)} />
                   <Info label="PENDIENTE (UN)" value={fmt(h.qty_pending)} />
                 </div>
 
@@ -239,8 +232,7 @@ export default function OrderWeightInfo() {
                     </thead>
                     <tbody>
                       {(h.details?.length ? h.details : []).map((d, i) => {
-                        const net =
-                          n(d.gross_weight) - n(d.tare_weight);
+                        const net = n(d.gross_weight) - n(d.tare_weight);
                         return (
                           <tr
                             key={i}
@@ -254,11 +246,7 @@ export default function OrderWeightInfo() {
                             <Td>{fmt(d.units_count)}</Td>
                             <Td>{fmt(n(d.tare_weight).toFixed(2))}</Td>
                             <Td>{fmt(n(d.gross_weight).toFixed(2))}</Td>
-                            <Td>
-                              {fmt(
-                                Math.max(0, net).toFixed(2)
-                              )}
-                            </Td>
+                            <Td>{fmt(Math.max(0, net).toFixed(2))}</Td>
                           </tr>
                         );
                       })}

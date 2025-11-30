@@ -4011,145 +4011,205 @@ savePreinvoiceByRoadmapIds: async (req, res) => {
     //   kg
     // }
     // Guarda o borra la redirección de faltante para un item, igual que savePreinvoiceRedirect pero verificando que el remito pertenezca a alguna de las hojas seleccionadas
-    savePreinvoiceRedirectByRoadmapIds: async (req, res) => {
-        const t = await sequelize.transaction();
-        try {
-            const {
-                roadmap_ids = [],
-                final_remit_id,
-                item_id,
-                to, // 'client' | 'stock'
-                client_id = null,
-                client_name = null,
-                units = 0,
-                kg = 0,
-            } = req.body || {};
+ // Dentro de saleApiController.js
 
-            if (!Array.isArray(roadmap_ids) || roadmap_ids.length === 0) {
-                await t.rollback();
-                return res.status(400).json({ ok: false, msg: "Faltan roadmap_ids" });
-            }
+savePreinvoiceRedirectByRoadmapIds: async (req, res) => {
+  const t = await sequelize.transaction();
+  try {
+    const {
+      roadmap_ids,
+      final_remit_id,
+      item_id,
+      to,            // "client" | "stock"
+      client_id,
+      client_name,
+      units,
+      kg,
+    } = req.body || {};
 
-            if (!final_remit_id || !item_id || !to) {
-                await t.rollback();
-                return res.status(400).json({ ok: false, msg: "Faltan datos obligatorios (final_remit_id / item_id / to)" });
-            }
+    // Validaciones básicas
+    if (!Array.isArray(roadmap_ids) || !roadmap_ids.length) {
+      await t.rollback();
+      return res.status(400).json({ ok: false, msg: "Faltan hojas de ruta" });
+    }
+    if (!final_remit_id) {
+      await t.rollback();
+      return res.status(400).json({ ok: false, msg: "Falta final_remit_id" });
+    }
+    if (!item_id) {
+      await t.rollback();
+      return res.status(400).json({ ok: false, msg: "Falta item_id" });
+    }
+    if (to !== "client" && to !== "stock") {
+      await t.rollback();
+      return res.status(400).json({ ok: false, msg: "Destino de redirección inválido" });
+    }
 
-            // 1) chequeo que ese remito realmente pertenezca a alguna hoja pasada
-            const destCheck = await RoadmapInfoDestination.findOne({
-                where: {
-                    roadmap_info_id: { [Op.in]: roadmap_ids },
-                    id_remit: final_remit_id,
-                },
-                transaction: t,
-            });
+    const unitsNum = Number(units || 0);
+    const kgNum = Number(kg || 0);
 
-            if (!destCheck) {
-                await t.rollback();
-                return res.status(400).json({
-                    ok: false,
-                    msg: "El remito no pertenece a las hojas indicadas",
-                });
-            }
+    // 1) Chequear que el remito y el item existan
+    const frItem = await FinalRemitProduct.findOne({
+      where: { id: item_id, final_remit_id },
+      transaction: t,
+    });
 
-            // 2) Busco/creo la fila Preinvoice del item
-            const frItem = await FinalRemitProduct.findOne({
-                where: { id: item_id },
-                transaction: t,
-            });
-            if (!frItem) {
-                await t.rollback();
-                return res.status(404).json({ ok: false, msg: "Ítem de remito no encontrado" });
-            }
+    if (!frItem) {
+      await t.rollback();
+      return res
+        .status(404)
+        .json({ ok: false, msg: "No se encontró el ítem del remito final" });
+    }
 
-            const expUnits = Number(frItem.qty || 0);
-            const expKg = Number(frItem.net_weight || 0);
+    // 2) Buscar/crear la fila de prefactura (Preinvoice) para ese item
+    let pre = await Preinvoice.findOne({
+      where: { final_remit_item_id: item_id },
+      transaction: t,
+    });
 
-            let pre = await Preinvoice.findOne({
-                where: {
-                    final_remit_id: final_remit_id,
-                    final_remit_item_id: item_id,
-                },
-                transaction: t,
-            });
+    if (!pre) {
+      pre = await Preinvoice.create(
+        {
+          final_remit_id: frItem.final_remit_id,
+          final_remit_item_id: item_id,
+          product_id: frItem.product_id ?? null,
+          product_name: frItem.product_name ?? null,
+          unit_measure: frItem.unit_measure ?? null,
+          receipt_number: null,
+          expected_units: Number(frItem.qty || 0),
+          expected_kg: Number(frItem.net_weight || 0),
+          received_units: 0,
+          received_kg: 0,
+        },
+        { transaction: t }
+      );
+    }
 
-            if (!pre) {
-                pre = await Preinvoice.create(
-                    {
-                        receipt_number: null,
-                        final_remit_id: final_remit_id,
-                        final_remit_item_id: item_id,
-                        product_id: frItem.product_id,
-                        product_name: frItem.product_name,
-                        unit_measure: frItem.unit_measure,
-                        expected_units: expUnits,
-                        expected_kg: expKg,
-                        received_units: 0,
-                        received_kg: 0,
-                    },
-                    { transaction: t }
-                );
-            }
+    // 3) Buscar si ya había una devolución previa para este preinvoice
+    const reasonDB = to === "client" ? "CLIENT" : "STOCK";
 
-            // 3) Upsert de la redirección (idéntica idea que savePreinvoiceRedirect) :contentReference[oaicite:7]{index=7}
-            const reasonDB = to === "stock" ? "STOCK" : "CLIENT";
+    const whereReturn = {
+      preinvoice_id: pre.id,
+      reason: reasonDB,
+    };
 
-            const whereReturn = {
-                preinvoice_id: pre.id,
-                reason: reasonDB,
-            };
-            if (reasonDB === "CLIENT") {
-                whereReturn.client_name = client_name || null;
-            }
+    if (reasonDB === "CLIENT") {
+      whereReturn.client_id = client_id || null;
+      whereReturn.client_name = client_name || null;
+    }
 
-            const existing = await PreinvoiceReturn.findOne({
-                where: whereReturn,
-                transaction: t,
-            });
+    const existing = await PreinvoiceReturn.findOne({
+      where: whereReturn,
+      transaction: t,
+      lock: t.LOCK.UPDATE,
+    });
 
-            // Si mando 0 y 0 → borrar esa redirección
-            if (Number(units) === 0 && Number(kg) === 0) {
-                if (existing) {
-                    await existing.destroy({ transaction: t });
-                }
-                await t.commit();
-                return res
-                    .status(201)
-                    .json({ ok: true, msg: "Redirección eliminada (by-roadmaps)" });
-            }
+    // guardamos los valores anteriores para calcular el delta de stock
+    const prevUnits = existing ? Number(existing.units_redirected || 0) : 0;
+    const prevKg = existing ? Number(existing.kg_redirected || 0) : 0;
 
-            if (existing) {
-                existing.client_id = client_id;
-                existing.client_name = client_name;
-                existing.units_redirected = Number(units);
-                existing.kg_redirected = Number(kg);
-                await existing.save({ transaction: t });
-            } else {
-                await PreinvoiceReturn.create(
-                    {
-                        preinvoice_id: pre.id,
-                        client_id,
-                        client_name,
-                        units_redirected: Number(units),
-                        kg_redirected: Number(kg),
-                        reason: reasonDB,
-                    },
-                    { transaction: t }
-                );
-            }
+    // 4) Crear / actualizar / borrar la devolución
+    if (unitsNum === 0 && kgNum === 0) {
+      // Si todo es 0, borrar la devolución si existía
+      if (existing) {
+        await existing.destroy({ transaction: t });
+      }
+    } else if (existing) {
+      // UPDATE
+      existing.units_redirected = unitsNum;
+      existing.kg_redirected = kgNum;
 
-            await t.commit();
-            return res
-                .status(201)
-                .json({ ok: true, msg: "Redirección registrada (by-roadmaps)" });
-        } catch (e) {
-            console.error(e);
-            try { await t.rollback(); } catch {}
-            return res
-                .status(500)
-                .json({ ok: false, msg: "Error al registrar redirección (by-roadmaps)" });
+      if (reasonDB === "CLIENT") {
+        existing.client_id = client_id || null;
+        existing.client_name = client_name || null;
+      }
+
+      await existing.save({ transaction: t });
+    } else {
+      // CREATE
+      await PreinvoiceReturn.create(
+        {
+          preinvoice_id: pre.id,
+          client_id: reasonDB === "CLIENT" ? client_id || null : null,
+          client_name: reasonDB === "CLIENT" ? client_name || null : null,
+          units_redirected: unitsNum,
+          kg_redirected: kgNum,
+          reason: reasonDB,
+        },
+        { transaction: t }
+      );
+    }
+
+    // 5) Si es redirección a STOCK, actualizar tabla product_stock
+    if (reasonDB === "STOCK") {
+      const deltaUnits = unitsNum - prevUnits;
+      const deltaKg = kgNum - prevKg;
+
+      // Si no cambió nada, no toco el stock
+      if (deltaUnits !== 0 || deltaKg !== 0) {
+        const productCod = String(
+          frItem.product_id ?? frItem.product_cod ?? ""
+        ).trim();
+        const productName = frItem.product_name || "";
+
+        let stockRow = null;
+
+        if (productCod) {
+          stockRow = await ProductStock.findOne({
+            where: { product_cod: productCod },
+            transaction: t,
+            lock: t.LOCK.UPDATE,
+          });
         }
-    },
+
+        if (!stockRow) {
+          stockRow = await ProductStock.findOne({
+            where: { product_name: productName },
+            transaction: t,
+            lock: t.LOCK.UPDATE,
+          });
+        }
+
+        // Si no existe el producto en stock, lo creo con 0 y sumo el delta
+        if (!stockRow) {
+          stockRow = await ProductStock.create(
+            {
+              product_name: productName,
+              product_cod: productCod || null,
+              product_category: "SECUNDARIA", // ajustá si tenés categoría real
+              product_quantity: 0,
+              product_total_weight: 0,
+            },
+            { transaction: t }
+          );
+        }
+
+        const currentQty = Number(stockRow.product_quantity || 0);
+        const currentKg = Number(stockRow.product_total_weight || 0);
+
+        await stockRow.update(
+          {
+            product_quantity: currentQty + deltaUnits,
+            product_total_weight: currentKg + deltaKg,
+          },
+          { transaction: t }
+        );
+      }
+    }
+
+    await t.commit();
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error("savePreinvoiceRedirectByRoadmapIds:", err);
+    try {
+      await t.rollback();
+    } catch (_) {}
+    return res
+      .status(500)
+      .json({ ok: false, msg: "Error al guardar redirección" });
+  }
+},
+
 // =========================================================
 // PREFACURACIÓN MULTI-HOJA (BY ROADMAP IDS)
 // =========================================================
