@@ -21,6 +21,18 @@ const safeParse = (str, fallback) => {
   }
 };
 
+
+const formatFecha = (fecha) => {
+  if (!fecha) return "";
+  return new Date(fecha).toLocaleString("es-AR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
+
 const ProductionProcess = () => {
   const navigate = useNavigate();
   const { processNumber, id } = useParams();
@@ -76,7 +88,7 @@ const ProductionProcess = () => {
       setComprobantesAgregados(comprobantesGuardados);
   }, [isEdit]);
 
-  // ---------- PERSISTENCIA: Guardar en localStorage cuando cambian ----------
+  
   useEffect(() => {
     if (isEdit) return;
     localStorage.setItem(LS_KEYS.CORTES, JSON.stringify(cortesAgregados));
@@ -98,7 +110,7 @@ const ProductionProcess = () => {
     );
   }, [comprobantesAgregados, isEdit]);
 
-  // Seguridad
+
   useEffect(() => {
     if (!Array.isArray(productosSinRemito)) setProductosSinRemito([]);
   }, []);
@@ -221,8 +233,10 @@ const ProductionProcess = () => {
           cantidad: Number(r.quantity || 0),
           pesoBruto: Number(r.gross_weight || 0),
           tara: Number(r.tares || 0),
-          pesoNeto:
-            Number(r.net_weight || Number(r.gross_weight || 0) - Number(r.tares || 0)),
+          pesoNeto: Number(
+            r.net_weight ||
+              Number(r.gross_weight || 0) - Number(r.tares || 0)
+          ),
         }));
         setCortesAgregados(mapeados);
 
@@ -265,7 +279,12 @@ const ProductionProcess = () => {
                 }
                 return { id: bid, remito, detalles, subproductos: subs };
               } catch {
-                return { id: bid, remito: null, detalles: [], subproductos: [] };
+                return {
+                  id: bid,
+                  remito: null,
+                  detalles: [],
+                  subproductos: [],
+                };
               }
             })
           );
@@ -296,7 +315,11 @@ const ProductionProcess = () => {
       const response = await fetch(`${API_URL}/bill-details/${idSel}`);
       const detalles = await response.json();
       if (!detalles || detalles.length === 0) {
-        Swal.fire("Error", "No se encontró detalle para ese comprobante.", "error");
+        Swal.fire(
+          "Error",
+          "No se encontró detalle para ese comprobante.",
+          "error"
+        );
         return;
       }
       const resInfo = await fetch(`${API_URL}/allproducts`);
@@ -347,16 +370,18 @@ const ProductionProcess = () => {
   const subproductosTotales = () => {
     const acumulado = {};
     comprobantesAgregados.forEach(({ subproductos }) => {
-      subproductos.forEach(({ nombre, cantidadTotal, cantidadPorUnidad, unit }) => {
-        if (!acumulado[nombre]) {
-          acumulado[nombre] = {
-            cantidadTotal: 0,
-            cantidadPorUnidad,
-            unit: unit || "unidad",
-          };
+      subproductos.forEach(
+        ({ nombre, cantidadTotal, cantidadPorUnidad, unit }) => {
+          if (!acumulado[nombre]) {
+            acumulado[nombre] = {
+              cantidadTotal: 0,
+              cantidadPorUnidad,
+              unit: unit || "unidad",
+            };
+          }
+          acumulado[nombre].cantidadTotal += cantidadTotal;
         }
-        acumulado[nombre].cantidadTotal += cantidadTotal;
-      });
+      );
     });
     return acumulado;
   };
@@ -411,7 +436,10 @@ const ProductionProcess = () => {
 
   // Si el tipo es en kg, mantener cantidad = 0 y promedio = 0 en el formulario
   useEffect(() => {
-    if (isTipoEnKg(formData.tipo) && (formData.cantidad !== 0 || formData.promedio !== 0)) {
+    if (
+      isTipoEnKg(formData.tipo) &&
+      (formData.cantidad !== 0 || formData.promedio !== 0)
+    ) {
       setFormData((prev) => ({
         ...prev,
         cantidad: 0,
@@ -462,16 +490,15 @@ const ProductionProcess = () => {
       return;
     }
 
-    const pesoNeto = +(
-      Number(formData.pesoBruto) - Number(formData.tara)
-    ).toFixed(2);
+    const pesoNeto = +(Number(formData.pesoBruto) - Number(formData.tara)).toFixed(
+      2
+    );
 
     // Para subproductos en kg, usamos los kilos netos como "cantidad lógica"
     const aAgregar = esKg ? pesoNeto : Number(formData.cantidad);
 
     // Para kg no tiene sentido el promedio por unidad ⇒ 0
-    const promedio =
-      !esKg && aAgregar > 0 ? +(pesoNeto / aAgregar).toFixed(2) : 0;
+    const promedio = !esKg && aAgregar > 0 ? +(pesoNeto / aAgregar).toFixed(2) : 0;
 
     const nuevoCorte = {
       ...formData,
@@ -558,9 +585,7 @@ const ProductionProcess = () => {
       const cortesPayload = cortesAgregados.map((corte) => {
         const esKgLocal = isTipoEnKg(corte.tipo);
         const neto = Number(
-          (
-            Number(corte.pesoBruto || 0) - Number(corte.tara || 0)
-          ).toFixed(2)
+          (Number(corte.pesoBruto || 0) - Number(corte.tara || 0)).toFixed(2)
         );
         return {
           type: corte.tipo?.trim(),
@@ -698,7 +723,8 @@ const ProductionProcess = () => {
                     .join(" | ");
                   return (
                     <option key={comp.id} value={comp.id}>
-                      {comp.supplier} — {piezaStr}
+                      {comp.supplier} — {piezaStr} | 🕒{" "}
+                      {formatFecha(comp.updatedAt)}
                     </option>
                   );
                 })}
@@ -973,10 +999,7 @@ const ProductionProcess = () => {
                           >
                             {prod.subproductosAgrupados.map(
                               (
-                                [
-                                  nombre,
-                                  { cantidadTotal, cantidadPorUnidad, unit },
-                                ],
+                                [nombre, { cantidadTotal, cantidadPorUnidad, unit }],
                                 i
                               ) => (
                                 <li key={i}>

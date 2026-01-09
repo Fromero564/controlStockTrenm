@@ -1,58 +1,87 @@
 const path = require("path");
 const db = require("../../src/config/models");
 const sequelize = db.sequelize;
-const { Op, where } = require("sequelize");
+const { Op } = require("sequelize");
 const moment = require("moment");
-const req = require("express/lib/request");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 
+// Modelo de usuarios
 const User = db.User;
 
-
 const mainApiController = {
+  // =========================================================
+  // REGISTRO DE USUARIO
+  // POST /api/register
+  // =========================================================
   register: async (req, res) => {
     try {
-      // Trae datos del formulario de registro
-      const { username, role, password } = req.body;
+      const { username, role, password, permissions } = req.body;
 
-      // Verifica que no hay campos vacíos
+      // Validaciones básicas
       if (!username || !role || !password) {
-        return res.status(400).json({ message: "Todos los campos son obligatorios" });
+        return res
+          .status(400)
+          .json({ message: "Usuario, rol y contraseña son obligatorios" });
       }
 
-      // Verifica si el usuario ya existe
-      let userExists = await User.findOne({ where: { user: username } });
-
-      if (userExists) {
-        return res.status(400).json({ message: "Usuario ya se encuentra registrado" });
+      // Verificar si ya existe
+      const existing = await User.findOne({ where: { user: username } });
+      if (existing) {
+        return res
+          .status(400)
+          .json({ message: "El usuario ya se encuentra registrado" });
       }
 
-      // Hashea la contraseña
+      // Encriptar contraseña
       const hashedPassword = await bcrypt.hash(password, 10);
 
-      // Carga datos en la BD
-      await User.create({
+      // Guardamos permisos como string en el campo TEXT
+      // En el front debería venir como array de strings ["perm1","perm2",...]
+      const permissionsString = Array.isArray(permissions)
+        ? permissions.join(",")
+        : "";
+
+      const newUser = await User.create({
         user: username,
         rol: role,
         password: hashedPassword,
+        permissions: permissionsString,
       });
 
-      return res.json({ message: "Usuario registrado" });
-
+      return res.json({
+        message: "Usuario registrado",
+        user: {
+          id: newUser.id,
+          username: newUser.user,
+          rol: newUser.rol,
+        },
+      });
     } catch (error) {
       console.error("Error al registrar usuario:", error);
-      return res.status(500).json({ message: "Error interno del servidor" });
+      return res
+        .status(500)
+        .json({ message: "Error interno del servidor en registro" });
     }
   },
+
+  // =========================================================
+  // LOGIN
+  // POST /api/login
+  // =========================================================
   login: async (req, res) => {
     try {
       const { username, password } = req.body;
-    
-      // Buscar usuario en la BD
+
+      if (!username || !password) {
+        return res
+          .status(400)
+          .json({ message: "Usuario y contraseña son obligatorios" });
+      }
+
+      // Buscar usuario
       const userData = await User.findOne({ where: { user: username } });
 
-  
       if (!userData) {
         return res.status(401).json({ message: "Credenciales inválidas" });
       }
@@ -63,56 +92,85 @@ const mainApiController = {
         return res.status(401).json({ message: "Credenciales inválidas" });
       }
 
-      let userDataJson = {
+      // Pasar de "perm1,perm2" a ["perm1","perm2"]
+      const permissionsArray = userData.permissions
+        ? userData.permissions
+            .split(",")
+            .map((p) => p.trim())
+            .filter((p) => p !== "")
+        : [];
+
+      // Datos que van dentro del token
+      const userDataJson = {
         id: userData.dataValues.id,
         user: userData.dataValues.user,
         rol: userData.dataValues.rol,
-      }
+      };
 
-      // const jwtGenerado = jwt.sign(userDataJson, process.env.JWT_ACCESS_SECRET, { expiresIn: '1h' });
-      const jwtGenerado = jwt.sign(userDataJson, "Frigorifico", { expiresIn: '1h' });
-    
-
-      res.json({ 
-        token: jwtGenerado,
-        rol: userDataJson.rol, 
-        username: userDataJson.user
+      // Mismo secreto que en authMiddleware.js
+      const jwtGenerado = jwt.sign(userDataJson, "Frigorifico", {
+        expiresIn: "1h",
       });
 
-
+      return res.json({
+        token: jwtGenerado,
+        rol: userDataJson.rol,
+        username: userDataJson.user,
+        permissions: permissionsArray, // 👈 para el frontend
+      });
     } catch (error) {
-      res.status(500).json({ message: "Error al iniciar sesión" });
+      console.error("Error en login:", error);
+      return res
+        .status(500)
+        .json({ message: "Error al iniciar sesión" });
     }
-
   },
+
+  // =========================================================
+  // PROFILE
+  // GET /api/profile  (usa authenticateJWT)
+  // =========================================================
   profile: async (req, res) => {
     try {
- 
-
+      // El middleware authMiddleware mete el payload del token en req.user
       const userId = req.user?.id;
+
       if (!userId) {
-        return res.status(400).json({ message: "ID de usuario no encontrado en la petición" });
+        return res
+          .status(400)
+          .json({ message: "ID de usuario no encontrado en la petición" });
       }
 
-    
-
-      const user = await User.findByPk(userId, { attributes: { exclude: ["password"] } });
+      const user = await User.findByPk(userId, {
+        attributes: { exclude: ["password"] },
+      });
 
       if (!user) {
         console.log("Usuario no encontrado en la base de datos");
         return res.status(404).json({ message: "Usuario no encontrado" });
       }
 
-    
-      res.json({ user });
+      const permissionsArray = user.permissions
+        ? user.permissions
+            .split(",")
+            .map((p) => p.trim())
+            .filter((p) => p !== "")
+        : [];
+
+      // Devuelvo en formato plano + el objeto user por compatibilidad
+      return res.json({
+        username: user.user,
+        rol: user.rol,
+        permissions: permissionsArray,
+        user,
+      });
     } catch (error) {
       console.error("Error en profile:", error);
-      res.status(500).json({ message: "Error al obtener el perfil" });
+      return res
+        .status(500)
+        .json({ message: "Error al obtener el perfil" });
     }
-
-
   },
-
-}
+};
 
 module.exports = mainApiController;

@@ -4,7 +4,15 @@ import { NavLink, useNavigate } from "react-router-dom";
 import "../../assets/styles/listOrders.css";
 import Navbar from "../../components/Navbar";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPen, faTrash, faEye, faFileExcel, faPlus, faSearch, faTimes } from "@fortawesome/free-solid-svg-icons";
+import {
+  faPen,
+  faTrash,
+  faEye,
+  faFileExcel,
+  faPlus,
+  faSearch,
+  faTimes,
+} from "@fortawesome/free-solid-svg-icons";
 import Swal from "sweetalert2";
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -46,13 +54,28 @@ const ListOrders = () => {
   }, []);
 
   const normalize = (s) =>
-    String(s ?? "").toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "");
+    String(s ?? "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/\p{Diacritic}/gu, "");
 
+  // ✅ Filtrar y ORDENAR de más nuevo a más viejo
   const filtered = useMemo(() => {
-    return orders.filter((o) => {
+    const base = orders.filter((o) => {
       const passDate = filterDate ? o.date_order === filterDate : true;
-      const passClient = filterClient ? normalize(o.client_name).includes(normalize(filterClient)) : true;
+      const passClient = filterClient
+        ? normalize(o.client_name).includes(normalize(filterClient))
+        : true;
       return passDate && passClient;
+    });
+
+    // Ordenar por fecha (descendente) y si empata, por id desc
+    return [...base].sort((a, b) => {
+      const da = a.date_order ? new Date(a.date_order) : new Date(0);
+      const db = b.date_order ? new Date(b.date_order) : new Date(0);
+      const diff = db - da;
+      if (diff !== 0) return diff;
+      return (b.id ?? 0) - (a.id ?? 0);
     });
   }, [orders, filterDate, filterClient]);
 
@@ -72,7 +95,14 @@ const ListOrders = () => {
   };
 
   const exportCSV = () => {
-    const headers = ["FECHA", "CLIENTE", "VENDEDOR", "LISTA", "COND_VENTA", "COND_COBRO"];
+    const headers = [
+      "FECHA",
+      "CLIENTE",
+      "VENDEDOR",
+      "LISTA",
+      "COND_VENTA",
+      "COND_COBRO",
+    ];
     const rows = filtered.map((o) => [
       formatDateDMYShort(o.date_order),
       o.client_name ?? "",
@@ -109,19 +139,33 @@ const ListOrders = () => {
         await Swal.fire({
           icon: "warning",
           title: "Orden ya generada",
-          text: data?.msg || "La orden ya fue generada y no puede volver a generarse.",
+          text:
+            data?.msg ||
+            "La orden ya fue generada y no puede volver a generarse.",
           confirmButtonText: "Entendido",
         });
         return false;
       }
       if (res.status === 404) {
-        await Swal.fire({ icon: "error", title: "No encontrada", text: "No se encontró la orden." });
+        await Swal.fire({
+          icon: "error",
+          title: "No encontrada",
+          text: "No se encontró la orden.",
+        });
         return false;
       }
-      await Swal.fire({ icon: "error", title: "Error", text: "No se pudo verificar el estado de la orden." });
+      await Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "No se pudo verificar el estado de la orden.",
+      });
       return false;
     } catch {
-      await Swal.fire({ icon: "error", title: "Error de red", text: "No se pudo conectar con el servidor." });
+      await Swal.fire({
+        icon: "error",
+        title: "Error de red",
+        text: "No se pudo conectar con el servidor.",
+      });
       return false;
     }
   };
@@ -183,13 +227,23 @@ const ListOrders = () => {
     try {
       const res = await fetch(DELETE_ORDER_URL(row.id), { method: "DELETE" });
 
+      // 🔹 Mantenemos el manejo de errores del backend
       if (res.status === 409) {
         const data = await res.json().catch(() => ({}));
-        await Swal.fire("No permitido", data?.msg || "La orden ya fue generada y no puede eliminarse.", "warning");
+        await Swal.fire(
+          "No permitido",
+          data?.msg ||
+            "La orden ya fue generada y no puede eliminarse.",
+          "warning"
+        );
         return;
       }
       if (res.status === 404) {
-        await Swal.fire("No encontrada", "El pedido no existe.", "info");
+        await Swal.fire(
+          "No encontrada",
+          "El pedido no existe.",
+          "info"
+        );
         setOrders((prev) => prev.filter((o) => o.id !== row.id));
         return;
       }
@@ -218,31 +272,57 @@ const ListOrders = () => {
     <div className="oa-table-row">
       <div>{item.id}</div>
       <div>{formatDateDMYShort(item.date_order)}</div>
-      <div className="oa-ellipsis" title={item.client_name}>{item.client_name}</div>
+      <div className="oa-ellipsis" title={item.client_name}>
+        {item.client_name}
+      </div>
       <div className="oa-actions">
         {item?.order_check ? (
-          <button className="oa-btn oa-danger" disabled>Orden generada</button>
+          <button className="oa-btn oa-danger" disabled>
+            Orden generada
+          </button>
         ) : (
-          <button className="oa-btn oa-btn-primary" onClick={() => handleGenerate(item)}>Generar orden</button>
+          <button
+            className="oa-btn oa-btn-primary"
+            onClick={() => handleGenerate(item)}
+          >
+            Generar orden
+          </button>
         )}
-        <button className="oa-icon-btn oa-view" title="Ver" onClick={() => handleView(item)}>
+        <button
+          className="oa-icon-btn oa-view"
+          title="Ver"
+          onClick={() => handleView(item)}
+        >
           <FontAwesomeIcon icon={faEye} />
         </button>
         <button
           className="oa-icon-btn oa-edit"
-          title={item?.order_check ? "No se puede editar: ya generada" : "Editar"}
+          title={
+            item?.order_check
+              ? "No se puede editar: ya generada"
+              : "Editar"
+          }
           onClick={() => handleEdit(item)}
           disabled={Boolean(item?.order_check)}
-          style={Boolean(item?.order_check) ? { opacity: 0.5, cursor: "not-allowed" } : undefined}
+          style={
+            Boolean(item?.order_check)
+              ? { opacity: 0.5, cursor: "not-allowed" }
+              : undefined
+          }
         >
           <FontAwesomeIcon icon={faPen} />
         </button>
+        {/* ✅ AHORA SIEMPRE SE PUEDE INTENTAR ELIMINAR (sin bloqueo por order_check) */}
         <button
           className="oa-icon-btn oa-danger"
-          title={item?.order_check ? "No se puede eliminar: ya generada" : "Eliminar"}
+          title="Eliminar"
           onClick={() => handleDelete(item)}
-          disabled={Boolean(item?.order_check) || deletingId === item.id}
-          style={Boolean(item?.order_check) || deletingId === item.id ? { opacity: 0.5, cursor: "not-allowed" } : undefined}
+          disabled={deletingId === item.id}
+          style={
+            deletingId === item.id
+              ? { opacity: 0.5, cursor: "not-allowed" }
+              : undefined
+          }
         >
           <FontAwesomeIcon icon={faTrash} />
         </button>
@@ -273,26 +353,48 @@ const ListOrders = () => {
       `}</style>
 
       <div style={{ margin: "20px" }}>
-        <button className="boton-volver" onClick={() => navigate("/sales-panel")}>
+        <button
+          className="boton-volver"
+          onClick={() => navigate("/sales-panel")}
+        >
           ⬅ Volver
         </button>
       </div>
 
       <div className="oa-wrapper">
         <div className="oa-tabs">
-          <NavLink to="/list-orders" className={({isActive}) => `oa-tab ${isActive ? "active" : ""}`}>Pedidos</NavLink>
-          <NavLink to="/available-stock" className={({isActive}) => `oa-tab ${isActive ? "active" : ""}`}>Disponibilidad</NavLink>
+          <NavLink
+            to="/list-orders"
+            className={({ isActive }) => `oa-tab ${isActive ? "active" : ""}`}
+          >
+            Pedidos
+          </NavLink>
+        <NavLink
+            to="/available-stock"
+            className={({ isActive }) => `oa-tab ${isActive ? "active" : ""}`}
+          >
+            Disponibilidad
+          </NavLink>
         </div>
 
         <div className="oa-toolbar">
           <div className="oa-filter-group">
             <div className="oa-filter">
               <label>Fecha</label>
-              <input type="date" value={filterDate} onChange={(e) => setFilterDate(e.target.value)} />
+              <input
+                type="date"
+                value={filterDate}
+                onChange={(e) => setFilterDate(e.target.value)}
+              />
             </div>
             <div className="oa-filter">
               <label>Cliente</label>
-              <input type="text" placeholder="Cliente" value={filterClient} onChange={(e) => setFilterClient(e.target.value)} />
+              <input
+                type="text"
+                placeholder="Cliente"
+                value={filterClient}
+                onChange={(e) => setFilterClient(e.target.value)}
+              />
             </div>
             <button className="oa-btn" onClick={() => setPage(1)}>
               <FontAwesomeIcon icon={faSearch} />
@@ -306,7 +408,10 @@ const ListOrders = () => {
               <span style={{ marginLeft: 8 }}>Exportar filas</span>
             </button>
 
-            <button className="oa-btn oa-primary" onClick={() => navigate("/sales-orders-new")}>
+            <button
+              className="oa-btn oa-primary"
+              onClick={() => navigate("/sales-orders-new")}
+            >
               <FontAwesomeIcon icon={faPlus} />
               <span style={{ marginLeft: 8 }}>Nuevo pedido</span>
             </button>
@@ -328,7 +433,10 @@ const ListOrders = () => {
           <div className="oa-pagination">
             <div className="oa-page-size">
               <span>Mostrar</span>
-              <select value={pageSize} onChange={(e) => setPageSize(parseInt(e.target.value, 10))}>
+              <select
+                value={pageSize}
+                onChange={(e) => setPageSize(parseInt(e.target.value, 10))}
+              >
                 <option value={10}>10</option>
                 <option value={25}>25</option>
                 <option value={50}>50</option>
@@ -338,17 +446,54 @@ const ListOrders = () => {
             </div>
 
             <div className="oa-pages">
-              <button className="oa-page-btn" disabled={currentPage === 1} onClick={() => setPage(1)}>«</button>
-              <button className="oa-page-btn" disabled={currentPage === 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>‹</button>
+              <button
+                className="oa-page-btn"
+                disabled={currentPage === 1}
+                onClick={() => setPage(1)}
+              >
+                «
+              </button>
+              <button
+                className="oa-page-btn"
+                disabled={currentPage === 1}
+                onClick={() =>
+                  setPage((p) => Math.max(1, p - 1))
+                }
+              >
+                ‹
+              </button>
               {Array.from({ length: totalPages }, (_, i) => i + 1)
-                .slice(Math.max(0, currentPage - 3), Math.min(totalPages, currentPage + 2))
+                .slice(
+                  Math.max(0, currentPage - 3),
+                  Math.min(totalPages, currentPage + 2)
+                )
                 .map((n) => (
-                  <button key={n} className={`oa-page-btn ${n === currentPage ? "active" : ""}`} onClick={() => setPage(n)}>
+                  <button
+                    key={n}
+                    className={`oa-page-btn ${
+                      n === currentPage ? "active" : ""
+                    }`}
+                    onClick={() => setPage(n)}
+                  >
                     {n}
                   </button>
                 ))}
-              <button className="oa-page-btn" disabled={currentPage === totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>›</button>
-              <button className="oa-page-btn" disabled={currentPage === totalPages} onClick={() => setPage(totalPages)}>»</button>
+              <button
+                className="oa-page-btn"
+                disabled={currentPage === totalPages}
+                onClick={() =>
+                  setPage((p) => Math.min(totalPages, p + 1))
+                }
+              >
+                ›
+              </button>
+              <button
+                className="oa-page-btn"
+                disabled={currentPage === totalPages}
+                onClick={() => setPage(totalPages)}
+              >
+                »
+              </button>
             </div>
           </div>
         </div>
@@ -356,11 +501,23 @@ const ListOrders = () => {
 
       {/* Modal preview */}
       {showPreview && (
-        <div className="preview-backdrop" onClick={() => setShowPreview(false)}>
-          <div className="preview-card" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="preview-backdrop"
+          onClick={() => setShowPreview(false)}
+        >
+          <div
+            className="preview-card"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="preview-head">
-              <div className="preview-title">Orden de Venta(visualización)</div>
-              <button className="preview-close" onClick={() => setShowPreview(false)} title="Cerrar">
+              <div className="preview-title">
+                Orden de Venta(visualización)
+              </div>
+              <button
+                className="preview-close"
+                onClick={() => setShowPreview(false)}
+                title="Cerrar"
+              >
                 <FontAwesomeIcon icon={faTimes} />
               </button>
             </div>
@@ -371,14 +528,52 @@ const ListOrders = () => {
               ) : (
                 <>
                   <div className="grid-kv">
-                    <div className="kv"><b>N° COMPROBANTE</b><span>{previewHeader?.id ?? "—"}</span></div>
-                    <div className="kv"><b>FECHA</b><span>{formatDateDMYShort(previewHeader?.date_order)}</span></div>
-                    <div className="kv"><b>CLIENTE</b><span>{previewHeader?.client_name ?? "—"}</span></div>
-                    <div className="kv"><b>VENDEDOR</b><span>{previewHeader?.salesman_name ?? "—"}</span></div>
-                    <div className="kv"><b>LISTA DE PRECIO</b><span>{previewHeader?.price_list ?? "—"}</span></div>
-                    <div className="kv"><b>COND. DE VENTA</b><span>{previewHeader?.sell_condition ?? "—"}</span></div>
-                    <div className="kv"><b>COND. DE COBRO</b><span>{previewHeader?.payment_condition ?? "—"}</span></div>
-                    <div className="kv"><b>OBSERVACIÓN</b><span>{previewHeader?.observation_order ?? "—"}</span></div>
+                    <div className="kv">
+                      <b>N° COMPROBANTE</b>
+                      <span>{previewHeader?.id ?? "—"}</span>
+                    </div>
+                    <div className="kv">
+                      <b>FECHA</b>
+                      <span>
+                        {formatDateDMYShort(
+                          previewHeader?.date_order
+                        )}
+                      </span>
+                    </div>
+                    <div className="kv">
+                      <b>CLIENTE</b>
+                      <span>{previewHeader?.client_name ?? "—"}</span>
+                    </div>
+                    <div className="kv">
+                      <b>VENDEDOR</b>
+                      <span>
+                        {previewHeader?.salesman_name ?? "—"}
+                      </span>
+                    </div>
+                    <div className="kv">
+                      <b>LISTA DE PRECIO</b>
+                      <span>
+                        {previewHeader?.price_list ?? "—"}
+                      </span>
+                    </div>
+                    <div className="kv">
+                      <b>COND. DE VENTA</b>
+                      <span>
+                        {previewHeader?.sell_condition ?? "—"}
+                      </span>
+                    </div>
+                    <div className="kv">
+                      <b>COND. DE COBRO</b>
+                      <span>
+                        {previewHeader?.payment_condition ?? "—"}
+                      </span>
+                    </div>
+                    <div className="kv">
+                      <b>OBSERVACIÓN</b>
+                      <span>
+                        {previewHeader?.observation_order ?? "—"}
+                      </span>
+                    </div>
                   </div>
 
                   <div className="oa-mini-table">
@@ -391,13 +586,21 @@ const ListOrders = () => {
                     </div>
 
                     {previewRows.length === 0 ? (
-                      <div className="oa-mini-empty">La orden no tiene productos.</div>
+                      <div className="oa-mini-empty">
+                        La orden no tiene productos.
+                      </div>
                     ) : (
                       previewRows.map((p, idx) => (
                         <div key={idx} className="oa-mini-row">
                           <div>{p.product_cod || "—"}</div>
                           <div>{p.product_name}</div>
-                          <div>${p.precio.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                          <div>
+                            $
+                            {p.precio.toLocaleString("es-AR", {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            })}
+                          </div>
                           <div>{p.cantidad}</div>
                           <div>{p.tipo_medida || "—"}</div>
                         </div>

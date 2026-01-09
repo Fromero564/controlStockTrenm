@@ -117,13 +117,27 @@ const MeatLoad = () => {
 
         try {
           const response = await fetch(endpoint, { method: "PUT" });
+          const data = await response.json().catch(() => ({}));
+
           if (response.ok) {
             const nuevoEstado = isInactive ? 1 : 0;
+
             setProducts((prev) =>
-              prev.map((p) =>
-                p.id === id ? { ...p, bill_state: nuevoEstado } : p
-              )
+              prev.map((p) => {
+                if (p.id !== id) return p;
+
+                // ✅ Actualizamos bill_state SIEMPRE
+                // ✅ Actualizamos production_process SOLO si viene en la respuesta
+                return {
+                  ...p,
+                  bill_state: nuevoEstado,
+                  ...(typeof data.production_process !== "undefined"
+                    ? { production_process: data.production_process }
+                    : {}),
+                };
+              })
             );
+
             Swal.fire(
               isInactive ? "Activado" : "Dado de baja",
               isInactive

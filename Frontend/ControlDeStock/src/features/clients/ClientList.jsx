@@ -122,7 +122,7 @@ const ClientList = () => {
     setCurrentPage(1);
   }, [search, stateFilter, locationFilter, rowsPerPage]);
 
-  const handleDelete = (client) => {
+   const handleDelete = (client) => {
     Swal.fire({
       title: `¿Eliminar cliente "${client.client_name}"?`,
       text: "Esta acción no se puede deshacer.",
@@ -138,7 +138,12 @@ const ClientList = () => {
           .then((res) => {
             if (!res.ok) throw new Error("Error al eliminar");
             setClients((prev) => prev.filter((c) => c.id !== client.id));
-            Swal.fire("¡Eliminado!", "El cliente fue eliminado.", "success");
+            Swal.fire({
+              title: "¡Eliminado!",
+              text: "El cliente fue eliminado.",
+              icon: "success",
+              confirmButtonColor: "#0077b6", 
+            });
           })
           .catch(() => {
             Swal.fire("Error", "No se pudo eliminar el cliente.", "error");

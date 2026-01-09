@@ -17,7 +17,7 @@ module.exports = (sequelize, dataTypes) => {
         },
 
         client_id_number: {
-            type: dataTypes.BIGINT(10),
+            type: dataTypes.STRING(20),
             allowNull: false
         },
         client_iva_condition: {

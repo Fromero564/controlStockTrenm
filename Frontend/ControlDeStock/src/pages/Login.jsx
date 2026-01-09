@@ -13,6 +13,7 @@ const Login = () => {
   const navigate = useNavigate();
 
   const { user, loading, login } = useContext(AuthContext);
+
   useEffect(() => {
     if (!loading && user) {
       navigate("/dashboard");
@@ -22,21 +23,30 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const res = await fetch(`${API_URL}/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password }),
-      credentials: "include",
-    });
+    try {
+      const res = await fetch(`${API_URL}/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+        credentials: "include",
+      });
 
-    const data = await res.json();
-    if (res.ok) {
-      const { token, rol } = data;
-      login(username, token, rol);
-      alert("Usuario Loggeado correctamente");
-      navigate("/dashboard");
-    } else {
-      alert(data.message);
+      const data = await res.json();
+
+      if (res.ok) {
+        const { token, rol, permissions, username: apiUsername } = data;
+
+        // login ahora recibe también permissions (array)
+        login(apiUsername || username, token, rol, permissions);
+
+        alert("Usuario loggeado correctamente");
+        navigate("/dashboard");
+      } else {
+        alert(data.message || "Error al iniciar sesión");
+      }
+    } catch (error) {
+      console.error("Error al hacer login:", error);
+      alert("Error de conexión con el servidor");
     }
   };
 
@@ -70,7 +80,9 @@ const Login = () => {
           />
         </div>
 
-        <button type="submit" className="loginv2-submit">INGRESAR</button>
+        <button type="submit" className="loginv2-submit">
+          INGRESAR
+        </button>
       </form>
     </div>
   );

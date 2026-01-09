@@ -64,46 +64,46 @@ const operatorApiController = {
             res.status(500).json({ error: "No se pudo crear la categoría" });
         }
     },
- getProductStock: async (req, res) => {
-  try {
-    const AllProductStock = await ProductStock.findAll({
-      include: [
-        {
-          model: ProductsAvailable,
-          as: "productAvailable",
-          attributes: ["min_stock", "max_stock", "unit_measure"],
-        },
-      ],
-    });
+    getProductStock: async (req, res) => {
+        try {
+            const AllProductStock = await ProductStock.findAll({
+                include: [
+                    {
+                        model: ProductsAvailable,
+                        as: "productAvailable",
+                        attributes: ["min_stock", "max_stock", "unit_measure"],
+                    },
+                ],
+            });
 
-    const result = AllProductStock.map((stock) => {
-      const unitFromProduct =
-        stock.productAvailable && stock.productAvailable.unit_measure
-          ? String(stock.productAvailable.unit_measure).toUpperCase()
-          : "UN";
+            const result = AllProductStock.map((stock) => {
+                const unitFromProduct =
+                    stock.productAvailable && stock.productAvailable.unit_measure
+                        ? String(stock.productAvailable.unit_measure).toUpperCase()
+                        : "UN";
 
-      // Unidad base del producto: UN o KG (viene desde products_available)
-      const unit_type = unitFromProduct === "KG" ? "KG" : "UN";
+                // Unidad base del producto: UN o KG (viene desde products_available)
+                const unit_type = unitFromProduct === "KG" ? "KG" : "UN";
 
-      return {
-        id: stock.id,
-        product_name: stock.product_name,
-        product_quantity: stock.product_quantity,
-        product_cod: stock.product_cod,
-        product_category: stock.product_category,
-        product_total_weight: stock.product_total_weight,
-        min_stock: stock.productAvailable?.min_stock || 0,
-        max_stock: stock.productAvailable?.max_stock || 0,
-        unit_type, // 👈 esto usa el front para saber si trabajar en KG o UN
-      };
-    });
+                return {
+                    id: stock.id,
+                    product_name: stock.product_name,
+                    product_quantity: stock.product_quantity,
+                    product_cod: stock.product_cod,
+                    product_category: stock.product_category,
+                    product_total_weight: stock.product_total_weight,
+                    min_stock: stock.productAvailable?.min_stock || 0,
+                    max_stock: stock.productAvailable?.max_stock || 0,
+                    unit_type, // 👈 esto usa el front para saber si trabajar en KG o UN
+                };
+            });
 
-    res.json(result);
-  } catch (error) {
-    console.error("Error al obtener los productos", error);
-    res.status(500).json({ error: "Error al obtener los productos" });
-  }
-},
+            res.json(result);
+        } catch (error) {
+            console.error("Error al obtener los productos", error);
+            res.status(500).json({ error: "Error al obtener los productos" });
+        }
+    },
 
 
 
@@ -605,417 +605,417 @@ const operatorApiController = {
         }
     },
 
-uploadProductsProcess: async (req, res) => {
-  let t;
-  try {
-    const { cortes, bill_ids, subproduction = [] } = req.body;
+    uploadProductsProcess: async (req, res) => {
+        let t;
+        try {
+            const { cortes, bill_ids, subproduction = [] } = req.body;
 
-    // Validaciones básicas de arrays
-    if (
-      !Array.isArray(cortes) ||
-      cortes.length === 0 ||
-      !Array.isArray(bill_ids) ||
-      bill_ids.length === 0
-    ) {
-      return res
-        .status(400)
-        .json({ message: "Faltan cortes o comprobantes para asociar." });
-    }
-
-    // Helpers para validar / convertir valores
-    const esTextoValido = (v) =>
-      typeof v === "string" && v.trim().length > 0;
-
-    const toNumero = (v, defecto = 0) => {
-      if (v === null || v === undefined || v === "") return defecto;
-      const n = Number(v);
-      return Number.isFinite(n) ? n : defecto;
-    };
-
-    t = await sequelize.transaction();
-
-    // === 1) Obtener / generar número de proceso ===
-    const ultimoProceso = await ProcessNumber.findOne({
-      order: [["process_number", "DESC"]],
-      transaction: t,
-    });
-    const nuevoProcessNumber = ultimoProceso
-      ? ultimoProceso.process_number + 1
-      : 1;
-
-    // Guardar la relación proceso ↔ remitos
-    for (const bill_id of bill_ids) {
-      await ProcessNumber.create(
-        {
-          bill_id,
-          process_number: nuevoProcessNumber,
-        },
-        { transaction: t }
-      );
-    }
-
-    // === 2) Guardar cortes + sumar stock de productos "hijo" ===
-    for (const corte of cortes) {
-      const {
-        type,
-        description,
-        unit_type,
-        quantity,
-        net_weight,
-        head_count,
-        romaneo_weight,
-        average,
-        gross_weight,
-        tares,
-      } = corte;
-
-      // --- VALIDACIÓN LÓGICA, PERMITIENDO CEROS ---
-      if (!esTextoValido(type)) {
-        await t.rollback();
-        return res.status(400).json({
-          message:
-            "Falta el tipo de corte (type) o es inválido en algún corte.",
-        });
-      }
-
-      const qtyNum = toNumero(quantity, 0); // puede ser 0 (por ejemplo en productos en kg)
-      const netNum = toNumero(net_weight, 0);
-
-      // El peso neto sí debe ser > 0 para que tenga sentido guardar el corte
-      if (netNum <= 0) {
-        await t.rollback();
-        return res.status(400).json({
-          message:
-            "El peso neto (net_weight) es obligatorio y debe ser mayor a 0 en cada corte.",
-        });
-      }
-
-      const avgNum = toNumero(average, 0);
-      const grossNum = toNumero(gross_weight, 0);
-      const taresNum = toNumero(tares, 0);
-      const headCountNum = toNumero(head_count, 0); // opcional, default 0
-      const romaneoNum = toNumero(romaneo_weight, 0); // opcional, default 0
-
-      let baseProduct = null;
-      let productName = null;
-
-      // Si viene un ID numérico en "type", buscamos por PK; si no, por nombre
-      if (!Number.isNaN(Number(type))) {
-        baseProduct = await ProductsAvailable.findByPk(type, {
-          include: [
-            {
-              model: ProductCategories,
-              as: "category",
-              attributes: ["category_name"],
-            },
-          ],
-          transaction: t,
-        });
-
-        if (!baseProduct) {
-          await t.rollback();
-          return res
-            .status(400)
-            .json({ message: `No se encontró ningún producto con ID ${type}` });
-        }
-        productName = baseProduct.product_name;
-      } else {
-        baseProduct = await ProductsAvailable.findOne({
-          where: { product_name: type },
-          include: [
-            {
-              model: ProductCategories,
-              as: "category",
-              attributes: ["category_name"],
-            },
-          ],
-          transaction: t,
-        });
-
-        if (!baseProduct) {
-          await t.rollback();
-          return res.status(400).json({
-            message: `No se pudo identificar el producto "${type}".`,
-          });
-        }
-        productName = baseProduct.product_name;
-      }
-
-      // Valores por defecto si no vienen description / unit_type desde el front
-      const finalDescription = esTextoValido(description)
-        ? description.trim()
-        : productName; // por defecto usamos el nombre del producto
-
-      const finalUnitType = esTextoValido(unit_type)
-        ? unit_type.trim()
-        : baseProduct.unit_measure || baseProduct.unit_type || "kg"; // fallback
-
-      // Guardamos el corte en ProcessMeat (TODOS los NOT NULL cubiertos)
-      await ProcessMeat.create(
-        {
-          // campos NOT NULL del modelo
-          type: productName,          // columna type en ProcessMeat
-          average: avgNum,            // NOT NULL
-          gross_weight: grossNum,     // NOT NULL
-          tares: taresNum,            // NOT NULL
-
-          // resto de la info
-          product_name: productName,
-          description: finalDescription,
-          unit_type: finalUnitType,
-          quantity: qtyNum,
-          net_weight: netNum,
-          head_count: headCountNum,
-          romaneo_weight: romaneoNum,
-          process_number: nuevoProcessNumber,
-        },
-        { transaction: t }
-      );
-
-      // Guardar subproducción (si viene) y sumar stock de subproductos
-      if (Array.isArray(subproduction) && subproduction.length > 0) {
-        for (const sub of subproduction) {
-          const {
-            subproduct_name,
-            subproduct_quantity,
-            subproduct_weight,
-            category,
-          } = sub;
-
-          const subQty = toNumero(subproduct_quantity, 0);
-          const subWeight = toNumero(subproduct_weight, 0);
-
-          if (!esTextoValido(subproduct_name) || subQty <= 0 || subWeight <= 0) {
-            // si hay datos inválidos en un subproducto, lo ignoramos
-            continue;
-          }
-
-          await Subproduction.create(
-            {
-              process_number: nuevoProcessNumber,
-              subproduct_name,
-              subproduct_quantity: subQty,
-              subproduct_weight: subWeight,
-              category,
-            },
-            { transaction: t }
-          );
-
-          let stockSub = await ProductStock.findOne({
-            where: { product_name: subproduct_name },
-            transaction: t,
-          });
-
-          if (stockSub) {
-            await stockSub.increment(
-              {
-                product_quantity: subQty,
-                product_total_weight: subWeight,
-              },
-              { transaction: t }
-            );
-          } else {
-            await ProductStock.create(
-              {
-                product_name: subproduct_name,
-                product_quantity: subQty,
-                product_total_weight: subWeight,
-                product_cod: null,
-              },
-              { transaction: t }
-            );
-          }
-        }
-      }
-
-      // Sumar stock del producto resultante del desposte (producto "hijo")
-      let existingChild = await ProductStock.findOne({
-        where: { product_name: productName },
-        transaction: t,
-      });
-
-      if (existingChild) {
-        await existingChild.increment(
-          {
-            product_quantity: qtyNum,
-            product_total_weight: netNum,
-          },
-          { transaction: t }
-        );
-      } else {
-        await ProductStock.create(
-          {
-            product_name: productName,
-            product_quantity: qtyNum,
-            product_total_weight: netNum,
-            product_cod: baseProduct.id,
-            product_category: baseProduct.category?.category_name ?? null,
-          },
-          { transaction: t }
-        );
-      }
-    }
-
-    // === 3) Descontar STOCK PRINCIPAL usando lo que vino en los remitos ===
-    const validBillIds = bill_ids
-      .map((id) => Number(id))
-      .filter((id) => Number.isFinite(id) && id > 0);
-
-    if (validBillIds.length) {
-      const usageByParent = {}; // { [nombreProducto]: { qty, weight } }
-
-      // Traemos los comprobantes para saber si son romaneo o manual
-      const bills = await billSupplier.findAll({
-        where: { id: { [Op.in]: validBillIds } },
-        attributes: ["id", "income_state"],
-        transaction: t,
-      });
-
-      for (const bill of bills) {
-        const billId = bill.id;
-        const tipoIngreso = bill.income_state; // "romaneo" | "manual" | etc.
-
-        if (tipoIngreso === "manual") {
-          // Si el comprobante es MANUAL → leer solo MeatIncome
-          const manualRows = await meatIncome.findAll({
-            where: { id_bill_suppliers: billId },
-            transaction: t,
-          });
-
-          for (const row of manualRows) {
-            const name = (row.products_name || "").trim();
-            if (!name) continue;
-
-            if (!usageByParent[name]) {
-              usageByParent[name] = { qty: 0, weight: 0 };
+            // Validaciones básicas de arrays
+            if (
+                !Array.isArray(cortes) ||
+                cortes.length === 0 ||
+                !Array.isArray(bill_ids) ||
+                bill_ids.length === 0
+            ) {
+                return res
+                    .status(400)
+                    .json({ message: "Faltan cortes o comprobantes para asociar." });
             }
 
-            usageByParent[name].qty += Number(row.products_quantity || 0);
-            usageByParent[name].weight += Number(row.net_weight || 0);
-          }
-        } else {
-          // En cualquier otro caso (romaneo, etc.) → leer solo BillDetail
-          const romaneoRows = await billDetail.findAll({
-            where: { bill_supplier_id: billId },
-            transaction: t,
-          });
+            // Helpers para validar / convertir valores
+            const esTextoValido = (v) =>
+                typeof v === "string" && v.trim().length > 0;
 
-          for (const row of romaneoRows) {
-            const name = (row.type || "").trim();
-            if (!name) continue;
+            const toNumero = (v, defecto = 0) => {
+                if (v === null || v === undefined || v === "") return defecto;
+                const n = Number(v);
+                return Number.isFinite(n) ? n : defecto;
+            };
 
-            if (!usageByParent[name]) {
-              usageByParent[name] = { qty: 0, weight: 0 };
+            t = await sequelize.transaction();
+
+            // === 1) Obtener / generar número de proceso ===
+            const ultimoProceso = await ProcessNumber.findOne({
+                order: [["process_number", "DESC"]],
+                transaction: t,
+            });
+            const nuevoProcessNumber = ultimoProceso
+                ? ultimoProceso.process_number + 1
+                : 1;
+
+            // Guardar la relación proceso ↔ remitos
+            for (const bill_id of bill_ids) {
+                await ProcessNumber.create(
+                    {
+                        bill_id,
+                        process_number: nuevoProcessNumber,
+                    },
+                    { transaction: t }
+                );
             }
 
-            usageByParent[name].qty += Number(row.quantity || 0);
-            usageByParent[name].weight += Number(row.weight || 0);
-          }
+            // === 2) Guardar cortes + sumar stock de productos "hijo" ===
+            for (const corte of cortes) {
+                const {
+                    type,
+                    description,
+                    unit_type,
+                    quantity,
+                    net_weight,
+                    head_count,
+                    romaneo_weight,
+                    average,
+                    gross_weight,
+                    tares,
+                } = corte;
+
+                // --- VALIDACIÓN LÓGICA, PERMITIENDO CEROS ---
+                if (!esTextoValido(type)) {
+                    await t.rollback();
+                    return res.status(400).json({
+                        message:
+                            "Falta el tipo de corte (type) o es inválido en algún corte.",
+                    });
+                }
+
+                const qtyNum = toNumero(quantity, 0); // puede ser 0 (por ejemplo en productos en kg)
+                const netNum = toNumero(net_weight, 0);
+
+                // El peso neto sí debe ser > 0 para que tenga sentido guardar el corte
+                if (netNum <= 0) {
+                    await t.rollback();
+                    return res.status(400).json({
+                        message:
+                            "El peso neto (net_weight) es obligatorio y debe ser mayor a 0 en cada corte.",
+                    });
+                }
+
+                const avgNum = toNumero(average, 0);
+                const grossNum = toNumero(gross_weight, 0);
+                const taresNum = toNumero(tares, 0);
+                const headCountNum = toNumero(head_count, 0); // opcional, default 0
+                const romaneoNum = toNumero(romaneo_weight, 0); // opcional, default 0
+
+                let baseProduct = null;
+                let productName = null;
+
+                // Si viene un ID numérico en "type", buscamos por PK; si no, por nombre
+                if (!Number.isNaN(Number(type))) {
+                    baseProduct = await ProductsAvailable.findByPk(type, {
+                        include: [
+                            {
+                                model: ProductCategories,
+                                as: "category",
+                                attributes: ["category_name"],
+                            },
+                        ],
+                        transaction: t,
+                    });
+
+                    if (!baseProduct) {
+                        await t.rollback();
+                        return res
+                            .status(400)
+                            .json({ message: `No se encontró ningún producto con ID ${type}` });
+                    }
+                    productName = baseProduct.product_name;
+                } else {
+                    baseProduct = await ProductsAvailable.findOne({
+                        where: { product_name: type },
+                        include: [
+                            {
+                                model: ProductCategories,
+                                as: "category",
+                                attributes: ["category_name"],
+                            },
+                        ],
+                        transaction: t,
+                    });
+
+                    if (!baseProduct) {
+                        await t.rollback();
+                        return res.status(400).json({
+                            message: `No se pudo identificar el producto "${type}".`,
+                        });
+                    }
+                    productName = baseProduct.product_name;
+                }
+
+                // Valores por defecto si no vienen description / unit_type desde el front
+                const finalDescription = esTextoValido(description)
+                    ? description.trim()
+                    : productName; // por defecto usamos el nombre del producto
+
+                const finalUnitType = esTextoValido(unit_type)
+                    ? unit_type.trim()
+                    : baseProduct.unit_measure || baseProduct.unit_type || "kg"; // fallback
+
+                // Guardamos el corte en ProcessMeat (TODOS los NOT NULL cubiertos)
+                await ProcessMeat.create(
+                    {
+                        // campos NOT NULL del modelo
+                        type: productName,          // columna type en ProcessMeat
+                        average: avgNum,            // NOT NULL
+                        gross_weight: grossNum,     // NOT NULL
+                        tares: taresNum,            // NOT NULL
+
+                        // resto de la info
+                        product_name: productName,
+                        description: finalDescription,
+                        unit_type: finalUnitType,
+                        quantity: qtyNum,
+                        net_weight: netNum,
+                        head_count: headCountNum,
+                        romaneo_weight: romaneoNum,
+                        process_number: nuevoProcessNumber,
+                    },
+                    { transaction: t }
+                );
+
+                // Guardar subproducción (si viene) y sumar stock de subproductos
+                if (Array.isArray(subproduction) && subproduction.length > 0) {
+                    for (const sub of subproduction) {
+                        const {
+                            subproduct_name,
+                            subproduct_quantity,
+                            subproduct_weight,
+                            category,
+                        } = sub;
+
+                        const subQty = toNumero(subproduct_quantity, 0);
+                        const subWeight = toNumero(subproduct_weight, 0);
+
+                        if (!esTextoValido(subproduct_name) || subQty <= 0 || subWeight <= 0) {
+                            // si hay datos inválidos en un subproducto, lo ignoramos
+                            continue;
+                        }
+
+                        await Subproduction.create(
+                            {
+                                process_number: nuevoProcessNumber,
+                                subproduct_name,
+                                subproduct_quantity: subQty,
+                                subproduct_weight: subWeight,
+                                category,
+                            },
+                            { transaction: t }
+                        );
+
+                        let stockSub = await ProductStock.findOne({
+                            where: { product_name: subproduct_name },
+                            transaction: t,
+                        });
+
+                        if (stockSub) {
+                            await stockSub.increment(
+                                {
+                                    product_quantity: subQty,
+                                    product_total_weight: subWeight,
+                                },
+                                { transaction: t }
+                            );
+                        } else {
+                            await ProductStock.create(
+                                {
+                                    product_name: subproduct_name,
+                                    product_quantity: subQty,
+                                    product_total_weight: subWeight,
+                                    product_cod: null,
+                                },
+                                { transaction: t }
+                            );
+                        }
+                    }
+                }
+
+                // Sumar stock del producto resultante del desposte (producto "hijo")
+                let existingChild = await ProductStock.findOne({
+                    where: { product_name: productName },
+                    transaction: t,
+                });
+
+                if (existingChild) {
+                    await existingChild.increment(
+                        {
+                            product_quantity: qtyNum,
+                            product_total_weight: netNum,
+                        },
+                        { transaction: t }
+                    );
+                } else {
+                    await ProductStock.create(
+                        {
+                            product_name: productName,
+                            product_quantity: qtyNum,
+                            product_total_weight: netNum,
+                            product_cod: baseProduct.id,
+                            product_category: baseProduct.category?.category_name ?? null,
+                        },
+                        { transaction: t }
+                    );
+                }
+            }
+
+            // === 3) Descontar STOCK PRINCIPAL usando lo que vino en los remitos ===
+            const validBillIds = bill_ids
+                .map((id) => Number(id))
+                .filter((id) => Number.isFinite(id) && id > 0);
+
+            if (validBillIds.length) {
+                const usageByParent = {}; // { [nombreProducto]: { qty, weight } }
+
+                // Traemos los comprobantes para saber si son romaneo o manual
+                const bills = await billSupplier.findAll({
+                    where: { id: { [Op.in]: validBillIds } },
+                    attributes: ["id", "income_state"],
+                    transaction: t,
+                });
+
+                for (const bill of bills) {
+                    const billId = bill.id;
+                    const tipoIngreso = bill.income_state; // "romaneo" | "manual" | etc.
+
+                    if (tipoIngreso === "manual") {
+                        // Si el comprobante es MANUAL → leer solo MeatIncome
+                        const manualRows = await meatIncome.findAll({
+                            where: { id_bill_suppliers: billId },
+                            transaction: t,
+                        });
+
+                        for (const row of manualRows) {
+                            const name = (row.products_name || "").trim();
+                            if (!name) continue;
+
+                            if (!usageByParent[name]) {
+                                usageByParent[name] = { qty: 0, weight: 0 };
+                            }
+
+                            usageByParent[name].qty += Number(row.products_quantity || 0);
+                            usageByParent[name].weight += Number(row.net_weight || 0);
+                        }
+                    } else {
+                        // En cualquier otro caso (romaneo, etc.) → leer solo BillDetail
+                        const romaneoRows = await billDetail.findAll({
+                            where: { bill_supplier_id: billId },
+                            transaction: t,
+                        });
+
+                        for (const row of romaneoRows) {
+                            const name = (row.type || "").trim();
+                            if (!name) continue;
+
+                            if (!usageByParent[name]) {
+                                usageByParent[name] = { qty: 0, weight: 0 };
+                            }
+
+                            usageByParent[name].qty += Number(row.quantity || 0);
+                            usageByParent[name].weight += Number(row.weight || 0);
+                        }
+                    }
+                }
+
+                // 3.c) Aplicar el descuento en product_stock
+                for (const [parentName, used] of Object.entries(usageByParent)) {
+                    const stockParent = await ProductStock.findOne({
+                        where: { product_name: parentName },
+                        transaction: t,
+                    });
+
+                    if (!stockParent) continue;
+
+                    const currentQty = Number(stockParent.product_quantity || 0);
+                    const currentWeight = Number(stockParent.product_total_weight || 0);
+
+                    const newQty = Math.max(0, currentQty - used.qty);
+                    const newWeight = Math.max(0, currentWeight - used.weight);
+
+                    await stockParent.update(
+                        {
+                            product_quantity: newQty,
+                            product_total_weight: newWeight,
+                        },
+                        { transaction: t }
+                    );
+                }
+            }
+
+            // === 4) Marcar remitos como procesados (si aplica en tu lógica)
+            if (validBillIds.length) {
+                await billSupplier.update(
+                    { process_state: "procesado" },
+                    {
+                        where: { id: { [Op.in]: validBillIds } },
+                        transaction: t,
+                    }
+                );
+            }
+
+            // Tabla intermedia opcional de subproducción por proceso/remito
+            if (Array.isArray(subproduction) && subproduction.length > 0) {
+                const rows = subproduction
+                    .map((s) => ({
+                        process_number: nuevoProcessNumber,
+                        cut_name: String(s.cut_name || s.tipo || s.producto || "").trim(),
+                        quantity: toNumero(s.quantity ?? s.cantidad, 0),
+                    }))
+                    .filter((r) => r.cut_name && !Number.isNaN(r.quantity));
+
+                if (rows.length) {
+                    await ProductionProcessSubproduction.bulkCreate(rows, {
+                        transaction: t,
+                    });
+                }
+            }
+
+            await t.commit();
+            return res.status(201).json({
+                message: "Cortes y proceso guardados, stock ajustado.",
+                process_number: nuevoProcessNumber,
+            });
+        } catch (error) {
+            if (t) {
+                try {
+                    await t.rollback();
+                } catch (e) { }
+            }
+            console.error("uploadProductsProcess error:", error);
+            return res.status(500).json({
+                message: "Error interno del servidor",
+                error: error.message,
+            });
         }
-      }
+    },
 
-      // 3.c) Aplicar el descuento en product_stock
-      for (const [parentName, used] of Object.entries(usageByParent)) {
-        const stockParent = await ProductStock.findOne({
-          where: { product_name: parentName },
-          transaction: t,
-        });
 
-        if (!stockParent) continue;
 
-        const currentQty = Number(stockParent.product_quantity || 0);
-        const currentWeight = Number(stockParent.product_total_weight || 0);
 
-        const newQty = Math.max(0, currentQty - used.qty);
-        const newWeight = Math.max(0, currentWeight - used.weight);
+    getAllSubproduction: async (req, res) => {
+        try {
+            const {
+                process_number,                 // opcional: filtra por proceso
+                limit,                          // opcional: paginado
+                offset,                         // opcional: paginado
+                order = "desc",                 // opcional: orden por id
+            } = req.query;
 
-        await stockParent.update(
-          {
-            product_quantity: newQty,
-            product_total_weight: newWeight,
-          },
-          { transaction: t }
-        );
-      }
-    }
+            const where = {};
+            if (process_number != null && process_number !== "") {
+                where.process_number = Number(process_number);
+            }
 
-    // === 4) Marcar remitos como procesados (si aplica en tu lógica)
-    if (validBillIds.length) {
-      await billSupplier.update(
-        { process_state: "procesado" },
-        {
-          where: { id: { [Op.in]: validBillIds } },
-          transaction: t,
+            const rows = await ProductionProcessSubproduction.findAll({
+                where,
+                order: [["id", String(order).toUpperCase() === "ASC" ? "ASC" : "DESC"]],
+                ...(limit ? { limit: Number(limit) } : {}),
+                ...(offset ? { offset: Number(offset) } : {}),
+            });
+
+            return res.json(rows);
+        } catch (err) {
+            console.error("getAllSubproduction error:", err);
+            return res.status(500).json({ ok: false, message: "Error al obtener subproducción" });
         }
-      );
-    }
-
-    // Tabla intermedia opcional de subproducción por proceso/remito
-    if (Array.isArray(subproduction) && subproduction.length > 0) {
-      const rows = subproduction
-        .map((s) => ({
-          process_number: nuevoProcessNumber,
-          cut_name: String(s.cut_name || s.tipo || s.producto || "").trim(),
-          quantity: toNumero(s.quantity ?? s.cantidad, 0),
-        }))
-        .filter((r) => r.cut_name && !Number.isNaN(r.quantity));
-
-      if (rows.length) {
-        await ProductionProcessSubproduction.bulkCreate(rows, {
-          transaction: t,
-        });
-      }
-    }
-
-    await t.commit();
-    return res.status(201).json({
-      message: "Cortes y proceso guardados, stock ajustado.",
-      process_number: nuevoProcessNumber,
-    });
-  } catch (error) {
-    if (t) {
-      try {
-        await t.rollback();
-      } catch (e) {}
-    }
-    console.error("uploadProductsProcess error:", error);
-    return res.status(500).json({
-      message: "Error interno del servidor",
-      error: error.message,
-    });
-  }
-},
-
-
-
-
-getAllSubproduction :async (req, res) => {
-  try {
-    const {
-      process_number,                 // opcional: filtra por proceso
-      limit,                          // opcional: paginado
-      offset,                         // opcional: paginado
-      order = "desc",                 // opcional: orden por id
-    } = req.query;
-
-    const where = {};
-    if (process_number != null && process_number !== "") {
-      where.process_number = Number(process_number);
-    }
-
-    const rows = await ProductionProcessSubproduction.findAll({
-      where,
-      order: [["id", String(order).toUpperCase() === "ASC" ? "ASC" : "DESC"]],
-      ...(limit ? { limit: Number(limit) } : {}),
-      ...(offset ? { offset: Number(offset) } : {}),
-    });
-
-    return res.json(rows);
-  } catch (err) {
-    console.error("getAllSubproduction error:", err);
-    return res.status(500).json({ ok: false, message: "Error al obtener subproducción" });
-  }
-},
+    },
 
 
 
@@ -1375,155 +1375,167 @@ getAllSubproduction :async (req, res) => {
         }
     },
     deactivateProduct: async (req, res) => {
-  try {
-    const id = req.params.id;
+        try {
+            const id = req.params.id;
 
-    const bill = await billSupplier.findOne({ where: { id } });
-    if (!bill) {
-      return res.status(404).json({ mensaje: "El comprobante no existe" });
-    }
-    if (bill.bill_state === false) {
-      return res.status(400).json({ mensaje: "El comprobante ya está dado de baja" });
-    }
+           
+            const bill = await billSupplier.findOne({ where: { id } });
 
-    // Cortes cargados por manual
-    const meatIncomes = await meatIncome.findAll({
-      where: { id_bill_suppliers: id },
-    });
+            if (!bill) {
+                return res
+                    .status(404)
+                    .json({ mensaje: "El comprobante no existe" });
+            }
 
-    // Detalles del romaneo
-    const billDetails = await billDetail.findAll({
-      where: { bill_supplier_id: id },
-    });
+            if (bill.bill_state === false) {
+                return res
+                    .status(400)
+                    .json({ mensaje: "El comprobante ya está inactivo" });
+            }
 
-    // 🔻 Restar del stock cortes manuales
-    for (const item of meatIncomes) {
-      const stock = await ProductStock.findOne({
-        where: { product_name: item.products_name },
-      });
+            
+            const meatIncomes = await meatIncome.findAll({
+                where: { id_bill_suppliers: id },
+            });
 
-      if (stock) {
-        const cantidad = Number(item.products_quantity || 0);
-        const peso = Number(item.net_weight || 0);
+            const billDetails = await billDetail.findAll({
+                where: { bill_supplier_id: id },
+            });
 
-        stock.product_quantity -= cantidad;
-        stock.product_total_weight -= peso;
+            // 3) Restar del stock cortes manuales
+            for (const item of meatIncomes) {
+                const stock = await ProductStock.findOne({
+                    where: { product_name: item.products_name },
+                });
 
-        if (stock.product_quantity < 0) stock.product_quantity = 0;
-        if (stock.product_total_weight < 0) stock.product_total_weight = 0;
+                if (stock) {
+                    const cantidad = Number(item.products_quantity || 0);
+                    const peso = Number(item.net_weight || 0);
 
-        await stock.save();
-      }
-    }
+                    stock.product_quantity -= cantidad;
+                    stock.product_total_weight -= peso;
 
-    // 🔻 Restar del stock detalles del romaneo
-    for (const detail of billDetails) {
-      const stock = await ProductStock.findOne({
-        where: { product_name: detail.type },
-      });
+                    if (stock.product_quantity < 0) stock.product_quantity = 0;
+                    if (stock.product_total_weight < 0) stock.product_total_weight = 0;
 
-      if (stock) {
-        const cantidad = Number(detail.quantity || 0);
-        const peso = Number(detail.weight || 0);
+                    await stock.save();
+                }
+            }
 
-        stock.product_quantity -= cantidad;
-        stock.product_total_weight -= peso;
+        
+            for (const detail of billDetails) {
+                const stock = await ProductStock.findOne({
+                    where: { product_name: detail.type },
+                });
 
-        if (stock.product_quantity < 0) stock.product_quantity = 0;
-        if (stock.product_total_weight < 0) stock.product_total_weight = 0;
+                if (stock) {
+                    const cantidad = Number(detail.quantity || 0);
+                    const peso = Number(detail.weight || 0);
 
-        await stock.save();
-      }
-    }
+                    stock.product_quantity -= cantidad;
+                    stock.product_total_weight -= peso;
 
-    // ✅ Marcar como dado de baja (NO se borran los registros)
-    await billSupplier.update(
-      { bill_state: false },
-      { where: { id } }
-    );
+                    if (stock.product_quantity < 0) stock.product_quantity = 0;
+                    if (stock.product_total_weight < 0) stock.product_total_weight = 0;
 
-    return res
-      .status(200)
-      .json({ mensaje: "Ingreso dado de baja. Stock actualizado correctamente." });
-  } catch (error) {
-    console.error("deactivateProduct error:", error);
-    return res.status(500).json({
-      mensaje: "Error al dar de baja el ingreso",
-      error: error.message || error.toString(),
-    });
-  }
-},
-reactivateProduct: async (req, res) => {
-  try {
-    const id = req.params.id;
+                    await stock.save();
+                }
+            }
 
-    const bill = await billSupplier.findOne({ where: { id } });
-    if (!bill) {
-      return res.status(404).json({ mensaje: "El comprobante no existe" });
-    }
-    if (bill.bill_state === true) {
-      return res.status(400).json({ mensaje: "El comprobante ya está activo" });
-    }
+            const updateData = { bill_state: false };
 
-    const meatIncomes = await meatIncome.findAll({
-      where: { id_bill_suppliers: id },
-    });
+           
+            if (!bill.production_process) {
+                updateData.production_process = true;
+            }
 
-    const billDetails = await billDetail.findAll({
-      where: { bill_supplier_id: id },
-    });
+            await billSupplier.update(updateData, { where: { id } });
 
-    // 🔺 Volver a sumar al stock cortes manuales
-    for (const item of meatIncomes) {
-      const stock = await ProductStock.findOne({
-        where: { product_name: item.products_name },
-      });
+            return res.status(200).json({
+                mensaje: "Ingreso dado de baja. Stock actualizado correctamente.",
+                production_process:
+                    updateData.production_process ?? bill.production_process,
+            });
+        } catch (error) {
+            console.error("deactivateProduct error:", error);
+            return res.status(500).json({
+                mensaje: "Error al dar de baja el ingreso",
+                error: error.message || error.toString(),
+            });
+        }
+    },
 
-      if (stock) {
-        const cantidad = Number(item.products_quantity || 0);
-        const peso = Number(item.net_weight || 0);
+    reactivateProduct: async (req, res) => {
+        try {
+            const id = req.params.id;
 
-        stock.product_quantity += cantidad;
-        stock.product_total_weight += peso;
+            const bill = await billSupplier.findOne({ where: { id } });
+            if (!bill) {
+                return res.status(404).json({ mensaje: "El comprobante no existe" });
+            }
+            if (bill.bill_state === true) {
+                return res.status(400).json({ mensaje: "El comprobante ya está activo" });
+            }
 
-        await stock.save();
-      }
-    }
+            const meatIncomes = await meatIncome.findAll({
+                where: { id_bill_suppliers: id },
+            });
 
-    // 🔺 Volver a sumar al stock detalles del romaneo
-    for (const detail of billDetails) {
-      const stock = await ProductStock.findOne({
-        where: { product_name: detail.type },
-      });
+            const billDetails = await billDetail.findAll({
+                where: { bill_supplier_id: id },
+            });
 
-      if (stock) {
-        const cantidad = Number(detail.quantity || 0);
-        const peso = Number(detail.weight || 0);
+            // 🔺 Volver a sumar al stock cortes manuales
+            for (const item of meatIncomes) {
+                const stock = await ProductStock.findOne({
+                    where: { product_name: item.products_name },
+                });
 
-        stock.product_quantity += cantidad;
-        stock.product_total_weight += peso;
+                if (stock) {
+                    const cantidad = Number(item.products_quantity || 0);
+                    const peso = Number(item.net_weight || 0);
 
-        await stock.save();
-      }
-    }
+                    stock.product_quantity += cantidad;
+                    stock.product_total_weight += peso;
 
-    // ✅ Marcar como activo de nuevo
-    await billSupplier.update(
-      { bill_state: true },
-      { where: { id } }
-    );
+                    await stock.save();
+                }
+            }
 
-    return res
-      .status(200)
-      .json({ mensaje: "Ingreso reactivado. Stock actualizado correctamente." });
-  } catch (error) {
-    console.error("reactivateProduct error:", error);
-    return res.status(500).json({
-      mensaje: "Error al reactivar el ingreso",
-      error: error.message || error.toString(),
-    });
-  }
-},
+            // 🔺 Volver a sumar al stock detalles del romaneo
+            for (const detail of billDetails) {
+                const stock = await ProductStock.findOne({
+                    where: { product_name: detail.type },
+                });
+
+                if (stock) {
+                    const cantidad = Number(detail.quantity || 0);
+                    const peso = Number(detail.weight || 0);
+
+                    stock.product_quantity += cantidad;
+                    stock.product_total_weight += peso;
+
+                    await stock.save();
+                }
+            }
+
+            // ✅ Marcar como activo de nuevo
+            await billSupplier.update(
+                { bill_state: true },
+                { where: { id } }
+            );
+
+            return res
+                .status(200)
+                .json({ mensaje: "Ingreso reactivado. Stock actualizado correctamente." });
+        } catch (error) {
+            console.error("reactivateProduct error:", error);
+            return res.status(500).json({
+                mensaje: "Error al reactivar el ingreso",
+                error: error.message || error.toString(),
+            });
+        }
+    },
 
 
 
@@ -2058,258 +2070,258 @@ reactivateProduct: async (req, res) => {
             return res.status(500).json({ message: "Error interno del servidor", error: error.message });
         }
     },
- updateStockManual: async (req, res) => {
-    const t = await sequelize.transaction();
-    try {
-        const { id } = req.params;
-        const {
-            subtract_quantity,
-            min_stock,
-            max_stock,
-            product_total_weight
-        } = req.body || {};
+    updateStockManual: async (req, res) => {
+        const t = await sequelize.transaction();
+        try {
+            const { id } = req.params;
+            const {
+                subtract_quantity,
+                min_stock,
+                max_stock,
+                product_total_weight
+            } = req.body || {};
 
-        // --- 1) localizar fila de stock ---
-        // prioridad: por ID numérico; fallback: por nombre/código
-        let stockRow = null;
+            // --- 1) localizar fila de stock ---
+            // prioridad: por ID numérico; fallback: por nombre/código
+            let stockRow = null;
 
-        if (!isNaN(Number(id))) {
-            stockRow = await ProductStock.findByPk(id, { transaction: t, lock: t.LOCK.UPDATE });
-        }
-        if (!stockRow) {
-            stockRow = await ProductStock.findOne({
-                where: {
-                    [db.Sequelize.Op.or]: [
-                        { product_cod: String(id) },
-                        { product_id: String(id) },
-                        { product_name: String(id) }
-                    ]
-                },
-                transaction: t,
-                lock: t.LOCK.UPDATE
-            });
-        }
-        if (!stockRow) {
-            await t.rollback();
-            return res.status(404).json({ ok: false, msg: "Producto de stock no encontrado" });
-        }
-
-        // --- 2) restar unidades del stock (si corresponde) ---
-        if (subtract_quantity != null) {
-            const sub = Math.max(0, Number(subtract_quantity));
-            const current = Number(stockRow.product_quantity || 0);
-            if (sub > current) {
-                await t.rollback();
-                return res.status(400).json({
-                    ok: false,
-                    msg: `No hay stock suficiente: actual ${current}, intenta restar ${sub}`
+            if (!isNaN(Number(id))) {
+                stockRow = await ProductStock.findByPk(id, { transaction: t, lock: t.LOCK.UPDATE });
+            }
+            if (!stockRow) {
+                stockRow = await ProductStock.findOne({
+                    where: {
+                        [db.Sequelize.Op.or]: [
+                            { product_cod: String(id) },
+                            { product_id: String(id) },
+                            { product_name: String(id) }
+                        ]
+                    },
+                    transaction: t,
+                    lock: t.LOCK.UPDATE
                 });
             }
-            stockRow.product_quantity = current - sub;
-        }
+            if (!stockRow) {
+                await t.rollback();
+                return res.status(404).json({ ok: false, msg: "Producto de stock no encontrado" });
+            }
 
-        // --- 3) corregir kg totales (opcional) ---
-        if (product_total_weight != null && product_total_weight !== "") {
-            stockRow.product_total_weight = Number(product_total_weight);
-        }
-
-        await stockRow.save({ transaction: t });
-
-        // --- 4) actualizar min/max en catálogo (ProductsAvailable) ---
-        // 🔧 FIX: matchear SOLO por product_name (products_available no tiene product_cod)
-        let catRow = null;
-        if (stockRow.product_name) {
-            catRow = await ProductsAvailable.findOne({
-                where: { product_name: stockRow.product_name },
-                transaction: t,
-                lock: t.LOCK.UPDATE
-            });
-        }
-
-        if (catRow && (min_stock != null || max_stock != null)) {
-            if (min_stock != null) catRow.min_stock = Number(min_stock);
-            if (max_stock != null) catRow.max_stock = Number(max_stock);
-            await catRow.save({ transaction: t });
-        }
-
-        await t.commit();
-
-        // respuesta unificada para refrescar el front
-        return res.json({
-            ok: true,
-            msg: "Ajuste aplicado correctamente",
-            stock: {
-                id: stockRow.id,
-                product_cod: stockRow.product_cod,
-                product_name: stockRow.product_name,
-                product_quantity: Number(stockRow.product_quantity || 0),
-                product_total_weight: Number(stockRow.product_total_weight || 0)
-            },
-            available: catRow
-                ? {
-                    id: catRow.id,
-                    product_cod: catRow.product_cod,     // si no existe en tu modelo, podés quitar esta línea
-                    product_name: catRow.product_name,
-                    min_stock: Number(catRow.min_stock || 0),
-                    max_stock: Number(catRow.max_stock || 0)
+            // --- 2) restar unidades del stock (si corresponde) ---
+            if (subtract_quantity != null) {
+                const sub = Math.max(0, Number(subtract_quantity));
+                const current = Number(stockRow.product_quantity || 0);
+                if (sub > current) {
+                    await t.rollback();
+                    return res.status(400).json({
+                        ok: false,
+                        msg: `No hay stock suficiente: actual ${current}, intenta restar ${sub}`
+                    });
                 }
-                : null
-        });
-    } catch (e) {
-        console.error(e);
-        try { await t.rollback(); } catch { }
-        return res.status(500).json({ ok: false, msg: "Error en ajuste manual de stock" });
-    }
-},
+                stockRow.product_quantity = current - sub;
+            }
+
+            // --- 3) corregir kg totales (opcional) ---
+            if (product_total_weight != null && product_total_weight !== "") {
+                stockRow.product_total_weight = Number(product_total_weight);
+            }
+
+            await stockRow.save({ transaction: t });
+
+            // --- 4) actualizar min/max en catálogo (ProductsAvailable) ---
+            // 🔧 FIX: matchear SOLO por product_name (products_available no tiene product_cod)
+            let catRow = null;
+            if (stockRow.product_name) {
+                catRow = await ProductsAvailable.findOne({
+                    where: { product_name: stockRow.product_name },
+                    transaction: t,
+                    lock: t.LOCK.UPDATE
+                });
+            }
+
+            if (catRow && (min_stock != null || max_stock != null)) {
+                if (min_stock != null) catRow.min_stock = Number(min_stock);
+                if (max_stock != null) catRow.max_stock = Number(max_stock);
+                await catRow.save({ transaction: t });
+            }
+
+            await t.commit();
+
+            // respuesta unificada para refrescar el front
+            return res.json({
+                ok: true,
+                msg: "Ajuste aplicado correctamente",
+                stock: {
+                    id: stockRow.id,
+                    product_cod: stockRow.product_cod,
+                    product_name: stockRow.product_name,
+                    product_quantity: Number(stockRow.product_quantity || 0),
+                    product_total_weight: Number(stockRow.product_total_weight || 0)
+                },
+                available: catRow
+                    ? {
+                        id: catRow.id,
+                        product_cod: catRow.product_cod,     // si no existe en tu modelo, podés quitar esta línea
+                        product_name: catRow.product_name,
+                        min_stock: Number(catRow.min_stock || 0),
+                        max_stock: Number(catRow.max_stock || 0)
+                    }
+                    : null
+            });
+        } catch (e) {
+            console.error(e);
+            try { await t.rollback(); } catch { }
+            return res.status(500).json({ ok: false, msg: "Error en ajuste manual de stock" });
+        }
+    },
 
 
-billDetailsReadonly: async (req, res) => {
-  try {
-    const id = req.params.id;
-    const bill = await billSupplier.findOne({ where: { id } });
+    billDetailsReadonly: async (req, res) => {
+        try {
+            const id = req.params.id;
+            const bill = await billSupplier.findOne({ where: { id } });
 
-    if (!bill) {
-      return res.status(404).json({ message: "Comprobante no encontrado" });
-    }
+            if (!bill) {
+                return res.status(404).json({ message: "Comprobante no encontrado" });
+            }
 
-    let data = [];
+            let data = [];
 
-    if (bill.income_state === "manual") {
-      // 📦 Si el comprobante es MANUAL → leer de meat_manual_income
-      const rows = await meatIncome.findAll({ where: { id_bill_suppliers: id } });
+            if (bill.income_state === "manual") {
+                // 📦 Si el comprobante es MANUAL → leer de meat_manual_income
+                const rows = await meatIncome.findAll({ where: { id_bill_suppliers: id } });
 
-      data = rows.map(r => ({
-        type: r.products_name,                          // nombre del producto
-        quantity: Number(r.products_quantity || 0),      // cantidad
-        weight: Number(r.gross_weight || 0),             // peso bruto (equivale al neto cargado)
-        source: "manual"
-      }));
+                data = rows.map(r => ({
+                    type: r.products_name,                          // nombre del producto
+                    quantity: Number(r.products_quantity || 0),      // cantidad
+                    weight: Number(r.gross_weight || 0),             // peso bruto (equivale al neto cargado)
+                    source: "manual"
+                }));
 
-    } else {
-      // 📦 Si el comprobante es ROMANEO → leer de bill_details
-      const rows = await billDetail.findAll({ where: { bill_supplier_id: id } });
+            } else {
+                // 📦 Si el comprobante es ROMANEO → leer de bill_details
+                const rows = await billDetail.findAll({ where: { bill_supplier_id: id } });
 
-      data = rows.map(r => ({
-        type: r.type,                                    // nombre del producto
-        quantity: Number(r.quantity || 0),               // cantidad
-        weight: Number(r.weight || 0),                   // peso romaneo (neto)
-        source: "romaneo"
-      }));
-    }
+                data = rows.map(r => ({
+                    type: r.type,                                    // nombre del producto
+                    quantity: Number(r.quantity || 0),               // cantidad
+                    weight: Number(r.weight || 0),                   // peso romaneo (neto)
+                    source: "romaneo"
+                }));
+            }
 
-    return res.json(data);
+            return res.json(data);
 
-  } catch (err) {
-    console.error("billDetailsReadonly error:", err);
-    return res.status(500).json({ message: "Error interno del servidor" });
-  }
-},
+        } catch (err) {
+            console.error("billDetailsReadonly error:", err);
+            return res.status(500).json({ message: "Error interno del servidor" });
+        }
+    },
 
 
-billDetails:async (req, res) => {
-  try {
-    const id = req.params.id;
-    const bill = await billSupplier.findOne({ where: { id } });
+    billDetails: async (req, res) => {
+        try {
+            const id = req.params.id;
+            const bill = await billSupplier.findOne({ where: { id } });
 
-    if (!bill) return res.status(404).json({ message: "Comprobante no encontrado" });
+            if (!bill) return res.status(404).json({ message: "Comprobante no encontrado" });
 
-    if (bill.income_state === "manual") {
-      // meat_manual_income
-      const rows = await meatIncome.findAll({ where: { id_bill_suppliers: id } });
-      const data = rows.map(r => ({
-        id: r.id,
-        type: r.products_name,
-        quantity: Number(r.products_quantity||0),
-        heads: Number(r.product_head||0),
-        weight: Number(r.net_weight||0)
-      }));
-      return res.json(data);
-    } else {
-      // bill_details (romaneo)
-      const rows = await billDetail.findAll({ where: { bill_supplier_id: id } });
-      const data = rows.map(r => ({
-        id: r.id,
-        type: r.type,
-        quantity: Number(r.quantity||0),
-        heads: Number(r.heads||0),
-        weight: Number(r.weight||0)
-      }));
-      return res.json(data);
-    }
-  } catch (err) {
-    console.error("billDetails error:", err);
-    return res.status(500).json({ message: "Error interno del servidor" });
-  }
-},
+            if (bill.income_state === "manual") {
+                // meat_manual_income
+                const rows = await meatIncome.findAll({ where: { id_bill_suppliers: id } });
+                const data = rows.map(r => ({
+                    id: r.id,
+                    type: r.products_name,
+                    quantity: Number(r.products_quantity || 0),
+                    heads: Number(r.product_head || 0),
+                    weight: Number(r.net_weight || 0)
+                }));
+                return res.json(data);
+            } else {
+                // bill_details (romaneo)
+                const rows = await billDetail.findAll({ where: { bill_supplier_id: id } });
+                const data = rows.map(r => ({
+                    id: r.id,
+                    type: r.type,
+                    quantity: Number(r.quantity || 0),
+                    heads: Number(r.heads || 0),
+                    weight: Number(r.weight || 0)
+                }));
+                return res.json(data);
+            }
+        } catch (err) {
+            console.error("billDetails error:", err);
+            return res.status(500).json({ message: "Error interno del servidor" });
+        }
+    },
 
-// === Leer un proceso por process_number (cortes, bills, subproducción)
-getProcessByNumber: async (req, res) => {
-  try {
-    const process_number = Number(req.params.process_number);
-    if (!process_number) return res.status(400).json({ message: "process_number requerido" });
+    // === Leer un proceso por process_number (cortes, bills, subproducción)
+    getProcessByNumber: async (req, res) => {
+        try {
+            const process_number = Number(req.params.process_number);
+            if (!process_number) return res.status(400).json({ message: "process_number requerido" });
 
-    const cuts = await ProcessMeat.findAll({ where: { process_number }, order: [["id","ASC"]] });
-    const pn = await ProcessNumber.findAll({ where: { process_number } });
-    const bills = pn.map(r => r.bill_id);
-    const sub = await ProductionProcessSubproduction.findAll({ where: { process_number }, order: [["id","ASC"]] });
+            const cuts = await ProcessMeat.findAll({ where: { process_number }, order: [["id", "ASC"]] });
+            const pn = await ProcessNumber.findAll({ where: { process_number } });
+            const bills = pn.map(r => r.bill_id);
+            const sub = await ProductionProcessSubproduction.findAll({ where: { process_number }, order: [["id", "ASC"]] });
 
-    return res.json({ cuts, bills, subproduction: sub });
-  } catch (err) {
-    console.error("getProcessByNumber error:", err);
-    return res.status(500).json({ message: "Error interno del servidor" });
-  }
-},
+            return res.json({ cuts, bills, subproduction: sub });
+        } catch (err) {
+            console.error("getProcessByNumber error:", err);
+            return res.status(500).json({ message: "Error interno del servidor" });
+        }
+    },
 
-// === Actualizar (reemplazar) un proceso existente por process_number
-updateProcessByNumber: async (req, res) => {
-  const t = await sequelize.transaction();
-  try {
-    const process_number = Number(req.params.process_number);
-    if (!process_number) {
-      await t.rollback();
-      return res.status(400).json({ message: "process_number requerido" });
-    }
+    // === Actualizar (reemplazar) un proceso existente por process_number
+    updateProcessByNumber: async (req, res) => {
+        const t = await sequelize.transaction();
+        try {
+            const process_number = Number(req.params.process_number);
+            if (!process_number) {
+                await t.rollback();
+                return res.status(400).json({ message: "process_number requerido" });
+            }
 
-    const { cortes = [], bill_ids = [], subproduction = [] } = req.body;
+            const { cortes = [], bill_ids = [], subproduction = [] } = req.body;
 
-    // 1) borrar lo anterior
-    await ProcessMeat.destroy({ where: { process_number }, transaction: t });
-    await ProductionProcessSubproduction.destroy({ where: { process_number }, transaction: t });
-    await ProcessNumber.destroy({ where: { process_number }, transaction: t });
+            // 1) borrar lo anterior
+            await ProcessMeat.destroy({ where: { process_number }, transaction: t });
+            await ProductionProcessSubproduction.destroy({ where: { process_number }, transaction: t });
+            await ProcessNumber.destroy({ where: { process_number }, transaction: t });
 
-    // 2) recrear con datos nuevos
-    for (const c of cortes) {
-      await ProcessMeat.create({
-        process_number,
-        type: String(c.type || "").trim(),
-        average: Number(c.average || 0),
-        quantity: Number(c.quantity || 0),
-        gross_weight: Number(c.gross_weight || 0),
-        tares: Number(c.tares || 0),
-        net_weight: Number(c.net_weight || 0),
-      }, { transaction: t });
-    }
+            // 2) recrear con datos nuevos
+            for (const c of cortes) {
+                await ProcessMeat.create({
+                    process_number,
+                    type: String(c.type || "").trim(),
+                    average: Number(c.average || 0),
+                    quantity: Number(c.quantity || 0),
+                    gross_weight: Number(c.gross_weight || 0),
+                    tares: Number(c.tares || 0),
+                    net_weight: Number(c.net_weight || 0),
+                }, { transaction: t });
+            }
 
-    for (const id of bill_ids) {
-      await ProcessNumber.create({ process_number, bill_id: Number(id) }, { transaction: t });
-    }
+            for (const id of bill_ids) {
+                await ProcessNumber.create({ process_number, bill_id: Number(id) }, { transaction: t });
+            }
 
-    for (const s of subproduction) {
-      const cut_name = String(s.cut_name || "").trim();
-      const quantity = Number(s.quantity || 0);
-      if (cut_name && quantity > 0) {
-        await ProductionProcessSubproduction.create({ process_number, cut_name, quantity }, { transaction: t });
-      }
-    }
+            for (const s of subproduction) {
+                const cut_name = String(s.cut_name || "").trim();
+                const quantity = Number(s.quantity || 0);
+                if (cut_name && quantity > 0) {
+                    await ProductionProcessSubproduction.create({ process_number, cut_name, quantity }, { transaction: t });
+                }
+            }
 
-    await t.commit();
-    return res.json({ ok: true, process_number });
-  } catch (err) {
-    console.error("updateProcessByNumber error:", err);
-    try { await t.rollback(); } catch {}
-    return res.status(500).json({ message: "Error interno del servidor" });
-  }
-},
+            await t.commit();
+            return res.json({ ok: true, process_number });
+        } catch (err) {
+            console.error("updateProcessByNumber error:", err);
+            try { await t.rollback(); } catch { }
+            return res.status(500).json({ message: "Error interno del servidor" });
+        }
+    },
     // NUEVO: marcar / desmarcar que un comprobante necesita proceso productivo
     toggleProductionProcessFlag: async (req, res) => {
         const { id } = req.params;

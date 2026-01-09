@@ -160,7 +160,7 @@ const administrativeApiController = {
         {
           client_name: (nombreCliente || "").toUpperCase(),
           client_type_id: (identidad || "").toUpperCase(),
-          client_id_number: numeroIdentidad,
+        client_id_number: String(numeroIdentidad || "").trim(),
           client_iva_condition: (ivaCondicion || "").toUpperCase(),
           client_email: emailCliente,
           client_phone: telefonoCliente,
@@ -288,7 +288,7 @@ const administrativeApiController = {
       await Client.create({
         client_name: (nombreCliente || "").toUpperCase(),
         client_type_id: (identidad || "").toUpperCase(),
-        client_id_number: numeroIdentidad,
+       client_id_number: String(numeroIdentidad || "").trim(),
         client_iva_condition: (ivaCondicion || "").toUpperCase(),
         client_email: emailCliente,
         client_phone: telefonoCliente,

@@ -41,17 +41,17 @@ const PreinvoiceReturn = db.PreinvoiceReturn;
 
 // Inserta un espacio fino después del separador de miles para que pdfkit pueda cortar con ellipsis
 function thinSpaceNumber(str) {
-  return String(str).replace(/\./g, ".\u2009");
+    return String(str).replace(/\./g, ".\u2009");
 }
 
 // Calcula el tamaño de fuente que permite que "text" entre en "width" (entre minSize y maxSize)
 function fitFontSize(doc, text, width, maxSize, minSize) {
-  doc.font("Helvetica");
-  for (let s = maxSize; s >= minSize; s--) {
-    doc.fontSize(s);
-    if (doc.widthOfString(text) <= width) return s;
-  }
-  return minSize;
+    doc.font("Helvetica");
+    for (let s = maxSize; s >= minSize; s--) {
+        doc.fontSize(s);
+        if (doc.widthOfString(text) <= width) return s;
+    }
+    return minSize;
 }
 
 
@@ -233,160 +233,160 @@ function drawHeader(doc, remit) {
 
 
 function drawTable(doc, items, startY = 210) {
-  const topY = startY + 10;
+    const topY = startY + 10;
 
-  const left = doc.page.margins.left || 40;
-  const right = doc.page.margins.right || 40;
-  const availableWidth = doc.page.width - left - right;
+    const left = doc.page.margins.left || 40;
+    const right = doc.page.margins.right || 40;
+    const availableWidth = doc.page.width - left - right;
 
-  // Anchos fijos con más espacio para P. TOTAL
-  const COLS = [
-    { key: "product_id",   title: "CÓDIGO",   width: 50,  align: "left"  },
-    { key: "product_name", title: "PRODUCTO", width: 120, align: "left"  }, // -15
-    { key: "packaging",    title: "EMPAQUE",  width: 60,  align: "left"  }, // -10
-    { key: "unit_measure", title: "UNIDAD",   width: 45,  align: "center"},
-    { key: "qty",          title: "CANT.",    width: 50,  align: "right" }, // -5
-    { key: "net_weight",   title: "P. NETO",  width: 60,  align: "right" },
-    { key: "unit_price",   title: "P. UNIT",  width: 60,  align: "right" }, // -5
-    { key: "total",        title: "P. TOTAL", width: 90,  align: "right" }, // +25 ✅
-  ];
-  const sumW = COLS.reduce((a, c) => a + c.width, 0);
-  if (sumW !== Math.round(availableWidth)) {
-    COLS[COLS.length - 1].width += (availableWidth - sumW);
-  }
-
-  const rowHeight = 18;
-  const headerHeight = 22;
-  let y = topY;
-
-  // Línea superior de la tabla
-  doc.moveTo(left, y).lineTo(left + availableWidth, y).strokeColor("#cfcfd1").lineWidth(1).stroke();
-  y += 6;
-
-  // ====== HEADER con auto-fit ======
-  const headerMaxSize = 10, headerMinSize = 8;
-  let headerFontSize = headerMaxSize;
-
-  COLS.forEach(col => {
-    const needed = fitFontSize(doc, col.title, col.width - 4, headerMaxSize, headerMinSize);
-    if (needed < headerFontSize) headerFontSize = needed;
-  });
-
-  doc.font("Helvetica-Bold").fontSize(headerFontSize);
-  let x = left;
-  COLS.forEach(col => {
-    doc.text(col.title, x + 2, y, {
-      width: col.width - 4,
-      align: col.align,
-      ellipsis: true,
-      lineBreak: false
-    });
-    x += col.width;
-  });
-  y += headerHeight - 8;
-
-  // Línea bajo header
-  doc.moveTo(left, y).lineTo(left + availableWidth, y).strokeColor("#cfcfd1").lineWidth(1).stroke();
-  y += 6;
-
-  // ====== CUERPO ======
-  doc.font("Helvetica");
-
-  let totalFinal = 0;
-  let totalItems = 0; // líneas
-  let totalKg = 0;
-
-  const needPage = (nextY) => nextY > (doc.page.height - doc.page.margins.bottom - 120);
-
-  const redrawHeader = () => {
-    let yy = Math.max(doc.y, doc.page.margins.top + 120);
-    y = yy;
-
-    doc.moveTo(left, y).lineTo(left + availableWidth, y).strokeColor("#cfcfd1").lineWidth(1).stroke();
-    y += 6;
-
-    let hdrSize = headerMaxSize;
-    COLS.forEach(col => {
-      const needed = fitFontSize(doc, col.title, col.width - 4, headerMaxSize, headerMinSize);
-      if (needed < hdrSize) hdrSize = needed;
-    });
-
-    doc.font("Helvetica-Bold").fontSize(hdrSize);
-    let xx = left;
-    COLS.forEach(col => {
-      doc.text(col.title, xx + 2, y, {
-        width: col.width - 4,
-        align: col.align,
-        ellipsis: true,
-        lineBreak: false
-      });
-      xx += col.width;
-    });
-    y += headerHeight - 8;
-    doc.moveTo(left, y).lineTo(left + availableWidth, y).strokeColor("#cfcfd1").lineWidth(1).stroke();
-    y += 6;
-    doc.font("Helvetica");
-  };
-
-  items.forEach((it) => {
-    const qty       = Number(it.qty || 0);
-    const netWeight = Number(it.net_weight || 0);
-    const unitPrice = Number(it.unit_price || 0);
-    const total     = (it.total != null) ? Number(it.total) : unitPrice * qty;
-
-    totalItems += 1;
-    totalKg    += netWeight;
-    totalFinal += total;
-
-    if (needPage(y + rowHeight)) {
-      doc.addPage();
-      redrawHeader();
+    // Anchos fijos con más espacio para P. TOTAL
+    const COLS = [
+        { key: "product_id", title: "CÓDIGO", width: 50, align: "left" },
+        { key: "product_name", title: "PRODUCTO", width: 120, align: "left" }, // -15
+        { key: "packaging", title: "EMPAQUE", width: 60, align: "left" }, // -10
+        { key: "unit_measure", title: "UNIDAD", width: 45, align: "center" },
+        { key: "qty", title: "CANT.", width: 50, align: "right" }, // -5
+        { key: "net_weight", title: "P. NETO", width: 60, align: "right" },
+        { key: "unit_price", title: "P. UNIT", width: 60, align: "right" }, // -5
+        { key: "total", title: "P. TOTAL", width: 90, align: "right" }, // +25 ✅
+    ];
+    const sumW = COLS.reduce((a, c) => a + c.width, 0);
+    if (sumW !== Math.round(availableWidth)) {
+        COLS[COLS.length - 1].width += (availableWidth - sumW);
     }
 
-    // 1) Textos por celda
-    const cells = [
-      String(it.product_id ?? ""),
-      String(it.product_name ?? ""),
-      String(it.packaging ?? "-"),
-      String(it.unit_measure ?? ""),
-      fmtQty(qty),
-      nf.format(netWeight),
-      fmtMoney(unitPrice),
-      fmtMoney(total),
-    ];
+    const rowHeight = 18;
+    const headerHeight = 22;
+    let y = topY;
 
-    // 2) SIN “thin space” para números (evita saltos). Vamos con truncado + no wrap.
-    const displayCells = cells;
+    // Línea superior de la tabla
+    doc.moveTo(left, y).lineTo(left + availableWidth, y).strokeColor("#cfcfd1").lineWidth(1).stroke();
+    y += 6;
 
-    // 3) Auto–ajuste de fuente por fila (todo a una misma fuente)
-    const normalSize = 9, minSize = 7;
-    let rowFont = normalSize;
-    displayCells.forEach((val, i) => {
-      const col = COLS[i];
-      const needed = fitFontSize(doc, val, col.width - 4, normalSize, minSize);
-      if (needed < rowFont) rowFont = needed;
+    // ====== HEADER con auto-fit ======
+    const headerMaxSize = 10, headerMinSize = 8;
+    let headerFontSize = headerMaxSize;
+
+    COLS.forEach(col => {
+        const needed = fitFontSize(doc, col.title, col.width - 4, headerMaxSize, headerMinSize);
+        if (needed < headerFontSize) headerFontSize = needed;
     });
 
-    // 4) Dibujar fila
-    doc.font("Helvetica").fontSize(rowFont);
-    let xx = left;
-    displayCells.forEach((val, i) => {
-      const col = COLS[i];
-      doc.text(val, xx + 2, y, {
-        width: col.width - 4,
-        align: col.align,
-        ellipsis: true,
-        lineBreak: false   // 👈 no permitimos salto en ninguna celda
-      });
-      xx += col.width;
+    doc.font("Helvetica-Bold").fontSize(headerFontSize);
+    let x = left;
+    COLS.forEach(col => {
+        doc.text(col.title, x + 2, y, {
+            width: col.width - 4,
+            align: col.align,
+            ellipsis: true,
+            lineBreak: false
+        });
+        x += col.width;
     });
-    doc.fontSize(normalSize);
+    y += headerHeight - 8;
 
-    y += rowHeight;
-    doc.moveTo(left, y).lineTo(left + availableWidth, y).strokeColor("#e6e6e8").lineWidth(0.5).stroke();
-  });
+    // Línea bajo header
+    doc.moveTo(left, y).lineTo(left + availableWidth, y).strokeColor("#cfcfd1").lineWidth(1).stroke();
+    y += 6;
 
-  return { y: y + 20, totalFinal, totalItems, totalKg };
+    // ====== CUERPO ======
+    doc.font("Helvetica");
+
+    let totalFinal = 0;
+    let totalItems = 0; // líneas
+    let totalKg = 0;
+
+    const needPage = (nextY) => nextY > (doc.page.height - doc.page.margins.bottom - 120);
+
+    const redrawHeader = () => {
+        let yy = Math.max(doc.y, doc.page.margins.top + 120);
+        y = yy;
+
+        doc.moveTo(left, y).lineTo(left + availableWidth, y).strokeColor("#cfcfd1").lineWidth(1).stroke();
+        y += 6;
+
+        let hdrSize = headerMaxSize;
+        COLS.forEach(col => {
+            const needed = fitFontSize(doc, col.title, col.width - 4, headerMaxSize, headerMinSize);
+            if (needed < hdrSize) hdrSize = needed;
+        });
+
+        doc.font("Helvetica-Bold").fontSize(hdrSize);
+        let xx = left;
+        COLS.forEach(col => {
+            doc.text(col.title, xx + 2, y, {
+                width: col.width - 4,
+                align: col.align,
+                ellipsis: true,
+                lineBreak: false
+            });
+            xx += col.width;
+        });
+        y += headerHeight - 8;
+        doc.moveTo(left, y).lineTo(left + availableWidth, y).strokeColor("#cfcfd1").lineWidth(1).stroke();
+        y += 6;
+        doc.font("Helvetica");
+    };
+
+    items.forEach((it) => {
+        const qty = Number(it.qty || 0);
+        const netWeight = Number(it.net_weight || 0);
+        const unitPrice = Number(it.unit_price || 0);
+        const total = (it.total != null) ? Number(it.total) : unitPrice * qty;
+
+        totalItems += 1;
+        totalKg += netWeight;
+        totalFinal += total;
+
+        if (needPage(y + rowHeight)) {
+            doc.addPage();
+            redrawHeader();
+        }
+
+        // 1) Textos por celda
+        const cells = [
+            String(it.product_id ?? ""),
+            String(it.product_name ?? ""),
+            String(it.packaging ?? "-"),
+            String(it.unit_measure ?? ""),
+            fmtQty(qty),
+            nf.format(netWeight),
+            fmtMoney(unitPrice),
+            fmtMoney(total),
+        ];
+
+        // 2) SIN “thin space” para números (evita saltos). Vamos con truncado + no wrap.
+        const displayCells = cells;
+
+        // 3) Auto–ajuste de fuente por fila (todo a una misma fuente)
+        const normalSize = 9, minSize = 7;
+        let rowFont = normalSize;
+        displayCells.forEach((val, i) => {
+            const col = COLS[i];
+            const needed = fitFontSize(doc, val, col.width - 4, normalSize, minSize);
+            if (needed < rowFont) rowFont = needed;
+        });
+
+        // 4) Dibujar fila
+        doc.font("Helvetica").fontSize(rowFont);
+        let xx = left;
+        displayCells.forEach((val, i) => {
+            const col = COLS[i];
+            doc.text(val, xx + 2, y, {
+                width: col.width - 4,
+                align: col.align,
+                ellipsis: true,
+                lineBreak: false   // 👈 no permitimos salto en ninguna celda
+            });
+            xx += col.width;
+        });
+        doc.fontSize(normalSize);
+
+        y += rowHeight;
+        doc.moveTo(left, y).lineTo(left + availableWidth, y).strokeColor("#e6e6e8").lineWidth(0.5).stroke();
+    });
+
+    return { y: y + 20, totalFinal, totalItems, totalKg };
 }
 
 
@@ -964,150 +964,151 @@ const saleApiController = {
             return res.status(500).json({ ok: false, msg: "Error al encontrar los productos" });
         }
     },
-generateSalesOrder: async (req, res) => {
-  const { id } = req.params;
+    generateSalesOrder: async (req, res) => {
+        const { id } = req.params;
 
-  const toNumber = (v) => {
-    const n = parseFloat(String(v ?? "").replace(",", "."));
-    return isNaN(n) ? 0 : n;
-  };
+        const toNumber = (v) => {
+            const n = parseFloat(String(v ?? "").replace(",", "."));
+            return isNaN(n) ? 0 : n;
+        };
 
-  const t = await sequelize.transaction();
-  try {
-    const header = await NewOrder.findByPk(id, { transaction: t });
-    if (!header) {
-      await t.rollback();
-      return res
-        .status(404)
-        .json({ ok: false, msg: "Orden no encontrada" });
-    }
+        const t = await sequelize.transaction();
+        try {
+            const header = await NewOrder.findByPk(id, { transaction: t });
+            if (!header) {
+                await t.rollback();
+                return res
+                    .status(404)
+                    .json({ ok: false, msg: "Orden no encontrada" });
+            }
 
-    // Productos del pedido (OrderProductClient)
-    const lines = await OrderProductClient.findAll({
-      where: { order_id: id },
-      transaction: t,
-    });
+            // Productos del pedido (OrderProductClient)
+            const lines = await OrderProductClient.findAll({
+                where: { order_id: id },
+                transaction: t,
+            });
 
-    if (!lines.length) {
-      await t.rollback();
-      return res
-        .status(400)
-        .json({ ok: false, msg: "La orden no tiene productos" });
-    }
+            if (!lines.length) {
+                await t.rollback();
+                return res
+                    .status(400)
+                    .json({ ok: false, msg: "La orden no tiene productos" });
+            }
 
-    const noStock = [];
-    const prepared = [];
+            const noStock = [];
+            const prepared = [];
 
-    for (const ln of lines) {
-      const code = ln.product_cod ?? ln.product_id ?? null;
-      const name = ln.product_name ?? "";
-      const requested = toNumber(ln.cantidad); // puede ser UN o KG
-      const price = toNumber(ln.precio);
-      const unit = String(ln.tipo_medida || "").toUpperCase() || "UN"; // "KG" o unidades
+            for (const ln of lines) {
+                const code = ln.product_cod ?? ln.product_id ?? null;
+                const name = ln.product_name ?? "";
+                const requested = toNumber(ln.cantidad); // puede ser UN o KG
+                const price = toNumber(ln.precio);
+                const unit = String(ln.tipo_medida || "").toUpperCase() || "UN"; // "KG" o unidades
 
-      let stockRow = null;
+                let stockRow = null;
 
-      if (code != null) {
-        stockRow = await ProductStock.findOne({
-          where: { product_cod: code },
-          transaction: t,
-        });
-      }
-      if (!stockRow) {
-        stockRow = await ProductStock.findOne({
-          where: { product_name: name },
-          transaction: t,
-        });
-      }
+                if (code != null) {
+                    stockRow = await ProductStock.findOne({
+                        where: { product_cod: code },
+                        transaction: t,
+                    });
+                }
+                if (!stockRow) {
+                    stockRow = await ProductStock.findOne({
+                        where: { product_name: name },
+                        transaction: t,
+                    });
+                }
 
-      let available = 0;
-      if (stockRow) {
-        if (unit === "KG") {
-          // productos que se trabajan en kilos
-          available = toNumber(stockRow.product_total_weight);
-        } else {
-          // productos por unidad
-          available = toNumber(stockRow.product_quantity);
+                let available = 0;
+                if (stockRow) {
+                    if (unit === "KG") {
+                        // productos que se trabajan en kilos
+                        available = toNumber(stockRow.product_total_weight);
+                    } else {
+                        // productos por unidad
+                        available = toNumber(stockRow.product_quantity);
+                    }
+                }
+
+                if (!stockRow || available <= 0 || available < requested) {
+                    noStock.push({
+                        product_id: code,
+                        product_name: name,
+                        unit,
+                        requested,
+                        available,
+                    });
+                    continue;
+                }
+
+                const sendQty = requested; // vendemos lo pedido (ya validado que hay stock)
+
+                prepared.push({
+                    ln,
+                    stockRow,
+                    sendQty,
+                    price,
+                    code,
+                    name,
+                    available,
+                    requested,
+                    unit,
+                });
+            }
+
+            if (noStock.length) {
+                await t.rollback();
+                return res.status(400).json({
+                    ok: false,
+                    msg: "Hay productos sin stock, no se puede generar la orden.",
+                    noStock,
+                });
+            }
+
+            // Crear líneas de la orden de venta (NO descontamos stock acá)
+            for (const item of prepared) {
+                await ProductsSellOrder.create(
+                    {
+                        sell_order_id: Number(id),
+                        product_id: item.code ?? null,
+                        product_name: item.name,
+                        product_price: item.price,
+                        product_quantity: item.sendQty, // unidades o kg, según tipo_medida
+                        tipo_medida: item.unit, // "KG" o unidades
+                    },
+                    { transaction: t }
+                );
+            }
+
+            // 👉 IMPORTANTE: YA NO TOCAMOS order_check ACÁ
+            // await NewOrder.update(
+            //   { order_check: true },
+            //   { where: { id }, transaction: t }
+            // );
+
+            await t.commit();
+
+            return res.status(201).json({
+                ok: true,
+                msg: "Orden generada correctamente.",
+                items: prepared.map((p) => ({
+                    product_name: p.name,
+                    unidad: p.unit,
+                    solicitado: p.requested,
+                    enviado: p.sendQty,
+                    restante_en_stock: Math.max(0, p.available - p.sendQty),
+                })),
+            });
+        } catch (error) {
+            await t.rollback();
+            console.error(error);
+            return res
+                .status(500)
+                .json({ ok: false, msg: "Error al generar la orden" });
         }
-      }
+    },
 
-      if (!stockRow || available <= 0 || available < requested) {
-        noStock.push({
-          product_id: code,
-          product_name: name,
-          unit,
-          requested,
-          available,
-        });
-        continue;
-      }
-
-      const sendQty = requested; // vendemos lo pedido (ya validado que hay stock)
-
-      prepared.push({
-        ln,
-        stockRow,
-        sendQty,
-        price,
-        code,
-        name,
-        available,
-        requested,
-        unit,
-      });
-    }
-
-    if (noStock.length) {
-      await t.rollback();
-      return res.status(400).json({
-        ok: false,
-        msg: "Hay productos sin stock, no se puede generar la orden.",
-        noStock,
-      });
-    }
-
-    // Crear líneas de la orden de venta (NO descontamos stock acá)
-    for (const item of prepared) {
-      await ProductsSellOrder.create(
-        {
-          sell_order_id: Number(id),
-          product_id: item.code ?? null,
-          product_name: item.name,
-          product_price: item.price,
-          product_quantity: item.sendQty, // unidades o kg, según tipo_medida
-          tipo_medida: item.unit, // "KG" o unidades
-        },
-        { transaction: t }
-      );
-    }
-
-    // Marcar la orden como chequeada
-    await NewOrder.update(
-      { order_check: true },
-      { where: { id }, transaction: t }
-    );
-
-    await t.commit();
-
-    return res.status(201).json({
-      ok: true,
-      msg: "Orden generada correctamente.",
-      items: prepared.map((p) => ({
-        product_name: p.name,
-        unidad: p.unit,
-        solicitado: p.requested,
-        enviado: p.sendQty,
-        restante_en_stock: Math.max(0, p.available - p.sendQty),
-      })),
-    });
-  } catch (error) {
-    await t.rollback();
-    console.error(error);
-    return res
-      .status(500)
-      .json({ ok: false, msg: "Error al generar la orden" });
-  }
-},
 
 
 
@@ -1166,44 +1167,68 @@ generateSalesOrder: async (req, res) => {
     deleteOrder: async (req, res) => {
         const { id } = req.params;
         try {
-            // si la orden ya fue generada, habrá registros en products_sell_order
-            const vinculadas = await ProductsSellOrder.count({ where: { sell_order_id: id } });
-            if (vinculadas > 0) {
-                return res.status(409).json({
-                    ok: false,
-                    msg: "No se puede eliminar: la orden ya fue generada y tiene productos asociados."
-                });
+            // 1) Buscar header
+            const header = await NewOrder.findByPk(id);
+            if (!header) {
+                return res
+                    .status(404)
+                    .json({ ok: false, msg: "Pedido no encontrado" });
             }
 
-            // (opcional) bloquear también por flag de header
-            const header = await NewOrder.findByPk(id);
-            if (!header) return res.status(404).json({ ok: false, msg: "Pedido no encontrado" });
+            // 2) Restricción ÚNICA: order_check
             if (header.order_check === true) {
                 return res.status(409).json({
                     ok: false,
-                    msg: "No se puede eliminar: la orden ya fue generada (order_check = true)."
+                    msg: "No se puede eliminar: la orden ya fue generada (order_check = true).",
                 });
             }
 
-            // borrar líneas y luego header en transacción
+            // 3) Borrar líneas y header en transacción
             const t = await sequelize.transaction();
             try {
-                await OrderProductClient.destroy({ where: { order_id: id }, transaction: t });
-                const deleted = await NewOrder.destroy({ where: { id }, transaction: t });
+                // Podés limpiar también las líneas de ProductsSellOrder por las dudas:
+                await ProductsSellOrder.destroy({
+                    where: { sell_order_id: id },
+                    transaction: t,
+                });
+
+                await OrderProductClient.destroy({
+                    where: { order_id: id },
+                    transaction: t,
+                });
+
+                const deleted = await NewOrder.destroy({
+                    where: { id },
+                    transaction: t,
+                });
+
                 await t.commit();
 
-                if (!deleted) return res.status(404).json({ ok: false, msg: "Pedido no encontrado" });
-                return res.json({ ok: true, msg: "Pedido eliminado correctamente" });
+                if (!deleted) {
+                    return res
+                        .status(404)
+                        .json({ ok: false, msg: "Pedido no encontrado" });
+                }
+
+                return res.json({
+                    ok: true,
+                    msg: "Pedido eliminado correctamente",
+                });
             } catch (err) {
                 await t.rollback();
                 console.error(err);
-                return res.status(500).json({ ok: false, msg: "Error al eliminar el pedido" });
+                return res
+                    .status(500)
+                    .json({ ok: false, msg: "Error al eliminar el pedido" });
             }
         } catch (error) {
             console.error(error);
-            return res.status(500).json({ ok: false, msg: "Error al eliminar el pedido" });
+            return res
+                .status(500)
+                .json({ ok: false, msg: "Error al eliminar el pedido" });
         }
     },
+
 
     getFinalOrdersGrouped: async (req, res) => {
         try {
@@ -1485,112 +1510,133 @@ generateSalesOrder: async (req, res) => {
     },
 
 
-   setOrderWeightChecked: async (req, res) => {
-    const t = await sequelize.transaction();
-    try {
-        const { id } = req.params;
 
-        // 1) Buscar la orden
-        const order = await NewOrder.findByPk(id, { transaction: t });
-        if (!order) {
-            await t.rollback();
-            return res.status(404).json({ ok: false, msg: "Orden no encontrada" });
-        }
+    setOrderWeightChecked: async (req, res) => {
+        const t = await sequelize.transaction();
+        try {
+            const { id } = req.params;
 
-        // Si ya estaba pesada, no vuelvas a descontar stock
-        if (order.order_weight_check === true) {
-            await t.rollback();
-            return res
-                .status(400)
-                .json({ ok: false, msg: "La orden ya estaba marcada como pesada." });
-        }
+            // 1) Buscar la orden
+            const order = await NewOrder.findByPk(id, { transaction: t });
+            if (!order) {
+                await t.rollback();
+                return res
+                    .status(404)
+                    .json({ ok: false, msg: "Orden no encontrada" });
+            }
 
-        // 2) Traer líneas de la orden de venta
-        const lines = await ProductsSellOrder.findAll({
-            where: { sell_order_id: id },
-            order: [["id", "ASC"]],
-            transaction: t,
-        });
+            // Si ya estaba pesada, no vuelvas a descontar stock
+            if (order.order_weight_check === true) {
+                await t.rollback();
+                return res.status(400).json({
+                    ok: false,
+                    msg: "La orden ya estaba marcada como pesada.",
+                });
+            }
 
-        // 3) Por cada producto, sumar lo pesado y descontar stock
-        for (const l of lines) {
-            const headers = await CutsHeader.findAll({
-                where: { receipt_number: id, product_code: String(l.product_id) },
-                include: [{ model: CutsDetail, as: "details" }],
+            // 2) Traer líneas de la orden de venta
+            const lines = await ProductsSellOrder.findAll({
+                where: { sell_order_id: id },
                 order: [["id", "ASC"]],
                 transaction: t,
             });
 
-            let qtyRequestedTotal = 0;
-            let netWeight = 0;
+            // 3) Por cada producto, sumar lo pesado y descontar stock
+            for (const l of lines) {
+                const headers = await CutsHeader.findAll({
+                    where: {
+                        receipt_number: id,
+                        product_code: String(l.product_id),
+                    },
+                    include: [{ model: CutsDetail, as: "details" }],
+                    order: [["id", "ASC"]],
+                    transaction: t,
+                });
 
-            for (const h of headers) {
-                qtyRequestedTotal += Number(h.qty_requested || 0);
-                for (const d of (h.details || [])) {
-                    netWeight += Number(d.net_weight || 0);
+                let qtyRequestedTotal = 0;
+                let netWeight = 0;
+
+                for (const h of headers) {
+                    qtyRequestedTotal += Number(h.qty_requested || 0);
+                    for (const d of h.details || []) {
+                        netWeight += Number(d.net_weight || 0);
+                    }
                 }
+
+                const qty = qtyRequestedTotal;
+                const netKg = netWeight;
+
+                // Si no hay nada pesado para ese producto, sigo con el siguiente
+                if (qty === 0 && netKg === 0) continue;
+
+                // ------- Buscar stock -------
+                let stockRow = null;
+                if (l.product_id != null) {
+                    stockRow = await ProductStock.findOne({
+                        where: { product_cod: String(l.product_id) },
+                        transaction: t,
+                        lock: t.LOCK.UPDATE,
+                    });
+                }
+                if (!stockRow) {
+                    stockRow = await ProductStock.findOne({
+                        where: { product_name: l.product_name },
+                        transaction: t,
+                        lock: t.LOCK.UPDATE,
+                    });
+                }
+
+                if (!stockRow) {
+                    await t.rollback();
+                    return res.status(400).json({
+                        ok: false,
+                        msg: `No existe stock para ${l.product_name} (id ${l.product_id ?? "-"
+                            })`,
+                    });
+                }
+
+                const currentQty = Number(stockRow.product_quantity || 0);
+                const currentKilos = Number(stockRow.product_total_weight || 0);
+
+                const newQty = Math.max(0, currentQty - qty);
+                const newKilos = Math.max(0, currentKilos - netKg);
+
+                await stockRow.update(
+                    {
+                        product_quantity: newQty,
+                        product_total_weight: newKilos,
+                    },
+                    { transaction: t }
+                );
             }
 
-            const qty = qtyRequestedTotal;
-            const netKg = netWeight;
-
-            // Si no hay nada pesado para ese producto, sigo con el siguiente
-            if (qty === 0 && netKg === 0) continue;
-
-            // ------- Buscar stock -------
-            let stockRow = null;
-            if (l.product_id != null) {
-                stockRow = await ProductStock.findOne({
-                    where: { product_cod: String(l.product_id) },
-                    transaction: t,
-                    lock: t.LOCK.UPDATE,
-                });
-            }
-            if (!stockRow) {
-                stockRow = await ProductStock.findOne({
-                    where: { product_name: l.product_name },
-                    transaction: t,
-                    lock: t.LOCK.UPDATE,
-                });
-            }
-
-            if (!stockRow) {
-                await t.rollback();
-                return res.status(400).json({
-                    ok: false,
-                    msg: `No existe stock para ${l.product_name} (id ${l.product_id ?? "-"})`,
-                });
-            }
-
-            const currentQty = Number(stockRow.product_quantity || 0);
-            const currentKilos = Number(stockRow.product_total_weight || 0);
-
-            const newQty = Math.max(0, currentQty - qty);
-            const newKilos = Math.max(0, currentKilos - netKg);
-
-            await stockRow.update(
-                { product_quantity: newQty, product_total_weight: newKilos },
+            // 4) Marcar la orden como pesada **y generada/bloqueada**
+            await order.update(
+                {
+                    order_weight_check: true, // ya estaba
+                    order_check: true,        // 👈 se marca también acá
+                },
                 { transaction: t }
             );
+
+            await t.commit();
+            return res.json({
+                ok: true,
+                msg: "Orden marcada como pesada, estado actualizado y stock ajustado.",
+            });
+        } catch (error) {
+            if (t) {
+                try {
+                    await t.rollback();
+                } catch { }
+            }
+            console.error(error);
+            return res.status(500).json({
+                ok: false,
+                msg: "Error al marcar la orden como pesada",
+            });
         }
-
-        // 4) Marcar la orden como pesada
-        await order.update({ order_weight_check: true }, { transaction: t });
-
-        await t.commit();
-        return res.json({
-            ok: true,
-            msg: "Orden marcada como pesada y stock actualizado.",
-        });
-    } catch (e) {
-        console.error(e);
-        try { await t.rollback(); } catch (_) {}
-        return res.status(500).json({
-            ok: false,
-            msg: "Error al marcar como pesada / actualizar stock",
-        });
-    }
-},
+    },
 
 
     getOrderHeaderForWeighing: async (req, res) => {
@@ -2039,168 +2085,168 @@ generateSalesOrder: async (req, res) => {
     },
 
 
-   createRemitFromOrder: async (req, res) => {
-    const t = await sequelize.transaction();
-    try {
-        const { id } = req.params;
-        const note = (req.body?.note ?? null);
+    createRemitFromOrder: async (req, res) => {
+        const t = await sequelize.transaction();
+        try {
+            const { id } = req.params;
+            const note = (req.body?.note ?? null);
 
-        // Evitar duplicado
-        const exists = await FinalRemit.findOne({
-            where: { order_id: id },
-            transaction: t,
-            lock: t.LOCK.UPDATE,
-        });
-        if (exists) {
-            await t.rollback();
-            return res.status(400).json({ ok: false, msg: "La orden ya está remitada" });
-        }
-
-        const order = await NewOrder.findByPk(id, { transaction: t });
-        if (!order) {
-            await t.rollback();
-            return res.status(404).json({ ok: false, msg: "Orden no encontrada" });
-        }
-
-        // Header
-        const remit = await FinalRemit.create({
-            order_id: order.id,
-            receipt_number: order.id,
-            client_name: order.client_name,
-            salesman_name: order.salesman_name,
-            price_list: order.price_list,
-            sell_condition: order.sell_condition,
-            payment_condition: order.payment_condition,
-            generated_by: "system",
-            note,
-            total_items: 0,
-            total_amount: 0,
-        }, { transaction: t });
-
-        // Detalle
-        const lines = await ProductsSellOrder.findAll({
-            where: { sell_order_id: id },
-            order: [["id", "ASC"]],
-            transaction: t,
-        });
-
-        const detailRows = [];
-        let totalItems = 0;
-        let totalAmount = 0;
-
-        for (const l of lines) {
-            const unit_price = Number(l.product_price || 0);
-
-            const priceRow = await PriceListProduct.findOne({
-                where: { product_id: String(l.product_id) },
-                order: [["id", "ASC"]],
+            // Evitar duplicado
+            const exists = await FinalRemit.findOne({
+                where: { order_id: id },
                 transaction: t,
+                lock: t.LOCK.UPDATE,
             });
-            const unit_measure = priceRow?.unidad_venta || null;
-            const isKG = String(unit_measure || "").toUpperCase() === "KG";
-
-            const headers = await CutsHeader.findAll({
-                where: { receipt_number: id, product_code: String(l.product_id) },
-                include: [{ model: CutsDetail, as: "details" }],
-                order: [["id", "ASC"]],
-                transaction: t,
-            });
-
-            let qty_requested_total = 0;
-            let net_weight = 0;
-            let gross_weight = 0;
-            let units_count = 0;
-
-            for (const h of headers) {
-                qty_requested_total += Number(h.qty_requested || 0);
-                for (const d of (h.details || [])) {
-                    units_count += Number(d.units_count || 0);
-                    gross_weight += Number(d.gross_weight || 0);
-                    net_weight += Number(d.net_weight || 0);
-                }
-            }
-
-            const qty = qty_requested_total;
-            const avg_weight = units_count > 0 ? net_weight / units_count : 0;
-            const lineTotal = isKG ? unit_price * net_weight : unit_price * qty;
-
-            detailRows.push({
-                final_remit_id: remit.id,
-                product_id: l.product_id ?? null,
-                product_name: l.product_name,
-                unit_price,
-                qty,
-                unit_measure,
-                gross_weight,
-                net_weight,
-                avg_weight,
-            });
-
-            totalItems += qty;
-            totalAmount += lineTotal;
-
-            /*
-            // 🔥 Actualizar stock (ANTES se descontaba cuando se generaba el remito)
-            // Ahora lo vas a hacer desde OrderWeight, así que dejamos esto comentado.
-
-            let stockRow = null;
-            if (l.product_id != null) {
-                stockRow = await ProductStock.findOne({
-                    where: { product_cod: String(l.product_id) },
-                    transaction: t,
-                    lock: t.LOCK.UPDATE,
-                });
-            }
-            if (!stockRow) {
-                stockRow = await ProductStock.findOne({
-                    where: { product_name: l.product_name },
-                    transaction: t,
-                    lock: t.LOCK.UPDATE,
-                });
-            }
-
-            if (!stockRow) {
+            if (exists) {
                 await t.rollback();
-                return res.status(400).json({
-                    ok: false,
-                    msg: `No existe stock para ${l.product_name} (id ${l.product_id ?? "-"})`,
-                });
+                return res.status(400).json({ ok: false, msg: "La orden ya está remitada" });
             }
 
-            const currentQty = Number(stockRow.product_quantity || 0);
-            const currentKilos = Number(stockRow.product_total_weight || 0);
+            const order = await NewOrder.findByPk(id, { transaction: t });
+            if (!order) {
+                await t.rollback();
+                return res.status(404).json({ ok: false, msg: "Orden no encontrada" });
+            }
 
-            const newQty = Math.max(0, currentQty - qty);
-            const newKilos = Math.max(0, currentKilos - net_weight);
+            // Header
+            const remit = await FinalRemit.create({
+                order_id: order.id,
+                receipt_number: order.id,
+                client_name: order.client_name,
+                salesman_name: order.salesman_name,
+                price_list: order.price_list,
+                sell_condition: order.sell_condition,
+                payment_condition: order.payment_condition,
+                generated_by: "system",
+                note,
+                total_items: 0,
+                total_amount: 0,
+            }, { transaction: t });
 
-            await stockRow.update(
-                { product_quantity: newQty, product_total_weight: newKilos },
+            // Detalle
+            const lines = await ProductsSellOrder.findAll({
+                where: { sell_order_id: id },
+                order: [["id", "ASC"]],
+                transaction: t,
+            });
+
+            const detailRows = [];
+            let totalItems = 0;
+            let totalAmount = 0;
+
+            for (const l of lines) {
+                const unit_price = Number(l.product_price || 0);
+
+                const priceRow = await PriceListProduct.findOne({
+                    where: { product_id: String(l.product_id) },
+                    order: [["id", "ASC"]],
+                    transaction: t,
+                });
+                const unit_measure = priceRow?.unidad_venta || null;
+                const isKG = String(unit_measure || "").toUpperCase() === "KG";
+
+                const headers = await CutsHeader.findAll({
+                    where: { receipt_number: id, product_code: String(l.product_id) },
+                    include: [{ model: CutsDetail, as: "details" }],
+                    order: [["id", "ASC"]],
+                    transaction: t,
+                });
+
+                let qty_requested_total = 0;
+                let net_weight = 0;
+                let gross_weight = 0;
+                let units_count = 0;
+
+                for (const h of headers) {
+                    qty_requested_total += Number(h.qty_requested || 0);
+                    for (const d of (h.details || [])) {
+                        units_count += Number(d.units_count || 0);
+                        gross_weight += Number(d.gross_weight || 0);
+                        net_weight += Number(d.net_weight || 0);
+                    }
+                }
+
+                const qty = qty_requested_total;
+                const avg_weight = units_count > 0 ? net_weight / units_count : 0;
+                const lineTotal = isKG ? unit_price * net_weight : unit_price * qty;
+
+                detailRows.push({
+                    final_remit_id: remit.id,
+                    product_id: l.product_id ?? null,
+                    product_name: l.product_name,
+                    unit_price,
+                    qty,
+                    unit_measure,
+                    gross_weight,
+                    net_weight,
+                    avg_weight,
+                });
+
+                totalItems += qty;
+                totalAmount += lineTotal;
+
+                /*
+                // 🔥 Actualizar stock (ANTES se descontaba cuando se generaba el remito)
+                // Ahora lo vas a hacer desde OrderWeight, así que dejamos esto comentado.
+    
+                let stockRow = null;
+                if (l.product_id != null) {
+                    stockRow = await ProductStock.findOne({
+                        where: { product_cod: String(l.product_id) },
+                        transaction: t,
+                        lock: t.LOCK.UPDATE,
+                    });
+                }
+                if (!stockRow) {
+                    stockRow = await ProductStock.findOne({
+                        where: { product_name: l.product_name },
+                        transaction: t,
+                        lock: t.LOCK.UPDATE,
+                    });
+                }
+    
+                if (!stockRow) {
+                    await t.rollback();
+                    return res.status(400).json({
+                        ok: false,
+                        msg: `No existe stock para ${l.product_name} (id ${l.product_id ?? "-"})`,
+                    });
+                }
+    
+                const currentQty = Number(stockRow.product_quantity || 0);
+                const currentKilos = Number(stockRow.product_total_weight || 0);
+    
+                const newQty = Math.max(0, currentQty - qty);
+                const newKilos = Math.max(0, currentKilos - net_weight);
+    
+                await stockRow.update(
+                    { product_quantity: newQty, product_total_weight: newKilos },
+                    { transaction: t }
+                );
+                */
+            }
+
+            if (detailRows.length) {
+                await FinalRemitProduct.bulkCreate(detailRows, { transaction: t });
+            }
+
+            // Totales del header
+            await remit.update(
+                {
+                    total_items: totalItems,
+                    total_amount: totalAmount,
+                },
                 { transaction: t }
             );
-            */
+
+            await t.commit();
+            return res.json({ ok: true, remit_id: remit.id });
+        } catch (err) {
+            console.error("createRemitFromOrder error:", err);
+            try { await t.rollback(); } catch (_) { }
+            return res.status(500).json({ ok: false, msg: "Error al generar remito" });
         }
-
-        if (detailRows.length) {
-            await FinalRemitProduct.bulkCreate(detailRows, { transaction: t });
-        }
-
-        // Totales del header
-        await remit.update(
-            {
-                total_items: totalItems,
-                total_amount: totalAmount,
-            },
-            { transaction: t }
-        );
-
-        await t.commit();
-        return res.json({ ok: true, remit_id: remit.id });
-    } catch (err) {
-        console.error("createRemitFromOrder error:", err);
-        try { await t.rollback(); } catch (_) { }
-        return res.status(500).json({ ok: false, msg: "Error al generar remito" });
-    }
-},
+    },
 
 
 
@@ -3648,29 +3694,29 @@ generateSalesOrder: async (req, res) => {
         }
     },
 
-deleteRoadmap: async (req, res) => {
-  const { id } = req.params;
-  if (!id) return res.status(400).json({ ok: false, msg: "Falta id" });
+    deleteRoadmap: async (req, res) => {
+        const { id } = req.params;
+        if (!id) return res.status(400).json({ ok: false, msg: "Falta id" });
 
-  const t = await sequelize.transaction();
-  try {
-    const head = await RoadmapInfo.findByPk(id, { transaction: t });
-    if (!head) {
-      await t.rollback();
-      return res.status(404).json({ ok: false, msg: "Hoja de ruta no encontrada" });
-    }
+        const t = await sequelize.transaction();
+        try {
+            const head = await RoadmapInfo.findByPk(id, { transaction: t });
+            if (!head) {
+                await t.rollback();
+                return res.status(404).json({ ok: false, msg: "Hoja de ruta no encontrada" });
+            }
 
-    await RoadmapInfoDestination.destroy({ where: { roadmap_info_id: id }, transaction: t });
-    await RoadmapInfo.destroy({ where: { id }, transaction: t });
+            await RoadmapInfoDestination.destroy({ where: { roadmap_info_id: id }, transaction: t });
+            await RoadmapInfo.destroy({ where: { id }, transaction: t });
 
-    await t.commit();
-    return res.json({ ok: true, msg: "Hoja de ruta eliminada" });
-  } catch (e) {
-    console.error(e);
-    await t.rollback();
-    return res.status(500).json({ ok: false, msg: "Error al eliminar hoja de ruta" });
-  }
-},
+            await t.commit();
+            return res.json({ ok: true, msg: "Hoja de ruta eliminada" });
+        } catch (e) {
+            console.error(e);
+            await t.rollback();
+            return res.status(500).json({ ok: false, msg: "Error al eliminar hoja de ruta" });
+        }
+    },
     // GET /preinvoices/detail/by-roadmaps?ids=1,2,3
     // Devuelve el mismo formato que getPreinvoiceDetail,
     // pero filtrando por una lista de roadmap_ids explícitos
@@ -3903,100 +3949,100 @@ deleteRoadmap: async (req, res) => {
     },
 
     // POST /preinvoices/save/by-roadmaps
-   // body: { roadmap_ids:[...], items:[ { item_id, units_received, kg_received }, ... ] }
-// Guarda recepción (UNI.RECEP / KG RECEP) en Preinvoice y calcula merma (missing_units)
-savePreinvoiceByRoadmapIds: async (req, res) => {
-  const t = await sequelize.transaction();
-  try {
-    const { roadmap_ids = [], items = [] } = req.body || {};
+    // body: { roadmap_ids:[...], items:[ { item_id, units_received, kg_received }, ... ] }
+    // Guarda recepción (UNI.RECEP / KG RECEP) en Preinvoice y calcula merma (missing_units)
+    savePreinvoiceByRoadmapIds: async (req, res) => {
+        const t = await sequelize.transaction();
+        try {
+            const { roadmap_ids = [], items = [] } = req.body || {};
 
-    if (!Array.isArray(roadmap_ids) || roadmap_ids.length === 0) {
-      await t.rollback();
-      return res
-        .status(400)
-        .json({ ok: false, msg: "Faltan roadmap_ids" });
-    }
+            if (!Array.isArray(roadmap_ids) || roadmap_ids.length === 0) {
+                await t.rollback();
+                return res
+                    .status(400)
+                    .json({ ok: false, msg: "Faltan roadmap_ids" });
+            }
 
-    // Por cada item recibido actualizamos / creamos la fila de Preinvoice
-    for (const row of items) {
-      const { item_id, units_received = 0, kg_received = 0 } = row || {};
-      if (!item_id) continue;
+            // Por cada item recibido actualizamos / creamos la fila de Preinvoice
+            for (const row of items) {
+                const { item_id, units_received = 0, kg_received = 0 } = row || {};
+                if (!item_id) continue;
 
-      // Busco el producto en el remito final
-      const frItem = await FinalRemitProduct.findOne({
-        where: { id: item_id },
-        transaction: t,
-      });
-      if (!frItem) continue;
+                // Busco el producto en el remito final
+                const frItem = await FinalRemitProduct.findOne({
+                    where: { id: item_id },
+                    transaction: t,
+                });
+                if (!frItem) continue;
 
-      const expUnits = Number(frItem.qty || 0);
-      const expKg = Number(frItem.net_weight || 0);
+                const expUnits = Number(frItem.qty || 0);
+                const expKg = Number(frItem.net_weight || 0);
 
-      const recUnits = Number(units_received || 0);
-      const recKg = Number(kg_received || 0);
+                const recUnits = Number(units_received || 0);
+                const recKg = Number(kg_received || 0);
 
-      // MERMA en unidades = esperadas - recibidas (no negativa)
-      const missUnits = Math.max(0, expUnits - recUnits);
+                // MERMA en unidades = esperadas - recibidas (no negativa)
+                const missUnits = Math.max(0, expUnits - recUnits);
 
-      // upsert en Preinvoice para ese item
-      let pre = await Preinvoice.findOne({
-        where: { final_remit_item_id: item_id },
-        transaction: t,
-      });
+                // upsert en Preinvoice para ese item
+                let pre = await Preinvoice.findOne({
+                    where: { final_remit_item_id: item_id },
+                    transaction: t,
+                });
 
-      if (!pre) {
-        // CREATE
-        pre = await Preinvoice.create(
-          {
-            receipt_number: null,
-            final_remit_id: frItem.final_remit_id,
-            final_remit_item_id: item_id,
-            product_id: frItem.product_id,
-            product_name: frItem.product_name,
-            unit_measure: frItem.unit_measure,
+                if (!pre) {
+                    // CREATE
+                    pre = await Preinvoice.create(
+                        {
+                            receipt_number: null,
+                            final_remit_id: frItem.final_remit_id,
+                            final_remit_item_id: item_id,
+                            product_id: frItem.product_id,
+                            product_name: frItem.product_name,
+                            unit_measure: frItem.unit_measure,
 
-            // esperados desde el remito
-            expected_units: expUnits,
-            expected_kg: expKg,
+                            // esperados desde el remito
+                            expected_units: expUnits,
+                            expected_kg: expKg,
 
-            // recibidos
-            received_units: recUnits,
-            received_kg: recKg,
+                            // recibidos
+                            received_units: recUnits,
+                            received_kg: recKg,
 
-            // MERMA guardada
-            missing_units: missUnits,
-          },
-          { transaction: t }
-        );
-      } else {
-        // UPDATE: solo recibidos y merma, NO tocamos expected_*
-        pre.received_units = recUnits;
-        pre.received_kg = recKg;
+                            // MERMA guardada
+                            missing_units: missUnits,
+                        },
+                        { transaction: t }
+                    );
+                } else {
+                    // UPDATE: solo recibidos y merma, NO tocamos expected_*
+                    pre.received_units = recUnits;
+                    pre.received_kg = recKg;
 
-        const baseExpUnits = Number(
-          pre.expected_units != null ? pre.expected_units : expUnits
-        );
-        pre.missing_units = Math.max(0, baseExpUnits - recUnits);
+                    const baseExpUnits = Number(
+                        pre.expected_units != null ? pre.expected_units : expUnits
+                    );
+                    pre.missing_units = Math.max(0, baseExpUnits - recUnits);
 
-        await pre.save({ transaction: t });
-      }
-    }
+                    await pre.save({ transaction: t });
+                }
+            }
 
-    await t.commit();
-    return res
-      .status(201)
-      .json({ ok: true, msg: "Prefacturación guardada (by-roadmaps)" });
-  } catch (e) {
-    console.error("savePreinvoiceByRoadmapIds:", e);
-    try {
-      await t.rollback();
-    } catch {}
-    return res.status(500).json({
-      ok: false,
-      msg: "Error al guardar prefacturación (by-roadmaps)",
-    });
-  }
-},
+            await t.commit();
+            return res
+                .status(201)
+                .json({ ok: true, msg: "Prefacturación guardada (by-roadmaps)" });
+        } catch (e) {
+            console.error("savePreinvoiceByRoadmapIds:", e);
+            try {
+                await t.rollback();
+            } catch { }
+            return res.status(500).json({
+                ok: false,
+                msg: "Error al guardar prefacturación (by-roadmaps)",
+            });
+        }
+    },
 
 
     // POST /preinvoices/redirect/by-roadmaps
@@ -4011,1241 +4057,1241 @@ savePreinvoiceByRoadmapIds: async (req, res) => {
     //   kg
     // }
     // Guarda o borra la redirección de faltante para un item, igual que savePreinvoiceRedirect pero verificando que el remito pertenezca a alguna de las hojas seleccionadas
- // Dentro de saleApiController.js
+    // Dentro de saleApiController.js
 
-savePreinvoiceRedirectByRoadmapIds: async (req, res) => {
-  const t = await sequelize.transaction();
-  try {
-    const {
-      roadmap_ids,
-      final_remit_id,
-      item_id,
-      to,            // "client" | "stock"
-      client_id,
-      client_name,
-      units,
-      kg,
-    } = req.body || {};
-
-    // Validaciones básicas
-    if (!Array.isArray(roadmap_ids) || !roadmap_ids.length) {
-      await t.rollback();
-      return res.status(400).json({ ok: false, msg: "Faltan hojas de ruta" });
-    }
-    if (!final_remit_id) {
-      await t.rollback();
-      return res.status(400).json({ ok: false, msg: "Falta final_remit_id" });
-    }
-    if (!item_id) {
-      await t.rollback();
-      return res.status(400).json({ ok: false, msg: "Falta item_id" });
-    }
-    if (to !== "client" && to !== "stock") {
-      await t.rollback();
-      return res.status(400).json({ ok: false, msg: "Destino de redirección inválido" });
-    }
-
-    const unitsNum = Number(units || 0);
-    const kgNum = Number(kg || 0);
-
-    // 1) Chequear que el remito y el item existan
-    const frItem = await FinalRemitProduct.findOne({
-      where: { id: item_id, final_remit_id },
-      transaction: t,
-    });
-
-    if (!frItem) {
-      await t.rollback();
-      return res
-        .status(404)
-        .json({ ok: false, msg: "No se encontró el ítem del remito final" });
-    }
-
-    // 2) Buscar/crear la fila de prefactura (Preinvoice) para ese item
-    let pre = await Preinvoice.findOne({
-      where: { final_remit_item_id: item_id },
-      transaction: t,
-    });
-
-    if (!pre) {
-      pre = await Preinvoice.create(
-        {
-          final_remit_id: frItem.final_remit_id,
-          final_remit_item_id: item_id,
-          product_id: frItem.product_id ?? null,
-          product_name: frItem.product_name ?? null,
-          unit_measure: frItem.unit_measure ?? null,
-          receipt_number: null,
-          expected_units: Number(frItem.qty || 0),
-          expected_kg: Number(frItem.net_weight || 0),
-          received_units: 0,
-          received_kg: 0,
-        },
-        { transaction: t }
-      );
-    }
-
-    // 3) Buscar si ya había una devolución previa para este preinvoice
-    const reasonDB = to === "client" ? "CLIENT" : "STOCK";
-
-    const whereReturn = {
-      preinvoice_id: pre.id,
-      reason: reasonDB,
-    };
-
-    if (reasonDB === "CLIENT") {
-      whereReturn.client_id = client_id || null;
-      whereReturn.client_name = client_name || null;
-    }
-
-    const existing = await PreinvoiceReturn.findOne({
-      where: whereReturn,
-      transaction: t,
-      lock: t.LOCK.UPDATE,
-    });
-
-    // guardamos los valores anteriores para calcular el delta de stock
-    const prevUnits = existing ? Number(existing.units_redirected || 0) : 0;
-    const prevKg = existing ? Number(existing.kg_redirected || 0) : 0;
-
-    // 4) Crear / actualizar / borrar la devolución
-    if (unitsNum === 0 && kgNum === 0) {
-      // Si todo es 0, borrar la devolución si existía
-      if (existing) {
-        await existing.destroy({ transaction: t });
-      }
-    } else if (existing) {
-      // UPDATE
-      existing.units_redirected = unitsNum;
-      existing.kg_redirected = kgNum;
-
-      if (reasonDB === "CLIENT") {
-        existing.client_id = client_id || null;
-        existing.client_name = client_name || null;
-      }
-
-      await existing.save({ transaction: t });
-    } else {
-      // CREATE
-      await PreinvoiceReturn.create(
-        {
-          preinvoice_id: pre.id,
-          client_id: reasonDB === "CLIENT" ? client_id || null : null,
-          client_name: reasonDB === "CLIENT" ? client_name || null : null,
-          units_redirected: unitsNum,
-          kg_redirected: kgNum,
-          reason: reasonDB,
-        },
-        { transaction: t }
-      );
-    }
-
-    // 5) Si es redirección a STOCK, actualizar tabla product_stock
-    if (reasonDB === "STOCK") {
-      const deltaUnits = unitsNum - prevUnits;
-      const deltaKg = kgNum - prevKg;
-
-      // Si no cambió nada, no toco el stock
-      if (deltaUnits !== 0 || deltaKg !== 0) {
-        const productCod = String(
-          frItem.product_id ?? frItem.product_cod ?? ""
-        ).trim();
-        const productName = frItem.product_name || "";
-
-        let stockRow = null;
-
-        if (productCod) {
-          stockRow = await ProductStock.findOne({
-            where: { product_cod: productCod },
-            transaction: t,
-            lock: t.LOCK.UPDATE,
-          });
-        }
-
-        if (!stockRow) {
-          stockRow = await ProductStock.findOne({
-            where: { product_name: productName },
-            transaction: t,
-            lock: t.LOCK.UPDATE,
-          });
-        }
-
-        // Si no existe el producto en stock, lo creo con 0 y sumo el delta
-        if (!stockRow) {
-          stockRow = await ProductStock.create(
-            {
-              product_name: productName,
-              product_cod: productCod || null,
-              product_category: "SECUNDARIA", // ajustá si tenés categoría real
-              product_quantity: 0,
-              product_total_weight: 0,
-            },
-            { transaction: t }
-          );
-        }
-
-        const currentQty = Number(stockRow.product_quantity || 0);
-        const currentKg = Number(stockRow.product_total_weight || 0);
-
-        await stockRow.update(
-          {
-            product_quantity: currentQty + deltaUnits,
-            product_total_weight: currentKg + deltaKg,
-          },
-          { transaction: t }
-        );
-      }
-    }
-
-    await t.commit();
-    return res.json({ ok: true });
-  } catch (err) {
-    console.error("savePreinvoiceRedirectByRoadmapIds:", err);
-    try {
-      await t.rollback();
-    } catch (_) {}
-    return res
-      .status(500)
-      .json({ ok: false, msg: "Error al guardar redirección" });
-  }
-},
-
-// =========================================================
-// PREFACURACIÓN MULTI-HOJA (BY ROADMAP IDS)
-// =========================================================
-
-
-getPreinvoiceDetailByRoadmapIds: async (req, res) => {
-  try {
-    // --- bandera para incluir remitos "lockeados" (ya prefacturados)
-    const includeLocked =
-      req.query.include_locked === "1" ||
-      String(req.query.include_locked || "").toLowerCase() === "true";
-
-    // --- parseo de ids
-    const idsRaw = String(req.query.ids || "");
-    const roadmapIds = idsRaw
-      .split(",")
-      .map((x) => x.trim())
-      .filter((x) => x !== "")
-      .map((x) => Number(x))
-      .filter((n) => !Number.isNaN(n));
-
-    if (!roadmapIds.length)
-      return res
-        .status(400)
-        .json({ ok: false, msg: "Faltan roadmap_ids en 'ids'" });
-
-    // --- roadmaps
-    const roadmaps = await RoadmapInfo.findAll({
-      where: { id: { [Op.in]: roadmapIds } },
-      order: [["id", "ASC"]],
-      attributes: ["id", "truck_license_plate", "driver", "created_at", "delivery_date"],
-    });
-    if (!roadmaps.length) return res.json({ ok: true, roadmaps: [] });
-
-    // --- destinos (aportan id_remit)
-    const dests = await RoadmapInfoDestination.findAll({
-      where: { roadmap_info_id: { [Op.in]: roadmapIds } },
-      order: [["id", "ASC"]],
-      attributes: ["roadmap_info_id", "id_remit", "destination"],
-    });
-
-    // --- ids de remitos
-    const remitIds = dests.map((d) => Number(d.id_remit)).filter(Boolean);
-
-    // --- remitos "lockeados" por prefactura existente
-    const locked = remitIds.length
-      ? new Set(
-          (
-            await Preinvoice.findAll({
-              where: { final_remit_id: { [Op.in]: remitIds } },
-              attributes: ["final_remit_id"],
-              group: ["final_remit_id"],
-            })
-          )
-            .map((r) => Number(r.final_remit_id))
-            .filter((n) => !Number.isNaN(n))
-        )
-      : new Set();
-
-    // --- headers de remitos
-    const remits = remitIds.length
-      ? await FinalRemit.findAll({
-          where: { id: { [Op.in]: remitIds } },
-          order: [["id", "ASC"]],
-          attributes: [
-            "id",
-            "receipt_number",
-            "order_id",
-            "client_name",
-            "salesman_name",
-            "generated_by",
-            "price_list",
-            "sell_condition",
-            "payment_condition",
-            "total_items",
-            "total_amount",
-          ],
-        })
-      : [];
-
-    // --- items de remitos
-    const products = remitIds.length
-      ? await FinalRemitProduct.findAll({
-          where: { final_remit_id: { [Op.in]: remitIds } },
-          order: [["id", "ASC"]],
-          attributes: [
-            "id",
-            "final_remit_id",
-            "product_id",
-            "product_name",
-            "unit_measure",
-            "qty",
-            "net_weight",
-            "unit_price",
-            "gross_weight",
-            "avg_weight",
-          ],
-        })
-      : [];
-
-    // --- indexaciones
-    const remitById = new Map(remits.map((r) => [r.id, r]));
-    const itemsByRemit = new Map();
-    for (const p of products) {
-      if (!itemsByRemit.has(p.final_remit_id))
-        itemsByRemit.set(p.final_remit_id, []);
-      itemsByRemit.get(p.final_remit_id).push({
-        id: p.id,
-        final_remit_item_id: p.id,
-        product_id: p.product_id,
-        product_name: p.product_name,
-        unit_measure: p.unit_measure,
-        qty: Number(p.qty || 0),
-        net_weight: Number(p.net_weight || 0),
-        unit_price: Number(p.unit_price || 0),
-        gross_weight: Number(p.gross_weight || 0),
-        avg_weight: Number(p.avg_weight || 0),
-        total:
-          Number(p.unit_price || 0) *
-          (String(p.unit_measure || "").toUpperCase() === "KG"
-            ? Number(p.net_weight || 0)
-            : Number(p.qty || 0)),
-      });
-    }
-
-    const destByRoadmap = new Map();
-    for (const d of dests) {
-      if (!destByRoadmap.has(d.roadmap_info_id))
-        destByRoadmap.set(d.roadmap_info_id, []);
-      destByRoadmap.get(d.roadmap_info_id).push(d);
-    }
-
-    // --- armado de salida, respetando includeLocked
-    const out = roadmaps.map((r) => {
-      const destsForRoadmap = destByRoadmap.get(r.id) || [];
-      const remitsForRoadmap = destsForRoadmap
-        .map((d) => {
-          const h = remitById.get(d.id_remit);
-          if (!h) return null;
-
-      
-          if (!includeLocked && locked.has(Number(h.id))) return null;
-
-          return {
-            final_remit_id: h.id,
-            receipt_number: h.receipt_number,
-            order_id: h.order_id,
-            client_name: h.client_name,
-            salesman_name: h.salesman_name,
-            generated_by: h.generated_by,
-            price_list: h.price_list,
-            sell_condition: h.sell_condition,
-            payment_condition: h.payment_condition,
-            destination: d.destination,
-            total_items: Number(h.total_items || 0),
-            total_amount: Number(h.total_amount || 0),
-            items: itemsByRemit.get(h.id) || [],
-          };
-        })
-        .filter(Boolean);
-
-      return {
-        roadmap_id: r.id,
-        truck_license_plate: r.truck_license_plate,
-        driver: r.driver,
-        production_date: String(r.created_at || "").slice(0, 10),
-        delivery_date: String(r.delivery_date || "").slice(0, 10),
-        remits: remitsForRoadmap,
-      };
-    });
-
-    return res.json({ ok: true, roadmaps: out });
-  } catch (e) {
-    console.error(e);
-    return res.status(500).json({
-      ok: false,
-      msg: "Error al armar detalle de prefacturaciones (by-roadmaps)",
-    });
-  }
-},
-
-
-
-readPreinvoiceReturnsByRoadmapIds: async (req, res) => {
-    try {
-        const idsRaw = String(req.query.ids || "");
-        const roadmapIds = idsRaw.split(",").map(x => x.trim()).filter(x => x !== "").map(x => Number(x));
-
-        if (!roadmapIds.length) {
-            return res.status(400).json({ ok: false, msg: "Faltan roadmap_ids en 'ids'" });
-        }
-
-        const dests = await RoadmapInfoDestination.findAll({
-            where: { roadmap_info_id: { [Op.in]: roadmapIds } },
-            attributes: ["id_remit"],
-        });
-
-        const remitIds = dests.map(d => Number(d.id_remit)).filter(Boolean);
-        if (!remitIds.length) return res.json({ ok: true, items: [] });
-
-        const rows = await Preinvoice.findAll({
-            where: { final_remit_id: { [Op.in]: remitIds } },
-            attributes: ["final_remit_item_id"],
-            include: [{ model: PreinvoiceReturn, as: "returns", required: false }],
-            order: [["id", "ASC"]],
-        });
-
-        const items = [];
-        for (const p of rows) {
-            for (const r of (p.returns || [])) {
-                items.push({
-                    item_id: Number(p.final_remit_item_id),
-                    reason: r.reason === "STOCK" ? "stock" : "client",
-                    client_name: r.client_name || null,
-                    units_redirected: Number(r.units_redirected || 0),
-                    kg_redirected: Number(r.kg_redirected || 0),
-                    created_at: r.created_at,
-                    updated_at: r.updated_at,
-                });
-            }
-        }
-
-        return res.json({ ok: true, items });
-    } catch (e) {
-        console.error(e);
-        return res.status(500).json({ ok: false, msg: "Error al leer devoluciones (by-roadmaps)" });
-    }
-},
-
-savePreinvoiceByRoadmapIds: async (req, res) => {
-    const t = await sequelize.transaction();
-    try {
-        const { roadmap_ids = [], items = [] } = req.body || {};
-
-        if (!Array.isArray(roadmap_ids) || roadmap_ids.length === 0) {
-            await t.rollback();
-            return res.status(400).json({ ok: false, msg: "Faltan roadmap_ids" });
-        }
-
-        // Recorro cada ítem recepcionado que vino del front
-        for (const row of items) {
+    savePreinvoiceRedirectByRoadmapIds: async (req, res) => {
+        const t = await sequelize.transaction();
+        try {
             const {
-                item_id,                // final_remit_product.id
-                units_received = 0,
-                kg_received = 0,
-            } = row;
+                roadmap_ids,
+                final_remit_id,
+                item_id,
+                to,            // "client" | "stock"
+                client_id,
+                client_name,
+                units,
+                kg,
+            } = req.body || {};
 
-            // 1) Busco el ítem del remito final
+            // Validaciones básicas
+            if (!Array.isArray(roadmap_ids) || !roadmap_ids.length) {
+                await t.rollback();
+                return res.status(400).json({ ok: false, msg: "Faltan hojas de ruta" });
+            }
+            if (!final_remit_id) {
+                await t.rollback();
+                return res.status(400).json({ ok: false, msg: "Falta final_remit_id" });
+            }
+            if (!item_id) {
+                await t.rollback();
+                return res.status(400).json({ ok: false, msg: "Falta item_id" });
+            }
+            if (to !== "client" && to !== "stock") {
+                await t.rollback();
+                return res.status(400).json({ ok: false, msg: "Destino de redirección inválido" });
+            }
+
+            const unitsNum = Number(units || 0);
+            const kgNum = Number(kg || 0);
+
+            // 1) Chequear que el remito y el item existan
             const frItem = await FinalRemitProduct.findOne({
-                where: { id: item_id },
+                where: { id: item_id, final_remit_id },
                 transaction: t,
-                attributes: [
-                    "id",
-                    "final_remit_id",
-                    "product_id",
-                    "product_name",
-                    "unit_measure",
-                    "qty",
-                    "net_weight",
-                ],
             });
 
             if (!frItem) {
-                // si el ítem ya no existe o el id vino mal, lo salto
-                continue;
+                await t.rollback();
+                return res
+                    .status(404)
+                    .json({ ok: false, msg: "No se encontró el ítem del remito final" });
             }
 
-            const expectedUnits = Number(frItem.qty || 0);
-            const expectedKg = Number(frItem.net_weight || 0);
-
-            // 2) Traigo el remito dueño de este ítem, para conocer el receipt_number
-            const frHead = await FinalRemit.findOne({
-                where: { id: frItem.final_remit_id },
-                transaction: t,
-                attributes: ["id", "receipt_number"],
-            });
-
-            const receiptNumber = frHead && frHead.receipt_number
-                ? frHead.receipt_number
-                : `REM-${frItem.final_remit_id}`; // fallback mínimo para cumplir NOT NULL
-
-            // 3) Busco si ya existe una fila de preinvoices para este ítem
+            // 2) Buscar/crear la fila de prefactura (Preinvoice) para ese item
             let pre = await Preinvoice.findOne({
                 where: { final_remit_item_id: item_id },
                 transaction: t,
             });
 
             if (!pre) {
-                // 4a) No existe -> creo una nueva fila en preinvoices
-                await Preinvoice.create(
+                pre = await Preinvoice.create(
                     {
-                        receipt_number: receiptNumber,
                         final_remit_id: frItem.final_remit_id,
-                        final_remit_item_id: frItem.id, // item_id
-                        product_id: frItem.product_id,
-                        product_name: frItem.product_name,
-                        unit_measure: frItem.unit_measure,
-
-                        expected_units: expectedUnits,
-                        expected_kg: expectedKg,
-
-                        received_units: Number(units_received || 0),
-                        received_kg: Number(kg_received || 0),
-
-                        // note: null por ahora, igual que tu esquema actual
+                        final_remit_item_id: item_id,
+                        product_id: frItem.product_id ?? null,
+                        product_name: frItem.product_name ?? null,
+                        unit_measure: frItem.unit_measure ?? null,
+                        receipt_number: null,
+                        expected_units: Number(frItem.qty || 0),
+                        expected_kg: Number(frItem.net_weight || 0),
+                        received_units: 0,
+                        received_kg: 0,
                     },
                     { transaction: t }
                 );
-            } else {
-                // 4b) Ya existía -> actualizo recepción
-                pre.received_units = Number(units_received || 0);
-                pre.received_kg = Number(kg_received || 0);
+            }
 
-                // aseguramos no dejar receipt_number vacío por versiones viejas
-                if (!pre.receipt_number || pre.receipt_number === "") {
-                    pre.receipt_number = receiptNumber;
+            // 3) Buscar si ya había una devolución previa para este preinvoice
+            const reasonDB = to === "client" ? "CLIENT" : "STOCK";
+
+            const whereReturn = {
+                preinvoice_id: pre.id,
+                reason: reasonDB,
+            };
+
+            if (reasonDB === "CLIENT") {
+                whereReturn.client_id = client_id || null;
+                whereReturn.client_name = client_name || null;
+            }
+
+            const existing = await PreinvoiceReturn.findOne({
+                where: whereReturn,
+                transaction: t,
+                lock: t.LOCK.UPDATE,
+            });
+
+            // guardamos los valores anteriores para calcular el delta de stock
+            const prevUnits = existing ? Number(existing.units_redirected || 0) : 0;
+            const prevKg = existing ? Number(existing.kg_redirected || 0) : 0;
+
+            // 4) Crear / actualizar / borrar la devolución
+            if (unitsNum === 0 && kgNum === 0) {
+                // Si todo es 0, borrar la devolución si existía
+                if (existing) {
+                    await existing.destroy({ transaction: t });
+                }
+            } else if (existing) {
+                // UPDATE
+                existing.units_redirected = unitsNum;
+                existing.kg_redirected = kgNum;
+
+                if (reasonDB === "CLIENT") {
+                    existing.client_id = client_id || null;
+                    existing.client_name = client_name || null;
                 }
 
-                await pre.save({ transaction: t });
+                await existing.save({ transaction: t });
+            } else {
+                // CREATE
+                await PreinvoiceReturn.create(
+                    {
+                        preinvoice_id: pre.id,
+                        client_id: reasonDB === "CLIENT" ? client_id || null : null,
+                        client_name: reasonDB === "CLIENT" ? client_name || null : null,
+                        units_redirected: unitsNum,
+                        kg_redirected: kgNum,
+                        reason: reasonDB,
+                    },
+                    { transaction: t }
+                );
             }
-        }
 
-        // 5) todo OK -> commit
-        await t.commit();
-        return res
-            .status(201)
-            .json({ ok: true, msg: "Prefacturación guardada (by-roadmaps)" });
+            // 5) Si es redirección a STOCK, actualizar tabla product_stock
+            if (reasonDB === "STOCK") {
+                const deltaUnits = unitsNum - prevUnits;
+                const deltaKg = kgNum - prevKg;
 
-    } catch (e) {
-        console.error(e);
-        try { await t.rollback(); } catch {}
-        return res
-            .status(500)
-            .json({ ok: false, msg: "Error al guardar prefacturación (by-roadmaps)" });
-    }
-},
+                // Si no cambió nada, no toco el stock
+                if (deltaUnits !== 0 || deltaKg !== 0) {
+                    const productCod = String(
+                        frItem.product_id ?? frItem.product_cod ?? ""
+                    ).trim();
+                    const productName = frItem.product_name || "";
 
+                    let stockRow = null;
 
-savePreinvoiceRedirectByRoadmapIds: async (req, res) => {
-    const t = await sequelize.transaction();
-    try {
-        const {
-            roadmap_ids = [],
-            final_remit_id,
-            item_id,
-            to,
-            client_id = null,
-            client_name = null,
-            units = 0,
-            kg = 0,
-        } = req.body || {};
+                    if (productCod) {
+                        stockRow = await ProductStock.findOne({
+                            where: { product_cod: productCod },
+                            transaction: t,
+                            lock: t.LOCK.UPDATE,
+                        });
+                    }
 
-        if (!Array.isArray(roadmap_ids) || roadmap_ids.length === 0) {
-            await t.rollback();
-            return res.status(400).json({ ok: false, msg: "Faltan roadmap_ids" });
-        }
+                    if (!stockRow) {
+                        stockRow = await ProductStock.findOne({
+                            where: { product_name: productName },
+                            transaction: t,
+                            lock: t.LOCK.UPDATE,
+                        });
+                    }
 
-        if (!final_remit_id || !item_id || !to) {
-            await t.rollback();
-            return res.status(400).json({ ok: false, msg: "Faltan datos obligatorios" });
-        }
+                    // Si no existe el producto en stock, lo creo con 0 y sumo el delta
+                    if (!stockRow) {
+                        stockRow = await ProductStock.create(
+                            {
+                                product_name: productName,
+                                product_cod: productCod || null,
+                                product_category: "SECUNDARIA", // ajustá si tenés categoría real
+                                product_quantity: 0,
+                                product_total_weight: 0,
+                            },
+                            { transaction: t }
+                        );
+                    }
 
-        const destCheck = await RoadmapInfoDestination.findOne({
-            where: { roadmap_info_id: { [Op.in]: roadmap_ids }, id_remit: final_remit_id },
-            transaction: t,
-        });
+                    const currentQty = Number(stockRow.product_quantity || 0);
+                    const currentKg = Number(stockRow.product_total_weight || 0);
 
-        if (!destCheck) {
-            await t.rollback();
-            return res.status(400).json({ ok: false, msg: "El remito no pertenece a las hojas indicadas" });
-        }
+                    await stockRow.update(
+                        {
+                            product_quantity: currentQty + deltaUnits,
+                            product_total_weight: currentKg + deltaKg,
+                        },
+                        { transaction: t }
+                    );
+                }
+            }
 
-        const frItem = await FinalRemitProduct.findOne({ where: { id: item_id }, transaction: t });
-        if (!frItem) {
-            await t.rollback();
-            return res.status(404).json({ ok: false, msg: "Ítem de remito no encontrado" });
-        }
-
-        const expUnits = Number(frItem.qty || 0);
-        const expKg = Number(frItem.net_weight || 0);
-
-        let pre = await Preinvoice.findOne({
-            where: { final_remit_id: final_remit_id, final_remit_item_id: item_id },
-            transaction: t,
-        });
-
-        if (!pre) {
-            pre = await Preinvoice.create({
-                receipt_number: null,
-                final_remit_id: final_remit_id,
-                final_remit_item_id: item_id,
-                product_id: frItem.product_id,
-                product_name: frItem.product_name,
-                unit_measure: frItem.unit_measure,
-                expected_units: expUnits,
-                expected_kg: expKg,
-                received_units: 0,
-                received_kg: 0,
-            }, { transaction: t });
-        }
-
-        const reasonDB = to === "stock" ? "STOCK" : "CLIENT";
-        const whereReturn = { preinvoice_id: pre.id, reason: reasonDB };
-        if (reasonDB === "CLIENT") whereReturn.client_name = client_name || null;
-
-        const existing = await PreinvoiceReturn.findOne({ where: whereReturn, transaction: t });
-
-        if (Number(units) === 0 && Number(kg) === 0) {
-            if (existing) await existing.destroy({ transaction: t });
             await t.commit();
-            return res.status(201).json({ ok: true, msg: "Redirección eliminada (by-roadmaps)" });
+            return res.json({ ok: true });
+        } catch (err) {
+            console.error("savePreinvoiceRedirectByRoadmapIds:", err);
+            try {
+                await t.rollback();
+            } catch (_) { }
+            return res
+                .status(500)
+                .json({ ok: false, msg: "Error al guardar redirección" });
         }
+    },
 
-        if (existing) {
-            existing.client_id = client_id;
-            existing.client_name = client_name;
-            existing.units_redirected = Number(units);
-            existing.kg_redirected = Number(kg);
-            await existing.save({ transaction: t });
-        } else {
-            await PreinvoiceReturn.create({
-                preinvoice_id: pre.id,
-                client_id,
-                client_name,
-                units_redirected: Number(units),
-                kg_redirected: Number(kg),
-                reason: reasonDB,
-            }, { transaction: t });
-        }
+    // =========================================================
+    // PREFACURACIÓN MULTI-HOJA (BY ROADMAP IDS)
+    // =========================================================
 
-        await t.commit();
-        return res.status(201).json({ ok: true, msg: "Redirección registrada (by-roadmaps)" });
-    } catch (e) {
-        console.error(e);
-        try { await t.rollback(); } catch {}
-        return res.status(500).json({ ok: false, msg: "Error al registrar redirección (by-roadmaps)" });
-    }
-},
 
-listPreinvoicesGrouped: async (req, res) => {
-    try {
-    
-        const preRows = await Preinvoice.findAll({
-            attributes: ["final_remit_id"],
-            group: ["final_remit_id"],
-        });
-        const remitIds = preRows.map(r => r.final_remit_id).filter(Boolean);
+    getPreinvoiceDetailByRoadmapIds: async (req, res) => {
+        try {
+            // --- bandera para incluir remitos "lockeados" (ya prefacturados)
+            const includeLocked =
+                req.query.include_locked === "1" ||
+                String(req.query.include_locked || "").toLowerCase() === "true";
 
-        if (!remitIds.length) {
-            return res.json({ ok: true, roadmaps: [] });
-        }
+            // --- parseo de ids
+            const idsRaw = String(req.query.ids || "");
+            const roadmapIds = idsRaw
+                .split(",")
+                .map((x) => x.trim())
+                .filter((x) => x !== "")
+                .map((x) => Number(x))
+                .filter((n) => !Number.isNaN(n));
 
-        // 1b: Busco roadmap_info_destination para esos remitos
-        const destLinks = await RoadmapInfoDestination.findAll({
-            where: { id_remit: { [Op.in]: remitIds } },
-            attributes: [
-                "roadmap_info_id",
-                "id_remit",
-                "destination"
-            ],
-        });
+            if (!roadmapIds.length)
+                return res
+                    .status(400)
+                    .json({ ok: false, msg: "Faltan roadmap_ids en 'ids'" });
 
-        const roadmapIds = [
-            ...new Set(destLinks.map(d => d.roadmap_info_id))
-        ];
+            // --- roadmaps
+            const roadmaps = await RoadmapInfo.findAll({
+                where: { id: { [Op.in]: roadmapIds } },
+                order: [["id", "ASC"]],
+                attributes: ["id", "truck_license_plate", "driver", "created_at", "delivery_date"],
+            });
+            if (!roadmaps.length) return res.json({ ok: true, roadmaps: [] });
 
-        if (!roadmapIds.length) {
-            return res.json({ ok: true, roadmaps: [] });
-        }
+            // --- destinos (aportan id_remit)
+            const dests = await RoadmapInfoDestination.findAll({
+                where: { roadmap_info_id: { [Op.in]: roadmapIds } },
+                order: [["id", "ASC"]],
+                attributes: ["roadmap_info_id", "id_remit", "destination"],
+            });
 
-        // 2: Traigo info de esas hojas de ruta
-        const roadmaps = await RoadmapInfo.findAll({
-            where: { id: { [Op.in]: roadmapIds } },
-            attributes: [
-                "id",
-                "truck_license_plate",
-                "driver",
-                "created_at",
-                "delivery_date",
-            ],
-            order: [["created_at", "DESC"], ["id", "DESC"]],
-        });
+            // --- ids de remitos
+            const remitIds = dests.map((d) => Number(d.id_remit)).filter(Boolean);
 
-        // 3: armo data lista para el front
-        //    (si una hoja tiene varios destinos, agarramos el/los nombres de destino)
-        const byRoadmap = new Map(); // roadmap_id -> { destinos:Set }
-        for (const link of destLinks) {
-            if (!byRoadmap.has(link.roadmap_info_id)) {
-                byRoadmap.set(link.roadmap_info_id, new Set());
+            // --- remitos "lockeados" por prefactura existente
+            const locked = remitIds.length
+                ? new Set(
+                    (
+                        await Preinvoice.findAll({
+                            where: { final_remit_id: { [Op.in]: remitIds } },
+                            attributes: ["final_remit_id"],
+                            group: ["final_remit_id"],
+                        })
+                    )
+                        .map((r) => Number(r.final_remit_id))
+                        .filter((n) => !Number.isNaN(n))
+                )
+                : new Set();
+
+            // --- headers de remitos
+            const remits = remitIds.length
+                ? await FinalRemit.findAll({
+                    where: { id: { [Op.in]: remitIds } },
+                    order: [["id", "ASC"]],
+                    attributes: [
+                        "id",
+                        "receipt_number",
+                        "order_id",
+                        "client_name",
+                        "salesman_name",
+                        "generated_by",
+                        "price_list",
+                        "sell_condition",
+                        "payment_condition",
+                        "total_items",
+                        "total_amount",
+                    ],
+                })
+                : [];
+
+            // --- items de remitos
+            const products = remitIds.length
+                ? await FinalRemitProduct.findAll({
+                    where: { final_remit_id: { [Op.in]: remitIds } },
+                    order: [["id", "ASC"]],
+                    attributes: [
+                        "id",
+                        "final_remit_id",
+                        "product_id",
+                        "product_name",
+                        "unit_measure",
+                        "qty",
+                        "net_weight",
+                        "unit_price",
+                        "gross_weight",
+                        "avg_weight",
+                    ],
+                })
+                : [];
+
+            // --- indexaciones
+            const remitById = new Map(remits.map((r) => [r.id, r]));
+            const itemsByRemit = new Map();
+            for (const p of products) {
+                if (!itemsByRemit.has(p.final_remit_id))
+                    itemsByRemit.set(p.final_remit_id, []);
+                itemsByRemit.get(p.final_remit_id).push({
+                    id: p.id,
+                    final_remit_item_id: p.id,
+                    product_id: p.product_id,
+                    product_name: p.product_name,
+                    unit_measure: p.unit_measure,
+                    qty: Number(p.qty || 0),
+                    net_weight: Number(p.net_weight || 0),
+                    unit_price: Number(p.unit_price || 0),
+                    gross_weight: Number(p.gross_weight || 0),
+                    avg_weight: Number(p.avg_weight || 0),
+                    total:
+                        Number(p.unit_price || 0) *
+                        (String(p.unit_measure || "").toUpperCase() === "KG"
+                            ? Number(p.net_weight || 0)
+                            : Number(p.qty || 0)),
+                });
             }
-            if (link.destination) {
-                byRoadmap.get(link.roadmap_info_id).add(link.destination);
-            }
-        }
 
-        const result = roadmaps.map(rm => {
-            const destSet = byRoadmap.get(rm.id) || new Set();
-            return {
-                id: rm.id,
-                production_date: (rm.created_at || "").toISOString
-                    ? rm.created_at.toISOString().slice(0,10)
-                    : String(rm.created_at || "").slice(0,10),
-                delivery_date: (rm.delivery_date || "").toISOString
-                    ? rm.delivery_date.toISOString().slice(0,10)
-                    : String(rm.delivery_date || "").slice(0,10),
-                truck_plate: rm.truck_license_plate || "",
-                driver: rm.driver || "",
-                destinations: Array.from(destSet),
+            const destByRoadmap = new Map();
+            for (const d of dests) {
+                if (!destByRoadmap.has(d.roadmap_info_id))
+                    destByRoadmap.set(d.roadmap_info_id, []);
+                destByRoadmap.get(d.roadmap_info_id).push(d);
+            }
+
+            // --- armado de salida, respetando includeLocked
+            const out = roadmaps.map((r) => {
+                const destsForRoadmap = destByRoadmap.get(r.id) || [];
+                const remitsForRoadmap = destsForRoadmap
+                    .map((d) => {
+                        const h = remitById.get(d.id_remit);
+                        if (!h) return null;
+
+
+                        if (!includeLocked && locked.has(Number(h.id))) return null;
+
+                        return {
+                            final_remit_id: h.id,
+                            receipt_number: h.receipt_number,
+                            order_id: h.order_id,
+                            client_name: h.client_name,
+                            salesman_name: h.salesman_name,
+                            generated_by: h.generated_by,
+                            price_list: h.price_list,
+                            sell_condition: h.sell_condition,
+                            payment_condition: h.payment_condition,
+                            destination: d.destination,
+                            total_items: Number(h.total_items || 0),
+                            total_amount: Number(h.total_amount || 0),
+                            items: itemsByRemit.get(h.id) || [],
+                        };
+                    })
+                    .filter(Boolean);
+
+                return {
+                    roadmap_id: r.id,
+                    truck_license_plate: r.truck_license_plate,
+                    driver: r.driver,
+                    production_date: String(r.created_at || "").slice(0, 10),
+                    delivery_date: String(r.delivery_date || "").slice(0, 10),
+                    remits: remitsForRoadmap,
+                };
+            });
+
+            return res.json({ ok: true, roadmaps: out });
+        } catch (e) {
+            console.error(e);
+            return res.status(500).json({
+                ok: false,
+                msg: "Error al armar detalle de prefacturaciones (by-roadmaps)",
+            });
+        }
+    },
+
+
+
+    readPreinvoiceReturnsByRoadmapIds: async (req, res) => {
+        try {
+            const idsRaw = String(req.query.ids || "");
+            const roadmapIds = idsRaw.split(",").map(x => x.trim()).filter(x => x !== "").map(x => Number(x));
+
+            if (!roadmapIds.length) {
+                return res.status(400).json({ ok: false, msg: "Faltan roadmap_ids en 'ids'" });
+            }
+
+            const dests = await RoadmapInfoDestination.findAll({
+                where: { roadmap_info_id: { [Op.in]: roadmapIds } },
+                attributes: ["id_remit"],
+            });
+
+            const remitIds = dests.map(d => Number(d.id_remit)).filter(Boolean);
+            if (!remitIds.length) return res.json({ ok: true, items: [] });
+
+            const rows = await Preinvoice.findAll({
+                where: { final_remit_id: { [Op.in]: remitIds } },
+                attributes: ["final_remit_item_id"],
+                include: [{ model: PreinvoiceReturn, as: "returns", required: false }],
+                order: [["id", "ASC"]],
+            });
+
+            const items = [];
+            for (const p of rows) {
+                for (const r of (p.returns || [])) {
+                    items.push({
+                        item_id: Number(p.final_remit_item_id),
+                        reason: r.reason === "STOCK" ? "stock" : "client",
+                        client_name: r.client_name || null,
+                        units_redirected: Number(r.units_redirected || 0),
+                        kg_redirected: Number(r.kg_redirected || 0),
+                        created_at: r.created_at,
+                        updated_at: r.updated_at,
+                    });
+                }
+            }
+
+            return res.json({ ok: true, items });
+        } catch (e) {
+            console.error(e);
+            return res.status(500).json({ ok: false, msg: "Error al leer devoluciones (by-roadmaps)" });
+        }
+    },
+
+    savePreinvoiceByRoadmapIds: async (req, res) => {
+        const t = await sequelize.transaction();
+        try {
+            const { roadmap_ids = [], items = [] } = req.body || {};
+
+            if (!Array.isArray(roadmap_ids) || roadmap_ids.length === 0) {
+                await t.rollback();
+                return res.status(400).json({ ok: false, msg: "Faltan roadmap_ids" });
+            }
+
+            // Recorro cada ítem recepcionado que vino del front
+            for (const row of items) {
+                const {
+                    item_id,                // final_remit_product.id
+                    units_received = 0,
+                    kg_received = 0,
+                } = row;
+
+                // 1) Busco el ítem del remito final
+                const frItem = await FinalRemitProduct.findOne({
+                    where: { id: item_id },
+                    transaction: t,
+                    attributes: [
+                        "id",
+                        "final_remit_id",
+                        "product_id",
+                        "product_name",
+                        "unit_measure",
+                        "qty",
+                        "net_weight",
+                    ],
+                });
+
+                if (!frItem) {
+                    // si el ítem ya no existe o el id vino mal, lo salto
+                    continue;
+                }
+
+                const expectedUnits = Number(frItem.qty || 0);
+                const expectedKg = Number(frItem.net_weight || 0);
+
+                // 2) Traigo el remito dueño de este ítem, para conocer el receipt_number
+                const frHead = await FinalRemit.findOne({
+                    where: { id: frItem.final_remit_id },
+                    transaction: t,
+                    attributes: ["id", "receipt_number"],
+                });
+
+                const receiptNumber = frHead && frHead.receipt_number
+                    ? frHead.receipt_number
+                    : `REM-${frItem.final_remit_id}`; // fallback mínimo para cumplir NOT NULL
+
+                // 3) Busco si ya existe una fila de preinvoices para este ítem
+                let pre = await Preinvoice.findOne({
+                    where: { final_remit_item_id: item_id },
+                    transaction: t,
+                });
+
+                if (!pre) {
+                    // 4a) No existe -> creo una nueva fila en preinvoices
+                    await Preinvoice.create(
+                        {
+                            receipt_number: receiptNumber,
+                            final_remit_id: frItem.final_remit_id,
+                            final_remit_item_id: frItem.id, // item_id
+                            product_id: frItem.product_id,
+                            product_name: frItem.product_name,
+                            unit_measure: frItem.unit_measure,
+
+                            expected_units: expectedUnits,
+                            expected_kg: expectedKg,
+
+                            received_units: Number(units_received || 0),
+                            received_kg: Number(kg_received || 0),
+
+                            // note: null por ahora, igual que tu esquema actual
+                        },
+                        { transaction: t }
+                    );
+                } else {
+                    // 4b) Ya existía -> actualizo recepción
+                    pre.received_units = Number(units_received || 0);
+                    pre.received_kg = Number(kg_received || 0);
+
+                    // aseguramos no dejar receipt_number vacío por versiones viejas
+                    if (!pre.receipt_number || pre.receipt_number === "") {
+                        pre.receipt_number = receiptNumber;
+                    }
+
+                    await pre.save({ transaction: t });
+                }
+            }
+
+            // 5) todo OK -> commit
+            await t.commit();
+            return res
+                .status(201)
+                .json({ ok: true, msg: "Prefacturación guardada (by-roadmaps)" });
+
+        } catch (e) {
+            console.error(e);
+            try { await t.rollback(); } catch { }
+            return res
+                .status(500)
+                .json({ ok: false, msg: "Error al guardar prefacturación (by-roadmaps)" });
+        }
+    },
+
+
+    savePreinvoiceRedirectByRoadmapIds: async (req, res) => {
+        const t = await sequelize.transaction();
+        try {
+            const {
+                roadmap_ids = [],
+                final_remit_id,
+                item_id,
+                to,
+                client_id = null,
+                client_name = null,
+                units = 0,
+                kg = 0,
+            } = req.body || {};
+
+            if (!Array.isArray(roadmap_ids) || roadmap_ids.length === 0) {
+                await t.rollback();
+                return res.status(400).json({ ok: false, msg: "Faltan roadmap_ids" });
+            }
+
+            if (!final_remit_id || !item_id || !to) {
+                await t.rollback();
+                return res.status(400).json({ ok: false, msg: "Faltan datos obligatorios" });
+            }
+
+            const destCheck = await RoadmapInfoDestination.findOne({
+                where: { roadmap_info_id: { [Op.in]: roadmap_ids }, id_remit: final_remit_id },
+                transaction: t,
+            });
+
+            if (!destCheck) {
+                await t.rollback();
+                return res.status(400).json({ ok: false, msg: "El remito no pertenece a las hojas indicadas" });
+            }
+
+            const frItem = await FinalRemitProduct.findOne({ where: { id: item_id }, transaction: t });
+            if (!frItem) {
+                await t.rollback();
+                return res.status(404).json({ ok: false, msg: "Ítem de remito no encontrado" });
+            }
+
+            const expUnits = Number(frItem.qty || 0);
+            const expKg = Number(frItem.net_weight || 0);
+
+            let pre = await Preinvoice.findOne({
+                where: { final_remit_id: final_remit_id, final_remit_item_id: item_id },
+                transaction: t,
+            });
+
+            if (!pre) {
+                pre = await Preinvoice.create({
+                    receipt_number: null,
+                    final_remit_id: final_remit_id,
+                    final_remit_item_id: item_id,
+                    product_id: frItem.product_id,
+                    product_name: frItem.product_name,
+                    unit_measure: frItem.unit_measure,
+                    expected_units: expUnits,
+                    expected_kg: expKg,
+                    received_units: 0,
+                    received_kg: 0,
+                }, { transaction: t });
+            }
+
+            const reasonDB = to === "stock" ? "STOCK" : "CLIENT";
+            const whereReturn = { preinvoice_id: pre.id, reason: reasonDB };
+            if (reasonDB === "CLIENT") whereReturn.client_name = client_name || null;
+
+            const existing = await PreinvoiceReturn.findOne({ where: whereReturn, transaction: t });
+
+            if (Number(units) === 0 && Number(kg) === 0) {
+                if (existing) await existing.destroy({ transaction: t });
+                await t.commit();
+                return res.status(201).json({ ok: true, msg: "Redirección eliminada (by-roadmaps)" });
+            }
+
+            if (existing) {
+                existing.client_id = client_id;
+                existing.client_name = client_name;
+                existing.units_redirected = Number(units);
+                existing.kg_redirected = Number(kg);
+                await existing.save({ transaction: t });
+            } else {
+                await PreinvoiceReturn.create({
+                    preinvoice_id: pre.id,
+                    client_id,
+                    client_name,
+                    units_redirected: Number(units),
+                    kg_redirected: Number(kg),
+                    reason: reasonDB,
+                }, { transaction: t });
+            }
+
+            await t.commit();
+            return res.status(201).json({ ok: true, msg: "Redirección registrada (by-roadmaps)" });
+        } catch (e) {
+            console.error(e);
+            try { await t.rollback(); } catch { }
+            return res.status(500).json({ ok: false, msg: "Error al registrar redirección (by-roadmaps)" });
+        }
+    },
+
+    listPreinvoicesGrouped: async (req, res) => {
+        try {
+
+            const preRows = await Preinvoice.findAll({
+                attributes: ["final_remit_id"],
+                group: ["final_remit_id"],
+            });
+            const remitIds = preRows.map(r => r.final_remit_id).filter(Boolean);
+
+            if (!remitIds.length) {
+                return res.json({ ok: true, roadmaps: [] });
+            }
+
+            // 1b: Busco roadmap_info_destination para esos remitos
+            const destLinks = await RoadmapInfoDestination.findAll({
+                where: { id_remit: { [Op.in]: remitIds } },
+                attributes: [
+                    "roadmap_info_id",
+                    "id_remit",
+                    "destination"
+                ],
+            });
+
+            const roadmapIds = [
+                ...new Set(destLinks.map(d => d.roadmap_info_id))
+            ];
+
+            if (!roadmapIds.length) {
+                return res.json({ ok: true, roadmaps: [] });
+            }
+
+            // 2: Traigo info de esas hojas de ruta
+            const roadmaps = await RoadmapInfo.findAll({
+                where: { id: { [Op.in]: roadmapIds } },
+                attributes: [
+                    "id",
+                    "truck_license_plate",
+                    "driver",
+                    "created_at",
+                    "delivery_date",
+                ],
+                order: [["created_at", "DESC"], ["id", "DESC"]],
+            });
+
+            // 3: armo data lista para el front
+            //    (si una hoja tiene varios destinos, agarramos el/los nombres de destino)
+            const byRoadmap = new Map(); // roadmap_id -> { destinos:Set }
+            for (const link of destLinks) {
+                if (!byRoadmap.has(link.roadmap_info_id)) {
+                    byRoadmap.set(link.roadmap_info_id, new Set());
+                }
+                if (link.destination) {
+                    byRoadmap.get(link.roadmap_info_id).add(link.destination);
+                }
+            }
+
+            const result = roadmaps.map(rm => {
+                const destSet = byRoadmap.get(rm.id) || new Set();
+                return {
+                    id: rm.id,
+                    production_date: (rm.created_at || "").toISOString
+                        ? rm.created_at.toISOString().slice(0, 10)
+                        : String(rm.created_at || "").slice(0, 10),
+                    delivery_date: (rm.delivery_date || "").toISOString
+                        ? rm.delivery_date.toISOString().slice(0, 10)
+                        : String(rm.delivery_date || "").slice(0, 10),
+                    truck_plate: rm.truck_license_plate || "",
+                    driver: rm.driver || "",
+                    destinations: Array.from(destSet),
+                };
+            });
+
+            return res.json({
+                ok: true,
+                roadmaps: result
+            });
+        } catch (e) {
+            console.error(e);
+            return res.status(500).json({
+                ok: false,
+                msg: "Error al listar prefacturaciones guardadas"
+            });
+        }
+    },
+    // =========================
+    // PREFACURACIONES - LISTA
+    // =========================
+    getPreinvoicesHistory: async (req, res) => {
+        try {
+            const agg = await Preinvoice.findAll({
+                attributes: [
+                    "receipt_number",
+                    "final_remit_id",
+                    [fn("MIN", col("created_at")), "preinvoice_created_at"],
+                    [fn("COUNT", col("id")), "lines"],
+                ],
+                group: ["receipt_number", "final_remit_id"],
+                order: [[fn("MIN", col("created_at")), "DESC"]],
+                raw: true,
+            });
+
+            if (!agg.length) return res.json({ ok: true, items: [] });
+
+            const remitIds = Array.from(
+                new Set(agg.map(a => Number(a.final_remit_id)).filter(Boolean))
+            );
+
+            const remits = await FinalRemit.findAll({
+                where: { id: { [Op.in]: remitIds } },
+                attributes: [
+                    "id",
+                    "receipt_number",
+                    "client_name",
+                    "salesman_name",
+                    "generated_by",
+                    "total_items",
+                    "total_amount",
+                ],
+                raw: true,
+            });
+            const remitById = new Map(remits.map(r => [Number(r.id), r]));
+
+            const links = await RoadmapInfoDestination.findAll({
+                where: { id_remit: { [Op.in]: remitIds } },
+                attributes: ["id_remit", "roadmap_info_id", "destination"],
+                raw: true,
+            });
+
+            const roadmapIds = Array.from(
+                new Set(links.map(d => Number(d.roadmap_info_id)).filter(Boolean))
+            );
+
+            const roadmaps = roadmapIds.length
+                ? await RoadmapInfo.findAll({
+                    where: { id: { [Op.in]: roadmapIds } },
+                    attributes: ["id", "truck_license_plate", "driver", "created_at", "delivery_date"],
+                    raw: true,
+                })
+                : [];
+            const roadmapById = new Map(roadmaps.map(r => [Number(r.id), r]));
+
+            const rows = [];
+            for (const a of agg) {
+                const rem = remitById.get(Number(a.final_remit_id));
+                if (!rem) continue;
+
+                const link = links.find(d => Number(d.id_remit) === Number(rem.id)) || null;
+                const rm = link ? roadmapById.get(Number(link.roadmap_info_id)) : null;
+
+                rows.push({
+                    receipt_number: a.receipt_number,
+                    preinvoice_created_at: a.preinvoice_created_at,
+                    client_name: rem.client_name,
+                    salesman_name: rem.salesman_name,
+                    generated_by: rem.generated_by,
+                    total_items: rem.total_items,
+                    total_amount: rem.total_amount,
+                    roadmap_id: rm?.id || null,
+                    truck_license_plate: rm?.truck_license_plate || null,
+                    driver: rm?.driver || null,
+                    production_ts: rm?.created_at || null,
+                    delivery_date: rm?.delivery_date || null,
+                    destination: link?.destination || null,
+                    lines: Number(a.lines || 0),
+                });
+            }
+
+            rows.sort((x, y) => {
+                const dx = x.delivery_date ? new Date(x.delivery_date).getTime() : 0;
+                const dy = y.delivery_date ? new Date(y.delivery_date).getTime() : 0;
+                if (dy !== dx) return dy - dx;
+                return String(y.receipt_number).localeCompare(String(x.receipt_number));
+            });
+
+            return res.json({ ok: true, items: rows });
+        } catch (e) {
+            console.error("getPreinvoicesHistory:", e);
+            return res.status(500).json({ ok: false, msg: "Error al obtener historial de prefacturas" });
+        }
+    },
+
+    // =========================
+    // PREFACURACIONES - DETALLE
+    // =========================
+    getPreinvoiceDetailByReceipt: async (req, res) => {
+        try {
+            const { receipt } = req.params;
+            if (!receipt) return res.status(400).json({ ok: false, msg: "Falta receipt" });
+
+            const lines = await Preinvoice.findAll({
+                where: { receipt_number: receipt },
+                attributes: [
+                    "id",
+                    "final_remit_id",
+                    "final_remit_item_id",
+                    "product_id",
+                    "product_name",
+                    "unit_measure",
+                    "expected_units",
+                    "expected_kg",
+                    "received_units",
+                    "received_kg",
+                    "created_at",
+                ],
+                order: [["id", "ASC"]],
+                raw: true,
+            });
+
+            if (!lines.length) return res.json({ ok: true, header: null, items: [], returns: [] });
+
+            const finalRemitId = Number(lines[0].final_remit_id);
+
+            const fr = await FinalRemit.findOne({
+                where: { id: finalRemitId },
+                attributes: [
+                    "id",
+                    "receipt_number",
+                    "client_name",
+                    "salesman_name",
+                    "price_list",
+                    "sell_condition",
+                    "payment_condition",
+                    "generated_by",
+                    "total_items",
+                    "total_amount",
+                ],
+                raw: true,
+            });
+
+            const link = await RoadmapInfoDestination.findOne({
+                where: { id_remit: finalRemitId },
+                attributes: ["roadmap_info_id", "destination"],
+                raw: true,
+            });
+
+            let rm = null;
+            if (link?.roadmap_info_id) {
+                rm = await RoadmapInfo.findOne({
+                    where: { id: Number(link.roadmap_info_id) },
+                    attributes: ["id", "truck_license_plate", "driver", "created_at", "delivery_date"],
+                    raw: true,
+                });
+            }
+
+            let returns = [];
+            if (PreinvoiceReturn) {
+                returns = await PreinvoiceReturn.findAll({
+                    include: [{
+                        model: Preinvoice,
+                        as: "preinvoice",
+                        required: true,
+                        where: { receipt_number: receipt },
+                        attributes: [],
+                    }],
+                    attributes: [
+                        "id",
+                        "preinvoice_id",
+                        "client_id",
+                        "client_name",
+                        "units_redirected",
+                        "kg_redirected",
+                        "reason",
+                        "created_at",
+                    ],
+                    order: [["id", "ASC"]],
+                    raw: true,
+                });
+            }
+
+            const header = {
+                receipt_number: fr?.receipt_number || receipt,
+                preinvoice_created_at: lines[0]?.created_at || null,
+                final_remit_id: finalRemitId,
+                client_name: fr?.client_name || null,
+                salesman_name: fr?.salesman_name || null,
+                price_list: fr?.price_list || null,
+                sell_condition: fr?.sell_condition || null,
+                payment_condition: fr?.payment_condition || null,
+                generated_by: fr?.generated_by || null,
+                total_items: fr?.total_items || null,
+                total_amount: fr?.total_amount || null,
+                roadmap_id: rm?.id || null,
+                truck_license_plate: rm?.truck_license_plate || null,
+                driver: rm?.driver || null,
+                production_ts: rm?.created_at || null,
+                delivery_date: rm?.delivery_date || null,
+                destination: link?.destination || null,
             };
-        });
 
-        return res.json({
-            ok: true,
-            roadmaps: result
-        });
-    } catch (e) {
-        console.error(e);
-        return res.status(500).json({
-            ok: false,
-            msg: "Error al listar prefacturaciones guardadas"
-        });
-    }
-},
-// =========================
-// PREFACURACIONES - LISTA
-// =========================
-getPreinvoicesHistory: async (req, res) => {
-  try {
-    const agg = await Preinvoice.findAll({
-      attributes: [
-        "receipt_number",
-        "final_remit_id",
-        [fn("MIN", col("created_at")), "preinvoice_created_at"],
-        [fn("COUNT", col("id")), "lines"],
-      ],
-      group: ["receipt_number", "final_remit_id"],
-      order: [[fn("MIN", col("created_at")), "DESC"]],
-      raw: true,
-    });
-
-    if (!agg.length) return res.json({ ok: true, items: [] });
-
-    const remitIds = Array.from(
-      new Set(agg.map(a => Number(a.final_remit_id)).filter(Boolean))
-    );
-
-    const remits = await FinalRemit.findAll({
-      where: { id: { [Op.in]: remitIds } },
-      attributes: [
-        "id",
-        "receipt_number",
-        "client_name",
-        "salesman_name",
-        "generated_by",
-        "total_items",
-        "total_amount",
-      ],
-      raw: true,
-    });
-    const remitById = new Map(remits.map(r => [Number(r.id), r]));
-
-    const links = await RoadmapInfoDestination.findAll({
-      where: { id_remit: { [Op.in]: remitIds } },
-      attributes: ["id_remit", "roadmap_info_id", "destination"],
-      raw: true,
-    });
-
-    const roadmapIds = Array.from(
-      new Set(links.map(d => Number(d.roadmap_info_id)).filter(Boolean))
-    );
-
-    const roadmaps = roadmapIds.length
-      ? await RoadmapInfo.findAll({
-          where: { id: { [Op.in]: roadmapIds } },
-          attributes: ["id", "truck_license_plate", "driver", "created_at", "delivery_date"],
-          raw: true,
-        })
-      : [];
-    const roadmapById = new Map(roadmaps.map(r => [Number(r.id), r]));
-
-    const rows = [];
-    for (const a of agg) {
-      const rem = remitById.get(Number(a.final_remit_id));
-      if (!rem) continue;
-
-      const link = links.find(d => Number(d.id_remit) === Number(rem.id)) || null;
-      const rm = link ? roadmapById.get(Number(link.roadmap_info_id)) : null;
-
-      rows.push({
-        receipt_number: a.receipt_number,
-        preinvoice_created_at: a.preinvoice_created_at,
-        client_name: rem.client_name,
-        salesman_name: rem.salesman_name,
-        generated_by: rem.generated_by,
-        total_items: rem.total_items,
-        total_amount: rem.total_amount,
-        roadmap_id: rm?.id || null,
-        truck_license_plate: rm?.truck_license_plate || null,
-        driver: rm?.driver || null,
-        production_ts: rm?.created_at || null,
-        delivery_date: rm?.delivery_date || null,
-        destination: link?.destination || null,
-        lines: Number(a.lines || 0),
-      });
-    }
-
-    rows.sort((x, y) => {
-      const dx = x.delivery_date ? new Date(x.delivery_date).getTime() : 0;
-      const dy = y.delivery_date ? new Date(y.delivery_date).getTime() : 0;
-      if (dy !== dx) return dy - dx;
-      return String(y.receipt_number).localeCompare(String(x.receipt_number));
-    });
-
-    return res.json({ ok: true, items: rows });
-  } catch (e) {
-    console.error("getPreinvoicesHistory:", e);
-    return res.status(500).json({ ok: false, msg: "Error al obtener historial de prefacturas" });
-  }
-},
-
-// =========================
-// PREFACURACIONES - DETALLE
-// =========================
-getPreinvoiceDetailByReceipt: async (req, res) => {
-  try {
-    const { receipt } = req.params;
-    if (!receipt) return res.status(400).json({ ok: false, msg: "Falta receipt" });
-
-    const lines = await Preinvoice.findAll({
-      where: { receipt_number: receipt },
-      attributes: [
-        "id",
-        "final_remit_id",
-        "final_remit_item_id",
-        "product_id",
-        "product_name",
-        "unit_measure",
-        "expected_units",
-        "expected_kg",
-        "received_units",
-        "received_kg",
-        "created_at",
-      ],
-      order: [["id", "ASC"]],
-      raw: true,
-    });
-
-    if (!lines.length) return res.json({ ok: true, header: null, items: [], returns: [] });
-
-    const finalRemitId = Number(lines[0].final_remit_id);
-
-    const fr = await FinalRemit.findOne({
-      where: { id: finalRemitId },
-      attributes: [
-        "id",
-        "receipt_number",
-        "client_name",
-        "salesman_name",
-        "price_list",
-        "sell_condition",
-        "payment_condition",
-        "generated_by",
-        "total_items",
-        "total_amount",
-      ],
-      raw: true,
-    });
-
-    const link = await RoadmapInfoDestination.findOne({
-      where: { id_remit: finalRemitId },
-      attributes: ["roadmap_info_id", "destination"],
-      raw: true,
-    });
-
-    let rm = null;
-    if (link?.roadmap_info_id) {
-      rm = await RoadmapInfo.findOne({
-        where: { id: Number(link.roadmap_info_id) },
-        attributes: ["id", "truck_license_plate", "driver", "created_at", "delivery_date"],
-        raw: true,
-      });
-    }
-
-    let returns = [];
-    if (PreinvoiceReturn) {
-      returns = await PreinvoiceReturn.findAll({
-        include: [{
-          model: Preinvoice,
-          as: "preinvoice",
-          required: true,
-          where: { receipt_number: receipt },
-          attributes: [],
-        }],
-        attributes: [
-          "id",
-          "preinvoice_id",
-          "client_id",
-          "client_name",
-          "units_redirected",
-          "kg_redirected",
-          "reason",
-          "created_at",
-        ],
-        order: [["id", "ASC"]],
-        raw: true,
-      });
-    }
-
-    const header = {
-      receipt_number: fr?.receipt_number || receipt,
-      preinvoice_created_at: lines[0]?.created_at || null,
-      final_remit_id: finalRemitId,
-      client_name: fr?.client_name || null,
-      salesman_name: fr?.salesman_name || null,
-      price_list: fr?.price_list || null,
-      sell_condition: fr?.sell_condition || null,
-      payment_condition: fr?.payment_condition || null,
-      generated_by: fr?.generated_by || null,
-      total_items: fr?.total_items || null,
-      total_amount: fr?.total_amount || null,
-      roadmap_id: rm?.id || null,
-      truck_license_plate: rm?.truck_license_plate || null,
-      driver: rm?.driver || null,
-      production_ts: rm?.created_at || null,
-      delivery_date: rm?.delivery_date || null,
-      destination: link?.destination || null,
-    };
-
-    return res.json({ ok: true, header, items: lines, returns });
-  } catch (e) {
-    console.error("getPreinvoiceDetailByReceipt:", e);
-    return res.status(500).json({ ok: false, msg: "Error al obtener detalle de prefactura" });
-  }
-},
-// =========================
-// PREFAC - EDIT PAYLOAD (GET) POR RECIBO
-// =========================
-getPreinvoiceEditPayloadByReceipt: async (req, res) => {
-  try {
-    const { receipt } = req.params;
-    if (!receipt) return res.status(400).json({ ok: false, msg: "Falta receipt" });
-
-    const {
-      Preinvoice,
-      PreinvoiceReturn,
-      FinalRemit,
-      RoadmapInfoDestination,
-      RoadmapInfo,
-    } = require("../../src/config/models");
-
-    const lines = await Preinvoice.findAll({
-      where: { receipt_number: receipt },
-      attributes: [
-        "id",
-        "final_remit_id",
-        "product_id",
-        "product_name",
-        "unit_measure",
-        "expected_units",
-        "expected_kg",
-        "received_units",
-        "received_kg",
-        "created_at",
-      ],
-      order: [["id", "ASC"]],
-      raw: true,
-    });
-
-    if (!lines.length) {
-      return res.json({ ok: true, roadmaps: [], redirects: [] });
-    }
-
-    const finalRemitId = Number(lines[0].final_remit_id);
-
-    const fr = await FinalRemit.findOne({
-      where: { id: finalRemitId },
-      attributes: [
-        "id",
-        "receipt_number",
-        "client_name",
-        "salesman_name",
-        "total_items",
-        "total_amount",
-      ],
-      raw: true,
-    });
-
-    const link = await RoadmapInfoDestination.findOne({
-      where: { id_remit: finalRemitId },
-      attributes: ["roadmap_info_id", "destination"],
-      raw: true,
-    });
-
-    let ri = null;
-    if (link?.roadmap_info_id) {
-      ri = await RoadmapInfo.findOne({
-        where: { id: Number(link.roadmap_info_id) },
-        attributes: ["id", "truck_license_plate", "driver", "created_at", "delivery_date"],
-        raw: true,
-      });
-    }
-
-    let redirects = [];
-    if (PreinvoiceReturn) {
-      redirects = await PreinvoiceReturn.findAll({
-        where: { preinvoice_id: lines.map(l => l.id) },
-        attributes: [
-          "id",
-          "preinvoice_id",
-          "client_id",
-          "client_name",
-          "units_redirected",
-          "kg_redirected",
-          "reason",
-          "created_at",
-          "updated_at",
-        ],
-        order: [["id", "ASC"]],
-        raw: true,
-      });
-    }
-
-    const remitBlock = {
-      id_remit: finalRemitId,
-      receipt_number: fr?.receipt_number || receipt,
-      client_name: fr?.client_name || null,
-      salesman_name: fr?.salesman_name || null,
-      total_items: fr?.total_items || null,
-      total_amount: fr?.total_amount || null,
-      items: lines.map((l) => ({
-        id: l.id,
-        product_id: l.product_id,
-        product_name: l.product_name,
-        unit_measure: l.unit_measure,
-        expected_units: Number(l.expected_units || 0),
-        expected_kg: Number(l.expected_kg || 0),
-        received_units: Number(l.received_units || 0),
-        received_kg: Number(l.received_kg || 0),
-      })),
-    };
-
-    const roadmap = {
-      roadmap_id: ri?.id || null,
-      created_at: ri?.created_at || null,
-      delivery_date: ri?.delivery_date || null,
-      driver: ri?.driver || null,
-      truck_license_plate: ri?.truck_license_plate || null,
-      destinations: link?.destination ? [link.destination] : [],
-      remits: [remitBlock],
-    };
-
-    return res.json({ ok: true, roadmaps: [roadmap], redirects });
-  } catch (e) {
-    console.error(e);
-    return res.status(500).json({ ok: false, msg: "Error al armar payload de edición" });
-  }
-},
-
-// =========================
-// PREFAC - GUARDAR EDICIÓN POR RECIBO
-// =========================
-// PUT /preinvoices/edit/by-receipt/:receipt
-// body: { items:[{ id, received_units, received_kg }], returns:[...] }
-savePreinvoiceEditsByReceipt: async (req, res) => {
-  const { receipt } = req.params;
-  const { items = [], returns = null } = req.body || {};
-
-  if (!receipt) {
-    return res
-      .status(400)
-      .json({ ok: false, msg: "Falta receipt" });
-  }
-
-  if (!Array.isArray(items) || items.length === 0) {
-    return res
-      .status(400)
-      .json({ ok: false, msg: "Faltan items a actualizar" });
-  }
-
-  const t = await sequelize.transaction();
-
-  try {
-    let updatedCount = 0;
-
-    // Actualizo recibidos + merma por cada línea
-    for (const it of items) {
-      if (!it || !it.id) continue;
-
-      const payload = {};
-      let newRecUnits = null;
-
-      if (typeof it.received_units !== "undefined") {
-        newRecUnits = Number(it.received_units) || 0;
-        payload.received_units = newRecUnits;
-      }
-
-      if (typeof it.received_kg !== "undefined") {
-        payload.received_kg = Number(it.received_kg) || 0;
-      }
-
-      // Si vino received_units recalculo missing_units = expected_units - received_units
-      if (newRecUnits !== null) {
-        const row = await Preinvoice.findOne({
-          where: { id: it.id, receipt_number: receipt },
-          attributes: ["expected_units"],
-          transaction: t,
-        });
-
-        if (row) {
-          const expUnits = Number(row.expected_units || 0);
-          payload.missing_units = Math.max(0, expUnits - newRecUnits);
+            return res.json({ ok: true, header, items: lines, returns });
+        } catch (e) {
+            console.error("getPreinvoiceDetailByReceipt:", e);
+            return res.status(500).json({ ok: false, msg: "Error al obtener detalle de prefactura" });
         }
-      }
+    },
+    // =========================
+    // PREFAC - EDIT PAYLOAD (GET) POR RECIBO
+    // =========================
+    getPreinvoiceEditPayloadByReceipt: async (req, res) => {
+        try {
+            const { receipt } = req.params;
+            if (!receipt) return res.status(400).json({ ok: false, msg: "Falta receipt" });
 
-      if (Object.keys(payload).length > 0) {
-        const [aff] = await Preinvoice.update(payload, {
-          where: { id: it.id, receipt_number: receipt },
-          transaction: t,
-        });
-        updatedCount += Number(aff || 0);
-      }
-    }
+            const {
+                Preinvoice,
+                PreinvoiceReturn,
+                FinalRemit,
+                RoadmapInfoDestination,
+                RoadmapInfo,
+            } = require("../../src/config/models");
 
-    // =============================
-    // Devoluciones (PreinvoiceReturn)
-    // =============================
-    let returnsCreated = 0;
+            const lines = await Preinvoice.findAll({
+                where: { receipt_number: receipt },
+                attributes: [
+                    "id",
+                    "final_remit_id",
+                    "product_id",
+                    "product_name",
+                    "unit_measure",
+                    "expected_units",
+                    "expected_kg",
+                    "received_units",
+                    "received_kg",
+                    "created_at",
+                ],
+                order: [["id", "ASC"]],
+                raw: true,
+            });
 
-    if (Array.isArray(returns) && returns.length && PreinvoiceReturn) {
-      // Busco las líneas de esta prefactura
-      const existingLines = await Preinvoice.findAll({
-        where: { receipt_number: receipt },
-        attributes: ["id"],
-        transaction: t,
-      });
+            if (!lines.length) {
+                return res.json({ ok: true, roadmaps: [], redirects: [] });
+            }
 
-      const lineIds = existingLines.map((r) => Number(r.id)).filter(Boolean);
+            const finalRemitId = Number(lines[0].final_remit_id);
 
-      if (lineIds.length) {
-        // Borro devoluciones anteriores
-        await PreinvoiceReturn.destroy({
-          where: { preinvoice_id: { [Op.in]: lineIds } },
-          transaction: t,
-        });
-      }
+            const fr = await FinalRemit.findOne({
+                where: { id: finalRemitId },
+                attributes: [
+                    "id",
+                    "receipt_number",
+                    "client_name",
+                    "salesman_name",
+                    "total_items",
+                    "total_amount",
+                ],
+                raw: true,
+            });
 
-      const toCreate = returns
-        .filter(
-          (r) =>
-            r &&
-            r.preinvoice_id &&
-            lineIds.includes(Number(r.preinvoice_id))
-        )
-        .map((r) => ({
-          preinvoice_id: Number(r.preinvoice_id),
-          client_id: r.client_id || null,
-          client_name: r.client_name || null,
-          units_redirected: Number(r.units_redirected || 0),
-          kg_redirected: Number(r.kg_redirected || 0),
-          reason: r.reason || null, // "client" / "stock" etc.
-        }));
+            const link = await RoadmapInfoDestination.findOne({
+                where: { id_remit: finalRemitId },
+                attributes: ["roadmap_info_id", "destination"],
+                raw: true,
+            });
 
-      if (toCreate.length) {
-        await PreinvoiceReturn.bulkCreate(toCreate, { transaction: t });
-        returnsCreated = toCreate.length;
-      }
-    }
+            let ri = null;
+            if (link?.roadmap_info_id) {
+                ri = await RoadmapInfo.findOne({
+                    where: { id: Number(link.roadmap_info_id) },
+                    attributes: ["id", "truck_license_plate", "driver", "created_at", "delivery_date"],
+                    raw: true,
+                });
+            }
 
-    await t.commit();
-    return res.json({
-      ok: true,
-      updated: updatedCount,
-      returns_created: returnsCreated,
-    });
-  } catch (err) {
-    console.error("savePreinvoiceEditsByReceipt:", err);
-    try {
-      await t.rollback();
-    } catch {}
-    return res
-      .status(500)
-      .json({ ok: false, msg: "No se pudieron guardar los cambios" });
-  }
-},
+            let redirects = [];
+            if (PreinvoiceReturn) {
+                redirects = await PreinvoiceReturn.findAll({
+                    where: { preinvoice_id: lines.map(l => l.id) },
+                    attributes: [
+                        "id",
+                        "preinvoice_id",
+                        "client_id",
+                        "client_name",
+                        "units_redirected",
+                        "kg_redirected",
+                        "reason",
+                        "created_at",
+                        "updated_at",
+                    ],
+                    order: [["id", "ASC"]],
+                    raw: true,
+                });
+            }
+
+            const remitBlock = {
+                id_remit: finalRemitId,
+                receipt_number: fr?.receipt_number || receipt,
+                client_name: fr?.client_name || null,
+                salesman_name: fr?.salesman_name || null,
+                total_items: fr?.total_items || null,
+                total_amount: fr?.total_amount || null,
+                items: lines.map((l) => ({
+                    id: l.id,
+                    product_id: l.product_id,
+                    product_name: l.product_name,
+                    unit_measure: l.unit_measure,
+                    expected_units: Number(l.expected_units || 0),
+                    expected_kg: Number(l.expected_kg || 0),
+                    received_units: Number(l.received_units || 0),
+                    received_kg: Number(l.received_kg || 0),
+                })),
+            };
+
+            const roadmap = {
+                roadmap_id: ri?.id || null,
+                created_at: ri?.created_at || null,
+                delivery_date: ri?.delivery_date || null,
+                driver: ri?.driver || null,
+                truck_license_plate: ri?.truck_license_plate || null,
+                destinations: link?.destination ? [link.destination] : [],
+                remits: [remitBlock],
+            };
+
+            return res.json({ ok: true, roadmaps: [roadmap], redirects });
+        } catch (e) {
+            console.error(e);
+            return res.status(500).json({ ok: false, msg: "Error al armar payload de edición" });
+        }
+    },
+
+    // =========================
+    // PREFAC - GUARDAR EDICIÓN POR RECIBO
+    // =========================
+    // PUT /preinvoices/edit/by-receipt/:receipt
+    // body: { items:[{ id, received_units, received_kg }], returns:[...] }
+    savePreinvoiceEditsByReceipt: async (req, res) => {
+        const { receipt } = req.params;
+        const { items = [], returns = null } = req.body || {};
+
+        if (!receipt) {
+            return res
+                .status(400)
+                .json({ ok: false, msg: "Falta receipt" });
+        }
+
+        if (!Array.isArray(items) || items.length === 0) {
+            return res
+                .status(400)
+                .json({ ok: false, msg: "Faltan items a actualizar" });
+        }
+
+        const t = await sequelize.transaction();
+
+        try {
+            let updatedCount = 0;
+
+            // Actualizo recibidos + merma por cada línea
+            for (const it of items) {
+                if (!it || !it.id) continue;
+
+                const payload = {};
+                let newRecUnits = null;
+
+                if (typeof it.received_units !== "undefined") {
+                    newRecUnits = Number(it.received_units) || 0;
+                    payload.received_units = newRecUnits;
+                }
+
+                if (typeof it.received_kg !== "undefined") {
+                    payload.received_kg = Number(it.received_kg) || 0;
+                }
+
+                // Si vino received_units recalculo missing_units = expected_units - received_units
+                if (newRecUnits !== null) {
+                    const row = await Preinvoice.findOne({
+                        where: { id: it.id, receipt_number: receipt },
+                        attributes: ["expected_units"],
+                        transaction: t,
+                    });
+
+                    if (row) {
+                        const expUnits = Number(row.expected_units || 0);
+                        payload.missing_units = Math.max(0, expUnits - newRecUnits);
+                    }
+                }
+
+                if (Object.keys(payload).length > 0) {
+                    const [aff] = await Preinvoice.update(payload, {
+                        where: { id: it.id, receipt_number: receipt },
+                        transaction: t,
+                    });
+                    updatedCount += Number(aff || 0);
+                }
+            }
+
+            // =============================
+            // Devoluciones (PreinvoiceReturn)
+            // =============================
+            let returnsCreated = 0;
+
+            if (Array.isArray(returns) && returns.length && PreinvoiceReturn) {
+                // Busco las líneas de esta prefactura
+                const existingLines = await Preinvoice.findAll({
+                    where: { receipt_number: receipt },
+                    attributes: ["id"],
+                    transaction: t,
+                });
+
+                const lineIds = existingLines.map((r) => Number(r.id)).filter(Boolean);
+
+                if (lineIds.length) {
+                    // Borro devoluciones anteriores
+                    await PreinvoiceReturn.destroy({
+                        where: { preinvoice_id: { [Op.in]: lineIds } },
+                        transaction: t,
+                    });
+                }
+
+                const toCreate = returns
+                    .filter(
+                        (r) =>
+                            r &&
+                            r.preinvoice_id &&
+                            lineIds.includes(Number(r.preinvoice_id))
+                    )
+                    .map((r) => ({
+                        preinvoice_id: Number(r.preinvoice_id),
+                        client_id: r.client_id || null,
+                        client_name: r.client_name || null,
+                        units_redirected: Number(r.units_redirected || 0),
+                        kg_redirected: Number(r.kg_redirected || 0),
+                        reason: r.reason || null, // "client" / "stock" etc.
+                    }));
+
+                if (toCreate.length) {
+                    await PreinvoiceReturn.bulkCreate(toCreate, { transaction: t });
+                    returnsCreated = toCreate.length;
+                }
+            }
+
+            await t.commit();
+            return res.json({
+                ok: true,
+                updated: updatedCount,
+                returns_created: returnsCreated,
+            });
+        } catch (err) {
+            console.error("savePreinvoiceEditsByReceipt:", err);
+            try {
+                await t.rollback();
+            } catch { }
+            return res
+                .status(500)
+                .json({ ok: false, msg: "No se pudieron guardar los cambios" });
+        }
+    },
 
 
-// Borrar TODA una prefacturación por número de comprobante (receipt)
-deletePreinvoiceByReceipt: async (req, res) => {
-  const { receipt } = req.params;
-  try {
-    if (!receipt) return res.status(400).json({ ok: false, msg: "Falta receipt" });
+    // Borrar TODA una prefacturación por número de comprobante (receipt)
+    deletePreinvoiceByReceipt: async (req, res) => {
+        const { receipt } = req.params;
+        try {
+            if (!receipt) return res.status(400).json({ ok: false, msg: "Falta receipt" });
 
-    // Usa los modelos ya definidos arriba del archivo
-    // const db = require("././src/config/models"); // <-- NO lo uses aquí
-    // const sequelize = db.sequelize;              // ya existe arriba
-    // const { Preinvoice, PreinvoiceReturn } = db; // ya existen arriba
+            // Usa los modelos ya definidos arriba del archivo
+            // const db = require("././src/config/models"); // <-- NO lo uses aquí
+            // const sequelize = db.sequelize;              // ya existe arriba
+            // const { Preinvoice, PreinvoiceReturn } = db; // ya existen arriba
 
-    // Buscar todas las líneas de esa prefacturación
-    const lines = await Preinvoice.findAll({
-      where: { receipt_number: receipt },
-      attributes: ["id"],
-      raw: true,
-    });
+            // Buscar todas las líneas de esa prefacturación
+            const lines = await Preinvoice.findAll({
+                where: { receipt_number: receipt },
+                attributes: ["id"],
+                raw: true,
+            });
 
-    if (!lines.length) {
-      return res.status(404).json({ ok: false, msg: "Prefacturación no encontrada" });
-    }
+            if (!lines.length) {
+                return res.status(404).json({ ok: false, msg: "Prefacturación no encontrada" });
+            }
 
-    const ids = lines.map(l => Number(l.id)).filter(Boolean);
+            const ids = lines.map(l => Number(l.id)).filter(Boolean);
 
-    const t = await sequelize.transaction();
-    try {
-      // Borrar devoluciones asociadas
-      await PreinvoiceReturn.destroy({
-        where: { preinvoice_id: { [Op.in]: ids } },
-        transaction: t,
-      });
+            const t = await sequelize.transaction();
+            try {
+                // Borrar devoluciones asociadas
+                await PreinvoiceReturn.destroy({
+                    where: { preinvoice_id: { [Op.in]: ids } },
+                    transaction: t,
+                });
 
-      // Borrar líneas de prefactura
-      const deleted = await Preinvoice.destroy({
-        where: { id: { [Op.in]: ids } },
-        transaction: t,
-      });
+                // Borrar líneas de prefactura
+                const deleted = await Preinvoice.destroy({
+                    where: { id: { [Op.in]: ids } },
+                    transaction: t,
+                });
 
-      await t.commit();
-      return res.json({ ok: true, deleted, msg: "Prefacturación eliminada" });
-    } catch (err) {
-      await t.rollback();
-      console.error("deletePreinvoiceByReceipt TX:", err);
-      return res.status(500).json({ ok: false, msg: "Error al eliminar la prefacturación" });
-    }
-  } catch (e) {
-    console.error("deletePreinvoiceByReceipt:", e);
-    return res.status(500).json({ ok: false, msg: "Error al procesar la eliminación" });
-  }
-},
+                await t.commit();
+                return res.json({ ok: true, deleted, msg: "Prefacturación eliminada" });
+            } catch (err) {
+                await t.rollback();
+                console.error("deletePreinvoiceByReceipt TX:", err);
+                return res.status(500).json({ ok: false, msg: "Error al eliminar la prefacturación" });
+            }
+        } catch (e) {
+            console.error("deletePreinvoiceByReceipt:", e);
+            return res.status(500).json({ ok: false, msg: "Error al procesar la eliminación" });
+        }
+    },
 
 
 

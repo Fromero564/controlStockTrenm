@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPen, faXmark } from "@fortawesome/free-solid-svg-icons";
@@ -19,6 +19,7 @@ const ProviderList = () => {
       .then((response) => response.json())
       .then((data) => setProviders(data))
       .catch((error) => console.error("Error al obtener proveedores:", error));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleDelete = (provider) => {
@@ -33,9 +34,7 @@ const ProviderList = () => {
       cancelButtonText: "Cancelar",
     }).then((result) => {
       if (result.isConfirmed) {
-        fetch(`${API_URL}/deleteProvider/${provider.id}`, {
-          method: "DELETE",
-        })
+        fetch(`${API_URL}/deleteProvider/${provider.id}`, { method: "DELETE" })
           .then((res) => {
             if (!res.ok) throw new Error("Error al eliminar");
             setProviders((prev) => prev.filter((p) => p.id !== provider.id));
@@ -52,16 +51,17 @@ const ProviderList = () => {
   const norm = (v) => (v ?? "").toString().toLowerCase().trim();
   const q = norm(search);
 
-  const filteredProviders = Array.isArray(providers)
-    ? providers.filter((p) => {
-        const byCode = norm(p.id).includes(q);
-        const byName = norm(p.provider_name).includes(q);
-        const byCUIT = norm(p.provider_id_number).includes(q);
-        const byEmail = norm(p.provider_email).includes(q);
-        const byPhone = norm(p.provider_phone).includes(q);
-        return q === "" || byCode || byName || byCUIT || byEmail || byPhone;
-      })
-    : [];
+  const filteredProviders = useMemo(() => {
+    if (!Array.isArray(providers)) return [];
+    return providers.filter((p) => {
+      const byCode = norm(p.id).includes(q);
+      const byName = norm(p.provider_name).includes(q);
+      const byCUIT = norm(p.provider_id_number).includes(q);
+      const byEmail = norm(p.provider_email).includes(q);
+      const byPhone = norm(p.provider_phone).includes(q);
+      return q === "" || byCode || byName || byCUIT || byEmail || byPhone;
+    });
+  }, [providers, q]);
 
   const totalPages = Math.ceil(filteredProviders.length / itemsPerPage) || 1;
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -91,172 +91,180 @@ const ProviderList = () => {
   return (
     <div className="providers-root">
       <Navbar />
-      <div className="topbar-wrap">
-        <button
-          className="boton-volver"
-          onClick={() => navigate("/operator-panel")}
-        >
-          ⬅ Volver
-        </button>
-      </div>
 
-      <div className="container providers-container">
-        <div className="title-row">
-          <h1>Proveedores</h1>
+      <div className="providers-shell">
+        <div className="topbar-wrap">
           <button
-            className="new-button"
-            onClick={() => navigate("/provider-load")}
+            className="boton-volver"
+            onClick={() => navigate("/operator-panel")}
           >
-            Nuevo Proveedor +
+            ⬅ Volver
           </button>
         </div>
 
-        <div className="search-row">
-          <label htmlFor="search">Buscar por código, nombre o CUIT</label>
-          <div className="search-controls">
-            <input
-              type="text"
-              id="search"
-              placeholder="Ej: 12 | ACME | 20-12345678-3"
-              value={search}
-              onChange={onChangeSearch}
-              className="search-input"
-            />
-            {search && (
-              <button className="clear-button" onClick={clearSearch}>
-                Limpiar
-              </button>
-            )}
+        <div className="providers-container">
+          <div className="title-row">
+            <h1 className="providers-title">Proveedores</h1>
             <button
-              className="search-button"
-              onClick={() => setCurrentPage(1)}
+              className="new-button"
+              onClick={() => navigate("/provider-load")}
             >
-              Buscar
+              Nuevo Proveedor +
             </button>
           </div>
-        </div>
 
-        <div className="table-wrap">
-          <table className="table providers-table">
-            <thead>
-              <tr>
-                <th className="col-id">Código</th>
-                <th className="col-name">Nombre</th>
-                <th className="col-type">Tipo Id</th>
-                <th className="col-doc">N° Identificación</th>
-                <th className="col-iva">Condición IVA</th>
-                <th className="col-email">Email</th>
-                <th className="col-phone">Teléfono</th>
-                <th className="col-address">Domicilio</th>
-                <th className="col-country">País</th>
-                <th className="col-province">Provincia</th>
-                <th className="col-location">Localidad</th>
-                <th className="col-actions">Acciones</th>
-              </tr>
-            </thead>
+          <div className="search-row">
+            <label className="search-label" htmlFor="search">
+              Buscar por código, nombre o CUIT
+            </label>
 
-            <tbody>
-              {currentProviders.map((p) => {
-                const inactive =
-                  p.provider_state === false ||
-                  p.provider_state === 0 ||
-                  p.provider_state === "0";
+            <div className="search-controls">
+              <input
+                type="text"
+                id="search"
+                placeholder="Ej: 12 | ACME | 20-12345678-3"
+                value={search}
+                onChange={onChangeSearch}
+                className="search-input"
+              />
 
-                return (
-                  <tr
-                    key={p.id}
-                    className={inactive ? "inactive-row" : ""}
-                    style={
-                      inactive
-                        ? {
-                            backgroundColor: "#ffe6e6",
-                            color: "#777",
-                          }
-                        : {}
-                    }
-                  >
-                    <td>{p.id}</td>
+              {search && (
+                <button className="clear-button" onClick={clearSearch}>
+                  Limpiar
+                </button>
+              )}
 
-                    <td>
-                      {p.provider_name?.toUpperCase()}{" "}
-                      {inactive && (
-                        <span
-                          style={{
-                            background: "#ff4d4d",
-                            color: "#fff",
-                            padding: "2px 6px",
-                            borderRadius: "4px",
-                            fontSize: "10px",
-                            marginLeft: "5px",
-                          }}
-                        >
-                          INACTIVO
-                        </span>
-                      )}
-                    </td>
+              <button
+                className="search-button"
+                onClick={() => setCurrentPage(1)}
+              >
+                Buscar
+              </button>
+            </div>
+          </div>
 
-                    <td>{p.provider_type_id?.toUpperCase()}</td>
-                    <td>{p.provider_id_number}</td>
-                    <td>{p.provider_iva_condition?.toUpperCase()}</td>
-                    <td className="truncate">
-                      {p.provider_email?.toUpperCase()}
-                    </td>
-                    <td>{p.provider_phone}</td>
-                    <td className="truncate">
-                      {p.provider_adress?.toUpperCase()}
-                    </td>
-                    <td>{p.provider_country?.toUpperCase()}</td>
-                    <td>{p.provider_province?.toUpperCase()}</td>
-                    <td>{p.provider_location?.toUpperCase()}</td>
+          <div className="table-wrap">
+            <table className="providers-table">
+              <thead>
+                <tr>
+                  <th className="col-id">Código</th>
+                  <th className="col-name">Nombre</th>
+                  <th className="col-type">Tipo Id</th>
+                  <th className="col-doc">N° Identificación</th>
+                  <th className="col-iva">Condición IVA</th>
+                  <th className="col-email">Email</th>
+                  <th className="col-phone">Teléfono</th>
+                  <th className="col-address">Domicilio</th>
+                  <th className="col-country">País</th>
+                  <th className="col-province">Provincia</th>
+                  <th className="col-location">Localidad</th>
+                  <th className="col-actions">Acciones</th>
+                </tr>
+              </thead>
 
-                    <td>
-                      <button
-                        className="edit-button"
-                        onClick={() =>
-                          navigate(`/provider-load/${p.id}`)
-                        }
-                        title="Editar"
-                      >
-                        <FontAwesomeIcon icon={faPen} />
-                      </button>
+              <tbody>
+                {currentProviders.map((p) => {
+                  const inactive =
+                    p.provider_state === false ||
+                    p.provider_state === 0 ||
+                    p.provider_state === "0";
 
-                      <button
-                        className="delete-button"
-                        onClick={() => handleDelete(p)}
-                        title="Eliminar"
-                      >
-                        <FontAwesomeIcon icon={faXmark} />
-                      </button>
+                  return (
+                    <tr key={p.id} className={inactive ? "inactive-row" : ""}>
+                      <td data-label="Código">{p.id}</td>
+
+                      <td data-label="Nombre" className="cell-strong">
+                        {p.provider_name?.toUpperCase()}
+                        {inactive && (
+                          <span className="inactive-badge">INACTIVO</span>
+                        )}
+                      </td>
+
+                      <td data-label="Tipo Id">
+                        {p.provider_type_id?.toUpperCase()}
+                      </td>
+
+                      <td data-label="N° Identificación">{p.provider_id_number}</td>
+
+                      <td data-label="Condición IVA">
+                        {p.provider_iva_condition?.toUpperCase()}
+                      </td>
+
+                      <td data-label="Email" className="truncate">
+                        {p.provider_email?.toUpperCase()}
+                      </td>
+
+                      <td data-label="Teléfono">{p.provider_phone}</td>
+
+                      <td data-label="Domicilio" className="truncate">
+                        {p.provider_adress?.toUpperCase()}
+                      </td>
+
+                      <td data-label="País">
+                        {p.provider_country?.toUpperCase()}
+                      </td>
+
+                      <td data-label="Provincia">
+                        {p.provider_province?.toUpperCase()}
+                      </td>
+
+                      <td data-label="Localidad">
+                        {p.provider_location?.toUpperCase()}
+                      </td>
+
+                      <td data-label="Acciones">
+                        <div className="actions">
+                          <button
+                            className="icon-btn edit-button"
+                            onClick={() => navigate(`/provider-load/${p.id}`)}
+                            title="Editar"
+                            aria-label="Editar"
+                          >
+                            <FontAwesomeIcon icon={faPen} />
+                          </button>
+
+                          <button
+                            className="icon-btn delete-button"
+                            onClick={() => handleDelete(p)}
+                            title="Eliminar"
+                            aria-label="Eliminar"
+                          >
+                            <FontAwesomeIcon icon={faXmark} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+
+                {currentProviders.length === 0 && (
+                  <tr>
+                    <td colSpan={12} className="empty-cell">
+                      Sin resultados
                     </td>
                   </tr>
-                );
-              })}
+                )}
+              </tbody>
+            </table>
+          </div>
 
-              {currentProviders.length === 0 && (
-                <tr>
-                  <td colSpan={12} className="empty-cell">
-                    Sin resultados
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+          <div className="pagination">
+            <button onClick={goToPrevPage} disabled={currentPage === 1}>
+              ← Anterior
+            </button>
 
-        <div className="pagination">
-          <button onClick={goToPrevPage} disabled={currentPage === 1}>
-            ← Anterior
-          </button>
-          <span>
-            Página <strong>{currentPage}</strong> de{" "}
-            <strong>{totalPages}</strong>
-          </span>
-          <button
-            onClick={goToNextPage}
-            disabled={currentPage === totalPages || totalPages === 0}
-          >
-            Siguiente →
-          </button>
+            <span>
+              Página <strong>{currentPage}</strong> de{" "}
+              <strong>{totalPages}</strong>
+            </span>
+
+            <button
+              onClick={goToNextPage}
+              disabled={currentPage === totalPages || totalPages === 0}
+            >
+              Siguiente →
+            </button>
+          </div>
         </div>
       </div>
     </div>
