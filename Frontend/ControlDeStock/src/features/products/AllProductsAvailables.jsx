@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../../components/Navbar.jsx";
 import "../../assets/styles/allProductsAvailables.css";
@@ -9,6 +9,7 @@ import Swal from "sweetalert2";
 const AllProductsAvailables = () => {
   const [productos, setProductos] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
   const API_URL = import.meta.env.VITE_API_URL;
   const navigate = useNavigate();
 
@@ -17,16 +18,29 @@ const AllProductsAvailables = () => {
       try {
         const res = await fetch(`${API_URL}/product-name`);
         const data = await res.json();
-        setProductos(data);
+        setProductos(Array.isArray(data) ? data : []);
       } catch (error) {
         console.error("Error al cargar productos:", error);
+        setProductos([]);
       } finally {
         setLoading(false);
       }
     };
 
     fetchProductos();
-  }, []);
+  }, [API_URL]);
+
+  const productosFiltrados = useMemo(() => {
+    const q = search.trim().toLowerCase();
+
+    if (!q) return productos;
+
+    return productos.filter((prod) => {
+      const codigo = String(prod.id || "").toLowerCase();
+      const nombre = String(prod.product_name || "").toLowerCase();
+      return codigo.includes(q) || nombre.includes(q);
+    });
+  }, [productos, search]);
 
   const eliminarProducto = async (id) => {
     const resultado = await Swal.fire({
@@ -62,10 +76,14 @@ const AllProductsAvailables = () => {
     <>
       <Navbar />
       <div style={{ margin: "20px" }}>
-        <button className="boton-volver" onClick={() => navigate("/product-configuration")}>
+        <button
+          className="boton-volver"
+          onClick={() => navigate("/product-configuration")}
+        >
           ⬅ Volver
         </button>
       </div>
+
       <div className="products-container">
         <div className="products-header">
           <h1 className="products-title-style">Listado de productos</h1>
@@ -75,6 +93,46 @@ const AllProductsAvailables = () => {
           >
             Agregar producto +
           </button>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            gap: "12px",
+            alignItems: "center",
+            marginBottom: "18px",
+            flexWrap: "wrap",
+          }}
+        >
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar por nombre o código..."
+            style={{
+              width: "320px",
+              maxWidth: "100%",
+              padding: "10px 14px",
+              borderRadius: "8px",
+              border: "1px solid #c9d7e1",
+              fontSize: "15px",
+              outline: "none",
+            }}
+          />
+
+          {search.trim() && (
+            <button
+              type="button"
+              className="btn-nuevo"
+              style={{
+                padding: "10px 16px",
+                fontSize: "14px",
+              }}
+              onClick={() => setSearch("")}
+            >
+              Limpiar
+            </button>
+          )}
         </div>
 
         {loading ? (
@@ -90,7 +148,7 @@ const AllProductsAvailables = () => {
               </tr>
             </thead>
             <tbody>
-              {productos.map((prod) => (
+              {productosFiltrados.map((prod) => (
                 <tr key={prod.id}>
                   <td>{prod.id}</td>
                   <td>{prod.product_name}</td>
@@ -113,15 +171,17 @@ const AllProductsAvailables = () => {
                   </td>
                 </tr>
               ))}
-              {productos.length === 0 && (
+
+              {productosFiltrados.length === 0 && (
                 <tr>
                   <td colSpan="4" className="products-empty-message">
-                    No hay productos cargados.
+                    {search.trim()
+                      ? "No se encontraron productos con esa búsqueda."
+                      : "No hay productos cargados."}
                   </td>
                 </tr>
               )}
             </tbody>
-
           </table>
         )}
       </div>

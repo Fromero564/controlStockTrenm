@@ -21,7 +21,6 @@ const safeParse = (str, fallback) => {
   }
 };
 
-
 const formatFecha = (fecha) => {
   if (!fecha) return "";
   return new Date(fecha).toLocaleString("es-AR", {
@@ -63,14 +62,18 @@ const ProductionProcess = () => {
   const [productosDisponibles, setProductosDisponibles] = useState([]);
   const [productoSinRemito, setProductoSinRemito] = useState(null);
   const [cantidadSinRemito, setCantidadSinRemito] = useState("");
+  const [pesoSinRemito, setPesoSinRemito] = useState("");
   const [productosSinRemito, setProductosSinRemito] = useState([]);
 
   const [cortesAgregados, setCortesAgregados] = useState([]);
 
-  // para detectar cambio de tipo y mostrar SweetAlert al pasar a kg
+  const [mostrarSeccionComprobantes, setMostrarSeccionComprobantes] = useState(
+    isEdit
+  );
+  const comprobantesSectionRef = useRef(null);
+
   const tipoAnteriorRef = useRef("");
 
-  // ---------- PERSISTENCIA: Cargar desde localStorage al montar ----------
   useEffect(() => {
     if (isEdit) return;
     const cortesGuardados = safeParse(localStorage.getItem(LS_KEYS.CORTES), []);
@@ -82,13 +85,13 @@ const ProductionProcess = () => {
       localStorage.getItem(LS_KEYS.COMPROBANTES),
       []
     );
+
     if (cortesGuardados.length) setCortesAgregados(cortesGuardados);
     if (productosGuardados.length) setProductosSinRemito(productosGuardados);
     if (comprobantesGuardados.length)
       setComprobantesAgregados(comprobantesGuardados);
   }, [isEdit]);
 
-  
   useEffect(() => {
     if (isEdit) return;
     localStorage.setItem(LS_KEYS.CORTES, JSON.stringify(cortesAgregados));
@@ -96,10 +99,7 @@ const ProductionProcess = () => {
 
   useEffect(() => {
     if (isEdit) return;
-    localStorage.setItem(
-      LS_KEYS.SIN_REMITO,
-      JSON.stringify(productosSinRemito)
-    );
+    localStorage.setItem(LS_KEYS.SIN_REMITO, JSON.stringify(productosSinRemito));
   }, [productosSinRemito, isEdit]);
 
   useEffect(() => {
@@ -110,36 +110,47 @@ const ProductionProcess = () => {
     );
   }, [comprobantesAgregados, isEdit]);
 
-
   useEffect(() => {
     if (!Array.isArray(productosSinRemito)) setProductosSinRemito([]);
   }, []);
 
-  // Productos disponibles (para selects)
   useEffect(() => {
     const fetchProductos = async () => {
       try {
         const response = await fetch(`${API_URL}/product-name`);
         const data = await response.json();
-        const productosConCantidad = data.map((producto) => ({
-          id: producto.id,
-          nombre: producto.product_name,
-          categoria: producto.category?.category_name || "",
-          cantidad: 0,
-        }));
+
+      const productosConCantidad = data.map((producto) => ({
+  id: producto.id,
+  nombre: producto.product_name,
+  categoria: producto.category?.category_name || "",
+  cantidad: 0,
+  unidadVenta:
+    producto.unit_measure ||
+    producto.sale_unit ||
+    producto.unit ||
+    producto.unit_sale ||
+    producto.sales_unit ||
+    producto.saleUnit ||
+    "",
+}));
+
         setCortes(productosConCantidad);
+
         setProductosDisponibles(
           data.map((prod) => ({
             value: prod.product_name,
             label: prod.product_name,
           }))
         );
-      } catch {}
+      } catch (error) {
+        console.error("Error al cargar productos:", error);
+      }
     };
+
     fetchProductos();
   }, [API_URL]);
 
-  // Taras
   useEffect(() => {
     const fetchTares = async () => {
       try {
@@ -151,18 +162,20 @@ const ProductionProcess = () => {
           peso: item.tare_weight,
         }));
         setTares(tarasConIndex);
-      } catch {}
+      } catch (error) {
+        console.error("Error al cargar taras:", error);
+      }
     };
     fetchTares();
   }, [API_URL]);
 
-  // Comprobantes disponibles (sin proceso) con piezas agrupadas
   useEffect(() => {
     const fetchComprobantesSinProcesoConTipo = async () => {
       try {
         const res = await fetch(`${API_URL}/allproducts`);
         const data = await res.json();
         const sinProceso = data.filter((p) => !p.production_process);
+
         const sinProcesoConTipo = await Promise.all(
           sinProceso.map(async (comp) => {
             try {
@@ -170,22 +183,34 @@ const ProductionProcess = () => {
                 `${API_URL}/bill-details-readonly/${comp.id}`
               );
               const detalleData = await resDetalle.json();
+
               const piezasAgrupadas = Array.isArray(detalleData)
                 ? detalleData.reduce((acc, d) => {
                     const tipo = d.type?.trim();
-                    acc[tipo] = (acc[tipo] || 0) + Number(d.quantity || 0);
+                    const qty = Number(d.quantity || 0);
+                    if (!tipo || qty <= 0) return acc;
+                    acc[tipo] = (acc[tipo] || 0) + qty;
                     return acc;
                   }, {})
                 : {};
+
               return { ...comp, piezasAgrupadas: piezasAgrupadas || {} };
             } catch {
               return { ...comp, piezasAgrupadas: {} };
             }
           })
         );
-        setComprobantesDisponibles(sinProcesoConTipo);
-      } catch {}
+
+        setComprobantesDisponibles(
+          (sinProcesoConTipo || []).filter(
+            (c) => Object.keys(c.piezasAgrupadas || {}).length > 0
+          )
+        );
+      } catch (error) {
+        console.error("Error al cargar comprobantes:", error);
+      }
     };
+
     fetchComprobantesSinProcesoConTipo();
   }, [API_URL]);
 
@@ -204,6 +229,7 @@ const ProductionProcess = () => {
       const res = await fetch(url);
       if (!res.ok) throw new Error(`Status ${res.status}`);
       const data = await res.json();
+
       return data.map((sub) => ({
         nombre: sub.nombre,
         cantidadTotal: sub.cantidadPorUnidad * cantidad,
@@ -216,17 +242,18 @@ const ProductionProcess = () => {
     }
   };
 
-  // ---------- PRECARGA PARA EDICIÓN ----------
   useEffect(() => {
     if (!isEdit) return;
+
     const precargar = async () => {
       try {
-        // Cortes guardados para el processParam
         const resProc = await fetch(`${API_URL}/all-process-products`);
         const all = await resProc.json();
+
         const rows = (Array.isArray(all) ? all : []).filter(
           (r) => String(r.process_number) === String(processParam)
         );
+
         const mapeados = rows.map((r) => ({
           tipo: r.type || "",
           promedio: Number(r.average || 0),
@@ -238,9 +265,9 @@ const ProductionProcess = () => {
               Number(r.gross_weight || 0) - Number(r.tares || 0)
           ),
         }));
+
         setCortesAgregados(mapeados);
 
-        // Subproducción del proceso
         try {
           const resSub = await fetch(
             `${API_URL}/productionprocess-subproduction?process_number=${processParam}`
@@ -250,16 +277,17 @@ const ProductionProcess = () => {
             const mapped = (Array.isArray(subRows) ? subRows : []).map((s) => ({
               producto: s.cut_name,
               cantidad: Number(s.quantity || 0),
+              weight: Number(s.weight || 0),
               subproductos: [],
             }));
             setProductosSinRemito(mapped);
           }
         } catch {}
 
-        // Bills asociados al proceso
         try {
           const resPN = await fetch(`${API_URL}/all-process-number`);
           const list = await resPN.json();
+
           const billIds = (Array.isArray(list) ? list : [])
             .filter((x) => String(x.process_number) === String(processParam))
             .map((x) => x.bill_id);
@@ -269,14 +297,17 @@ const ProductionProcess = () => {
               try {
                 const d = await fetch(`${API_URL}/bill-details/${bid}`);
                 const detalles = await d.json();
+
                 const resInfo = await fetch(`${API_URL}/allproducts`);
                 const allProd = await resInfo.json();
                 const remito = allProd.find((p) => p.id === Number(bid));
+
                 let subs = [];
                 for (const det of detalles) {
                   const sps = await fetchSubproductos(det.type, det.quantity);
                   subs = subs.concat(sps);
                 }
+
                 return { id: bid, remito, detalles, subproductos: subs };
               } catch {
                 return {
@@ -288,15 +319,22 @@ const ProductionProcess = () => {
               }
             })
           );
+
           setComprobantesAgregados(agregados);
+          setMostrarSeccionComprobantes(true);
         } catch {}
       } catch (e) {
         console.error("Precarga edición error:", e);
         Swal.fire("Error", "No se pudo cargar el proceso para edición.", "error");
       }
     };
+
     precargar();
   }, [isEdit, processParam, API_URL]);
+
+  useEffect(() => {
+    if (comprobantesAgregados.length > 0) setMostrarSeccionComprobantes(true);
+  }, [comprobantesAgregados.length]);
 
   const handleAgregarComprobante = async (idSel) => {
     if (!idSel) {
@@ -307,35 +345,58 @@ const ProductionProcess = () => {
       );
       return;
     }
-    if (comprobantesAgregados.some((c) => c.id === idSel)) {
+
+    if (comprobantesAgregados.some((c) => Number(c.id) === Number(idSel))) {
       Swal.fire("Atención", "Este comprobante ya fue agregado.", "warning");
       return;
     }
+
     try {
-      const response = await fetch(`${API_URL}/bill-details/${idSel}`);
-      const detalles = await response.json();
-      if (!detalles || detalles.length === 0) {
+      const response = await fetch(`${API_URL}/bill-details-readonly/${idSel}`);
+      const detallesRaw = await response.json();
+
+      const detalles = Array.isArray(detallesRaw)
+        ? detallesRaw
+            .map((d) => ({
+              ...d,
+              type: String(d.type || "").trim(),
+              quantity: Number(d.quantity || 0),
+            }))
+            .filter((d) => d.type && d.quantity > 0)
+        : [];
+
+      if (detalles.length === 0) {
         Swal.fire(
-          "Error",
-          "No se encontró detalle para ese comprobante.",
-          "error"
+          "Atención",
+          "Ese comprobante no tiene cortes disponibles (no tiene detalle o ya fue enviado a cámara).",
+          "warning"
         );
         return;
       }
+
       const resInfo = await fetch(`${API_URL}/allproducts`);
       const allProducts = await resInfo.json();
       const remito = allProducts.find((p) => p.id === Number(idSel));
+
       let subproductosTotales = [];
       for (const detalle of detalles) {
         const subs = await fetchSubproductos(detalle.type, detalle.quantity);
         subproductosTotales = subproductosTotales.concat(subs);
       }
+
       setComprobantesAgregados((prev) => [
         ...prev,
-        { id: idSel, remito, detalles, subproductos: subproductosTotales },
+        {
+          id: Number(idSel),
+          remito,
+          detalles,
+          subproductos: subproductosTotales,
+        },
       ]);
+
       setComprobanteSeleccionado("");
       setSubproductosEsperados([]);
+      setMostrarSeccionComprobantes(true);
     } catch {
       Swal.fire("Error", "No se pudo agregar el comprobante.", "error");
     }
@@ -355,20 +416,22 @@ const ProductionProcess = () => {
     return acumulado;
   };
 
-  // Suma de CORTES DE ENTRADA = Remitos + subproducción de cortes principales
   const cortesEntradaConSubproduccion = () => {
     const base = cortesTotales();
+
     (productosSinRemito || []).forEach((p) => {
       const nombre = (p?.producto || "").trim();
       const cant = Number(p?.cantidad || 0);
       if (!nombre || !cant) return;
       base[nombre] = (base[nombre] || 0) + cant;
     });
+
     return base;
   };
 
   const subproductosTotales = () => {
     const acumulado = {};
+
     comprobantesAgregados.forEach(({ subproductos }) => {
       subproductos.forEach(
         ({ nombre, cantidadTotal, cantidadPorUnidad, unit }) => {
@@ -383,6 +446,7 @@ const ProductionProcess = () => {
         }
       );
     });
+
     return acumulado;
   };
 
@@ -390,51 +454,87 @@ const ProductionProcess = () => {
     ...prod,
     subproductosAgrupados: Object.entries(
       (prod.subproductos || []).reduce((acc, s) => {
-        if (!acc[s.nombre])
+        if (!acc[s.nombre]) {
           acc[s.nombre] = {
             cantidadTotal: 0,
             cantidadPorUnidad: s.cantidadPorUnidad,
             unit: s.unit || "unidad",
           };
+        }
         acc[s.nombre].cantidadTotal += s.cantidadTotal;
         return acc;
       }, {})
     ),
   }));
 
-  const cortesAgrupados = Object.entries(cortesTotales());
   const subproductosAgrupadosComprobantes = Object.entries(subproductosTotales());
   const subproductosAgrupadosSinRemito =
     productosSinRemitoAgrupados.flatMap((prod) => prod.subproductosAgrupados);
 
   const subproductosCombinados = {};
-  [...subproductosAgrupadosComprobantes, ...subproductosAgrupadosSinRemito].forEach(
-    ([nombre, data]) => {
-      if (!subproductosCombinados[nombre]) {
-        subproductosCombinados[nombre] = {
-          cantidadTotal: 0,
-          cantidadPorUnidad: data.cantidadPorUnidad,
-          unit: data.unit || "unidad",
-        };
-      }
-      subproductosCombinados[nombre].cantidadTotal += data.cantidadTotal;
-    }
-  );
 
-  // === Helpers para unidad del subproducto seleccionado ===
+  [
+    ...subproductosAgrupadosComprobantes,
+    ...subproductosAgrupadosSinRemito,
+  ].forEach(([nombre, data]) => {
+    if (!subproductosCombinados[nombre]) {
+      subproductosCombinados[nombre] = {
+        cantidadTotal: 0,
+        cantidadPorUnidad: data.cantidadPorUnidad,
+        unit: data.unit || "unidad",
+      };
+    }
+    subproductosCombinados[nombre].cantidadTotal += data.cantidadTotal;
+  });
+
+  const getUnidadProducto = (tipo) => {
+    if (!tipo) return null;
+
+    const producto = cortes.find(
+      (item) =>
+        String(item.nombre || "").trim().toLowerCase() ===
+        String(tipo || "").trim().toLowerCase()
+    );
+
+    return producto?.unidadVenta || null;
+  };
+
   const getUnidadPorTipo = (tipo) => {
     if (!tipo) return null;
-    const data = subproductosCombinados[tipo];
+
+    const key = Object.keys(subproductosCombinados).find(
+      (k) =>
+        String(k || "").trim().toLowerCase() ===
+        String(tipo || "").trim().toLowerCase()
+    );
+
+    if (!key) return null;
+    const data = subproductosCombinados[key];
     return data?.unit || null;
   };
 
   const isTipoEnKg = (tipo) => {
-    const u = getUnidadPorTipo((tipo || "").trim());
-    if (!u) return false;
-    return String(u).toLowerCase() === "kg";
+    if (!tipo) return false;
+
+    const unidadProducto = getUnidadProducto(tipo);
+    if (
+      unidadProducto &&
+      String(unidadProducto).trim().toLowerCase() === "kg"
+    ) {
+      return true;
+    }
+
+    const unidadSubproducto = getUnidadPorTipo(tipo);
+    if (
+      unidadSubproducto &&
+      String(unidadSubproducto).trim().toLowerCase() === "kg"
+    ) {
+      return true;
+    }
+
+    return false;
   };
 
-  // Si el tipo es en kg, mantener cantidad = 0 y promedio = 0 en el formulario
   useEffect(() => {
     if (
       isTipoEnKg(formData.tipo) &&
@@ -448,7 +548,6 @@ const ProductionProcess = () => {
     }
   }, [formData.tipo, formData.cantidad, formData.promedio]);
 
-  // Cuando el tipo pasa a uno cuya unidad es kg, mostrar SweetAlert
   useEffect(() => {
     const tipoActual = (formData.tipo || "").trim();
     const tipoAnterior = (tipoAnteriorRef.current || "").trim();
@@ -457,7 +556,7 @@ const ProductionProcess = () => {
       Swal.fire({
         icon: "info",
         title: "Cantidad bloqueada",
-        text: "Para este subproducto la cantidad se controla solo por kilos. El campo CANTIDAD queda bloqueado y se usará el peso neto.",
+        text: "Para este producto o subproducto la cantidad se controla solo por kilos. El campo CANTIDAD queda bloqueado y se usará el peso neto.",
         confirmButtonText: "Entendido",
       });
     }
@@ -490,21 +589,20 @@ const ProductionProcess = () => {
       return;
     }
 
-    const pesoNeto = +(Number(formData.pesoBruto) - Number(formData.tara)).toFixed(
-      2
-    );
+    const pesoNeto = +(
+      Number(formData.pesoBruto) - Number(formData.tara)
+    ).toFixed(2);
 
-    // Para subproductos en kg, usamos los kilos netos como "cantidad lógica"
     const aAgregar = esKg ? pesoNeto : Number(formData.cantidad);
 
-    // Para kg no tiene sentido el promedio por unidad ⇒ 0
-    const promedio = !esKg && aAgregar > 0 ? +(pesoNeto / aAgregar).toFixed(2) : 0;
+    const promedio =
+      !esKg && aAgregar > 0 ? +(pesoNeto / aAgregar).toFixed(2) : 0;
 
     const nuevoCorte = {
       ...formData,
-      cantidad: esKg ? 0 : Number(formData.cantidad), // en kg se guarda cantidad = 0
+      cantidad: esKg ? 0 : Number(formData.cantidad),
       pesoNeto,
-      promedio, // en kg queda 0
+      promedio,
     };
 
     setCortesAgregados((prev) => [...prev, nuevoCorte]);
@@ -537,31 +635,48 @@ const ProductionProcess = () => {
   const handleAgregarProductoSinRemito = async () => {
     const nombre = productoSinRemito?.value;
     const nuevaCantidad = parseInt(cantidadSinRemito, 10);
-    if (!nombre || !nuevaCantidad || nuevaCantidad <= 0) {
-      Swal.fire(
-        "Atención",
-        "Debe seleccionar un producto y una cantidad válida",
-        "warning"
-      );
+    const nuevoPeso = parseFloat(pesoSinRemito || 0);
+
+    if (!nombre || (!nuevaCantidad && !nuevoPeso)) {
+      Swal.fire("Atención", "Debe ingresar cantidad o peso", "warning");
       return;
     }
+
     const current = Array.isArray(productosSinRemito) ? productosSinRemito : [];
     const idx = current.findIndex((p) => p.producto === nombre);
+
     if (idx !== -1) {
-      const totalCantidad = current[idx].cantidad + nuevaCantidad;
+      const totalCantidad = current[idx].cantidad + (nuevaCantidad || 0);
+      const totalPeso = Number(current[idx].weight || 0) + nuevoPeso;
+
       const subproductos = await fetchSubproductos(nombre, totalCantidad);
+
       const copia = [...current];
-      copia[idx] = { producto: nombre, cantidad: totalCantidad, subproductos };
+      copia[idx] = {
+        producto: nombre,
+        cantidad: totalCantidad,
+        weight: totalPeso,
+        subproductos,
+      };
+
       setProductosSinRemito(copia);
     } else {
-      const subproductos = await fetchSubproductos(nombre, nuevaCantidad);
+      const subproductos = await fetchSubproductos(nombre, nuevaCantidad || 0);
+
       setProductosSinRemito([
         ...current,
-        { producto: nombre, cantidad: nuevaCantidad, subproductos },
+        {
+          producto: nombre,
+          cantidad: nuevaCantidad || 0,
+          weight: nuevoPeso,
+          subproductos,
+        },
       ]);
     }
+
     setProductoSinRemito(null);
     setCantidadSinRemito("");
+    setPesoSinRemito("");
   };
 
   const eliminarProductoSinRemito = (index) => {
@@ -570,23 +685,51 @@ const ProductionProcess = () => {
     );
   };
 
+  const pedirComprobantesAlFinal = async () => {
+    setMostrarSeccionComprobantes(true);
+
+    setTimeout(() => {
+      comprobantesSectionRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 50);
+
+    await Swal.fire({
+      icon: "info",
+      title: "Falta una entrada al proceso",
+      text: "Para guardar, tenés que agregar al menos 1 comprobante o cargar subproducción.",
+      confirmButtonText: "Entendido",
+    });
+  };
+
   const handleGuardar = async () => {
     if (cortesAgregados.length === 0 && productosSinRemito.length === 0) {
       Swal.fire("Aviso", "No hay datos para guardar.", "info");
       return;
     }
 
+    const hayComprobantes = comprobantesAgregados.length > 0;
+    const haySubproduccion =
+      Array.isArray(productosSinRemito) &&
+      productosSinRemito.some(
+        (p) => Number(p.cantidad || 0) > 0 || Number(p.weight || 0) > 0
+      );
+
+    if (!hayComprobantes && !haySubproduccion) {
+      await pedirComprobantesAlFinal();
+      return;
+    }
+
     try {
-      let bill_ids = comprobantesAgregados.map((comp) => Number(comp.id));
-      if (bill_ids.length === 0 && productosSinRemito.length > 0) {
-        bill_ids = [0];
-      }
+      const bill_ids = comprobantesAgregados.map((comp) => Number(comp.id));
 
       const cortesPayload = cortesAgregados.map((corte) => {
         const esKgLocal = isTipoEnKg(corte.tipo);
         const neto = Number(
           (Number(corte.pesoBruto || 0) - Number(corte.tara || 0)).toFixed(2)
         );
+
         return {
           type: corte.tipo?.trim(),
           average: esKgLocal ? 0 : Number(corte.promedio),
@@ -599,13 +742,13 @@ const ProductionProcess = () => {
 
       const subproduction = (Array.isArray(productosSinRemito)
         ? productosSinRemito
-        : []
-      )
+        : [])
         .map((p) => ({
           cut_name: (p.producto || "").trim(),
           quantity: Number(p.cantidad || 0),
+          weight: Number(p.weight || 0),
         }))
-        .filter((r) => r.cut_name && r.quantity > 0);
+        .filter((r) => r.cut_name && (r.quantity > 0 || r.weight > 0));
 
       if (isEdit) {
         const putRes = await fetch(`${API_URL}/process/${processParam}`, {
@@ -658,8 +801,10 @@ const ProductionProcess = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+
     let newValue = parseFloat(value);
     if (name !== "tipo") newValue = isNaN(newValue) ? "" : Math.abs(newValue);
+
     setFormData((prev) => ({
       ...prev,
       [name]: name === "tipo" ? value : newValue,
@@ -669,6 +814,7 @@ const ProductionProcess = () => {
   const calcularPromedio = () => {
     const tipoActual = (formData.tipo || "").trim();
     if (isTipoEnKg(tipoActual)) return "0.00";
+
     const pesoNeto = formData.pesoBruto - formData.tara;
     const cantidad = formData.cantidad;
     return cantidad > 0 ? (pesoNeto / cantidad).toFixed(2) : "0.00";
@@ -682,226 +828,247 @@ const ProductionProcess = () => {
           ⬅ Volver
         </button>
       </div>
+
       <div className="pp-main-container">
-        {/* ---------------- SECCIÓN COMPROBANTES ---------------- */}
-        <section className="pp-despostar-section">
-          <h2>
-            {isEdit
-              ? `Editar proceso #${processParam}`
-              : "Buscar y Agregar Comprobante"}
-          </h2>
-          <div
-            className="pp-form-group"
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              alignItems: "end",
-              gap: "10px",
-            }}
-          >
-            <div>
-              <label>N° Comprobante</label>
-              <input
-                type="text"
-                value={comprobanteSeleccionado}
-                onChange={(e) => setComprobanteSeleccionado(e.target.value)}
-                placeholder="Ingrese ID"
-              />
-            </div>
-            <div>
-              <label>O seleccionar disponible</label>
-              <select
-                value={comprobanteSeleccionado}
-                onChange={(e) => setComprobanteSeleccionado(e.target.value)}
-                style={{ height: "45px" }}
-              >
-                <option value="">-- Elegir comprobante --</option>
-                {comprobantesDisponibles.map((comp) => {
-                  const piezas = comp.piezasAgrupadas || {};
-                  const piezaStr = Object.entries(piezas)
-                    .map(([tipo, cant]) => `${tipo}: ${cant}`)
-                    .join(" | ");
-                  return (
-                    <option key={comp.id} value={comp.id}>
-                      {comp.supplier} — {piezaStr} | 🕒{" "}
-                      {formatFecha(comp.updatedAt)}
-                    </option>
-                  );
-                })}
-              </select>
-            </div>
-            <div className="pp-boton-agregar-wrapper">
-              <button
-                type="button"
-                className="pp-btn-agregar"
-                onClick={() => handleAgregarComprobante(comprobanteSeleccionado)}
-              >
-                Agregar Comprobante
-              </button>
-            </div>
-          </div>
+        {(mostrarSeccionComprobantes || comprobantesAgregados.length > 0) && (
+          <section className="pp-despostar-section" ref={comprobantesSectionRef}>
+            <h2>
+              {isEdit
+                ? `Editar proceso #${processParam}`
+                : "Buscar y Agregar Comprobante"}
+            </h2>
 
-          {comprobantesAgregados.length > 0 && (
-            <div style={{ marginTop: "20px" }}>
-              <div style={{ fontWeight: 600, fontSize: 20, marginBottom: 8 }}>
-                Comprobantes agregados
+            {!isEdit && (
+              <div
+                style={{
+                  background: "#f3f7ff",
+                  border: "1px solid #cfe0ff",
+                  padding: "10px 12px",
+                  borderRadius: 10,
+                  marginBottom: 12,
+                  color: "#1f3f7a",
+                  fontWeight: 500,
+                }}
+              >
+                Podés cargar despostes y subproducción primero. Al final, te voy
+                a pedir que agregues al menos 1 comprobante para guardar.
               </div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 20 }}>
-                {comprobantesAgregados.map(({ id: idComp, remito, detalles }) => {
-                  const piezasAgrupadas = detalles.reduce(
-                    (acc, { type, quantity }) => {
-                      const key = type.trim();
-                      acc[key] = (acc[key] || 0) + Number(quantity);
-                      return acc;
-                    },
-                    {}
-                  );
-                  return (
-                    <div
-                      key={idComp}
-                      style={{
-                        border: "1.5px solid #cae1fd",
-                        background: "#fafdff",
-                        borderRadius: 12,
-                        boxShadow: "0 2px 6px #b5dafc3a",
-                        padding: "16px 22px 14px 18px",
-                        minWidth: 240,
-                        maxWidth: 340,
-                        marginBottom: 12,
-                        position: "relative",
-                        fontSize: 16,
-                      }}
-                    >
-                      <button
-                        onClick={() => eliminarComprobante(idComp)}
-                        style={{
-                          position: "absolute",
-                          top: 8,
-                          right: 12,
-                          border: "none",
-                          background: "none",
-                          color: "#cb1111",
-                          fontSize: 20,
-                          cursor: "pointer",
-                          fontWeight: "bold",
-                        }}
-                        title="Eliminar comprobante"
-                      >
-                        ×
-                      </button>
-                      <div style={{ fontWeight: 600, marginBottom: 4 }}>
-                        <span style={{ color: "#155ca4" }}>
-                          📄 {remito?.supplier || "Proveedor Desconocido"}
-                        </span>
-                        <span
-                          style={{
-                            fontWeight: 400,
-                            color: "#777",
-                            marginLeft: 10,
-                          }}
-                        >
-                          ID: {idComp}
-                        </span>
-                      </div>
-                      <div
-                        style={{
-                          margin: "5px 0 0 2px",
-                          color: "#244b79",
-                          fontWeight: 500,
-                        }}
-                      >
-                        <span>Piezas:</span>
-                        <ul
-                          style={{
-                            padding: "0 0 0 16px",
-                            margin: "2px 0 0 0",
-                          }}
-                        >
-                          {Object.entries(piezasAgrupadas).map(
-                            ([tipo, cantidad]) => (
-                              <li key={tipo} style={{ marginBottom: 1 }}>
-                                <span
-                                  style={{
-                                    background: "#e4f2ff",
-                                    borderRadius: 7,
-                                    padding: "2px 7px",
-                                    marginRight: 6,
-                                    color: "#176eb3",
-                                    fontWeight: 500,
-                                    display: "inline-block",
-                                  }}
-                                >
-                                  {tipo}
-                                </span>
-                                <b
-                                  style={{
-                                    color: "#222",
-                                    fontWeight: 600,
-                                  }}
-                                >
-                                  {cantidad}
-                                </b>{" "}
-                                unidad{cantidad > 1 ? "es" : ""}{" "}
-                              </li>
-                            )
-                          )}
-                        </ul>
-                      </div>
-                    </div>
-                  );
-                })}
+            )}
+
+            <div
+              className="pp-form-group"
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                alignItems: "end",
+                gap: "10px",
+              }}
+            >
+              <div>
+                <label>N° Comprobante</label>
+                <input
+                  type="text"
+                  value={comprobanteSeleccionado}
+                  onChange={(e) => setComprobanteSeleccionado(e.target.value)}
+                  placeholder="Ingrese ID"
+                />
               </div>
 
-              <div className="pp-totales-box">
-                <div style={{ marginBottom: 8 }}>
-                  🟦 <b>Cortes totales sumados:</b>
+              <div>
+                <label>O seleccionar disponible</label>
+                <select
+                  value={comprobanteSeleccionado}
+                  onChange={(e) => setComprobanteSeleccionado(e.target.value)}
+                  style={{ height: "45px" }}
+                >
+                  <option value="">-- Elegir comprobante --</option>
+                  {comprobantesDisponibles.map((comp) => {
+                    const piezas = comp.piezasAgrupadas || {};
+                    const piezaStr = Object.entries(piezas)
+                      .map(([tipo, cant]) => `${tipo}: ${cant}`)
+                      .join(" | ");
+
+                    return (
+                      <option key={comp.id} value={comp.id}>
+                        {comp.supplier} — {piezaStr} | 🕒{" "}
+                        {formatFecha(comp.updatedAt)}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+
+              <div className="pp-boton-agregar-wrapper">
+                <button
+                  type="button"
+                  className="pp-btn-agregar"
+                  onClick={() => handleAgregarComprobante(comprobanteSeleccionado)}
+                >
+                  Agregar Comprobante
+                </button>
+              </div>
+            </div>
+
+            {comprobantesAgregados.length > 0 && (
+              <div style={{ marginTop: "20px" }}>
+                <div style={{ fontWeight: 600, fontSize: 20, marginBottom: 8 }}>
+                  Comprobantes agregados
                 </div>
-                {Object.entries(cortesEntradaConSubproduccion()).length ? (
+
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 20 }}>
+                  {comprobantesAgregados.map(({ id: idComp, remito, detalles }) => {
+                    const piezasAgrupadas = detalles.reduce(
+                      (acc, { type, quantity }) => {
+                        const key = type.trim();
+                        acc[key] = (acc[key] || 0) + Number(quantity);
+                        return acc;
+                      },
+                      {}
+                    );
+
+                    return (
+                      <div
+                        key={idComp}
+                        style={{
+                          border: "1.5px solid #cae1fd",
+                          background: "#fafdff",
+                          borderRadius: 12,
+                          boxShadow: "0 2px 6px #b5dafc3a",
+                          padding: "16px 22px 14px 18px",
+                          minWidth: 240,
+                          maxWidth: 340,
+                          marginBottom: 12,
+                          position: "relative",
+                          fontSize: 16,
+                        }}
+                      >
+                        <button
+                          onClick={() => eliminarComprobante(idComp)}
+                          style={{
+                            position: "absolute",
+                            top: 8,
+                            right: 12,
+                            border: "none",
+                            background: "none",
+                            color: "#cb1111",
+                            fontSize: 20,
+                            cursor: "pointer",
+                            fontWeight: "bold",
+                          }}
+                          title="Eliminar comprobante"
+                        >
+                          ×
+                        </button>
+
+                        <div style={{ fontWeight: 600, marginBottom: 4 }}>
+                          <span style={{ color: "#155ca4" }}>
+                            📄 {remito?.supplier || "Proveedor Desconocido"}
+                          </span>
+                          <span
+                            style={{
+                              fontWeight: 400,
+                              color: "#777",
+                              marginLeft: 10,
+                            }}
+                          >
+                            ID: {idComp}
+                          </span>
+                        </div>
+
+                        <div
+                          style={{
+                            margin: "5px 0 0 2px",
+                            color: "#244b79",
+                            fontWeight: 500,
+                          }}
+                        >
+                          <span>Piezas:</span>
+                          <ul
+                            style={{
+                              padding: "0 0 0 16px",
+                              margin: "2px 0 0 0",
+                            }}
+                          >
+                            {Object.entries(piezasAgrupadas).map(
+                              ([tipo, cantidad]) => (
+                                <li key={tipo} style={{ marginBottom: 1 }}>
+                                  <span
+                                    style={{
+                                      background: "#e4f2ff",
+                                      borderRadius: 7,
+                                      padding: "2px 7px",
+                                      marginRight: 6,
+                                      color: "#176eb3",
+                                      fontWeight: 500,
+                                      display: "inline-block",
+                                    }}
+                                  >
+                                    {tipo}
+                                  </span>
+                                  <b style={{ color: "#222", fontWeight: 600 }}>
+                                    {cantidad}
+                                  </b>{" "}
+                                  unidad{cantidad > 1 ? "es" : ""}
+                                </li>
+                              )
+                            )}
+                          </ul>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="pp-totales-box">
+                  <div style={{ marginBottom: 8 }}>
+                    🟦 <b>Cortes totales sumados:</b>
+                  </div>
+                  {Object.entries(cortesEntradaConSubproduccion()).length ? (
+                    <ul>
+                      {Object.entries(cortesEntradaConSubproduccion()).map(
+                        ([tipo, cantidad]) => (
+                          <li key={tipo}>
+                            <span className="pp-tag-corte">{tipo}</span> —{" "}
+                            {cantidad} unidades
+                          </li>
+                        )
+                      )}
+                    </ul>
+                  ) : (
+                    <div style={{ color: "#666" }}>Sin piezas cargadas.</div>
+                  )}
+                </div>
+
+                <div className="pp-totales-box">
+                  <div style={{ marginBottom: 8 }}>
+                    🟩 <b>Subproductos totales sumados:</b>
+                  </div>
                   <ul>
-                    {Object.entries(cortesEntradaConSubproduccion()).map(
-                      ([tipo, cantidad]) => (
-                        <li key={tipo}>
-                          <span className="pp-tag-corte">{tipo}</span> —{" "}
-                          {cantidad} unidades
+                    {Object.entries(subproductosCombinados).map(
+                      ([nombre, { cantidadTotal, cantidadPorUnidad, unit }]) => (
+                        <li key={nombre}>
+                          <span className="pp-tag-corte">{nombre}</span>
+                          {" — "}
+                          {cantidadTotal} {labelUnidad(unit)}
+                          <span
+                            style={{
+                              fontSize: "0.95em",
+                              color: "#444",
+                              marginLeft: 4,
+                            }}
+                          >
+                            ({cantidadPorUnidad} {labelUnidad(unit)} por pieza)
+                          </span>
                         </li>
                       )
                     )}
                   </ul>
-                ) : (
-                  <div style={{ color: "#666" }}>Sin piezas cargadas.</div>
-                )}
-              </div>
-
-              <div className="pp-totales-box">
-                <div style={{ marginBottom: 8 }}>
-                  🟩 <b>Subproductos totales sumados:</b>
                 </div>
-                <ul>
-                  {Object.entries(subproductosCombinados).map(
-                    ([nombre, { cantidadTotal, cantidadPorUnidad, unit }]) => (
-                      <li key={nombre}>
-                        <span className="pp-tag-corte">{nombre}</span>
-                        {" — "}
-                        {cantidadTotal} {labelUnidad(unit)}
-                        <span
-                          style={{
-                            fontSize: "0.95em",
-                            color: "#444",
-                            marginLeft: 4,
-                          }}
-                        >
-                          ({cantidadPorUnidad} {labelUnidad(unit)} por pieza)
-                        </span>
-                      </li>
-                    )
-                  )}
-                </ul>
               </div>
-            </div>
-          )}
-        </section>
+            )}
+          </section>
+        )}
 
-        {/* ---------------- SECCIÓN SUBPRODUCCIÓN ---------------- */}
         <section className="pp-despostar-section">
           <h2>
             <label
@@ -946,6 +1113,7 @@ const ProductionProcess = () => {
                     placeholder="Seleccionar producto..."
                   />
                 </div>
+
                 <div className="pp-field pp-small">
                   <label>Cantidad</label>
                   <input
@@ -958,6 +1126,18 @@ const ProductionProcess = () => {
                     className="no-spin"
                   />
                 </div>
+
+                <div className="pp-field pp-small">
+                  <label>Peso (kg)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={pesoSinRemito}
+                    onChange={(e) => setPesoSinRemito(e.target.value)}
+                    className="no-spin"
+                  />
+                </div>
+
                 <div className="pp-field pp-button">
                   <button
                     className="pp-btn-agregar"
@@ -982,7 +1162,8 @@ const ProductionProcess = () => {
                             <strong>🐄 {prod.producto}</strong>
                             <div className="pp-bloque-actions">
                               <span className="pp-chip-cantidad">
-                                Cantidad: {prod.cantidad}
+                                Cantidad: {prod.cantidad} | Peso:{" "}
+                                {Number(prod.weight || 0).toFixed(2)} kg
                               </span>
                               <button
                                 className="pp-btn-eliminar"
@@ -993,6 +1174,7 @@ const ProductionProcess = () => {
                               </button>
                             </div>
                           </div>
+
                           <ul
                             className="subproductos-list"
                             style={{ marginTop: "6px" }}
@@ -1023,9 +1205,9 @@ const ProductionProcess = () => {
           )}
         </section>
 
-        {/* ---------------- SECCIÓN PROCESO PRODUCTIVO ---------------- */}
         <section className="pp-cortes-section">
           <h1>Proceso Productivo</h1>
+
           <div className="pp-content-wrapper">
             <div className="pp-formulario-corte">
               <div className="pp-form-group pp-formulario-corte-wrapper">
@@ -1052,8 +1234,13 @@ const ProductionProcess = () => {
                     isClearable
                   />
                 </div>
+
                 <div>
-                  <label>CANTIDAD</label>
+                  <label>
+                    {isTipoEnKg(formData.tipo)
+                      ? "CANTIDAD (BLOQUEADA POR KG)"
+                      : "CANTIDAD"}
+                  </label>
                   <input
                     type="number"
                     name="cantidad"
@@ -1063,8 +1250,17 @@ const ProductionProcess = () => {
                     required={!isTipoEnKg(formData.tipo)}
                     className="no-spin"
                     disabled={isTipoEnKg(formData.tipo)}
+                    style={{
+                      backgroundColor: isTipoEnKg(formData.tipo)
+                        ? "#e9ecef"
+                        : "",
+                      cursor: isTipoEnKg(formData.tipo)
+                        ? "not-allowed"
+                        : "text",
+                    }}
                   />
                 </div>
+
                 <div>
                   <label>PESO BRUTO</label>
                   <input
@@ -1077,6 +1273,7 @@ const ProductionProcess = () => {
                     className="no-spin"
                   />
                 </div>
+
                 <div>
                   <label>TARA</label>
                   <select
@@ -1086,6 +1283,7 @@ const ProductionProcess = () => {
                       const selected = tares.find(
                         (t) => t.id === parseInt(e.target.value)
                       );
+
                       setTaraSeleccionadaId(e.target.value);
                       setFormData((prev) => ({
                         ...prev,
@@ -1102,6 +1300,7 @@ const ProductionProcess = () => {
                     ))}
                   </select>
                 </div>
+
                 <div>
                   <label>PESO NETO</label>
                   <input
@@ -1111,10 +1310,12 @@ const ProductionProcess = () => {
                     className="no-spin"
                   />
                 </div>
+
                 <div>
                   <label>PROMEDIO</label>
                   <input type="text" value={calcularPromedio()} disabled />
                 </div>
+
                 <div className="pp-boton-agregar-wrapper">
                   <button className="pp-btn-agregar" onClick={agregarCorte}>
                     Agregar
@@ -1146,6 +1347,7 @@ const ProductionProcess = () => {
                     <strong>ACCIONES</strong>
                   </div>
                 </div>
+
                 {cortesAgregados.map((corte, index) => (
                   <div key={index} className="pp-corte-mostrado">
                     <div>{corte.tipo}</div>
@@ -1169,13 +1371,37 @@ const ProductionProcess = () => {
               <div className="pp-total-peso">
                 <strong>Total Peso Neto:</strong>{" "}
                 {cortesAgregados
-                  .reduce(
-                    (acc, item) => acc + (item.pesoBruto - item.tara),
-                    0
-                  )
+                  .reduce((acc, item) => acc + (item.pesoBruto - item.tara), 0)
                   .toFixed(2)}{" "}
                 kg
               </div>
+
+              {!isEdit &&
+                comprobantesAgregados.length === 0 &&
+                !(
+                  Array.isArray(productosSinRemito) &&
+                  productosSinRemito.some(
+                    (p) =>
+                      Number(p.cantidad || 0) > 0 || Number(p.weight || 0) > 0
+                  )
+                ) && (
+                  <button
+                    type="button"
+                    className="pp-btn-agregar"
+                    style={{ marginBottom: 10 }}
+                    onClick={() => {
+                      setMostrarSeccionComprobantes(true);
+                      setTimeout(() => {
+                        comprobantesSectionRef.current?.scrollIntoView({
+                          behavior: "smooth",
+                          block: "start",
+                        });
+                      }, 50);
+                    }}
+                  >
+                    Ir a comprobantes
+                  </button>
+                )}
 
               <button className="pp-btn-guardar" onClick={handleGuardar}>
                 {isEdit ? "Guardar cambios" : "Guardar y terminar carga"}

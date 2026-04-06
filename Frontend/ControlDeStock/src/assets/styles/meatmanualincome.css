@@ -137,7 +137,7 @@ h2 {
 
 .corte-mostrado {
   display: grid;
-  grid-template-columns: repeat(9, 1fr);
+  grid-template-columns: 2.2fr 1fr 2fr 0.7fr 0.7fr 1fr 1fr 1.4fr 0.9fr 0.6fr;
   align-items: center;
   padding: 12px;
   border-radius: 10px;
@@ -188,7 +188,7 @@ h2 {
   font-weight: bold;
   border-bottom: 2px solid #ccc;
   display: grid;
-  grid-template-columns: repeat(9, 1fr);
+  grid-template-columns: 2.2fr 1fr 2fr 0.7fr 0.7fr 1fr 1fr 1.4fr 0.9fr 0.6fr;
   align-items: center;
   padding: 12px;
   border-radius: 10px;
@@ -366,4 +366,154 @@ textarea {
     align-items: flex-start;
     gap: 12px;
   }
+}
+/* Columna código único */
+.dato-unique {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  letter-spacing: 0.2px;
+}
+/* Pagination (Anterior / Siguiente) */
+.pagination-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.btn-pagination {
+  padding: 8px 18px;
+  border-radius: 8px;
+  border: 1px solid #0d6efd;
+  background-color: #0d6efd;
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 110px;
+}
+
+.btn-pagination:hover:not(:disabled) {
+  background-color: #0b5ed7;
+  border-color: #0b5ed7;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(13, 110, 253, 0.25);
+}
+
+.btn-pagination:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(13, 110, 253, 0.25);
+}
+
+.btn-pagination:disabled {
+  background-color: #e9ecef;
+  border-color: #ced4da;
+  color: #6c757d;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Variante secundaria (para Anterior) */
+.btn-pagination.secondary {
+  background-color: #f8f9fa;
+  color: #0d6efd;
+}
+
+.btn-pagination.secondary:hover:not(:disabled) {
+  background-color: #e9f0ff;
+}
+
+
+/* Espaciado entre paginación y botones de resumen */
+.pagination-buttons {
+  margin-bottom: 24px;
+}
+
+.resumen-buttons {
+  margin-top: 12px;
+}
+
+/* Botón acción extra (Cámara frigorífica) */
+.btn-action-secondary {
+  padding: 8px 18px;
+  border-radius: 8px;
+  border: 1px solid #198754;
+  background-color: #198754;
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 160px;
+}
+
+.btn-action-secondary:hover:not(:disabled) {
+  background-color: #157347;
+  border-color: #157347;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(25, 135, 84, 0.25);
+}
+
+.btn-action-secondary:disabled {
+  background-color: #e9ecef;
+  border-color: #ced4da;
+  color: #6c757d;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+
+/* Separación entre paginación y botones de resumen */
+.pagination-buttons{
+  margin-bottom: 24px;
+}
+
+.resumen-buttons{
+  margin-top: 12px;
+}
+
+/* Botón "A cámara" por ítem */
+.btn-camara{
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid #198754;
+  background-color: #198754;
+  color: #fff;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.btn-camara:hover:not(:disabled){
+  background-color: #157347;
+  border-color: #157347;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(25, 135, 84, 0.25);
+}
+
+.btn-camara:disabled{
+  background-color: #e9ecef;
+  border-color: #ced4da;
+  color: #6c757d;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+
+/* Checkbox A cámara en cortes */
+.camara-check__label{
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  margin-right: 10px;
+  cursor: pointer;
+}
+
+.camara-check__label input{
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
 }

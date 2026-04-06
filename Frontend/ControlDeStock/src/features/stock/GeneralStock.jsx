@@ -64,8 +64,8 @@ export default function GeneralStock() {
         const j2 = await r2.json();
         const fromApi = Array.isArray(j2)
           ? j2
-              .map((c) => (c?.category_name || "").trim())
-              .filter(Boolean)
+            .map((c) => (c?.category_name || "").trim())
+            .filter(Boolean)
           : [];
         const merged = Array.from(new Set(["Todos", ...fromApi, ...fromRows]));
         setCategories(
@@ -192,6 +192,26 @@ export default function GeneralStock() {
     setAlertFilter("Todos");
     setSearch("");
   };
+  const getStockControlValue = (row) => {
+    const unit =
+      String(
+        row.unit_measure ||
+        row.unit_type ||
+        row.control_stock_by ||
+        ""
+      ).toLowerCase().trim();
+
+    const isKg =
+      unit === "kg" ||
+      unit === "kilo" ||
+      unit === "kilos" ||
+      unit === "kilogramo" ||
+      unit === "kilogramos";
+
+    return isKg
+      ? Number(row.product_total_weight || 0)
+      : Number(row.product_quantity || 0);
+  };
 
   return (
     <div>
@@ -264,24 +284,40 @@ export default function GeneralStock() {
               ) : (
                 filtered.map((r) => {
                   const qty = Number(r.product_quantity || 0);
+                  const kg = Number(r.product_total_weight || 0);
                   const min = Number(r.min_stock || 0);
                   const max = Number(r.max_stock || 0);
+
+                  const usesKg = String(r.unit_type || "").toUpperCase() === "KG";
+                  const controlValue = usesKg ? kg : qty;
+
                   const badgeClass =
-                    qty <= min ? "low-stock" : max && qty >= max ? "high-stock" : "";
+                    controlValue <= min ? "low-stock" : max && controlValue >= max ? "high-stock" : "";
 
                   return (
                     <tr key={`${r.id || r.product_cod || r.product_name}`}>
                       <td>{r.product_cod || r.product_id || "-"}</td>
                       <td>{r.product_name}</td>
-                      <td className={badgeClass}>{fmtInt(qty)}</td>
-                      <td>{fmtDec(r.product_total_weight)}</td>
+
+                      {/* CANTIDAD */}
+                      <td className={!usesKg ? badgeClass : ""}>
+                        {fmtInt(qty)}
+                      </td>
+
+                      {/* KG */}
+                      <td className={usesKg ? badgeClass : ""}>
+                        {fmtDec(r.product_total_weight)}
+                      </td>
+
                       <td>{fmtInt(min)}</td>
                       <td>{fmtInt(max)}</td>
+
                       <td>
                         {r.product_general_category ||
                           r.category_name ||
                           r.product_category || "-"}
                       </td>
+
                       <td>
                         <button className="btn btn-primary" onClick={() => openAdjust(r)}>
                           Ajustar

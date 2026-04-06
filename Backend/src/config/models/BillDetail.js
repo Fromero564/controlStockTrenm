@@ -27,6 +27,11 @@ module.exports = (sequelize, dataTypes) => {
             type: dataTypes.INTEGER,
             allowNull: false
         },
+        unique_code: {
+            type: dataTypes.STRING(50),
+            allowNull: true,
+        },
+
 
         createdAt: dataTypes.DATE,
         updatedAt: dataTypes.DATE

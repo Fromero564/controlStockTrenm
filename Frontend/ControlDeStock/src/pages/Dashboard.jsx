@@ -29,10 +29,7 @@ const Dashboard = () => {
                     <span>Ventas y pedidos</span>
                 </a>
 
-                <a href="/administrative-panel" className="dashboard-card">
-                    <FontAwesomeIcon icon={faChartBar} size="2x" />
-                    <span>Administración y facturación</span>
-                </a>
+              
                    <a href="/administrative-panel" className="dashboard-card">
                     <FontAwesomeIcon icon={faChartBar} size="2x" />
                     <span>Administración y facturación</span>

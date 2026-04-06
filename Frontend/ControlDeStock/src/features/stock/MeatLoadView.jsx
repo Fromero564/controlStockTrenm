@@ -13,6 +13,7 @@ const MeatLoadView = () => {
   const [observacion, setObservacion] = useState(null);
   const [cortesStock, setCortesStock] = useState([]);
   const [otrosProductos, setOtrosProductos] = useState([]);
+  const [cortesCamara, setCortesCamara] = useState([]);
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -22,23 +23,40 @@ const MeatLoadView = () => {
         const data = await r.json();
         setRemito(data);
 
+        // Cortes enviados a cámara
+        try {
+          const camaraRes = await fetch(`${API_URL}/cuts-sent-to-camara/${id}`);
+          if (camaraRes.ok) {
+            const camaraData = await camaraRes.json();
+            setCortesCamara(camaraData.cortes || []);
+          } else {
+            setCortesCamara([]);
+          }
+        } catch (error) {
+          console.error("Error al obtener cortes enviados a cámara:", error);
+          setCortesCamara([]);
+        }
+
         // Si el ingreso fue manual, traemos las filas cargadas manualmente
         if (data?.tipo_ingreso === "manual") {
           const [sRes, oRes] = await Promise.all([
             fetch(`${API_URL}/allProductsStock`),
             fetch(`${API_URL}/all-products-fresh-others`),
           ]);
+
           const [stockData, otrosData] = await Promise.all([
             sRes.json(),
             oRes.json(),
           ]);
 
           const idBill = parseInt(data.internal_number);
+
           setCortesStock(
             (stockData || []).filter(
               (it) => parseInt(it.id_bill_suppliers) === idBill
             )
           );
+
           setOtrosProductos(
             (otrosData || []).filter(
               (it) => parseInt(it.id_bill_suppliers) === idBill
@@ -49,9 +67,11 @@ const MeatLoadView = () => {
         // Observación
         const obsRes = await fetch(`${API_URL}/allObservations`);
         const obsData = await obsRes.json();
+
         const obs = (obsData || []).find(
           (o) => parseInt(o.id) === parseInt(data.internal_number)
         );
+
         setObservacion(obs?.observation || null);
       } catch (e) {
         console.error("Error cargando vista:", e);
@@ -121,9 +141,11 @@ const MeatLoadView = () => {
                       c.peso_romaneo ??
                       c.peso_declarado ??
                       "—";
+
                     const identificador = esManual
                       ? c.numero_tropa ?? c.identification_product ?? "—"
                       : c.identification_product ?? c.numero_tropa ?? "—";
+
                     return (
                       <tr key={c.id}>
                         <td>{c.tipo}</td>
@@ -138,7 +160,7 @@ const MeatLoadView = () => {
               </table>
             </div>
 
-            {/* NUEVO: otros productos / congelados declarados en el comprobante */}
+            {/* Otros productos / congelados declarados en el comprobante */}
             {(remito.congelados || []).length > 0 && (
               <>
                 <h3 className="mlv-subtitle">
@@ -162,6 +184,7 @@ const MeatLoadView = () => {
                           c.weight ??
                           c.peso_declarado ??
                           "—";
+
                         return (
                           <tr key={c.id}>
                             <td>{c.tipo}</td>
@@ -179,7 +202,7 @@ const MeatLoadView = () => {
               </>
             )}
 
-            {/* Cortes ingresados manualmente (MeatManualIncome) */}
+            {/* Cortes ingresados manualmente */}
             {esManual && cortesStock.length > 0 && (
               <>
                 <h3 className="mlv-subtitle">Cortes Ingresados Manualmente</h3>
@@ -218,7 +241,7 @@ const MeatLoadView = () => {
               </>
             )}
 
-            {/* Otros productos manuales (tabla OtherProductManual) */}
+            {/* Otros productos manuales */}
             {otrosProductos.length > 0 && (
               <>
                 <h3 className="mlv-subtitle">
@@ -247,6 +270,70 @@ const MeatLoadView = () => {
                             {p.product_portion || "-"}
                           </td>
                           <td className="mlv-num">{p.decrease}%</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+
+            {/* Cortes enviados a cámara */}
+            {cortesCamara.length > 0 && (
+              <>
+                <h3 className="mlv-subtitle">Cortes enviados a cámara</h3>
+                <div className="mlv-tablewrap">
+                  <table className="mlv-table">
+                    <thead>
+                      <tr>
+                        <th>Nombre</th>
+                        <th className="mlv-num">Cantidad</th>
+                        <th className="mlv-num">Cabezas</th>
+                        <th className="mlv-num">Peso etiqueta</th>
+                        <th className="mlv-num">Peso bruto</th>
+                        <th className="mlv-num">Tara</th>
+                        <th className="mlv-num">Peso neto</th>
+                        <th className="mlv-num">Garrón</th>
+                        <th className="mlv-num">Código único</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {cortesCamara.map((corte) => (
+                        <tr key={corte.id}>
+                          <td>{corte.product_name || corte.products_name || "-"}</td>
+                          <td className="mlv-num">
+                            {corte.quantity ??
+                              corte.products_quantity ??
+                              corte.product_quantity ??
+                              "-"}
+                          </td>
+                          <td className="mlv-num">
+                            {corte.head ?? corte.product_head ?? "-"}
+                          </td>
+                          <td className="mlv-num">
+                            {corte.provider_weight ?? "-"}
+                          </td>
+                          <td className="mlv-num">
+                            {corte.gross_weight ?? "-"}
+                          </td>
+                          <td className="mlv-num">
+                            {corte.tare_weight ??
+                              corte.tare ??
+                              corte.tare_weight ??
+                              "-"}
+                          </td>
+                          <td className="mlv-num">
+                            {corte.net_weight ??
+                              corte.weight ??
+                              corte.romaneo_weight ??
+                              "-"}
+                          </td>
+                          <td className="mlv-num">
+                            {corte.garron ?? corte.products_garron ?? "-"}
+                          </td>
+                          <td className="mlv-num">
+                            {corte.unique_code ?? "-"}
+                          </td>
                         </tr>
                       ))}
                     </tbody>

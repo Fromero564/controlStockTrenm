@@ -21,6 +21,11 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
         defaultValue: 0,
       },
+      weight: {
+        type: DataTypes.DECIMAL(12, 3),
+        allowNull: false,
+        defaultValue: 0,
+      },
       created_at: {
         type: DataTypes.DATE,
         allowNull: false,

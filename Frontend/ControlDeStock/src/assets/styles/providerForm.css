@@ -230,6 +230,13 @@
   color: var(--text);
 }
 
+.provider-form-scope .pill-code {
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .provider-form-scope .pill-danger {
   display: inline-flex;
   align-items: center;
@@ -355,4 +362,17 @@
   .provider-form-scope .totales-linea {
     gap: 8px;
   }
+}
+
+/* ===== Column templates by table type ===== */
+/* Cortes: Producto | Cantidad | Cabezas | Peso | N° Garron/Tropa | Código único | Acción */
+.provider-form-scope .row-header--cortes,
+.provider-form-scope .corte-row--cortes {
+  grid-template-columns: 2fr .9fr .9fr 1.1fr 1.1fr 1.3fr .6fr;
+}
+
+/* Otros productos: Producto | Cantidad | Peso | Código | Código único | Acción */
+.provider-form-scope .row-header--otros,
+.provider-form-scope .corte-row--otros {
+  grid-template-columns: 2fr .9fr 1.1fr 1.1fr 1.3fr .6fr;
 }

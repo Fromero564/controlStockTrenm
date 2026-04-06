@@ -202,12 +202,12 @@ const ProductionProcessDetails = () => {
     const expOut = expectedOutputs[type];   // expectativa si es subproducto de algún ingreso
     const real = realByType[type];
 
-    if ((expIn || expOut) && !real) {
-      return { code: "missing", label: "No se procesó este producto", bg: COLORS.missBg };
+    if (!expIn && !expOut && real) {
+      return { code: "unexpected", label: "❗ Producto no esperado (no pertenece)", bg: COLORS.missBg };
     }
 
-    if (!expIn && !expOut && real) {
-      return { code: "none", label: "", bg: "transparent" };
+    if ((expIn || expOut) && !real) {
+      return { code: "missing", label: "No se procesó este producto", bg: COLORS.missBg };
     }
 
     if (real && (expIn || expOut)) {
@@ -525,7 +525,7 @@ const ProductionProcessDetails = () => {
                             ? COLORS.okBg
                             : status.code === "warn"
                             ? COLORS.warnBg
-                            : status.code === "missing"
+                            : status.code === "missing" || status.code === "unexpected"
                             ? COLORS.missBg
                             : idx % 2
                             ? "#fff"
@@ -558,6 +558,7 @@ const ProductionProcessDetails = () => {
           <span style={badgeStyle(COLORS.okBg)}>✔️ Cantidad/Peso esperado</span>
           <span style={badgeStyle(COLORS.warnBg)}>⚠️ Menos/Cantidad de más • Peso mayor/menor</span>
           <span style={badgeStyle(COLORS.missBg)}>✖️ No se procesó este producto</span>
+          <span style={badgeStyle(COLORS.missBg)}>❗ Producto no esperado (no pertenece)</span>
         </div>
         <p style={{ marginTop: 8, fontSize: 12, color: "#555" }}>
           La coincidencia por peso considera una tolerancia de {WEIGHT_TOLERANCE_KG} kg o {WEIGHT_TOLERANCE_PCT * 100}% del peso esperado (lo que sea mayor).

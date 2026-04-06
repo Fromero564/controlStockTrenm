@@ -18,13 +18,13 @@ const MeatManualIncome = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // 🔹 Lista base de productos (ya procesados con id, nombre, categoría)
+  // Lista base de productos (ya procesados con id, nombre, categoría)
   const [productos, setProductos] = useState([]);
 
   const [saving, setSaving] = useState(false);
   const [cortesAgregados, setCortesAgregados] = useState([]);
   const [tares, setTares] = useState([]);
-  const [tabActiva, setTabActiva] = useState("detallado");
+const [tabActiva, setTabActiva] = useState("detallado");
   const [paginaActual, setPaginaActual] = useState(1);
   const [taraSeleccionadaId, setTaraSeleccionadaId] = useState("");
   const [isEditing, setIsEditing] = useState(false);
@@ -41,6 +41,9 @@ const MeatManualIncome = () => {
     pesoProveedor: 0,
     pesoBruto: 0,
     tara: 0,
+    product_cod: "",
+    product_category: "",
+    unique_code: "",
   });
 
   const [formData, setFormData] = useState({
@@ -88,6 +91,8 @@ const MeatManualIncome = () => {
 
     const nuevo = {
       ...formCongelado,
+            unique_code: formCongelado.unique_code || buildUniqueCode(),
+      tempId: crypto.randomUUID(),
       pesoNeto: formCongelado.pesoBruto - formCongelado.tara,
       remitoId,
       product_portion: formCongelado.lote,
@@ -113,6 +118,9 @@ const MeatManualIncome = () => {
       pesoProveedor: 0,
       pesoBruto: 0,
       tara: 0,
+      product_cod: "",
+      product_category: "",
+      unique_code: "",
     });
   };
 
@@ -136,6 +144,9 @@ const MeatManualIncome = () => {
           cantidad: parseFloat(item.product_quantity) || 0,
           pesoNeto: parseFloat(item.product_net_weight) || 0,
           pesoBruto: parseFloat(item.product_gross_weight) || 0,
+                    tara: parseFloat(item.product_tare ?? item.tare ?? item.tara ?? 0) || 0,
+          tara_id: item.tara_id ?? null,
+          unique_code: item.unique_code ?? item.uniqueCode ?? "",
           decrease: parseFloat(item.decrease) || 0,
         }));
 
@@ -191,7 +202,11 @@ const MeatManualIncome = () => {
           pesoProveedor: parseFloat(item.provider_weight) || 0,
           pesoBruto: parseFloat(item.gross_weight) || 0,
           tara: parseFloat(item.tare) || 0,
+          tara_id: item.tara_id ?? null,
           garron: item.products_garron || "",
+          unique_code: item.unique_code ?? item.uniqueCode ?? "",
+          aCamara: !!(item.aCamara ?? item.a_camara),
+        
           pesoNeto:
             (parseFloat(item.gross_weight) || 0) -
             (parseFloat(item.tare) || 0),
@@ -218,7 +233,6 @@ const MeatManualIncome = () => {
 
     fetchCortesYaCargados();
   }, [data]);
-
   useEffect(() => {
     const pesoNeto = formData.pesoBruto - formData.tara;
     const mermaPorcentaje =
@@ -232,7 +246,7 @@ const MeatManualIncome = () => {
     }));
   }, [formData.pesoProveedor, formData.pesoBruto, formData.tara]);
 
-  // 🔹 Normalizar categoría (sin acentos, minúsculas)
+  // Normalizar categoría (sin acentos, minúsculas)
   const normalizarCategoria = (txt) =>
     (txt || "")
       .toString()
@@ -246,7 +260,7 @@ const MeatManualIncome = () => {
     return c.includes("congelado") || c.includes("otro");
   };
 
-  // 🔹 Cargar productos desde API y preparar lista base
+  // Cargar productos desde API y preparar lista base
   useEffect(() => {
     const fetchProductos = async () => {
       try {
@@ -276,12 +290,12 @@ const MeatManualIncome = () => {
     fetchProductos();
   }, [API_URL]);
 
-  // 🔹 Opciones para select de cortes (NORMALES: excluye congelados/otros)
+  // Opciones para select de cortes (NORMALES: excluye congelados/otros)
   const opcionesProductosCortes = productos.filter(
     (p) => !esCongeladoOuOtro(p.categoria)
   );
 
-  // 🔹 Opciones para select de congelados/otros (solo esas categorías)
+  // Opciones para select de congelados/otros (solo esas categorías)
   const opcionesProductosCongelados = productos.filter((p) =>
     esCongeladoOuOtro(p.categoria)
   );
@@ -340,6 +354,32 @@ const MeatManualIncome = () => {
 
     fetchTares();
   }, []);
+
+  // ✅ Cuando llegan las taras, si los items vienen con el peso de tara (tare) pero sin tara_id,
+  //    “calzamos” el select buscando por el peso.
+  useEffect(() => {
+    if (!tares || tares.length === 0) return;
+
+    const findTaraIdByPeso = (peso) => {
+      const p = Number(peso || 0);
+      if (!p) return null;
+      const found = tares.find((t) => Number(t.peso) === p);
+      return found ? found.id : null;
+    };
+
+    setCortesAgregados((prev) =>
+      prev.map((c) =>
+        c.tara_id ? c : { ...c, tara_id: findTaraIdByPeso(c.tara) }
+      )
+    );
+
+    setCongeladosAgregados((prev) =>
+      prev.map((c) =>
+        c.tara_id ? c : { ...c, tara_id: findTaraIdByPeso(c.tara) }
+      )
+    );
+  }, [tares]);
+
 
   const abrirModalEdicion = () => {
     setModalOpen(true);
@@ -507,6 +547,7 @@ const MeatManualIncome = () => {
           id_bill_suppliers: data.id,
           product_cod: item.cod || null,
           product_category: item.categoria || null,
+          unique_code: item.unique_code || item.uniqueCode || null,
         }));
 
         console.log("Productos que se envian:", payloadCongelados);
@@ -584,6 +625,58 @@ const MeatManualIncome = () => {
     }
   };
 
+
+
+const getRowKey = (row) => row.id ?? row.tempId;
+
+const calcPesoNeto = (pesoBruto, tara) =>
+  (Number(pesoBruto) || 0) - (Number(tara) || 0);
+
+const calcDecrease = (pesoProveedor, pesoNeto) =>
+  Number(pesoProveedor) > 0
+    ? ((Number(pesoProveedor) - Number(pesoNeto)) / Number(pesoProveedor)) * 100
+    : 0;
+
+const updateCorteField = (row, field, value) => {
+  const key = getRowKey(row);
+
+  setCortesAgregados((prev) =>
+    prev.map((c) => {
+      if (getRowKey(c) !== key) return c;
+
+      const next = { ...c, [field]: value };
+
+      if (["pesoBruto", "tara"].includes(field)) {
+        next.pesoNeto = calcPesoNeto(next.pesoBruto, next.tara);
+      }
+
+      return next;
+    })
+  );
+};
+
+const updateCongeladoField = (row, field, value) => {
+  const key = getRowKey(row);
+
+  setCongeladosAgregados((prev) =>
+    prev.map((p) => {
+      if (getRowKey(p) !== key) return p;
+
+      const next = { ...p, [field]: value };
+
+      if (["pesoBruto", "tara"].includes(field)) {
+        next.pesoNeto = calcPesoNeto(next.pesoBruto, next.tara);
+      }
+
+      if (["pesoProveedor", "pesoBruto", "tara"].includes(field)) {
+        next.decrease = calcDecrease(next.pesoProveedor, next.pesoNeto);
+      }
+
+      return next;
+    })
+  );
+};
+
   const agregarCorte = () => {
     if (
       !formData.tipo ||
@@ -597,13 +690,16 @@ const MeatManualIncome = () => {
       return;
     }
 
-    const nuevoCorte = {
-      ...formData,
-      pesoNeto: formData.pesoBruto - formData.tara,
-      remitoId,
-      cod: formData.product_cod || "",
-      categoria: formData.product_category || "",
-    };
+  const nuevoCorte = {
+  ...formData,
+  tempId: crypto.randomUUID(), // ✅ AGREGAR ESTA LINEA
+  unique_code: formData.unique_code || buildUniqueCode(),
+  pesoNeto: formData.pesoBruto - formData.tara,
+  remitoId,
+  cod: formData.product_cod || "",
+  categoria: formData.product_category || "",
+    aCamara: false,
+};
 
     const nuevosCortes = [...cortesAgregados, nuevoCorte];
 
@@ -624,45 +720,44 @@ const MeatManualIncome = () => {
 
     setTaraSeleccionadaId("");
   };
+const eliminarCorte = async (corte) => {
+  const confirm = await Swal.fire({
+    title: "¿Eliminar corte?",
+    text: "Esta acción eliminará el corte y actualizará el stock.",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonText: "Sí, eliminar",
+    cancelButtonText: "Cancelar",
+  });
 
-  const eliminarCorte = async (index) => {
-    const corte = cortesAgregados[index];
+  if (!confirm.isConfirmed) return;
 
-    const confirm = await Swal.fire({
-      title: "¿Eliminar corte?",
-      text: "Esta acción eliminará el corte y actualizará el stock.",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonText: "Sí, eliminar",
-      cancelButtonText: "Cancelar",
-    });
+  try {
+    // Si ya existe en BD, borra en backend
+    if (corte.id) {
+      const res = await fetch(`${API_URL}/provider-item-delete/${corte.id}`, {
+        method: "DELETE",
+      });
 
-    if (!confirm.isConfirmed) return;
-
-    try {
-      if (corte.id) {
-        const res = await fetch(
-          `${API_URL}/provider-item-delete/${corte.id}`,
-          {
-            method: "DELETE",
-          }
-        );
-
-        if (!res.ok) {
-          throw new Error(
-            "No se pudo eliminar el corte de la base de datos."
-          );
-        }
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(txt || "No se pudo eliminar el corte de la base de datos.");
       }
-
-      setCortesAgregados((prev) => prev.filter((_, i) => i !== index));
-
-      Swal.fire("Eliminado", "Corte eliminado con éxito.", "success");
-    } catch (err) {
-      console.error("Error al eliminar de la base de datos:", err);
-      Swal.fire("Error", err.message, "error");
     }
-  };
+
+    // Siempre borra del estado local por id o tempId
+    setCortesAgregados((prev) =>
+      prev.filter((c) =>
+        corte.id ? c.id !== corte.id : c.tempId !== corte.tempId
+      )
+    );
+
+    Swal.fire("Eliminado", "Corte eliminado con éxito.", "success");
+  } catch (err) {
+    console.error("Error al eliminar:", err);
+    Swal.fire("Error", err.message, "error");
+  }
+};
 
   const formatTime = (dateString) => {
     const date = new Date(dateString);
@@ -672,6 +767,43 @@ const MeatManualIncome = () => {
     const date = new Date(dateString);
     return date.toLocaleDateString("es-AR");
   };
+
+  // --- Unique code helpers (para meat_manual_income) ---
+  const pad4 = (v) => String(v ?? "").padStart(4, "0");
+  const fmtYYYYMMDD = (dateLike) => {
+    const d = new Date(dateLike ?? Date.now());
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}${m}${day}`;
+  };
+
+  const getNextSeqFromCodes = (prefix, items) => {
+    const extract = (code) => {
+      if (!code || typeof code !== "string") return null;
+      if (!code.startsWith(prefix)) return null;
+      const last = code.split("-").pop();
+      const n = parseInt(last, 10);
+      return Number.isFinite(n) ? n : null;
+    };
+
+    const max = Math.max(
+      0,
+      ...(items || [])
+        .map((it) => extract(it?.unique_code))
+        .filter((n) => n !== null)
+    );
+    return max + 1;
+  };
+
+  const buildUniqueCode = () => {
+    const internal = data?.internal_number ?? data?.id_bill_suppliers ?? data?.id ?? billSupplierId;
+    const datePart = fmtYYYYMMDD(data?.createdAt ?? data?.updatedAt ?? Date.now());
+    const prefix = `${pad4(internal)}-${datePart}-`;
+    const next = getNextSeqFromCodes(prefix, [...cortesAgregados, ...congeladosAgregados]);
+    return `${prefix}${String(next).padStart(3, "0")}`;
+  };
+
 
   const sinFlecha = {
     DropdownIndicator: () => null,
@@ -743,55 +875,56 @@ const MeatManualIncome = () => {
     handleActualizarDesdeMemoria();
   };
 
-  useEffect(() => {
-    if (cortesAgregados.length > 0) {
-      localStorage.setItem(
-        "cortes_en_edicion",
-        JSON.stringify(cortesAgregados)
+useEffect(() => {
+  if (cortesAgregados.length > 0) {
+    localStorage.setItem(
+      "cortes_en_edicion",
+      JSON.stringify(cortesAgregados)
+    );
+  } else {
+    localStorage.removeItem("cortes_en_edicion");
+  }
+}, [cortesAgregados]);
+
+
+const eliminarCongelado = async (producto) => {
+  const confirmar = await Swal.fire({
+    title: "¿Eliminar producto?",
+    text: "Esta acción eliminará el producto congelado/otro.",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonText: "Sí, eliminar",
+    cancelButtonText: "Cancelar",
+  });
+
+  if (!confirmar.isConfirmed) return;
+
+  try {
+    if (producto.id) {
+      const response = await fetch(
+        `${API_URL}/other-product-delete/${producto.id}`,
+        { method: "DELETE" }
       );
-    }
-  }, [cortesAgregados]);
 
-  const eliminarCongelado = async (index) => {
-    const producto = congeladosAgregados[index];
-
-    const confirmar = await Swal.fire({
-      title: "¿Eliminar producto?",
-      text: "Esta acción eliminará el producto congelado/otro.",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonText: "Sí, eliminar",
-      cancelButtonText: "Cancelar",
-    });
-
-    if (!confirmar.isConfirmed) return;
-
-    try {
-      if (producto.id) {
-        const response = await fetch(
-          `${API_URL}/other-product-delete/${producto.id}`,
-          {
-            method: "DELETE",
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error("No se pudo eliminar el producto congelado.");
-        }
+      if (!response.ok) {
+        const txt = await response.text();
+        throw new Error(txt || "No se pudo eliminar el producto congelado.");
       }
-
-      setCongeladosAgregados((prev) => prev.filter((_, i) => i !== index));
-
-      Swal.fire(
-        "Eliminado",
-        "El producto fue eliminado correctamente.",
-        "success"
-      );
-    } catch (error) {
-      console.error("Error al eliminar congelado:", error);
-      Swal.fire("Error", "No se pudo eliminar el producto.", "error");
     }
-  };
+
+    setCongeladosAgregados((prev) =>
+      prev.filter((p) =>
+        producto.id ? p.id !== producto.id : p.tempId !== producto.tempId
+      )
+    );
+
+    Swal.fire("Eliminado", "El producto fue eliminado correctamente.", "success");
+  } catch (error) {
+    console.error("Error al eliminar congelado:", error);
+    Swal.fire("Error", error.message || "No se pudo eliminar el producto.", "error");
+  }
+};
+
 
   const totalQuantityCongelados = congeladosAgregados.reduce(
     (acc, item) => acc + Number(item.cantidad || 0),
@@ -1065,66 +1198,190 @@ const MeatManualIncome = () => {
             </div>
           </div>
 
-          <button className="btn-agregar" onClick={agregarCorte}>
+          <button type="button" className="btn-agregar" onClick={agregarCorte}>
             Agregar pieza +
           </button>
 
           <div className="cortes-lista">
-            {cortesPaginados.map((corte, index) => (
-              <div
-                key={index + indicePrimerCorte}
-                className="corte-mostrado"
-              >
-                <div>
-                  <p className="dato">{corte.tipo}</p>
-                </div>
-                <div>
-                  <p className="dato">{corte.garron}</p>
-                </div>
-                <div>
-                  <p className="dato">{corte.cabeza}</p>
-                </div>
-                <div>
-                  <p className="dato">{corte.cantidad}</p>
-                </div>
-                <div>
-                  <p className="dato">{corte.pesoProveedor}</p>
-                </div>
-                <div>
-                  <p className="dato">{corte.pesoBruto}</p>
-                </div>
-                <div>
-                  <p className="dato">{corte.tara}</p>
-                </div>
+            {cortesPaginados.map((corte) => (
+  <div key={corte.id ?? corte.tempId} className="corte-mostrado">
+    <div style={{ minWidth: 180 }}>
+      <Select
+        className="custom-select"
+        classNamePrefix="mi-select"
+        options={opcionesProductosCortes}
+        value={
+          opcionesProductosCortes.find((o) => o.value === corte.tipo) ||
+          null
+        }
+        onChange={(selected) => {
+          updateCorteField(corte, "tipo", selected?.value || "");
+          updateCorteField(corte, "product_cod", selected?.id || "");
+          updateCorteField(corte, "product_category", selected?.categoria || "");
+          updateCorteField(corte, "cod", selected?.id || "");
+          updateCorteField(corte, "categoria", selected?.categoria || "");
+        }}
+        placeholder=""
+        isClearable={false}
+        components={{
+          ...sinFlecha,
+          ClearIndicator: SinClearIndicator,
+        }}
+        menuPortalTarget={document.body}
+        styles={{
+          control: (base) => ({
+            ...base,
+            minHeight: "32px",
+            height: "32px",
+          }),
+          valueContainer: (base) => ({
+            ...base,
+            height: "32px",
+            padding: "0 6px",
+          }),
+          indicatorsContainer: (base) => ({
+            ...base,
+            height: "32px",
+          }),
+          menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+        }}
+      />
+    </div>
 
-                <p className="dato">
-                  {(Number(corte.pesoNeto) || 0).toFixed(2)} kg
-                </p>
+    <div>
+      <input
+        className="dato"
+        type="text"
+        value={corte.garron ?? ""}
+        onChange={(e) => updateCorteField(corte, "garron", e.target.value)}      />
+    </div>
+    <div>
+      <input
+        className="dato dato-unique"
+        type="text"
+        value={corte.unique_code ?? ""}
+        readOnly
+        title="Código único"
+      />
+    </div>
 
-                <div>
-                  <button
-                    onClick={() =>
-                      eliminarCorte(index + indicePrimerCorte)
-                    }
-                    className="btn-eliminar"
-                  >
-                    X
-                  </button>
-                </div>
-              </div>
-            ))}
+    <div>
+      <input
+        className="dato"
+        type="number"
+        min="0"
+        max="1"
+        value={Number(corte.cabeza ?? 0)}
+        onChange={(e) =>
+          updateCorteField(
+            corte,
+            "cabeza",
+            Math.abs(parseFloat(e.target.value || 0))
+          )
+        }      />
+    </div>
 
-            <div style={{ marginTop: "1rem", textAlign: "center" }}>
-              <button
+    <div>
+      <input
+        className="dato"
+        type="number"
+        min="0"
+        max="1"
+        value={Number(corte.cantidad ?? 0)}
+        onChange={(e) =>
+          updateCorteField(
+            corte,
+            "cantidad",
+            Math.abs(parseFloat(e.target.value || 0))
+          )
+        }      />
+    </div>
+
+    <div>
+      <input
+        className="dato"
+        type="number"
+        min="0"
+        value={Number(corte.pesoProveedor ?? 0)}
+        onChange={(e) =>
+          updateCorteField(
+            corte,
+            "pesoProveedor",
+            Math.abs(parseFloat(e.target.value || 0))
+          )
+        }      />
+    </div>
+
+    <div>
+      <input
+        className="dato"
+        type="number"
+        min="0"
+        value={Number(corte.pesoBruto ?? 0)}
+        onChange={(e) =>
+          updateCorteField(
+            corte,
+            "pesoBruto",
+            Math.abs(parseFloat(e.target.value || 0))
+          )
+        }      />
+    </div>
+
+    <div>
+      <select
+        className="dato"
+        value={corte.tara_id ?? ""}
+        onChange={(e) => {
+          const taraId = e.target.value ? parseInt(e.target.value) : null;
+          const selected = tares.find((t) => t.id === taraId);
+          updateCorteField(corte, "tara_id", taraId);
+          updateCorteField(corte, "tara", Number(selected?.peso || 0));
+        }}      >
+        <option value="">Seleccionar</option>
+        {tares.map((t) => (
+          <option key={t.id} value={t.id}>
+            {t.nombre} ({t.peso} kg)
+          </option>
+        ))}
+      </select>
+    </div>
+
+    <p className="dato">{(Number(corte.pesoNeto) || 0).toFixed(2)} kg</p>
+
+    <div>
+<label className="camara-check__label">
+        <input
+          type="checkbox"
+          checked={!!corte.aCamara}
+          onChange={(e) => {
+            const checked = e.target.checked;
+            setCortesAgregados((prev) => {
+              const idx = prev.indexOf(corte);
+              if (idx === -1) return prev;
+              const copy = [...prev];
+              copy[idx] = { ...copy[idx], aCamara: checked };
+              return copy;
+            });
+          }}
+        />
+        <span>A cámara</span>
+      </label>
+
+      <button type="button" onClick={() => eliminarCorte(corte)} className="btn-eliminar">
+        X
+      </button>
+    </div>
+  </div>
+))}
+<div className="pagination-buttons">
+              <button className="btn-pagination secondary"
                 onClick={() =>
                   setPaginaActual((prev) => Math.max(prev - 1, 1))
                 }
-                disabled={paginaActual === 1}
-                style={{ marginRight: "1rem" }}
-              >
+                disabled={paginaActual === 1}              >
                 Anterior
               </button>
-              <button
+              <button className="btn-pagination"
                 onClick={() =>
                   setPaginaActual((prev) =>
                     prev * cortesPorPagina < cortesAgregados.length
@@ -1299,74 +1556,173 @@ const MeatManualIncome = () => {
           </button>
 
           <div className="cortes-lista">
-            {congeladosPaginados.map((item, index) => (
-              <div key={index} className="corte-mostrado">
-                <div>
-                  <p className="dato">
-                    {item.product_name || item.tipo}
-                  </p>
-                </div>
-                <div>
-                  <p className="dato">
-                    {item.product_portion || item.lote}
-                  </p>
-                </div>
+            {congeladosPaginados.map((item) => (
+  <div key={item.id ?? item.tempId} className="corte-mostrado">
+    <div style={{ minWidth: 180 }}>
+      <Select
+        className="custom-select"
+        classNamePrefix="mi-select"
+        options={opcionesProductosCongelados}
+        value={
+          opcionesProductosCongelados.find(
+            (o) => o.value === (item.product_name || item.tipo)
+          ) || null
+        }
+        onChange={(selected) => {
+          const nombre = selected?.value || "";
+          updateCongeladoField(item, "tipo", nombre);
+          updateCongeladoField(item, "product_name", nombre);
+          updateCongeladoField(item, "product_cod", selected?.id || "");
+          updateCongeladoField(item, "product_category", selected?.categoria || "");
+          updateCongeladoField(item, "cod", selected?.id || "");
+          updateCongeladoField(item, "categoria", selected?.categoria || "");
+        }}
+        placeholder=""
+        isClearable={false}
+        components={{
+          ...sinFlecha,
+          ClearIndicator: SinClearIndicator,
+        }}
+        menuPortalTarget={document.body}
+        styles={{
+          control: (base) => ({
+            ...base,
+            minHeight: "32px",
+            height: "32px",
+          }),
+          valueContainer: (base) => ({
+            ...base,
+            height: "32px",
+            padding: "0 6px",
+          }),
+          indicatorsContainer: (base) => ({
+            ...base,
+            height: "32px",
+          }),
+          menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+        }}
+      />
+    </div>
 
-                <div>
-                  <p className="dato">
-                    {item.product_quantity || item.cantidad}
-                  </p>
-                </div>
-                <div>
-                  <p className="dato">
-                    {item.product_gross_weight || item.pesoBruto}
-                  </p>
-                </div>
-                <div>
-                  <p className="dato">
-                    {item.product_net_weight || item.pesoNeto}
-                  </p>
-                </div>
-                <div>
-                  <p
-                    className="dato"
-                    style={{
-                      color:
-                        item.decrease > 0
-                          ? "orange"
-                          : item.decrease < 0
-                          ? "green"
-                          : "inherit",
-                    }}
-                  >
-                    {(item.decrease || 0).toFixed(2)}%
-                  </p>
-                </div>
-                <div>
-                  <button
-                    onClick={() =>
-                      eliminarCongelado(index + indicePrimerCongelado)
-                    }
-                    className="btn-eliminar"
-                  >
-                    X
-                  </button>
-                </div>
-              </div>
-            ))}
-            <div style={{ marginTop: "1rem", textAlign: "center" }}>
-              <button
+    <div>
+      <input
+        className="dato"
+        type="text"
+        value={item.product_portion || item.lote || ""}
+        onChange={(e) => {
+          updateCongeladoField(item, "product_portion", e.target.value);
+          updateCongeladoField(item, "lote", e.target.value);
+        }}      />
+    </div>
+
+    <div>
+      <input
+        className="dato dato-unique"
+        type="text"
+        value={item.unique_code ?? item.uniqueCode ?? ""}
+        readOnly
+        title="Código único"
+      />
+    </div>
+
+    <div>
+      <input
+        className="dato"
+        type="number"
+        min="0"
+        value={Number(item.product_quantity ?? item.cantidad ?? 0)}
+        onChange={(e) => {
+          const v = Math.abs(parseFloat(e.target.value || 0));
+          updateCongeladoField(item, "product_quantity", v);
+          updateCongeladoField(item, "cantidad", v);
+        }}      />
+    </div>
+
+    <div>
+      <input
+        className="dato"
+        type="number"
+        min="0"
+        value={Number(item.pesoProveedor ?? 0)}
+        onChange={(e) =>
+          updateCongeladoField(
+            item,
+            "pesoProveedor",
+            Math.abs(parseFloat(e.target.value || 0))
+          )
+        }      />
+    </div>
+
+    <div>
+      <input
+        className="dato"
+        type="number"
+        min="0"
+        value={Number(item.product_gross_weight ?? item.pesoBruto ?? 0)}
+        onChange={(e) => {
+          const v = Math.abs(parseFloat(e.target.value || 0));
+          updateCongeladoField(item, "product_gross_weight", v);
+          updateCongeladoField(item, "pesoBruto", v);
+        }}      />
+    </div>
+
+    <div>
+      <select
+        className="dato"
+        value={item.tara_id ?? ""}
+        onChange={(e) => {
+          const taraId = e.target.value ? parseInt(e.target.value) : null;
+          const selected = tares.find((t) => t.id === taraId);
+          updateCongeladoField(item, "tara_id", taraId);
+          updateCongeladoField(item, "tara", Number(selected?.peso || 0));
+        }}      >
+        <option value="">Seleccionar</option>
+        {tares.map((t) => (
+          <option key={t.id} value={t.id}>
+            {t.nombre} ({t.peso} kg)
+          </option>
+        ))}
+      </select>
+    </div>
+
+    <div>
+      <p className="dato">{(Number(item.pesoNeto) || 0).toFixed(2)}</p>
+    </div>
+
+    <div>
+      <p
+        className="dato"
+        style={{
+          color:
+            (item.decrease ?? 0) > 0
+              ? "orange"
+              : (item.decrease ?? 0) < 0
+              ? "green"
+              : "inherit",
+        }}
+      >
+        {(Number(item.decrease) || 0).toFixed(2)}%
+      </p>
+    </div>
+
+    <div>
+<button type="button" onClick={() => eliminarCongelado(item)} className="btn-eliminar">
+        X
+      </button>
+    </div>
+  </div>
+))}
+<div className="pagination-buttons">
+              <button className="btn-pagination secondary"
                 onClick={() =>
                   setPaginaActualCongelados((prev) =>
                     Math.max(prev - 1, 1)
                   )
                 }
-                disabled={paginaActualCongelados === 1}
-                style={{ marginRight: "1rem" }}
-              >
+                disabled={paginaActualCongelados === 1}              >
                 Anterior
               </button>
-              <button
+              <button className="btn-pagination"
                 onClick={() =>
                   setPaginaActualCongelados((prev) =>
                     prev * congeladosPorPagina <
@@ -1386,7 +1742,7 @@ const MeatManualIncome = () => {
           </div>
 
           <div className="info-weight-observations">
-            <div
+            <div className="resumen-buttons"
               style={{
                 display: "flex",
                 gap: "1rem",
@@ -1422,7 +1778,7 @@ const MeatManualIncome = () => {
               >
                 Resumen agrupado por piezas
               </button>
-            </div>
+</div>
             {tabActiva === "detallado" && (
               <div>
                 <h3>RESUMEN</h3>
@@ -1432,6 +1788,7 @@ const MeatManualIncome = () => {
                       <tr>
                         <th>TIPO</th>
                         <th>NUMERO GARRON</th>
+                        <th>CÓDIGO ÚNICO</th>
                         <th>PESO ETIQUETA</th>
                         <th>CANTIDAD</th>
                         <th>CABEZAS</th>
@@ -1453,6 +1810,7 @@ const MeatManualIncome = () => {
                           <tr key={index}>
                             <td>{corte.tipo}</td>
                             <td>{corte.garron}</td>
+                            <td>{corte.unique_code || "-"}</td>
                             <td>{corte.pesoProveedor}</td>
                             <td>{corte.cantidad}</td>
                             <td>{corte.cabeza}</td>

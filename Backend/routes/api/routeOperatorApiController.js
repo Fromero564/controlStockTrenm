@@ -49,6 +49,9 @@ router.get("/bill-details/:id", apiOperatorController.billDetails);
 router.get("/productionprocess-subproduction",apiOperatorController.getAllSubproduction
 );
 router.get("/process/:process_number", operatorApiController.getProcessByNumber);
+router.get("/bills-available-camara", operatorApiController.getBillsAvailableForCamara);
+router.get("/cuts-sent-to-camara/:id", operatorApiController.getCutsSentToCamaraByBill);
+
 
 //Api para crear nuevas categorias
 router.post("/uploadCategory",operatorApiController.loadNewCategory);

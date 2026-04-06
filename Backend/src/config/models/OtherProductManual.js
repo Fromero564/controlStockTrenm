@@ -21,7 +21,7 @@ module.exports = (sequelize, DataTypes) => {
             allowNull: false,
             defaultValue: 0.0,
         },
-         product_gross_weight: {
+        product_gross_weight: {
             type: DataTypes.FLOAT,
             allowNull: false,
         },
@@ -40,6 +40,11 @@ module.exports = (sequelize, DataTypes) => {
                 model: "bill_suppliers",
                 key: "id",
             },
+            unique_code: {
+                type: DataTypes.STRING(50),
+                allowNull: true,
+            },
+
         },
         created_at: {
             type: DataTypes.DATE,
@@ -52,7 +57,7 @@ module.exports = (sequelize, DataTypes) => {
     };
 
     let config = {
-        tableName: "other_product_manual", 
+        tableName: "other_product_manual",
         timestamps: false,
     };
 
