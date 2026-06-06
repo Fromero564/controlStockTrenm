@@ -50,6 +50,8 @@ const ProviderForm = () => {
   const [paginaCortes, setPaginaCortes] = useState(1);
   const [paginaCongelados, setPaginaCongelados] = useState(1);
 
+  const esManual = tipoIngreso === "manual";
+
   useEffect(() => {
     fetch(`${API_URL}/allProviders`)
       .then((res) => res.json())
@@ -230,6 +232,28 @@ const ProviderForm = () => {
     }
   }, [mostrarCongelados]);
 
+  useEffect(() => {
+    if (!esManual) return;
+
+    setNuevoCorte((prev) => ({
+      ...prev,
+      numeroRomaneo: "",
+      aCamara: false,
+    }));
+
+    setNuevoCongelado((prev) => ({
+      ...prev,
+      codigo: "",
+    }));
+
+    setCortesAgregados((prev) =>
+      prev.map((item) => ({
+        ...item,
+        aCamara: false,
+      }))
+    );
+  }, [esManual]);
+
   const handleCorteChange = (e) => {
     const { name, value, type, checked } = e.target;
     setNuevoCorte((prev) => ({
@@ -250,7 +274,7 @@ const ProviderForm = () => {
     const prodSel = cortes.find((c) => c.id === seleccion.value);
     if (!prodSel) return;
 
-    const codigoGenerado = generarCodigoUnico(contadorCortes);
+    const codigoGenerado = esManual ? null : generarCodigoUnico(contadorCortes);
 
     if (!prodSel.categoria) {
       await Swal.fire({
@@ -273,7 +297,7 @@ const ProviderForm = () => {
       unique_code: codigoGenerado,
       identification_product: Number(nuevoCorte.numeroRomaneo) || 0,
       numeroRomaneo: Number(nuevoCorte.numeroRomaneo) || 0,
-      aCamara: !!nuevoCorte.aCamara,
+      aCamara: esManual ? false : !!nuevoCorte.aCamara,
     };
 
     const next = [...cortesAgregados, nuevo];
@@ -305,7 +329,7 @@ const ProviderForm = () => {
     const prod = cortes.find((p) => p.id === nuevoCongelado.tipo);
     if (!prod) return;
 
-    const codigoGenerado = generarCodigoUnico(contadorCongelados);
+    const codigoGenerado = esManual ? null : generarCodigoUnico(contadorCongelados);
 
     if (!prod.categoria) {
       await Swal.fire({
@@ -323,8 +347,10 @@ const ProviderForm = () => {
       cod: prod.id,
       categoria: prod.categoria || "",
       unique_code: codigoGenerado,
-      identification_product: Number(nuevoCongelado.codigo) || 0,
-      codigo: Number(nuevoCongelado.codigo) || 0,
+      identification_product: esManual
+        ? null
+        : Number(nuevoCongelado.codigo) || 0,
+      codigo: esManual ? "" : Number(nuevoCongelado.codigo) || 0,
     };
 
     const next = [...congeladosAgregados, item];
@@ -337,6 +363,8 @@ const ProviderForm = () => {
   };
 
   const toggleCamaraCorte = (idKey, checked) => {
+    if (esManual) return;
+
     setCortesAgregados((prev) =>
       prev.map((c) =>
         (c.id || c.idTemp) === idKey ? { ...c, aCamara: checked } : c
@@ -584,6 +612,12 @@ const ProviderForm = () => {
             ))}
           </div>
 
+          {esManual && (
+            <p style={{ margin: "0 0 16px 0", color: "#666" }}>
+              En ingreso manual, se deshabilitan únicamente los campos de código único y a cámara. El N° de tropa sigue disponible porque sí se utiliza.
+            </p>
+          )}
+
           <div className="provider-remit-romaneo">
             <label className="label-provider-form">
               PROVEEDOR:
@@ -681,8 +715,10 @@ const ProviderForm = () => {
                     type="number"
                     className="no-spin"
                     name="codigo"
-                    value={nuevoCongelado.codigo}
+                    value={esManual ? "" : nuevoCongelado.codigo}
                     onChange={handleCongeladoChange}
+                    disabled={esManual}
+                    placeholder={esManual ? "No aplica en manual" : ""}
                   />
                 </div>
 
@@ -691,8 +727,9 @@ const ProviderForm = () => {
                   <input
                     type="text"
                     className="no-spin"
-                    value={codigoCongeladoPreview}
+                    value={esManual ? "No aplica en manual" : codigoCongeladoPreview}
                     readOnly
+                    disabled={esManual}
                   />
                 </div>
                 <button
@@ -722,12 +759,12 @@ const ProviderForm = () => {
                       <span className="pill">{item.tipo}</span>
                       <span className="pill">{item.cantidad}</span>
                       <span className="pill">{item.unidades}</span>
-                      <span className="pill">{item.codigo ?? ""}</span>
+                      <span className="pill">{esManual ? "-" : item.codigo ?? ""}</span>
                       <span
                         className="pill pill-code"
-                        title={item.unique_code ?? ""}
+                        title={esManual ? "No aplica en manual" : item.unique_code ?? ""}
                       >
-                        {item.unique_code ?? ""}
+                        {esManual ? "-" : item.unique_code ?? ""}
                       </span>
                       <button
                         type="button"
@@ -843,8 +880,9 @@ const ProviderForm = () => {
                   <input
                     type="checkbox"
                     name="aCamara"
-                    checked={!!nuevoCorte.aCamara}
+                    checked={esManual ? false : !!nuevoCorte.aCamara}
                     onChange={handleCorteChange}
+                    disabled={esManual}
                   />
                   A cámara
                 </label>
@@ -876,16 +914,17 @@ const ProviderForm = () => {
                     {corte.pesoRomaneo?.toFixed ? corte.pesoRomaneo.toFixed(2) : corte.pesoRomaneo}{" "}
                   </span>
                   <span className="pill">{corte.identification_product ?? ""}</span>
-                  <span className="pill pill-code" title={corte.unique_code ?? ""}>
-                    {corte.unique_code ?? ""}
+                  <span className="pill pill-code" title={esManual ? "No aplica en manual" : corte.unique_code ?? ""}>
+                    {esManual ? "-" : corte.unique_code ?? ""}
                   </span>
                   <span className="pill">
                     <input
                       type="checkbox"
-                      checked={!!corte.aCamara}
+                      checked={esManual ? false : !!corte.aCamara}
                       onChange={(e) =>
                         toggleCamaraCorte(corte.id || corte.idTemp, e.target.checked)
                       }
+                      disabled={esManual}
                     />
                   </span>
                   <button

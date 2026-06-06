@@ -18,18 +18,19 @@ const MeatManualIncome = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Lista base de productos (ya procesados con id, nombre, categoría)
   const [productos, setProductos] = useState([]);
 
   const [saving, setSaving] = useState(false);
   const [cortesAgregados, setCortesAgregados] = useState([]);
   const [tares, setTares] = useState([]);
-const [tabActiva, setTabActiva] = useState("detallado");
+  const [tabActiva, setTabActiva] = useState("detallado");
   const [paginaActual, setPaginaActual] = useState(1);
   const [taraSeleccionadaId, setTaraSeleccionadaId] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [taraSeleccionadaIdCongelado, setTaraSeleccionadaIdCongelado] =
     useState("");
+  const [buscandoTaraCorte, setBuscandoTaraCorte] = useState(false);
+  const [buscandoTaraCongelado, setBuscandoTaraCongelado] = useState(false);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [congeladosAgregados, setCongeladosAgregados] = useState([]);
@@ -41,6 +42,7 @@ const [tabActiva, setTabActiva] = useState("detallado");
     pesoProveedor: 0,
     pesoBruto: 0,
     tara: 0,
+    tara_id: null,
     product_cod: "",
     product_category: "",
     unique_code: "",
@@ -53,6 +55,7 @@ const [tabActiva, setTabActiva] = useState("detallado");
     pesoProveedor: 0,
     pesoBruto: 0,
     tara: 0,
+    tara_id: null,
     garron: "",
     observaciones: "",
     observacionId: null,
@@ -91,9 +94,12 @@ const [tabActiva, setTabActiva] = useState("detallado");
 
     const nuevo = {
       ...formCongelado,
-            unique_code: formCongelado.unique_code || buildUniqueCode(),
+      unique_code: formCongelado.unique_code || buildUniqueCode(),
       tempId: crypto.randomUUID(),
-      pesoNeto: formCongelado.pesoBruto - formCongelado.tara,
+      tara_id: formCongelado.tara_id,
+      tara: Number(formCongelado.tara) || 0,
+      pesoNeto:
+        Number(formCongelado.pesoBruto || 0) - Number(formCongelado.tara || 0),
       remitoId,
       product_portion: formCongelado.lote,
       product_cod: formCongelado.product_cod || "",
@@ -118,10 +124,13 @@ const [tabActiva, setTabActiva] = useState("detallado");
       pesoProveedor: 0,
       pesoBruto: 0,
       tara: 0,
+      tara_id: null,
       product_cod: "",
       product_category: "",
       unique_code: "",
     });
+
+    setTaraSeleccionadaIdCongelado("");
   };
 
   useEffect(() => {
@@ -144,7 +153,8 @@ const [tabActiva, setTabActiva] = useState("detallado");
           cantidad: parseFloat(item.product_quantity) || 0,
           pesoNeto: parseFloat(item.product_net_weight) || 0,
           pesoBruto: parseFloat(item.product_gross_weight) || 0,
-                    tara: parseFloat(item.product_tare ?? item.tare ?? item.tara ?? 0) || 0,
+          tara:
+            parseFloat(item.product_tare ?? item.tare ?? item.tara ?? 0) || 0,
           tara_id: item.tara_id ?? null,
           unique_code: item.unique_code ?? item.uniqueCode ?? "",
           decrease: parseFloat(item.decrease) || 0,
@@ -206,11 +216,11 @@ const [tabActiva, setTabActiva] = useState("detallado");
           garron: item.products_garron || "",
           unique_code: item.unique_code ?? item.uniqueCode ?? "",
           aCamara: !!(item.aCamara ?? item.a_camara),
-        
           pesoNeto:
             (parseFloat(item.gross_weight) || 0) -
             (parseFloat(item.tare) || 0),
         });
+
         const cortesFormateados =
           result.cortes?.map(mapearCorteDesdeBackend) || [];
         setCortesAgregados(cortesFormateados);
@@ -233,6 +243,7 @@ const [tabActiva, setTabActiva] = useState("detallado");
 
     fetchCortesYaCargados();
   }, [data]);
+
   useEffect(() => {
     const pesoNeto = formData.pesoBruto - formData.tara;
     const mermaPorcentaje =
@@ -246,7 +257,6 @@ const [tabActiva, setTabActiva] = useState("detallado");
     }));
   }, [formData.pesoProveedor, formData.pesoBruto, formData.tara]);
 
-  // Normalizar categoría (sin acentos, minúsculas)
   const normalizarCategoria = (txt) =>
     (txt || "")
       .toString()
@@ -260,7 +270,6 @@ const [tabActiva, setTabActiva] = useState("detallado");
     return c.includes("congelado") || c.includes("otro");
   };
 
-  // Cargar productos desde API y preparar lista base
   useEffect(() => {
     const fetchProductos = async () => {
       try {
@@ -290,15 +299,148 @@ const [tabActiva, setTabActiva] = useState("detallado");
     fetchProductos();
   }, [API_URL]);
 
-  // Opciones para select de cortes (NORMALES: excluye congelados/otros)
   const opcionesProductosCortes = productos.filter(
     (p) => !esCongeladoOuOtro(p.categoria)
   );
 
-  // Opciones para select de congelados/otros (solo esas categorías)
   const opcionesProductosCongelados = productos.filter((p) =>
     esCongeladoOuOtro(p.categoria)
   );
+
+  const opcionesTares = tares.map((t) => ({
+    value: t.id,
+    label: t.nombre,
+    peso: Number(t.peso) || 0,
+  }));
+
+  const formatTaraOption = (option) => `${option.label} (${option.peso} kg)`;
+
+  const selectTaraStyles = {
+    container: (base) => ({
+      ...base,
+      width: "100%",
+    }),
+    control: (base, state) => ({
+      ...base,
+      width: "100%",
+      minHeight: "43px",
+      height: "43px",
+      borderColor: state.isFocused ? "#2684FF" : "#ccc",
+      boxShadow: "none",
+      borderRadius: "4px",
+      fontSize: "14px",
+      cursor: "text",
+      "&:hover": {
+        borderColor: "#2684FF",
+      },
+    }),
+    valueContainer: (base) => ({
+      ...base,
+      height: "43px",
+      padding: "0 10px",
+      display: "flex",
+      alignItems: "center",
+    }),
+    input: (base) => ({
+      ...base,
+      margin: 0,
+      padding: 0,
+    }),
+    singleValue: (base) => ({
+      ...base,
+      margin: 0,
+      whiteSpace: "nowrap",
+      overflow: "hidden",
+      textOverflow: "ellipsis",
+    }),
+    placeholder: (base) => ({
+      ...base,
+      margin: 0,
+      color: "#777",
+    }),
+    indicatorsContainer: () => ({
+      display: "none",
+    }),
+    dropdownIndicator: () => ({
+      display: "none",
+    }),
+    clearIndicator: () => ({
+      display: "none",
+    }),
+    indicatorSeparator: () => ({
+      display: "none",
+    }),
+    menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+    menuList: (base) => ({
+      ...base,
+      maxHeight: 180,
+      overflowY: "auto",
+    }),
+  };
+
+  const selectTaraRowStyles = {
+    container: (base) => ({
+      ...base,
+      width: "170px",
+      minWidth: "170px",
+    }),
+    control: (base, state) => ({
+      ...base,
+      width: "170px",
+      minHeight: "38px",
+      height: "38px",
+      borderColor: state.isFocused ? "#2684FF" : "#ccc",
+      boxShadow: "none",
+      borderRadius: "4px",
+      fontSize: "13px",
+      cursor: "text",
+      "&:hover": {
+        borderColor: "#2684FF",
+      },
+    }),
+    valueContainer: (base) => ({
+      ...base,
+      height: "38px",
+      padding: "0 8px",
+      display: "flex",
+      alignItems: "center",
+    }),
+    input: (base) => ({
+      ...base,
+      margin: 0,
+      padding: 0,
+    }),
+    singleValue: (base) => ({
+      ...base,
+      margin: 0,
+      whiteSpace: "nowrap",
+      overflow: "hidden",
+      textOverflow: "ellipsis",
+    }),
+    placeholder: (base) => ({
+      ...base,
+      margin: 0,
+      fontSize: "13px",
+    }),
+    indicatorsContainer: () => ({
+      display: "none",
+    }),
+    dropdownIndicator: () => ({
+      display: "none",
+    }),
+    clearIndicator: () => ({
+      display: "none",
+    }),
+    indicatorSeparator: () => ({
+      display: "none",
+    }),
+    menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+    menuList: (base) => ({
+      ...base,
+      maxHeight: 180,
+      overflowY: "auto",
+    }),
+  };
 
   useEffect(() => {
     const fetchCantidad = async () => {
@@ -309,9 +451,7 @@ const [tabActiva, setTabActiva] = useState("detallado");
         console.log("Data del remito:", data);
         console.log("Productos recibidos:", allData);
 
-        const cortesDelRemito = allData.filter(
-          (item) => item.id === data?.id
-        );
+        const cortesDelRemito = allData.filter((item) => item.id === data?.id);
         console.log("Filtrados por remito:", cortesDelRemito);
 
         const cantidadTotal = cortesDelRemito.reduce(
@@ -355,8 +495,6 @@ const [tabActiva, setTabActiva] = useState("detallado");
     fetchTares();
   }, []);
 
-  // ✅ Cuando llegan las taras, si los items vienen con el peso de tara (tare) pero sin tara_id,
-  //    “calzamos” el select buscando por el peso.
   useEffect(() => {
     if (!tares || tares.length === 0) return;
 
@@ -379,7 +517,6 @@ const [tabActiva, setTabActiva] = useState("detallado");
       )
     );
   }, [tares]);
-
 
   const abrirModalEdicion = () => {
     setModalOpen(true);
@@ -495,16 +632,13 @@ const [tabActiva, setTabActiva] = useState("detallado");
 
         if (isEditing) {
           console.log("Editando cortes...");
-          const response = await fetch(
-            `${API_URL}/meat-income-edit/${data.id}`,
-            {
-              method: "PUT",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify(payloadCortes),
-            }
-          );
+          const response = await fetch(`${API_URL}/meat-income-edit/${data.id}`, {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(payloadCortes),
+          });
 
           if (!response.ok) {
             const err = await response.text();
@@ -514,16 +648,13 @@ const [tabActiva, setTabActiva] = useState("detallado");
           console.log("Cortes editados correctamente.");
         } else {
           console.log("Guardando cortes nuevos...");
-          const response = await fetch(
-            `${API_URL}/addProducts/${data.id}`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify(payloadCortes),
-            }
-          );
+          const response = await fetch(`${API_URL}/addProducts/${data.id}`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(payloadCortes),
+          });
 
           if (!response.ok) {
             const err = await response.text();
@@ -543,6 +674,8 @@ const [tabActiva, setTabActiva] = useState("detallado");
           product_quantity: item.cantidad,
           product_net_weight: item.pesoNeto,
           product_gross_weight: item.pesoBruto,
+          product_tare: item.tara,
+          tara_id: item.tara_id || null,
           decrease: item.decrease || 0,
           id_bill_suppliers: data.id,
           product_cod: item.cod || null,
@@ -625,57 +758,55 @@ const [tabActiva, setTabActiva] = useState("detallado");
     }
   };
 
+  const getRowKey = (row) => row.id ?? row.tempId;
 
+  const calcPesoNeto = (pesoBruto, tara) =>
+    (Number(pesoBruto) || 0) - (Number(tara) || 0);
 
-const getRowKey = (row) => row.id ?? row.tempId;
+  const calcDecrease = (pesoProveedor, pesoNeto) =>
+    Number(pesoProveedor) > 0
+      ? ((Number(pesoProveedor) - Number(pesoNeto)) / Number(pesoProveedor)) * 100
+      : 0;
 
-const calcPesoNeto = (pesoBruto, tara) =>
-  (Number(pesoBruto) || 0) - (Number(tara) || 0);
+  const updateCorteField = (row, field, value) => {
+    const key = getRowKey(row);
 
-const calcDecrease = (pesoProveedor, pesoNeto) =>
-  Number(pesoProveedor) > 0
-    ? ((Number(pesoProveedor) - Number(pesoNeto)) / Number(pesoProveedor)) * 100
-    : 0;
+    setCortesAgregados((prev) =>
+      prev.map((c) => {
+        if (getRowKey(c) !== key) return c;
 
-const updateCorteField = (row, field, value) => {
-  const key = getRowKey(row);
+        const next = { ...c, [field]: value };
 
-  setCortesAgregados((prev) =>
-    prev.map((c) => {
-      if (getRowKey(c) !== key) return c;
+        if (["pesoBruto", "tara"].includes(field)) {
+          next.pesoNeto = calcPesoNeto(next.pesoBruto, next.tara);
+        }
 
-      const next = { ...c, [field]: value };
+        return next;
+      })
+    );
+  };
 
-      if (["pesoBruto", "tara"].includes(field)) {
-        next.pesoNeto = calcPesoNeto(next.pesoBruto, next.tara);
-      }
+  const updateCongeladoField = (row, field, value) => {
+    const key = getRowKey(row);
 
-      return next;
-    })
-  );
-};
+    setCongeladosAgregados((prev) =>
+      prev.map((p) => {
+        if (getRowKey(p) !== key) return p;
 
-const updateCongeladoField = (row, field, value) => {
-  const key = getRowKey(row);
+        const next = { ...p, [field]: value };
 
-  setCongeladosAgregados((prev) =>
-    prev.map((p) => {
-      if (getRowKey(p) !== key) return p;
+        if (["pesoBruto", "tara"].includes(field)) {
+          next.pesoNeto = calcPesoNeto(next.pesoBruto, next.tara);
+        }
 
-      const next = { ...p, [field]: value };
+        if (["pesoProveedor", "pesoBruto", "tara"].includes(field)) {
+          next.decrease = calcDecrease(next.pesoProveedor, next.pesoNeto);
+        }
 
-      if (["pesoBruto", "tara"].includes(field)) {
-        next.pesoNeto = calcPesoNeto(next.pesoBruto, next.tara);
-      }
-
-      if (["pesoProveedor", "pesoBruto", "tara"].includes(field)) {
-        next.decrease = calcDecrease(next.pesoProveedor, next.pesoNeto);
-      }
-
-      return next;
-    })
-  );
-};
+        return next;
+      })
+    );
+  };
 
   const agregarCorte = () => {
     if (
@@ -690,16 +821,18 @@ const updateCongeladoField = (row, field, value) => {
       return;
     }
 
-  const nuevoCorte = {
-  ...formData,
-  tempId: crypto.randomUUID(), // ✅ AGREGAR ESTA LINEA
-  unique_code: formData.unique_code || buildUniqueCode(),
-  pesoNeto: formData.pesoBruto - formData.tara,
-  remitoId,
-  cod: formData.product_cod || "",
-  categoria: formData.product_category || "",
-    aCamara: false,
-};
+    const nuevoCorte = {
+      ...formData,
+      tempId: crypto.randomUUID(),
+      unique_code: formData.unique_code || buildUniqueCode(),
+      tara_id: formData.tara_id,
+      tara: Number(formData.tara) || 0,
+      pesoNeto: Number(formData.pesoBruto || 0) - Number(formData.tara || 0),
+      remitoId,
+      cod: formData.product_cod || "",
+      categoria: formData.product_category || "",
+      aCamara: false,
+    };
 
     const nuevosCortes = [...cortesAgregados, nuevoCorte];
 
@@ -713,6 +846,7 @@ const updateCongeladoField = (row, field, value) => {
       pesoProveedor: 0,
       pesoBruto: 0,
       tara: 0,
+      tara_id: null,
       garron: "",
       product_cod: "",
       product_category: "",
@@ -720,56 +854,54 @@ const updateCongeladoField = (row, field, value) => {
 
     setTaraSeleccionadaId("");
   };
-const eliminarCorte = async (corte) => {
-  const confirm = await Swal.fire({
-    title: "¿Eliminar corte?",
-    text: "Esta acción eliminará el corte y actualizará el stock.",
-    icon: "warning",
-    showCancelButton: true,
-    confirmButtonText: "Sí, eliminar",
-    cancelButtonText: "Cancelar",
-  });
 
-  if (!confirm.isConfirmed) return;
+  const eliminarCorte = async (corte) => {
+    const confirm = await Swal.fire({
+      title: "¿Eliminar corte?",
+      text: "Esta acción eliminará el corte y actualizará el stock.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Sí, eliminar",
+      cancelButtonText: "Cancelar",
+    });
 
-  try {
-    // Si ya existe en BD, borra en backend
-    if (corte.id) {
-      const res = await fetch(`${API_URL}/provider-item-delete/${corte.id}`, {
-        method: "DELETE",
-      });
+    if (!confirm.isConfirmed) return;
 
-      if (!res.ok) {
-        const txt = await res.text();
-        throw new Error(txt || "No se pudo eliminar el corte de la base de datos.");
+    try {
+      if (corte.id) {
+        const res = await fetch(`${API_URL}/provider-item-delete/${corte.id}`, {
+          method: "DELETE",
+        });
+
+        if (!res.ok) {
+          const txt = await res.text();
+          throw new Error(txt || "No se pudo eliminar el corte de la base de datos.");
+        }
       }
+
+      setCortesAgregados((prev) =>
+        prev.filter((c) => (corte.id ? c.id !== corte.id : c.tempId !== corte.tempId))
+      );
+
+      Swal.fire("Eliminado", "Corte eliminado con éxito.", "success");
+    } catch (err) {
+      console.error("Error al eliminar:", err);
+      Swal.fire("Error", err.message, "error");
     }
-
-    // Siempre borra del estado local por id o tempId
-    setCortesAgregados((prev) =>
-      prev.filter((c) =>
-        corte.id ? c.id !== corte.id : c.tempId !== corte.tempId
-      )
-    );
-
-    Swal.fire("Eliminado", "Corte eliminado con éxito.", "success");
-  } catch (err) {
-    console.error("Error al eliminar:", err);
-    Swal.fire("Error", err.message, "error");
-  }
-};
+  };
 
   const formatTime = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   };
+
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleDateString("es-AR");
   };
 
-  // --- Unique code helpers (para meat_manual_income) ---
   const pad4 = (v) => String(v ?? "").padStart(4, "0");
+
   const fmtYYYYMMDD = (dateLike) => {
     const d = new Date(dateLike ?? Date.now());
     const y = d.getFullYear();
@@ -797,13 +929,16 @@ const eliminarCorte = async (corte) => {
   };
 
   const buildUniqueCode = () => {
-    const internal = data?.internal_number ?? data?.id_bill_suppliers ?? data?.id ?? billSupplierId;
+    const internal =
+      data?.internal_number ?? data?.id_bill_suppliers ?? data?.id ?? remitoId;
     const datePart = fmtYYYYMMDD(data?.createdAt ?? data?.updatedAt ?? Date.now());
     const prefix = `${pad4(internal)}-${datePart}-`;
-    const next = getNextSeqFromCodes(prefix, [...cortesAgregados, ...congeladosAgregados]);
+    const next = getNextSeqFromCodes(prefix, [
+      ...cortesAgregados,
+      ...congeladosAgregados,
+    ]);
     return `${prefix}${String(next).padStart(3, "0")}`;
   };
-
 
   const sinFlecha = {
     DropdownIndicator: () => null,
@@ -811,25 +946,16 @@ const eliminarCorte = async (corte) => {
   };
 
   const totalKgNeto =
-    cortesAgregados.reduce(
-      (acc, item) => acc + (Number(item.pesoNeto) || 0),
-      0
-    ) +
+    cortesAgregados.reduce((acc, item) => acc + (Number(item.pesoNeto) || 0), 0) +
     congeladosAgregados.reduce(
       (acc, item) => acc + (Number(item.pesoNeto) || 0),
       0
     );
 
   const pesoTotalRomaneo = data?.total_weight ?? 0;
-
   const diferenciaPeso = totalKgNeto - pesoTotalRomaneo;
-
   const porcentajeDiferencia =
     pesoTotalRomaneo > 0 ? (diferenciaPeso / pesoTotalRomaneo) * 100 : 0;
-
-  let colorDiferencia = "blue";
-  if (porcentajeDiferencia < 0) colorDiferencia = "red";
-  else if (porcentajeDiferencia > 0) colorDiferencia = "green";
 
   const totalAnimalesCargados = cortesAgregados.reduce(
     (acc, item) => acc + item.cantidad,
@@ -872,59 +998,51 @@ const eliminarCorte = async (corte) => {
 
   const handleModalClose = () => {
     setModalOpen(false);
-    handleActualizarDesdeMemoria();
   };
 
-useEffect(() => {
-  if (cortesAgregados.length > 0) {
-    localStorage.setItem(
-      "cortes_en_edicion",
-      JSON.stringify(cortesAgregados)
-    );
-  } else {
-    localStorage.removeItem("cortes_en_edicion");
-  }
-}, [cortesAgregados]);
+  useEffect(() => {
+    if (cortesAgregados.length > 0) {
+      localStorage.setItem("cortes_en_edicion", JSON.stringify(cortesAgregados));
+    } else {
+      localStorage.removeItem("cortes_en_edicion");
+    }
+  }, [cortesAgregados]);
 
+  const eliminarCongelado = async (producto) => {
+    const confirmar = await Swal.fire({
+      title: "¿Eliminar producto?",
+      text: "Esta acción eliminará el producto congelado/otro.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Sí, eliminar",
+      cancelButtonText: "Cancelar",
+    });
 
-const eliminarCongelado = async (producto) => {
-  const confirmar = await Swal.fire({
-    title: "¿Eliminar producto?",
-    text: "Esta acción eliminará el producto congelado/otro.",
-    icon: "warning",
-    showCancelButton: true,
-    confirmButtonText: "Sí, eliminar",
-    cancelButtonText: "Cancelar",
-  });
+    if (!confirmar.isConfirmed) return;
 
-  if (!confirmar.isConfirmed) return;
+    try {
+      if (producto.id) {
+        const response = await fetch(
+          `${API_URL}/other-product-delete/${producto.id}`,
+          { method: "DELETE" }
+        );
 
-  try {
-    if (producto.id) {
-      const response = await fetch(
-        `${API_URL}/other-product-delete/${producto.id}`,
-        { method: "DELETE" }
+        if (!response.ok) {
+          const txt = await response.text();
+          throw new Error(txt || "No se pudo eliminar el producto congelado.");
+        }
+      }
+
+      setCongeladosAgregados((prev) =>
+        prev.filter((p) => (producto.id ? p.id !== producto.id : p.tempId !== producto.tempId))
       );
 
-      if (!response.ok) {
-        const txt = await response.text();
-        throw new Error(txt || "No se pudo eliminar el producto congelado.");
-      }
+      Swal.fire("Eliminado", "El producto fue eliminado correctamente.", "success");
+    } catch (error) {
+      console.error("Error al eliminar congelado:", error);
+      Swal.fire("Error", error.message || "No se pudo eliminar el producto.", "error");
     }
-
-    setCongeladosAgregados((prev) =>
-      prev.filter((p) =>
-        producto.id ? p.id !== producto.id : p.tempId !== producto.tempId
-      )
-    );
-
-    Swal.fire("Eliminado", "El producto fue eliminado correctamente.", "success");
-  } catch (error) {
-    console.error("Error al eliminar congelado:", error);
-    Swal.fire("Error", error.message || "No se pudo eliminar el producto.", "error");
-  }
-};
-
+  };
 
   const totalQuantityCongelados = congeladosAgregados.reduce(
     (acc, item) => acc + Number(item.cantidad || 0),
@@ -938,9 +1056,7 @@ const eliminarCongelado = async (producto) => {
 
   const mermaCantidadCongelados =
     data?.fresh_quantity > 0
-      ? ((data.fresh_quantity - totalQuantityCongelados) /
-          data.fresh_quantity) *
-        100
+      ? ((data.fresh_quantity - totalQuantityCongelados) / data.fresh_quantity) * 100
       : 0;
 
   const mermaPesoCongelados =
@@ -960,7 +1076,9 @@ const eliminarCongelado = async (producto) => {
           ⬅ Volver
         </button>
       </div>
+
       <h1 className="title-mercaderia">Detalle Mercadería</h1>
+
       <div className="main-container">
         <div>
           <div>
@@ -973,6 +1091,7 @@ const eliminarCongelado = async (producto) => {
                   title="Editar"
                 />
               </div>
+
               <div className="mercaderia-info-row">
                 <div>
                   <p className="label">PROVEEDOR:</p>
@@ -993,6 +1112,7 @@ const eliminarCongelado = async (producto) => {
                   <p>{data.romaneo_number}</p>
                 </div>
               </div>
+
               <div className="mercaderia-info-row">
                 <div>
                   <p className="label">PESO TOTAL DECLARADO EN ROMANEO:</p>
@@ -1013,6 +1133,7 @@ const eliminarCongelado = async (producto) => {
               </div>
             </div>
           </div>
+
           <EditMeatBillModal
             isOpen={modalOpen}
             onClose={handleModalClose}
@@ -1031,7 +1152,6 @@ const eliminarCongelado = async (producto) => {
           />
         </div>
 
-        {/* FORM CORTES NORMALES */}
         <div className="formulario-corte">
           <div className="form-group">
             <div>
@@ -1049,9 +1169,8 @@ const eliminarCongelado = async (producto) => {
                   }));
                 }}
                 value={
-                  opcionesProductosCortes.find(
-                    (o) => o.value === formData.tipo
-                  ) || null
+                  opcionesProductosCortes.find((o) => o.value === formData.tipo) ||
+                  null
                 }
                 placeholder=""
                 isClearable
@@ -1124,6 +1243,7 @@ const eliminarCongelado = async (producto) => {
                 required
               />
             </div>
+
             <div>
               <label>CABEZA</label>
               <input
@@ -1136,6 +1256,7 @@ const eliminarCongelado = async (producto) => {
                 required
               />
             </div>
+
             <div>
               <label>CANTIDAD</label>
               <input
@@ -1148,6 +1269,7 @@ const eliminarCongelado = async (producto) => {
                 required
               />
             </div>
+
             <div>
               <label>PESO DE ETIQUETA </label>
               <input
@@ -1171,30 +1293,37 @@ const eliminarCongelado = async (producto) => {
                 required
               />
             </div>
+
             <div>
               <label>TARA</label>
-              <select
-                name="tara"
-                value={taraSeleccionadaId}
-                onChange={(e) => {
-                  const selected = tares.find(
-                    (t) => t.id === parseInt(e.target.value)
-                  );
-                  setTaraSeleccionadaId(e.target.value);
+              <Select
+                className="tara-select"
+                classNamePrefix="tara-select"
+                options={opcionesTares}
+                formatOptionLabel={formatTaraOption}
+                value={opcionesTares.find((o) => o.value === formData.tara_id) || null}
+                onChange={(selected) => {
+                  setTaraSeleccionadaId(selected?.value || "");
                   setFormData((prev) => ({
                     ...prev,
+                    tara_id: selected?.value || null,
                     tara: selected?.peso || 0,
                   }));
                 }}
-                required
-              >
-                <option value="">Seleccionar</option>
-                {tares.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.nombre} ({t.peso} kg)
-                  </option>
-                ))}
-              </select>
+                placeholder={buscandoTaraCorte ? "" : "Buscar tara..."}
+                isClearable
+                onInputChange={(value, actionMeta) => {
+                  if (actionMeta.action === "input-change") {
+                    setBuscandoTaraCorte(value.length > 0);
+                  }
+                  return value;
+                }}
+                onMenuClose={() => setBuscandoTaraCorte(false)}
+                onBlur={() => setBuscandoTaraCorte(false)}
+                components={{ DropdownIndicator: null, IndicatorSeparator: null, ClearIndicator: null }}
+                menuPortalTarget={document.body}
+                styles={selectTaraStyles}
+              />
             </div>
           </div>
 
@@ -1204,195 +1333,207 @@ const eliminarCongelado = async (producto) => {
 
           <div className="cortes-lista">
             {cortesPaginados.map((corte) => (
-  <div key={corte.id ?? corte.tempId} className="corte-mostrado">
-    <div style={{ minWidth: 180 }}>
-      <Select
-        className="custom-select"
-        classNamePrefix="mi-select"
-        options={opcionesProductosCortes}
-        value={
-          opcionesProductosCortes.find((o) => o.value === corte.tipo) ||
-          null
-        }
-        onChange={(selected) => {
-          updateCorteField(corte, "tipo", selected?.value || "");
-          updateCorteField(corte, "product_cod", selected?.id || "");
-          updateCorteField(corte, "product_category", selected?.categoria || "");
-          updateCorteField(corte, "cod", selected?.id || "");
-          updateCorteField(corte, "categoria", selected?.categoria || "");
-        }}
-        placeholder=""
-        isClearable={false}
-        components={{
-          ...sinFlecha,
-          ClearIndicator: SinClearIndicator,
-        }}
-        menuPortalTarget={document.body}
-        styles={{
-          control: (base) => ({
-            ...base,
-            minHeight: "32px",
-            height: "32px",
-          }),
-          valueContainer: (base) => ({
-            ...base,
-            height: "32px",
-            padding: "0 6px",
-          }),
-          indicatorsContainer: (base) => ({
-            ...base,
-            height: "32px",
-          }),
-          menuPortal: (base) => ({ ...base, zIndex: 9999 }),
-        }}
-      />
-    </div>
+              <div key={corte.id ?? corte.tempId} className="corte-mostrado">
+                <div style={{ minWidth: 180 }}>
+                  <Select
+                    className="custom-select"
+                    classNamePrefix="mi-select"
+                    options={opcionesProductosCortes}
+                    value={
+                      opcionesProductosCortes.find((o) => o.value === corte.tipo) ||
+                      null
+                    }
+                    onChange={(selected) => {
+                      updateCorteField(corte, "tipo", selected?.value || "");
+                      updateCorteField(corte, "product_cod", selected?.id || "");
+                      updateCorteField(
+                        corte,
+                        "product_category",
+                        selected?.categoria || ""
+                      );
+                      updateCorteField(corte, "cod", selected?.id || "");
+                      updateCorteField(corte, "categoria", selected?.categoria || "");
+                    }}
+                    placeholder=""
+                    isClearable={false}
+                    components={{
+                      ...sinFlecha,
+                      ClearIndicator: SinClearIndicator,
+                    }}
+                    menuPortalTarget={document.body}
+                    styles={{
+                      control: (base) => ({
+                        ...base,
+                        minHeight: "32px",
+                        height: "32px",
+                      }),
+                      valueContainer: (base) => ({
+                        ...base,
+                        height: "32px",
+                        padding: "0 6px",
+                      }),
+                      indicatorsContainer: (base) => ({
+                        ...base,
+                        height: "32px",
+                      }),
+                      menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+                    }}
+                  />
+                </div>
 
-    <div>
-      <input
-        className="dato"
-        type="text"
-        value={corte.garron ?? ""}
-        onChange={(e) => updateCorteField(corte, "garron", e.target.value)}      />
-    </div>
-    <div>
-      <input
-        className="dato dato-unique"
-        type="text"
-        value={corte.unique_code ?? ""}
-        readOnly
-        title="Código único"
-      />
-    </div>
+                <div>
+                  <input
+                    className="dato"
+                    type="text"
+                    value={corte.garron ?? ""}
+                    onChange={(e) =>
+                      updateCorteField(corte, "garron", e.target.value)
+                    }
+                  />
+                </div>
 
-    <div>
-      <input
-        className="dato"
-        type="number"
-        min="0"
-        max="1"
-        value={Number(corte.cabeza ?? 0)}
-        onChange={(e) =>
-          updateCorteField(
-            corte,
-            "cabeza",
-            Math.abs(parseFloat(e.target.value || 0))
-          )
-        }      />
-    </div>
+                <div>
+                  <input
+                    className="dato dato-unique"
+                    type="text"
+                    value={corte.unique_code ?? ""}
+                    readOnly
+                    title="Código único"
+                  />
+                </div>
 
-    <div>
-      <input
-        className="dato"
-        type="number"
-        min="0"
-        max="1"
-        value={Number(corte.cantidad ?? 0)}
-        onChange={(e) =>
-          updateCorteField(
-            corte,
-            "cantidad",
-            Math.abs(parseFloat(e.target.value || 0))
-          )
-        }      />
-    </div>
+                <div>
+                  <input
+                    className="dato"
+                    type="number"
+                    min="0"
+                    max="1"
+                    value={Number(corte.cabeza ?? 0)}
+                    onChange={(e) =>
+                      updateCorteField(
+                        corte,
+                        "cabeza",
+                        Math.abs(parseFloat(e.target.value || 0))
+                      )
+                    }
+                  />
+                </div>
 
-    <div>
-      <input
-        className="dato"
-        type="number"
-        min="0"
-        value={Number(corte.pesoProveedor ?? 0)}
-        onChange={(e) =>
-          updateCorteField(
-            corte,
-            "pesoProveedor",
-            Math.abs(parseFloat(e.target.value || 0))
-          )
-        }      />
-    </div>
+                <div>
+                  <input
+                    className="dato"
+                    type="number"
+                    min="0"
+                    max="1"
+                    value={Number(corte.cantidad ?? 0)}
+                    onChange={(e) =>
+                      updateCorteField(
+                        corte,
+                        "cantidad",
+                        Math.abs(parseFloat(e.target.value || 0))
+                      )
+                    }
+                  />
+                </div>
 
-    <div>
-      <input
-        className="dato"
-        type="number"
-        min="0"
-        value={Number(corte.pesoBruto ?? 0)}
-        onChange={(e) =>
-          updateCorteField(
-            corte,
-            "pesoBruto",
-            Math.abs(parseFloat(e.target.value || 0))
-          )
-        }      />
-    </div>
+                <div>
+                  <input
+                    className="dato"
+                    type="number"
+                    min="0"
+                    value={Number(corte.pesoProveedor ?? 0)}
+                    onChange={(e) =>
+                      updateCorteField(
+                        corte,
+                        "pesoProveedor",
+                        Math.abs(parseFloat(e.target.value || 0))
+                      )
+                    }
+                  />
+                </div>
 
-    <div>
-      <select
-        className="dato"
-        value={corte.tara_id ?? ""}
-        onChange={(e) => {
-          const taraId = e.target.value ? parseInt(e.target.value) : null;
-          const selected = tares.find((t) => t.id === taraId);
-          updateCorteField(corte, "tara_id", taraId);
-          updateCorteField(corte, "tara", Number(selected?.peso || 0));
-        }}      >
-        <option value="">Seleccionar</option>
-        {tares.map((t) => (
-          <option key={t.id} value={t.id}>
-            {t.nombre} ({t.peso} kg)
-          </option>
-        ))}
-      </select>
-    </div>
+                <div>
+                  <input
+                    className="dato"
+                    type="number"
+                    min="0"
+                    value={Number(corte.pesoBruto ?? 0)}
+                    onChange={(e) =>
+                      updateCorteField(
+                        corte,
+                        "pesoBruto",
+                        Math.abs(parseFloat(e.target.value || 0))
+                      )
+                    }
+                  />
+                </div>
 
-    <p className="dato">{(Number(corte.pesoNeto) || 0).toFixed(2)} kg</p>
+                <div>
+                  <Select
+                    className="tara-row-select"
+                    classNamePrefix="tara-row-select"
+                    options={opcionesTares}
+                    formatOptionLabel={formatTaraOption}
+                    value={opcionesTares.find((o) => o.value === corte.tara_id) || null}
+                    onChange={(selected) => {
+                      updateCorteField(corte, "tara_id", selected?.value || null);
+                      updateCorteField(corte, "tara", Number(selected?.peso || 0));
+                    }}
+                    placeholder=""
+                    isClearable
+                    menuPortalTarget={document.body}
+                    styles={selectTaraRowStyles}
+                  />
+                </div>
 
-    <div>
-<label className="camara-check__label">
-        <input
-          type="checkbox"
-          checked={!!corte.aCamara}
-          onChange={(e) => {
-            const checked = e.target.checked;
-            setCortesAgregados((prev) => {
-              const idx = prev.indexOf(corte);
-              if (idx === -1) return prev;
-              const copy = [...prev];
-              copy[idx] = { ...copy[idx], aCamara: checked };
-              return copy;
-            });
-          }}
-        />
-        <span>A cámara</span>
-      </label>
+                <p className="dato">{(Number(corte.pesoNeto) || 0).toFixed(2)} kg</p>
 
-      <button type="button" onClick={() => eliminarCorte(corte)} className="btn-eliminar">
-        X
-      </button>
-    </div>
-  </div>
-))}
-<div className="pagination-buttons">
-              <button className="btn-pagination secondary"
-                onClick={() =>
-                  setPaginaActual((prev) => Math.max(prev - 1, 1))
-                }
-                disabled={paginaActual === 1}              >
+                <div>
+                  <label className="camara-check__label">
+                    <input
+                      type="checkbox"
+                      checked={!!corte.aCamara}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setCortesAgregados((prev) => {
+                          const idx = prev.indexOf(corte);
+                          if (idx === -1) return prev;
+                          const copy = [...prev];
+                          copy[idx] = { ...copy[idx], aCamara: checked };
+                          return copy;
+                        });
+                      }}
+                    />
+                    <span>A cámara</span>
+                  </label>
+
+                  <button
+                    type="button"
+                    onClick={() => eliminarCorte(corte)}
+                    className="btn-eliminar"
+                  >
+                    X
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            <div className="pagination-buttons">
+              <button
+                className="btn-pagination secondary"
+                onClick={() => setPaginaActual((prev) => Math.max(prev - 1, 1))}
+                disabled={paginaActual === 1}
+              >
                 Anterior
               </button>
-              <button className="btn-pagination"
+              <button
+                className="btn-pagination"
                 onClick={() =>
                   setPaginaActual((prev) =>
-                    prev * cortesPorPagina < cortesAgregados.length
-                      ? prev + 1
-                      : prev
+                    prev * cortesPorPagina < cortesAgregados.length ? prev + 1 : prev
                   )
                 }
-                disabled={
-                  paginaActual * cortesPorPagina >=
-                  cortesAgregados.length
-                }
+                disabled={paginaActual * cortesPorPagina >= cortesAgregados.length}
               >
                 Siguiente
               </button>
@@ -1400,9 +1541,9 @@ const eliminarCongelado = async (producto) => {
           </div>
         </div>
 
-        {/* FORM CONGELADOS / OTROS */}
         <div className="formulario-corte">
           <h2>Productos Congelados / Otros</h2>
+
           <div className="form-group">
             <div>
               <label>TIPO</label>
@@ -1526,28 +1667,36 @@ const eliminarCongelado = async (producto) => {
 
             <div>
               <label>TARA</label>
-              <select
-                name="tara"
-                value={taraSeleccionadaIdCongelado}
-                onChange={(e) => {
-                  const selected = tares.find(
-                    (t) => t.id === parseInt(e.target.value)
-                  );
-                  setTaraSeleccionadaIdCongelado(e.target.value);
+              <Select
+                className="tara-select"
+                classNamePrefix="tara-select"
+                options={opcionesTares}
+                formatOptionLabel={formatTaraOption}
+                value={
+                  opcionesTares.find((o) => o.value === formCongelado.tara_id) || null
+                }
+                onChange={(selected) => {
+                  setTaraSeleccionadaIdCongelado(selected?.value || "");
                   setFormCongelado((prev) => ({
                     ...prev,
+                    tara_id: selected?.value || null,
                     tara: selected?.peso || 0,
                   }));
                 }}
-                required
-              >
-                <option value="">Seleccionar</option>
-                {tares.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.nombre} ({t.peso} kg)
-                  </option>
-                ))}
-              </select>
+                placeholder={buscandoTaraCongelado ? "" : "Buscar tara..."}
+                isClearable
+                onInputChange={(value, actionMeta) => {
+                  if (actionMeta.action === "input-change") {
+                    setBuscandoTaraCongelado(value.length > 0);
+                  }
+                  return value;
+                }}
+                onMenuClose={() => setBuscandoTaraCongelado(false)}
+                onBlur={() => setBuscandoTaraCongelado(false)}
+                components={{ DropdownIndicator: null, IndicatorSeparator: null, ClearIndicator: null }}
+                menuPortalTarget={document.body}
+                styles={selectTaraStyles}
+              />
             </div>
           </div>
 
@@ -1557,176 +1706,188 @@ const eliminarCongelado = async (producto) => {
 
           <div className="cortes-lista">
             {congeladosPaginados.map((item) => (
-  <div key={item.id ?? item.tempId} className="corte-mostrado">
-    <div style={{ minWidth: 180 }}>
-      <Select
-        className="custom-select"
-        classNamePrefix="mi-select"
-        options={opcionesProductosCongelados}
-        value={
-          opcionesProductosCongelados.find(
-            (o) => o.value === (item.product_name || item.tipo)
-          ) || null
-        }
-        onChange={(selected) => {
-          const nombre = selected?.value || "";
-          updateCongeladoField(item, "tipo", nombre);
-          updateCongeladoField(item, "product_name", nombre);
-          updateCongeladoField(item, "product_cod", selected?.id || "");
-          updateCongeladoField(item, "product_category", selected?.categoria || "");
-          updateCongeladoField(item, "cod", selected?.id || "");
-          updateCongeladoField(item, "categoria", selected?.categoria || "");
-        }}
-        placeholder=""
-        isClearable={false}
-        components={{
-          ...sinFlecha,
-          ClearIndicator: SinClearIndicator,
-        }}
-        menuPortalTarget={document.body}
-        styles={{
-          control: (base) => ({
-            ...base,
-            minHeight: "32px",
-            height: "32px",
-          }),
-          valueContainer: (base) => ({
-            ...base,
-            height: "32px",
-            padding: "0 6px",
-          }),
-          indicatorsContainer: (base) => ({
-            ...base,
-            height: "32px",
-          }),
-          menuPortal: (base) => ({ ...base, zIndex: 9999 }),
-        }}
-      />
-    </div>
+              <div key={item.id ?? item.tempId} className="corte-mostrado">
+                <div style={{ minWidth: 180 }}>
+                  <Select
+                    className="custom-select"
+                    classNamePrefix="mi-select"
+                    options={opcionesProductosCongelados}
+                    value={
+                      opcionesProductosCongelados.find(
+                        (o) => o.value === (item.product_name || item.tipo)
+                      ) || null
+                    }
+                    onChange={(selected) => {
+                      const nombre = selected?.value || "";
+                      updateCongeladoField(item, "tipo", nombre);
+                      updateCongeladoField(item, "product_name", nombre);
+                      updateCongeladoField(item, "product_cod", selected?.id || "");
+                      updateCongeladoField(
+                        item,
+                        "product_category",
+                        selected?.categoria || ""
+                      );
+                      updateCongeladoField(item, "cod", selected?.id || "");
+                      updateCongeladoField(item, "categoria", selected?.categoria || "");
+                    }}
+                    placeholder=""
+                    isClearable={false}
+                    components={{
+                      ...sinFlecha,
+                      ClearIndicator: SinClearIndicator,
+                    }}
+                    menuPortalTarget={document.body}
+                    styles={{
+                      control: (base) => ({
+                        ...base,
+                        minHeight: "32px",
+                        height: "32px",
+                      }),
+                      valueContainer: (base) => ({
+                        ...base,
+                        height: "32px",
+                        padding: "0 6px",
+                      }),
+                      indicatorsContainer: (base) => ({
+                        ...base,
+                        height: "32px",
+                      }),
+                      menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+                    }}
+                  />
+                </div>
 
-    <div>
-      <input
-        className="dato"
-        type="text"
-        value={item.product_portion || item.lote || ""}
-        onChange={(e) => {
-          updateCongeladoField(item, "product_portion", e.target.value);
-          updateCongeladoField(item, "lote", e.target.value);
-        }}      />
-    </div>
+                <div>
+                  <input
+                    className="dato"
+                    type="text"
+                    value={item.product_portion || item.lote || ""}
+                    onChange={(e) => {
+                      updateCongeladoField(item, "product_portion", e.target.value);
+                      updateCongeladoField(item, "lote", e.target.value);
+                    }}
+                  />
+                </div>
 
-    <div>
-      <input
-        className="dato dato-unique"
-        type="text"
-        value={item.unique_code ?? item.uniqueCode ?? ""}
-        readOnly
-        title="Código único"
-      />
-    </div>
+                <div>
+                  <input
+                    className="dato dato-unique"
+                    type="text"
+                    value={item.unique_code ?? item.uniqueCode ?? ""}
+                    readOnly
+                    title="Código único"
+                  />
+                </div>
 
-    <div>
-      <input
-        className="dato"
-        type="number"
-        min="0"
-        value={Number(item.product_quantity ?? item.cantidad ?? 0)}
-        onChange={(e) => {
-          const v = Math.abs(parseFloat(e.target.value || 0));
-          updateCongeladoField(item, "product_quantity", v);
-          updateCongeladoField(item, "cantidad", v);
-        }}      />
-    </div>
+                <div>
+                  <input
+                    className="dato"
+                    type="number"
+                    min="0"
+                    value={Number(item.product_quantity ?? item.cantidad ?? 0)}
+                    onChange={(e) => {
+                      const v = Math.abs(parseFloat(e.target.value || 0));
+                      updateCongeladoField(item, "product_quantity", v);
+                      updateCongeladoField(item, "cantidad", v);
+                    }}
+                  />
+                </div>
 
-    <div>
-      <input
-        className="dato"
-        type="number"
-        min="0"
-        value={Number(item.pesoProveedor ?? 0)}
-        onChange={(e) =>
-          updateCongeladoField(
-            item,
-            "pesoProveedor",
-            Math.abs(parseFloat(e.target.value || 0))
-          )
-        }      />
-    </div>
+                <div>
+                  <input
+                    className="dato"
+                    type="number"
+                    min="0"
+                    value={Number(item.pesoProveedor ?? 0)}
+                    onChange={(e) =>
+                      updateCongeladoField(
+                        item,
+                        "pesoProveedor",
+                        Math.abs(parseFloat(e.target.value || 0))
+                      )
+                    }
+                  />
+                </div>
 
-    <div>
-      <input
-        className="dato"
-        type="number"
-        min="0"
-        value={Number(item.product_gross_weight ?? item.pesoBruto ?? 0)}
-        onChange={(e) => {
-          const v = Math.abs(parseFloat(e.target.value || 0));
-          updateCongeladoField(item, "product_gross_weight", v);
-          updateCongeladoField(item, "pesoBruto", v);
-        }}      />
-    </div>
+                <div>
+                  <input
+                    className="dato"
+                    type="number"
+                    min="0"
+                    value={Number(item.product_gross_weight ?? item.pesoBruto ?? 0)}
+                    onChange={(e) => {
+                      const v = Math.abs(parseFloat(e.target.value || 0));
+                      updateCongeladoField(item, "product_gross_weight", v);
+                      updateCongeladoField(item, "pesoBruto", v);
+                    }}
+                  />
+                </div>
 
-    <div>
-      <select
-        className="dato"
-        value={item.tara_id ?? ""}
-        onChange={(e) => {
-          const taraId = e.target.value ? parseInt(e.target.value) : null;
-          const selected = tares.find((t) => t.id === taraId);
-          updateCongeladoField(item, "tara_id", taraId);
-          updateCongeladoField(item, "tara", Number(selected?.peso || 0));
-        }}      >
-        <option value="">Seleccionar</option>
-        {tares.map((t) => (
-          <option key={t.id} value={t.id}>
-            {t.nombre} ({t.peso} kg)
-          </option>
-        ))}
-      </select>
-    </div>
+                <div>
+                  <Select
+                    className="tara-row-select"
+                    classNamePrefix="tara-row-select"
+                    options={opcionesTares}
+                    formatOptionLabel={formatTaraOption}
+                    value={opcionesTares.find((o) => o.value === item.tara_id) || null}
+                    onChange={(selected) => {
+                      updateCongeladoField(item, "tara_id", selected?.value || null);
+                      updateCongeladoField(item, "tara", Number(selected?.peso || 0));
+                    }}
+                    placeholder=""
+                    isClearable
+                    menuPortalTarget={document.body}
+                    styles={selectTaraRowStyles}
+                  />
+                </div>
 
-    <div>
-      <p className="dato">{(Number(item.pesoNeto) || 0).toFixed(2)}</p>
-    </div>
+                <div>
+                  <p className="dato">{(Number(item.pesoNeto) || 0).toFixed(2)}</p>
+                </div>
 
-    <div>
-      <p
-        className="dato"
-        style={{
-          color:
-            (item.decrease ?? 0) > 0
-              ? "orange"
-              : (item.decrease ?? 0) < 0
-              ? "green"
-              : "inherit",
-        }}
-      >
-        {(Number(item.decrease) || 0).toFixed(2)}%
-      </p>
-    </div>
+                <div>
+                  <p
+                    className="dato"
+                    style={{
+                      color:
+                        (item.decrease ?? 0) > 0
+                          ? "orange"
+                          : (item.decrease ?? 0) < 0
+                          ? "green"
+                          : "inherit",
+                    }}
+                  >
+                    {(Number(item.decrease) || 0).toFixed(2)}%
+                  </p>
+                </div>
 
-    <div>
-<button type="button" onClick={() => eliminarCongelado(item)} className="btn-eliminar">
-        X
-      </button>
-    </div>
-  </div>
-))}
-<div className="pagination-buttons">
-              <button className="btn-pagination secondary"
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => eliminarCongelado(item)}
+                    className="btn-eliminar"
+                  >
+                    X
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            <div className="pagination-buttons">
+              <button
+                className="btn-pagination secondary"
                 onClick={() =>
-                  setPaginaActualCongelados((prev) =>
-                    Math.max(prev - 1, 1)
-                  )
+                  setPaginaActualCongelados((prev) => Math.max(prev - 1, 1))
                 }
-                disabled={paginaActualCongelados === 1}              >
+                disabled={paginaActualCongelados === 1}
+              >
                 Anterior
               </button>
-              <button className="btn-pagination"
+              <button
+                className="btn-pagination"
                 onClick={() =>
                   setPaginaActualCongelados((prev) =>
-                    prev * congeladosPorPagina <
-                    congeladosAgregados.length
+                    prev * congeladosPorPagina < congeladosAgregados.length
                       ? prev + 1
                       : prev
                   )
@@ -1742,7 +1903,8 @@ const eliminarCongelado = async (producto) => {
           </div>
 
           <div className="info-weight-observations">
-            <div className="resumen-buttons"
+            <div
+              className="resumen-buttons"
               style={{
                 display: "flex",
                 gap: "1rem",
@@ -1752,10 +1914,8 @@ const eliminarCongelado = async (producto) => {
               <button
                 onClick={() => setTabActiva("detallado")}
                 style={{
-                  backgroundColor:
-                    tabActiva === "detallado" ? "#007bff" : "#e0e0e0",
-                  color:
-                    tabActiva === "detallado" ? "white" : "black",
+                  backgroundColor: tabActiva === "detallado" ? "#007bff" : "#e0e0e0",
+                  color: tabActiva === "detallado" ? "white" : "black",
                   padding: "0.5rem 1rem",
                   border: "none",
                   borderRadius: "4px",
@@ -1764,11 +1924,11 @@ const eliminarCongelado = async (producto) => {
               >
                 Resumen detallado por pieza
               </button>
+
               <button
                 onClick={() => setTabActiva("agrupado")}
                 style={{
-                  backgroundColor:
-                    tabActiva === "agrupado" ? "#007bff" : "#e0e0e0",
+                  backgroundColor: tabActiva === "agrupado" ? "#007bff" : "#e0e0e0",
                   color: tabActiva === "agrupado" ? "white" : "black",
                   padding: "0.5rem 1rem",
                   border: "none",
@@ -1778,7 +1938,8 @@ const eliminarCongelado = async (producto) => {
               >
                 Resumen agrupado por piezas
               </button>
-</div>
+            </div>
+
             {tabActiva === "detallado" && (
               <div>
                 <h3>RESUMEN</h3>
@@ -1800,8 +1961,7 @@ const eliminarCongelado = async (producto) => {
                       {cortesAgregados.map((corte, index) => {
                         const merma =
                           corte.pesoProveedor && corte.pesoNeto
-                            ? ((corte.pesoNeto -
-                                corte.pesoProveedor) /
+                            ? ((corte.pesoNeto - corte.pesoProveedor) /
                                 corte.pesoProveedor) *
                               100
                             : 0;
@@ -1814,13 +1974,10 @@ const eliminarCongelado = async (producto) => {
                             <td>{corte.pesoProveedor}</td>
                             <td>{corte.cantidad}</td>
                             <td>{corte.cabeza}</td>
-                            <td>
-                              {Number(corte.pesoNeto || 0).toFixed(2)}
-                            </td>
+                            <td>{Number(corte.pesoNeto || 0).toFixed(2)}</td>
                             <td
                               style={{
-                                color:
-                                  Number(merma) < 0 ? "red" : "green",
+                                color: Number(merma) < 0 ? "red" : "green",
                               }}
                             >
                               {Number(merma || 0) > 0 ? "+" : ""}
@@ -1829,20 +1986,17 @@ const eliminarCongelado = async (producto) => {
                           </tr>
                         );
                       })}
+
                       <tr>
                         <td>
-                          <strong>
-                            Diferencia declarado en romaneo
-                          </strong>
+                          <strong>Diferencia declarado en romaneo</strong>
                         </td>
+                        <td></td>
                         <td></td>
                         <td></td>
                         <td
                           style={{
-                            color:
-                              cantidad > totalAnimalesCargados
-                                ? "red"
-                                : "green",
+                            color: cantidad > totalAnimalesCargados ? "red" : "green",
                           }}
                         >
                           {cantidad - totalAnimalesCargados}{" "}
@@ -1850,9 +2004,7 @@ const eliminarCongelado = async (producto) => {
                             (
                             {cantidad > 0
                               ? (
-                                  ((cantidad -
-                                    totalAnimalesCargados) /
-                                    cantidad) *
+                                  ((cantidad - totalAnimalesCargados) / cantidad) *
                                   100
                                 ).toFixed(0)
                               : 0}
@@ -1862,8 +2014,7 @@ const eliminarCongelado = async (producto) => {
                         <td
                           style={{
                             color:
-                              data.head_quantity >
-                              totalCabezasCargadas
+                              data.head_quantity > totalCabezasCargadas
                                 ? "red"
                                 : "green",
                           }}
@@ -1871,19 +2022,19 @@ const eliminarCongelado = async (producto) => {
                           {data.head_quantity - totalCabezasCargadas}{" "}
                           <span>
                             (
-                            {(
-                              ((data.head_quantity -
-                                totalCabezasCargadas) /
-                                data.head_quantity) *
-                              100
-                            ).toFixed(0)}
+                            {data.head_quantity > 0
+                              ? (
+                                  ((data.head_quantity - totalCabezasCargadas) /
+                                    data.head_quantity) *
+                                  100
+                                ).toFixed(0)
+                              : 0}
                             %)
                           </span>
                         </td>
                         <td
                           style={{
-                            color:
-                              diferenciaPeso < 0 ? "red" : "green",
+                            color: diferenciaPeso < 0 ? "red" : "green",
                           }}
                         >
                           {diferenciaPeso.toFixed(2)}{" "}
@@ -1892,6 +2043,7 @@ const eliminarCongelado = async (producto) => {
                             {porcentajeDiferencia.toFixed(2)}%)
                           </span>
                         </td>
+                        <td></td>
                       </tr>
                     </tbody>
                   </table>
@@ -1901,9 +2053,7 @@ const eliminarCongelado = async (producto) => {
 
             {tabActiva === "agrupado" && (
               <div>
-                <h3 style={{ marginTop: "2rem" }}>
-                  RESUMEN AGRUPADO POR PIEZA
-                </h3>
+                <h3 style={{ marginTop: "2rem" }}>RESUMEN AGRUPADO POR PIEZA</h3>
                 <div className="table-wrapper">
                   <table className="stock-table">
                     <thead>
@@ -1916,35 +2066,31 @@ const eliminarCongelado = async (producto) => {
                       </tr>
                     </thead>
                     <tbody>
-                      {Object.values(cortesAgrupados).map(
-                        (corte, index) => {
-                          const merma =
-                            corte.pesoProveedor > 0
-                              ? ((corte.pesoNeto -
-                                  corte.pesoProveedor) /
-                                  corte.pesoProveedor) *
-                                100
-                              : 0;
+                      {Object.values(cortesAgrupados).map((corte, index) => {
+                        const merma =
+                          corte.pesoProveedor > 0
+                            ? ((corte.pesoNeto - corte.pesoProveedor) /
+                                corte.pesoProveedor) *
+                              100
+                            : 0;
 
-                          return (
-                            <tr key={index}>
-                              <td>{corte.tipo}</td>
-                              <td>{corte.cantidad}</td>
-                              <td>{corte.cabezas}</td>
-                              <td>{corte.pesoNeto.toFixed(2)}</td>
-                              <td
-                                style={{
-                                  color:
-                                    merma < 0 ? "red" : "green",
-                                }}
-                              >
-                                {merma > 0 ? "+" : ""}
-                                {merma.toFixed(2)}%
-                              </td>
-                            </tr>
-                          );
-                        }
-                      )}
+                        return (
+                          <tr key={index}>
+                            <td>{corte.tipo}</td>
+                            <td>{corte.cantidad}</td>
+                            <td>{corte.cabezas}</td>
+                            <td>{corte.pesoNeto.toFixed(2)}</td>
+                            <td
+                              style={{
+                                color: merma < 0 ? "red" : "green",
+                              }}
+                            >
+                              {merma > 0 ? "+" : ""}
+                              {merma.toFixed(2)}%
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -1974,9 +2120,7 @@ const eliminarCongelado = async (producto) => {
 
                     const mermaPesoItem =
                       data?.fresh_weight > 0
-                        ? ((data.fresh_weight - item.pesoNeto) /
-                            data.fresh_weight) *
-                          100
+                        ? ((data.fresh_weight - item.pesoNeto) / data.fresh_weight) * 100
                         : 0;
 
                     return (
@@ -1986,10 +2130,7 @@ const eliminarCongelado = async (producto) => {
                         <td>{item.pesoNeto?.toFixed(2)}</td>
                         <td
                           style={{
-                            color:
-                              mermaCantidadItem > 0
-                                ? "red"
-                                : "green",
+                            color: mermaCantidadItem > 0 ? "red" : "green",
                           }}
                         >
                           {mermaCantidadItem > 0 ? "+" : ""}
@@ -1997,8 +2138,7 @@ const eliminarCongelado = async (producto) => {
                         </td>
                         <td
                           style={{
-                            color:
-                              mermaPesoItem > 0 ? "red" : "green",
+                            color: mermaPesoItem > 0 ? "red" : "green",
                           }}
                         >
                           {mermaPesoItem > 0 ? "+" : ""}
@@ -2016,10 +2156,7 @@ const eliminarCongelado = async (producto) => {
                     <td>{totalWeightCongelados.toFixed(2)}</td>
                     <td
                       style={{
-                        color:
-                          mermaCantidadCongelados > 0
-                            ? "red"
-                            : "green",
+                        color: mermaCantidadCongelados > 0 ? "red" : "green",
                       }}
                     >
                       {mermaCantidadCongelados > 0 ? "+" : ""}
@@ -2027,10 +2164,7 @@ const eliminarCongelado = async (producto) => {
                     </td>
                     <td
                       style={{
-                        color:
-                          mermaPesoCongelados > 0
-                            ? "red"
-                            : "green",
+                        color: mermaPesoCongelados > 0 ? "red" : "green",
                       }}
                     >
                       {mermaPesoCongelados > 0 ? "+" : ""}
@@ -2047,6 +2181,7 @@ const eliminarCongelado = async (producto) => {
             >
               OBSERVACIONES
             </label>
+
             <textarea
               name="observaciones"
               placeholder="Observaciones"

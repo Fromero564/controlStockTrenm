@@ -42,6 +42,7 @@ const ProductionProcess = () => {
   const [cortes, setCortes] = useState([]);
   const [tares, setTares] = useState([]);
   const [taraSeleccionadaId, setTaraSeleccionadaId] = useState("");
+
   const [formData, setFormData] = useState({
     tipo: "",
     promedio: 0,
@@ -56,7 +57,6 @@ const ProductionProcess = () => {
   const [comprobanteSeleccionado, setComprobanteSeleccionado] = useState("");
 
   const [subproductosEsperados, setSubproductosEsperados] = useState([]);
-  const [cargandoSubproductos, setCargandoSubproductos] = useState(false);
 
   const [mostrarSinRemito, setMostrarSinRemito] = useState(false);
   const [productosDisponibles, setProductosDisponibles] = useState([]);
@@ -70,12 +70,13 @@ const ProductionProcess = () => {
   const [mostrarSeccionComprobantes, setMostrarSeccionComprobantes] = useState(
     isEdit
   );
-  const comprobantesSectionRef = useRef(null);
 
+  const comprobantesSectionRef = useRef(null);
   const tipoAnteriorRef = useRef("");
 
   useEffect(() => {
     if (isEdit) return;
+
     const cortesGuardados = safeParse(localStorage.getItem(LS_KEYS.CORTES), []);
     const productosGuardados = safeParse(
       localStorage.getItem(LS_KEYS.SIN_REMITO),
@@ -88,8 +89,9 @@ const ProductionProcess = () => {
 
     if (cortesGuardados.length) setCortesAgregados(cortesGuardados);
     if (productosGuardados.length) setProductosSinRemito(productosGuardados);
-    if (comprobantesGuardados.length)
+    if (comprobantesGuardados.length) {
       setComprobantesAgregados(comprobantesGuardados);
+    }
   }, [isEdit]);
 
   useEffect(() => {
@@ -120,29 +122,81 @@ const ProductionProcess = () => {
         const response = await fetch(`${API_URL}/product-name`);
         const data = await response.json();
 
-      const productosConCantidad = data.map((producto) => ({
-  id: producto.id,
-  nombre: producto.product_name,
-  categoria: producto.category?.category_name || "",
-  cantidad: 0,
-  unidadVenta:
-    producto.unit_measure ||
-    producto.sale_unit ||
-    producto.unit ||
-    producto.unit_sale ||
-    producto.sales_unit ||
-    producto.saleUnit ||
-    "",
-}));
+        const productosConCantidad = data.map((producto) => ({
+          id: producto.id,
+          nombre: producto.product_name,
+          categoria: producto.category?.category_name || "",
+          cantidad: 0,
+          unidadVenta:
+            producto.unit_measure ||
+            producto.sale_unit ||
+            producto.unit ||
+            producto.unit_sale ||
+            producto.sales_unit ||
+            producto.saleUnit ||
+            "",
+        }));
 
         setCortes(productosConCantidad);
 
-        setProductosDisponibles(
-          data.map((prod) => ({
+        const productosBase = data.map((prod) => {
+          const unidadVenta =
+            prod.unit_measure ||
+            prod.sale_unit ||
+            prod.unit ||
+            prod.unit_sale ||
+            prod.sales_unit ||
+            prod.saleUnit ||
+            "";
+
+          return {
             value: prod.product_name,
             label: prod.product_name,
-          }))
-        );
+            tipoOrigen: "stock",
+            product_name: prod.product_name,
+            unidadVenta,
+          };
+        });
+
+        let camaraOptions = [];
+
+        try {
+          const resCamara = await fetch(
+            `${API_URL}/camara-cuts-for-subproduction`
+          );
+
+          if (resCamara.ok) {
+            const dataCamara = await resCamara.json();
+            const camaraRows = Array.isArray(dataCamara) ? dataCamara : [];
+
+            camaraOptions = camaraRows.map((item) => {
+              const uniqueCode = item.unique_code
+                ? ` | Código: ${item.unique_code}`
+                : "";
+
+              const quantity = Number(item.quantity || 0);
+              const weight = Number(item.weight || 0);
+
+              return {
+                value: `camara-${item.source}-${item.id}`,
+                label: `${item.product_name} | CÁMARA${uniqueCode} - ${quantity} un. / ${weight.toFixed(
+                  2
+                )} kg`,
+                tipoOrigen: "camara",
+                camaraId: item.id,
+                source: item.source,
+                product_name: item.product_name,
+                quantity,
+                weight,
+                unique_code: item.unique_code || null,
+              };
+            });
+          }
+        } catch (err) {
+          console.error("Error al cargar productos de cámara:", err);
+        }
+
+        setProductosDisponibles([...productosBase, ...camaraOptions]);
       } catch (error) {
         console.error("Error al cargar productos:", error);
       }
@@ -156,16 +210,19 @@ const ProductionProcess = () => {
       try {
         const response = await fetch(`${API_URL}/allTares`);
         const data = await response.json();
+
         const tarasConIndex = data.map((item) => ({
           id: item.id,
           nombre: item.tare_name,
           peso: item.tare_weight,
         }));
+
         setTares(tarasConIndex);
       } catch (error) {
         console.error("Error al cargar taras:", error);
       }
     };
+
     fetchTares();
   }, [API_URL]);
 
@@ -232,8 +289,8 @@ const ProductionProcess = () => {
 
       return data.map((sub) => ({
         nombre: sub.nombre,
-        cantidadTotal: sub.cantidadPorUnidad * cantidad,
-        cantidadPorUnidad: sub.cantidadPorUnidad,
+        cantidadTotal: Number(sub.cantidadPorUnidad || 0) * Number(cantidad || 0),
+        cantidadPorUnidad: Number(sub.cantidadPorUnidad || 0),
         productoOrigen: tipoProducto,
         unit: sub.unit || "unidad",
       }));
@@ -272,14 +329,18 @@ const ProductionProcess = () => {
           const resSub = await fetch(
             `${API_URL}/productionprocess-subproduction?process_number=${processParam}`
           );
+
           if (resSub.ok) {
             const subRows = await resSub.json();
+
             const mapped = (Array.isArray(subRows) ? subRows : []).map((s) => ({
               producto: s.cut_name,
               cantidad: Number(s.quantity || 0),
               weight: Number(s.weight || 0),
               subproductos: [],
+              esCamara: false,
             }));
+
             setProductosSinRemito(mapped);
           }
         } catch {}
@@ -308,7 +369,12 @@ const ProductionProcess = () => {
                   subs = subs.concat(sps);
                 }
 
-                return { id: bid, remito, detalles, subproductos: subs };
+                return {
+                  id: bid,
+                  remito,
+                  detalles,
+                  subproductos: subs,
+                };
               } catch {
                 return {
                   id: bid,
@@ -368,7 +434,7 @@ const ProductionProcess = () => {
       if (detalles.length === 0) {
         Swal.fire(
           "Atención",
-          "Ese comprobante no tiene cortes disponibles (no tiene detalle o ya fue enviado a cámara).",
+          "Ese comprobante no tiene cortes disponibles.",
           "warning"
         );
         return;
@@ -403,16 +469,20 @@ const ProductionProcess = () => {
   };
 
   const eliminarComprobante = (idDel) => {
-    setComprobantesAgregados((prev) => prev.filter((c) => c.id !== idDel));
+    setComprobantesAgregados((prev) =>
+      prev.filter((c) => Number(c.id) !== Number(idDel))
+    );
   };
 
   const cortesTotales = () => {
     const acumulado = {};
+
     comprobantesAgregados.forEach(({ detalles }) => {
       detalles.forEach(({ type, quantity }) => {
-        acumulado[type] = (acumulado[type] || 0) + quantity;
+        acumulado[type] = (acumulado[type] || 0) + Number(quantity || 0);
       });
     });
+
     return acumulado;
   };
 
@@ -442,7 +512,8 @@ const ProductionProcess = () => {
               unit: unit || "unidad",
             };
           }
-          acumulado[nombre].cantidadTotal += cantidadTotal;
+
+          acumulado[nombre].cantidadTotal += Number(cantidadTotal || 0);
         }
       );
     });
@@ -461,15 +532,18 @@ const ProductionProcess = () => {
             unit: s.unit || "unidad",
           };
         }
-        acc[s.nombre].cantidadTotal += s.cantidadTotal;
+
+        acc[s.nombre].cantidadTotal += Number(s.cantidadTotal || 0);
         return acc;
       }, {})
     ),
   }));
 
   const subproductosAgrupadosComprobantes = Object.entries(subproductosTotales());
-  const subproductosAgrupadosSinRemito =
-    productosSinRemitoAgrupados.flatMap((prod) => prod.subproductosAgrupados);
+
+  const subproductosAgrupadosSinRemito = productosSinRemitoAgrupados.flatMap(
+    (prod) => prod.subproductosAgrupados
+  );
 
   const subproductosCombinados = {};
 
@@ -484,7 +558,10 @@ const ProductionProcess = () => {
         unit: data.unit || "unidad",
       };
     }
-    subproductosCombinados[nombre].cantidadTotal += data.cantidadTotal;
+
+    subproductosCombinados[nombre].cantidadTotal += Number(
+      data.cantidadTotal || 0
+    );
   });
 
   const getUnidadProducto = (tipo) => {
@@ -517,6 +594,7 @@ const ProductionProcess = () => {
     if (!tipo) return false;
 
     const unidadProducto = getUnidadProducto(tipo);
+
     if (
       unidadProducto &&
       String(unidadProducto).trim().toLowerCase() === "kg"
@@ -525,6 +603,7 @@ const ProductionProcess = () => {
     }
 
     const unidadSubproducto = getUnidadPorTipo(tipo);
+
     if (
       unidadSubproducto &&
       String(unidadSubproducto).trim().toLowerCase() === "kg"
@@ -534,6 +613,27 @@ const ProductionProcess = () => {
 
     return false;
   };
+
+  const productoSinRemitoEsCamara =
+    productoSinRemito?.tipoOrigen === "camara";
+
+  const productoSinRemitoEsKg = (() => {
+    if (!productoSinRemito || productoSinRemitoEsCamara) return false;
+
+    const nombre =
+      productoSinRemito.product_name ||
+      productoSinRemito.value ||
+      productoSinRemito.label ||
+      "";
+
+    const producto = cortes.find(
+      (p) =>
+        String(p.nombre || "").trim().toLowerCase() ===
+        String(nombre || "").trim().toLowerCase()
+    );
+
+    return String(producto?.unidadVenta || "").trim().toLowerCase() === "kg";
+  })();
 
   useEffect(() => {
     if (
@@ -606,6 +706,7 @@ const ProductionProcess = () => {
     };
 
     setCortesAgregados((prev) => [...prev, nuevoCorte]);
+
     setFormData({
       tipo: "",
       promedio: 0,
@@ -614,64 +715,171 @@ const ProductionProcess = () => {
       tara: 0,
       pesoNeto: 0,
     });
+
     setTaraSeleccionadaId("");
   };
 
   const eliminarCorte = (index) => {
-    setCortesAgregados(cortesAgregados.filter((_, i) => i !== index));
+    setCortesAgregados((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleCantidadSinRemitoChange = (e) => {
     const v = e.target.value;
+
+    if (productoSinRemitoEsCamara || productoSinRemitoEsKg) return;
+
     if (v === "") return setCantidadSinRemito("");
     if (/^\d+$/.test(v)) setCantidadSinRemito(v);
   };
 
   const handleCantidadSinRemitoBlur = () => {
+    if (productoSinRemitoEsCamara || productoSinRemitoEsKg) return;
+
     const n = parseInt(cantidadSinRemito, 10);
     setCantidadSinRemito(!n || n <= 0 ? "1" : String(n));
   };
 
-  const handleAgregarProductoSinRemito = async () => {
-    const nombre = productoSinRemito?.value;
-    const nuevaCantidad = parseInt(cantidadSinRemito, 10);
-    const nuevoPeso = parseFloat(pesoSinRemito || 0);
+  const handleProductoSinRemitoChange = (selected) => {
+    setProductoSinRemito(selected);
 
-    if (!nombre || (!nuevaCantidad && !nuevoPeso)) {
-      Swal.fire("Atención", "Debe ingresar cantidad o peso", "warning");
+    if (!selected) {
+      setCantidadSinRemito("");
+      setPesoSinRemito("");
+      return;
+    }
+
+    if (selected.tipoOrigen === "camara") {
+      setCantidadSinRemito(String(Number(selected.quantity || 0)));
+      setPesoSinRemito(String(Number(selected.weight || 0)));
+      return;
+    }
+
+    const nombre = selected.product_name || selected.value || "";
+    const producto = cortes.find(
+      (p) =>
+        String(p.nombre || "").trim().toLowerCase() ===
+        String(nombre || "").trim().toLowerCase()
+    );
+
+    const esKg =
+      String(producto?.unidadVenta || "").trim().toLowerCase() === "kg";
+
+    if (esKg) {
+      setCantidadSinRemito("0");
+    } else {
+      setCantidadSinRemito("");
+    }
+
+    setPesoSinRemito("");
+  };
+
+  const handleAgregarProductoSinRemito = async () => {
+    const esCamara = productoSinRemito?.tipoOrigen === "camara";
+
+    const nombre = esCamara
+      ? productoSinRemito?.product_name
+      : productoSinRemito?.value;
+
+    const esKg = productoSinRemitoEsKg;
+
+    const nuevaCantidad = esCamara
+      ? Number(productoSinRemito?.quantity || 0)
+      : esKg
+      ? 0
+      : parseInt(cantidadSinRemito, 10);
+
+    const nuevoPeso = esCamara
+      ? Number(productoSinRemito?.weight || 0)
+      : parseFloat(pesoSinRemito || 0);
+
+    if (!nombre) {
+      Swal.fire("Atención", "Debe seleccionar un producto.", "warning");
+      return;
+    }
+
+    if (esCamara && !productoSinRemito?.camaraId) {
+      Swal.fire("Atención", "El producto de cámara no tiene ID válido.", "warning");
+      return;
+    }
+
+    if (!esCamara && esKg && (!nuevoPeso || nuevoPeso <= 0)) {
+      Swal.fire(
+        "Atención",
+        "Este producto se controla en KG. Debe ingresar peso.",
+        "warning"
+      );
+      return;
+    }
+
+    if (!esCamara && !esKg && (!nuevaCantidad || nuevaCantidad <= 0) && !nuevoPeso) {
+      Swal.fire("Atención", "Debe ingresar cantidad o peso.", "warning");
       return;
     }
 
     const current = Array.isArray(productosSinRemito) ? productosSinRemito : [];
-    const idx = current.findIndex((p) => p.producto === nombre);
 
-    if (idx !== -1) {
-      const totalCantidad = current[idx].cantidad + (nuevaCantidad || 0);
-      const totalPeso = Number(current[idx].weight || 0) + nuevoPeso;
+    const subproductos = await fetchSubproductos(nombre, nuevaCantidad || 0);
 
-      const subproductos = await fetchSubproductos(nombre, totalCantidad);
+    if (esCamara) {
+      const yaExiste = current.some(
+        (p) =>
+          p.esCamara &&
+          String(p.source) === String(productoSinRemito.source) &&
+          Number(p.camaraId) === Number(productoSinRemito.camaraId)
+      );
 
-      const copia = [...current];
-      copia[idx] = {
-        producto: nombre,
-        cantidad: totalCantidad,
-        weight: totalPeso,
-        subproductos,
-      };
-
-      setProductosSinRemito(copia);
-    } else {
-      const subproductos = await fetchSubproductos(nombre, nuevaCantidad || 0);
+      if (yaExiste) {
+        Swal.fire("Atención", "Ese producto de cámara ya fue agregado.", "warning");
+        return;
+      }
 
       setProductosSinRemito([
         ...current,
         {
           producto: nombre,
           cantidad: nuevaCantidad || 0,
-          weight: nuevoPeso,
+          weight: nuevoPeso || 0,
           subproductos,
+          esCamara: true,
+          camaraId: productoSinRemito.camaraId,
+          source: productoSinRemito.source,
+          unique_code: productoSinRemito.unique_code || null,
         },
       ]);
+    } else {
+      const idx = current.findIndex(
+        (p) => p.producto === nombre && !p.esCamara
+      );
+
+      if (idx !== -1) {
+        const totalCantidad = Number(current[idx].cantidad || 0) + Number(nuevaCantidad || 0);
+        const totalPeso = Number(current[idx].weight || 0) + Number(nuevoPeso || 0);
+
+        const nuevosSubproductos = await fetchSubproductos(nombre, totalCantidad);
+
+        const copia = [...current];
+        copia[idx] = {
+          ...copia[idx],
+          producto: nombre,
+          cantidad: totalCantidad,
+          weight: totalPeso,
+          subproductos: nuevosSubproductos,
+          esCamara: false,
+        };
+
+        setProductosSinRemito(copia);
+      } else {
+        setProductosSinRemito([
+          ...current,
+          {
+            producto: nombre,
+            cantidad: nuevaCantidad || 0,
+            weight: nuevoPeso || 0,
+            subproductos,
+            esCamara: false,
+          },
+        ]);
+      }
     }
 
     setProductoSinRemito(null);
@@ -698,25 +906,34 @@ const ProductionProcess = () => {
     await Swal.fire({
       icon: "info",
       title: "Falta una entrada al proceso",
-      text: "Para guardar, tenés que agregar al menos 1 comprobante o cargar subproducción.",
+      text: "Para guardar, tenés que agregar al menos 1 comprobante, cargar subproducción o seleccionar un producto de cámara.",
       confirmButtonText: "Entendido",
     });
   };
 
   const handleGuardar = async () => {
-    if (cortesAgregados.length === 0 && productosSinRemito.length === 0) {
-      Swal.fire("Aviso", "No hay datos para guardar.", "info");
+    if (cortesAgregados.length === 0) {
+      Swal.fire(
+        "Aviso",
+        "Debe agregar al menos un corte resultante del proceso productivo.",
+        "info"
+      );
       return;
     }
 
     const hayComprobantes = comprobantesAgregados.length > 0;
+
     const haySubproduccion =
       Array.isArray(productosSinRemito) &&
       productosSinRemito.some(
         (p) => Number(p.cantidad || 0) > 0 || Number(p.weight || 0) > 0
       );
 
-    if (!hayComprobantes && !haySubproduccion) {
+    const hayCamaraItems =
+      Array.isArray(productosSinRemito) &&
+      productosSinRemito.some((p) => p.esCamara && p.camaraId && p.source);
+
+    if (!hayComprobantes && !haySubproduccion && !hayCamaraItems) {
       await pedirComprobantesAlFinal();
       return;
     }
@@ -726,6 +943,7 @@ const ProductionProcess = () => {
 
       const cortesPayload = cortesAgregados.map((corte) => {
         const esKgLocal = isTipoEnKg(corte.tipo);
+
         const neto = Number(
           (Number(corte.pesoBruto || 0) - Number(corte.tara || 0)).toFixed(2)
         );
@@ -743,6 +961,7 @@ const ProductionProcess = () => {
       const subproduction = (Array.isArray(productosSinRemito)
         ? productosSinRemito
         : [])
+        .filter((p) => !p.esCamara)
         .map((p) => ({
           cut_name: (p.producto || "").trim(),
           quantity: Number(p.cantidad || 0),
@@ -750,19 +969,37 @@ const ProductionProcess = () => {
         }))
         .filter((r) => r.cut_name && (r.quantity > 0 || r.weight > 0));
 
+      const camara_items = (Array.isArray(productosSinRemito)
+        ? productosSinRemito
+        : [])
+        .filter((p) => p.esCamara && p.camaraId && p.source)
+        .map((p) => ({
+          id: Number(p.camaraId),
+          source: p.source,
+          unique_code: p.unique_code || null,
+        }));
+
+      const payload = {
+        cortes: cortesPayload,
+        bill_ids,
+        subproduction,
+        camara_items,
+      };
+
       if (isEdit) {
         const putRes = await fetch(`${API_URL}/process/${processParam}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ cortes: cortesPayload, bill_ids, subproduction }),
+          body: JSON.stringify(payload),
         });
 
         if (!putRes.ok) {
           const txt = await putRes.text().catch(() => "");
           console.warn("PUT edición falló:", txt);
+
           Swal.fire(
             "Atención",
-            "No se pudo actualizar el proceso (PUT). Si tu backend aún no tiene esta ruta, avisame y lo agregamos.",
+            "No se pudo actualizar el proceso.",
             "warning"
           );
           return;
@@ -773,11 +1010,11 @@ const ProductionProcess = () => {
         const response = await fetch(`${API_URL}/uploadProcessMeat`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ cortes: cortesPayload, bill_ids, subproduction }),
+          body: JSON.stringify(payload),
         });
 
         if (!response.ok) {
-          const errorData = await response.json();
+          const errorData = await response.json().catch(() => ({}));
           throw new Error(
             errorData.message || "Error al guardar el proceso productivo."
           );
@@ -789,6 +1026,7 @@ const ProductionProcess = () => {
       setCortesAgregados([]);
       setProductosSinRemito([]);
       setComprobantesAgregados([]);
+
       localStorage.removeItem(LS_KEYS.CORTES);
       localStorage.removeItem(LS_KEYS.SIN_REMITO);
       localStorage.removeItem(LS_KEYS.COMPROBANTES);
@@ -815,14 +1053,16 @@ const ProductionProcess = () => {
     const tipoActual = (formData.tipo || "").trim();
     if (isTipoEnKg(tipoActual)) return "0.00";
 
-    const pesoNeto = formData.pesoBruto - formData.tara;
-    const cantidad = formData.cantidad;
+    const pesoNeto = Number(formData.pesoBruto || 0) - Number(formData.tara || 0);
+    const cantidad = Number(formData.cantidad || 0);
+
     return cantidad > 0 ? (pesoNeto / cantidad).toFixed(2) : "0.00";
   };
 
   return (
     <>
       <Navbar />
+
       <div style={{ margin: "20px" }}>
         <button className="boton-volver" onClick={() => navigate(-1)}>
           ⬅ Volver
@@ -850,8 +1090,9 @@ const ProductionProcess = () => {
                   fontWeight: 500,
                 }}
               >
-                Podés cargar despostes y subproducción primero. Al final, te voy
-                a pedir que agregues al menos 1 comprobante para guardar.
+                Podés cargar despostes y subproducción primero. Al final, tenés
+                que agregar al menos 1 comprobante, cargar subproducción o usar
+                un producto de cámara para guardar.
               </div>
             )}
 
@@ -882,6 +1123,7 @@ const ProductionProcess = () => {
                   style={{ height: "45px" }}
                 >
                   <option value="">-- Elegir comprobante --</option>
+
                   {comprobantesDisponibles.map((comp) => {
                     const piezas = comp.piezasAgrupadas || {};
                     const piezaStr = Object.entries(piezas)
@@ -919,8 +1161,8 @@ const ProductionProcess = () => {
                   {comprobantesAgregados.map(({ id: idComp, remito, detalles }) => {
                     const piezasAgrupadas = detalles.reduce(
                       (acc, { type, quantity }) => {
-                        const key = type.trim();
-                        acc[key] = (acc[key] || 0) + Number(quantity);
+                        const key = String(type || "").trim();
+                        acc[key] = (acc[key] || 0) + Number(quantity || 0);
                         return acc;
                       },
                       {}
@@ -964,6 +1206,7 @@ const ProductionProcess = () => {
                           <span style={{ color: "#155ca4" }}>
                             📄 {remito?.supplier || "Proveedor Desconocido"}
                           </span>
+
                           <span
                             style={{
                               fontWeight: 400,
@@ -983,6 +1226,7 @@ const ProductionProcess = () => {
                           }}
                         >
                           <span>Piezas:</span>
+
                           <ul
                             style={{
                               padding: "0 0 0 16px",
@@ -1005,6 +1249,7 @@ const ProductionProcess = () => {
                                   >
                                     {tipo}
                                   </span>
+
                                   <b style={{ color: "#222", fontWeight: 600 }}>
                                     {cantidad}
                                   </b>{" "}
@@ -1023,6 +1268,7 @@ const ProductionProcess = () => {
                   <div style={{ marginBottom: 8 }}>
                     🟦 <b>Cortes totales sumados:</b>
                   </div>
+
                   {Object.entries(cortesEntradaConSubproduccion()).length ? (
                     <ul>
                       {Object.entries(cortesEntradaConSubproduccion()).map(
@@ -1043,6 +1289,7 @@ const ProductionProcess = () => {
                   <div style={{ marginBottom: 8 }}>
                     🟩 <b>Subproductos totales sumados:</b>
                   </div>
+
                   <ul>
                     {Object.entries(subproductosCombinados).map(
                       ([nombre, { cantidadTotal, cantidadPorUnidad, unit }]) => (
@@ -1105,36 +1352,67 @@ const ProductionProcess = () => {
               <div className="pp-inline-form">
                 <div className="pp-field">
                   <label>Producto</label>
+
                   <Select
                     className="pp-select-react"
                     options={productosDisponibles}
                     value={productoSinRemito}
-                    onChange={setProductoSinRemito}
+                    onChange={handleProductoSinRemitoChange}
                     placeholder="Seleccionar producto..."
+                    isClearable
                   />
                 </div>
 
                 <div className="pp-field pp-small">
-                  <label>Cantidad</label>
+                  <label>
+                    {productoSinRemitoEsCamara
+                      ? "Cantidad (CÁMARA)"
+                      : productoSinRemitoEsKg
+                      ? "Cantidad (BLOQUEADA KG)"
+                      : "Cantidad"}
+                  </label>
+
                   <input
                     type="number"
-                    min="1"
+                    min="0"
                     value={cantidadSinRemito}
                     onChange={handleCantidadSinRemitoChange}
                     onBlur={handleCantidadSinRemitoBlur}
                     inputMode="numeric"
                     className="no-spin"
+                    disabled={productoSinRemitoEsCamara || productoSinRemitoEsKg}
+                    style={{
+                      backgroundColor:
+                        productoSinRemitoEsCamara || productoSinRemitoEsKg
+                          ? "#e9ecef"
+                          : "",
+                      cursor:
+                        productoSinRemitoEsCamara || productoSinRemitoEsKg
+                          ? "not-allowed"
+                          : "text",
+                    }}
                   />
                 </div>
 
                 <div className="pp-field pp-small">
-                  <label>Peso (kg)</label>
+                  <label>
+                    {productoSinRemitoEsCamara ? "Peso (CÁMARA)" : "Peso (kg)"}
+                  </label>
+
                   <input
                     type="number"
                     min="0"
                     value={pesoSinRemito}
-                    onChange={(e) => setPesoSinRemito(e.target.value)}
+                    onChange={(e) => {
+                      if (productoSinRemitoEsCamara) return;
+                      setPesoSinRemito(e.target.value);
+                    }}
                     className="no-spin"
+                    disabled={productoSinRemitoEsCamara}
+                    style={{
+                      backgroundColor: productoSinRemitoEsCamara ? "#e9ecef" : "",
+                      cursor: productoSinRemitoEsCamara ? "not-allowed" : "text",
+                    }}
                   />
                 </div>
 
@@ -1150,52 +1428,146 @@ const ProductionProcess = () => {
 
               {Array.isArray(productosSinRemitoAgrupados) &&
                 productosSinRemitoAgrupados.length > 0 && (
-                  <div
-                    className="subproductos-section"
-                    style={{ marginTop: "12px" }}
-                  >
-                    <h3>Subproducción agregada</h3>
-                    <div className="subproductos-agrupados">
+                  <div style={{ marginTop: "20px" }}>
+                    <div
+                      style={{ fontWeight: 600, fontSize: 20, marginBottom: 8 }}
+                    >
+                      Subproducción agregada
+                    </div>
+
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 20 }}>
                       {productosSinRemitoAgrupados.map((prod, idx) => (
-                        <div key={idx} className="subproducto-bloque">
-                          <div className="pp-bloque-header">
-                            <strong>🐄 {prod.producto}</strong>
-                            <div className="pp-bloque-actions">
-                              <span className="pp-chip-cantidad">
-                                Cantidad: {prod.cantidad} | Peso:{" "}
-                                {Number(prod.weight || 0).toFixed(2)} kg
-                              </span>
-                              <button
-                                className="pp-btn-eliminar"
-                                onClick={() => eliminarProductoSinRemito(idx)}
-                                title="Quitar producto"
-                              >
-                                ✕
-                              </button>
-                            </div>
+                        <div
+                          key={idx}
+                          style={{
+                            border: "1.5px solid #cae1fd",
+                            background: "#fafdff",
+                            borderRadius: 12,
+                            boxShadow: "0 2px 6px #b5dafc3a",
+                            padding: "16px 22px 14px 18px",
+                            minWidth: 240,
+                            maxWidth: 420,
+                            marginBottom: 12,
+                            position: "relative",
+                            fontSize: 16,
+                          }}
+                        >
+                          <button
+                            onClick={() => eliminarProductoSinRemito(idx)}
+                            style={{
+                              position: "absolute",
+                              top: 8,
+                              right: 12,
+                              border: "none",
+                              background: "none",
+                              color: "#cb1111",
+                              fontSize: 20,
+                              cursor: "pointer",
+                              fontWeight: "bold",
+                            }}
+                            title="Quitar producto"
+                          >
+                            ×
+                          </button>
+
+                          <div style={{ fontWeight: 600, marginBottom: 4 }}>
+                            <span style={{ color: "#155ca4" }}>
+                              🐄 {prod.producto}
+                              {prod.esCamara ? " | CÁMARA" : ""}
+                            </span>
                           </div>
 
-                          <ul
-                            className="subproductos-list"
-                            style={{ marginTop: "6px" }}
+                          {prod.esCamara && prod.unique_code && (
+                            <div
+                              style={{
+                                color: "#555",
+                                fontSize: 14,
+                                marginTop: 4,
+                              }}
+                            >
+                              Código único: <b>{prod.unique_code}</b>
+                            </div>
+                          )}
+
+                          <div
+                            style={{
+                              fontWeight: 400,
+                              color: "#777",
+                              marginTop: 4,
+                            }}
                           >
-                            {prod.subproductosAgrupados.map(
-                              (
-                                [nombre, { cantidadTotal, cantidadPorUnidad, unit }],
-                                i
-                              ) => (
-                                <li key={i}>
-                                  <span className="subproducto-label">
-                                    {nombre}
-                                  </span>
-                                  <span className="subproducto-meta">
-                                    {cantidadTotal} {labelUnidad(unit)} (
-                                    {cantidadPorUnidad} x {labelUnidad(unit)})
-                                  </span>
-                                </li>
-                              )
+                            Cantidad: {Number(prod.cantidad || 0)} | Peso:{" "}
+                            {Number(prod.weight || 0).toFixed(2)} kg
+                          </div>
+
+                          <div
+                            style={{
+                              margin: "8px 0 0 2px",
+                              color: "#244b79",
+                              fontWeight: 500,
+                            }}
+                          >
+                            <span>Piezas:</span>
+
+                            {prod.subproductosAgrupados.length > 0 ? (
+                              <ul
+                                style={{
+                                  padding: "0 0 0 16px",
+                                  margin: "6px 0 0 0",
+                                }}
+                              >
+                                {prod.subproductosAgrupados.map(
+                                  (
+                                    [
+                                      nombre,
+                                      { cantidadTotal, cantidadPorUnidad, unit },
+                                    ],
+                                    i
+                                  ) => (
+                                    <li key={i} style={{ marginBottom: 4 }}>
+                                      <span
+                                        style={{
+                                          background: "#e4f2ff",
+                                          borderRadius: 7,
+                                          padding: "2px 7px",
+                                          marginRight: 6,
+                                          color: "#176eb3",
+                                          fontWeight: 500,
+                                          display: "inline-block",
+                                        }}
+                                      >
+                                        {nombre}
+                                      </span>
+
+                                      <b
+                                        style={{
+                                          color: "#222",
+                                          fontWeight: 600,
+                                        }}
+                                      >
+                                        {cantidadTotal} {labelUnidad(unit)}
+                                      </b>
+
+                                      <span
+                                        style={{
+                                          fontSize: "0.95em",
+                                          color: "#444",
+                                          marginLeft: 6,
+                                        }}
+                                      >
+                                        ({cantidadPorUnidad} {labelUnidad(unit)}{" "}
+                                        por pieza)
+                                      </span>
+                                    </li>
+                                  )
+                                )}
+                              </ul>
+                            ) : (
+                              <div style={{ color: "#777", marginTop: 4 }}>
+                                Sin subproductos asociados.
+                              </div>
                             )}
-                          </ul>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -1213,6 +1585,7 @@ const ProductionProcess = () => {
               <div className="pp-form-group pp-formulario-corte-wrapper">
                 <div>
                   <label>TIPO</label>
+
                   <Select
                     className="pp-select-react"
                     placeholder="Seleccionar corte..."
@@ -1241,6 +1614,7 @@ const ProductionProcess = () => {
                       ? "CANTIDAD (BLOQUEADA POR KG)"
                       : "CANTIDAD"}
                   </label>
+
                   <input
                     type="number"
                     name="cantidad"
@@ -1251,9 +1625,7 @@ const ProductionProcess = () => {
                     className="no-spin"
                     disabled={isTipoEnKg(formData.tipo)}
                     style={{
-                      backgroundColor: isTipoEnKg(formData.tipo)
-                        ? "#e9ecef"
-                        : "",
+                      backgroundColor: isTipoEnKg(formData.tipo) ? "#e9ecef" : "",
                       cursor: isTipoEnKg(formData.tipo)
                         ? "not-allowed"
                         : "text",
@@ -1263,6 +1635,7 @@ const ProductionProcess = () => {
 
                 <div>
                   <label>PESO BRUTO</label>
+
                   <input
                     type="number"
                     name="pesoBruto"
@@ -1276,6 +1649,7 @@ const ProductionProcess = () => {
 
                 <div>
                   <label>TARA</label>
+
                   <select
                     name="tara"
                     value={taraSeleccionadaId}
@@ -1285,6 +1659,7 @@ const ProductionProcess = () => {
                       );
 
                       setTaraSeleccionadaId(e.target.value);
+
                       setFormData((prev) => ({
                         ...prev,
                         tara: selected?.peso || 0,
@@ -1293,6 +1668,7 @@ const ProductionProcess = () => {
                     required
                   >
                     <option value="">Seleccionar</option>
+
                     {tares.map((t) => (
                       <option key={t.id} value={t.id}>
                         {t.nombre} ({t.peso} kg)
@@ -1303,9 +1679,12 @@ const ProductionProcess = () => {
 
                 <div>
                   <label>PESO NETO</label>
+
                   <input
                     type="number"
-                    value={(formData.pesoBruto - formData.tara).toFixed(2)}
+                    value={(
+                      Number(formData.pesoBruto || 0) - Number(formData.tara || 0)
+                    ).toFixed(2)}
                     disabled
                     className="no-spin"
                   />
@@ -1354,8 +1733,12 @@ const ProductionProcess = () => {
                     <div>{corte.cantidad}</div>
                     <div>{corte.pesoBruto}</div>
                     <div>{corte.tara}</div>
-                    <div>{(corte.pesoBruto - corte.tara).toFixed(2)}</div>
-                    <div>{Number(corte.promedio).toFixed(2)}</div>
+                    <div>
+                      {(
+                        Number(corte.pesoBruto || 0) - Number(corte.tara || 0)
+                      ).toFixed(2)}
+                    </div>
+                    <div>{Number(corte.promedio || 0).toFixed(2)}</div>
                     <div>
                       <button
                         className="pp-btn-eliminar"
@@ -1371,7 +1754,11 @@ const ProductionProcess = () => {
               <div className="pp-total-peso">
                 <strong>Total Peso Neto:</strong>{" "}
                 {cortesAgregados
-                  .reduce((acc, item) => acc + (item.pesoBruto - item.tara), 0)
+                  .reduce(
+                    (acc, item) =>
+                      acc + (Number(item.pesoBruto || 0) - Number(item.tara || 0)),
+                    0
+                  )
                   .toFixed(2)}{" "}
                 kg
               </div>
@@ -1391,6 +1778,7 @@ const ProductionProcess = () => {
                     style={{ marginBottom: 10 }}
                     onClick={() => {
                       setMostrarSeccionComprobantes(true);
+
                       setTimeout(() => {
                         comprobantesSectionRef.current?.scrollIntoView({
                           behavior: "smooth",

@@ -900,11 +900,69 @@ updateProviderBill: async (req, res) => {
             return res.status(500).json({ error: "Error actualizando datos" });
         }
     },
+    getCamaraCutsForSubproduction: async (req, res) => {
+    try {
+        const manualRows = await sequelize.query(
+            `
+            SELECT
+                id,
+                bill_supplier_id,
+                product_name,
+                quantity,
+                net_weight AS weight,
+                unique_code,
+                'manual' AS source
+            FROM camara_manual_cuts
+            WHERE a_camara = 1
+            `,
+            { type: QueryTypes.SELECT }
+        );
+
+        const romaneoRows = await sequelize.query(
+            `
+            SELECT
+                id,
+                bill_supplier_id,
+                product_name,
+                quantity,
+                romaneo_weight AS weight,
+                unique_code,
+                'romaneo' AS source
+            FROM camara_romaneo_cuts
+            WHERE a_camara = 1
+            `,
+            { type: QueryTypes.SELECT }
+        );
+
+        const data = [...manualRows, ...romaneoRows].map((row) => ({
+            id: row.id,
+            bill_supplier_id: row.bill_supplier_id,
+            product_name: row.product_name,
+            quantity: Number(row.quantity || 0),
+            weight: Number(row.weight || 0),
+            unique_code: row.unique_code || null,
+            source: row.source,
+        }));
+
+        return res.json(data);
+    } catch (err) {
+        console.error("getCamaraCutsForSubproduction error:", err);
+        return res.status(500).json({
+            message: "Error al obtener cortes/capones en cámara",
+            error: err.message,
+        });
+    }
+},
 uploadProductsProcess: async (req, res) => {
     let t;
 
     try {
-        const { cortes = [], bill_ids = [], subproduction = [] } = req.body;
+        const {
+            cortes = [],
+            bill_ids = [],
+            subproduction = [],
+            camara_items = [],
+        } = req.body;
 
         if (!Array.isArray(cortes) || cortes.length === 0) {
             return res.status(400).json({
@@ -913,15 +971,23 @@ uploadProductsProcess: async (req, res) => {
         }
 
         const hasBills = Array.isArray(bill_ids) && bill_ids.length > 0;
+
         const hasSubproduction =
             Array.isArray(subproduction) &&
             subproduction.some(
                 (s) => Number(s.quantity || 0) > 0 || Number(s.weight || 0) > 0
             );
 
-        if (!hasBills && !hasSubproduction) {
+        const hasCamaraItems =
+            Array.isArray(camara_items) &&
+            camara_items.some(
+                (item) => Number(item?.id || 0) > 0 && item?.source
+            );
+
+        if (!hasBills && !hasSubproduction && !hasCamaraItems) {
             return res.status(400).json({
-                message: "Debe asociar al menos un comprobante o cargar subproducción.",
+                message:
+                    "Debe asociar al menos un comprobante, cargar subproducción o seleccionar un producto de cámara.",
             });
         }
 
@@ -1065,7 +1131,7 @@ uploadProductsProcess: async (req, res) => {
 
             const finalUnitType = esTextoValido(unit_type)
                 ? unit_type.trim()
-                : (baseProduct.unit_measure || baseProduct.unit_type || "unidad");
+                : baseProduct.unit_measure || baseProduct.unit_type || "unidad";
 
             await ProcessMeat.create(
                 {
@@ -1145,11 +1211,17 @@ uploadProductsProcess: async (req, res) => {
                             usageByParent[name] = { qty: 0, weight: 0 };
                         }
 
-                        usageByParent[name].qty += toNumero(row.products_quantity, 0);
+                        usageByParent[name].qty += toNumero(
+                            row.products_quantity,
+                            0
+                        );
                         usageByParent[name].weight += toNumero(row.net_weight, 0);
                     }
                 } else {
-                  const romaneoRows = await getRomaneoRowsDisponibles(billId, t);
+                    const romaneoRows = await getRomaneoRowsDisponibles(
+                        billId,
+                        t
+                    );
 
                     for (const row of romaneoRows) {
                         const name = normalizarNombre(row.type);
@@ -1204,6 +1276,69 @@ uploadProductsProcess: async (req, res) => {
         }
 
         // =========================================================
+        // 5.b) Agregar consumo por cortes/capones seleccionados desde CÁMARA
+        // =========================================================
+        const camaraItemsValidos = Array.isArray(camara_items)
+            ? camara_items.filter(
+                  (item) => item && item.source && Number(item.id || 0) > 0
+              )
+            : [];
+
+        for (const item of camaraItemsValidos) {
+            const source = String(item.source || "").trim().toLowerCase();
+            const idCamara = Number(item.id);
+
+            if (!idCamara || !["manual", "romaneo"].includes(source)) continue;
+
+            let rowCamara = null;
+
+            if (source === "manual") {
+                rowCamara = await CamaraManualCut.findOne({
+                    where: { id: idCamara, a_camara: 1 },
+                    transaction: t,
+                });
+            }
+
+            if (source === "romaneo") {
+                rowCamara = await CamaraRomaneoCut.findOne({
+                    where: { id: idCamara, a_camara: 1 },
+                    transaction: t,
+                });
+            }
+
+            if (!rowCamara) continue;
+
+            const cutName = normalizarNombre(rowCamara.product_name);
+            const qty = toNumero(rowCamara.quantity, 0);
+
+            const weight =
+                source === "manual"
+                    ? toNumero(rowCamara.net_weight, 0)
+                    : toNumero(rowCamara.romaneo_weight, 0);
+
+            if (!cutName) continue;
+
+            subRowsToCreate.push({
+                process_number: nuevoProcessNumber,
+                cut_name: cutName,
+                quantity: qty,
+                weight,
+            });
+
+            if (!usageByParent[cutName]) {
+                usageByParent[cutName] = { qty: 0, weight: 0 };
+            }
+
+            usageByParent[cutName].qty += qty;
+            usageByParent[cutName].weight += weight;
+
+            await rowCamara.update(
+                { a_camara: 0 },
+                { transaction: t }
+            );
+        }
+
+        // =========================================================
         // 6) Descontar stock total consumido
         // =========================================================
         for (const [parentName, used] of Object.entries(usageByParent)) {
@@ -1219,7 +1354,10 @@ uploadProductsProcess: async (req, res) => {
 
             await stockParent.update(
                 {
-                    product_quantity: Math.max(0, currentQty - toNumero(used.qty, 0)),
+                    product_quantity: Math.max(
+                        0,
+                        currentQty - toNumero(used.qty, 0)
+                    ),
                     product_total_weight: Math.max(
                         0,
                         currentWeight - toNumero(used.weight, 0)

@@ -5,7 +5,8 @@ const apiOperatorController= require("../../controllers/api/operatorApiControlle
 const operatorApiController = require("../../controllers/api/operatorApiController.js");
 
 
-
+router.get("/camara-cuts-for-subproduction",operatorApiController.getCamaraCutsForSubproduction
+);
 //Api para traer subproductos cuando se hace el proceso productivo
 router.get("/subproducts-by-name/:name", operatorApiController.getSubproductsForProduct);
 //Api para ver todos los productos congelados/otros cargados
