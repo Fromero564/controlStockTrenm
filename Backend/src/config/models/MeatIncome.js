@@ -43,6 +43,10 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.DECIMAL(8, 2),
       allowNull: false,
     },
+    tara_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
     net_weight: {
       type: DataTypes.DECIMAL(8, 2),
       allowNull: false,
@@ -51,8 +55,6 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.DECIMAL(8, 2),
       allowNull: true,
     },
-
- 
     unique_code: {
       type: DataTypes.STRING(50),
       allowNull: true,
@@ -70,6 +72,11 @@ module.exports = (sequelize, DataTypes) => {
     MeatIncome.belongsTo(models.BillSupplier, {
       foreignKey: "id_bill_suppliers",
       as: "supplier",
+    });
+
+    MeatIncome.belongsTo(models.Tare, {
+      foreignKey: "tara_id",
+      as: "taraData",
     });
   };
 

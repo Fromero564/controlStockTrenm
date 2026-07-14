@@ -53,6 +53,9 @@ router.get("/process/:process_number", operatorApiController.getProcessByNumber)
 router.get("/bills-available-camara", operatorApiController.getBillsAvailableForCamara);
 router.get("/cuts-sent-to-camara/:id", operatorApiController.getCutsSentToCamaraByBill);
 
+// Eliminar/deshabilitar un corte de cámara
+router.delete("/camara-cut/:source/:id", operatorApiController.removeCutFromCamara);
+
 
 //Api para crear nuevas categorias
 router.post("/uploadCategory",operatorApiController.loadNewCategory);

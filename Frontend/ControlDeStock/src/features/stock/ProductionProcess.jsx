@@ -1013,14 +1013,26 @@ const ProductionProcess = () => {
           body: JSON.stringify(payload),
         });
 
+        const data = await response.json().catch(() => ({}));
+
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
           throw new Error(
-            errorData.message || "Error al guardar el proceso productivo."
+            data.message || "Error al guardar el proceso productivo."
           );
         }
 
-        Swal.fire("Éxito", "Datos guardados correctamente.", "success");
+        await Swal.fire("Éxito", "Datos guardados correctamente.", "success");
+
+        setCortesAgregados([]);
+        setProductosSinRemito([]);
+        setComprobantesAgregados([]);
+
+        localStorage.removeItem(LS_KEYS.CORTES);
+        localStorage.removeItem(LS_KEYS.SIN_REMITO);
+        localStorage.removeItem(LS_KEYS.COMPROBANTES);
+
+        navigate(`/production-process/details/${data.process_number}`);
+        return;
       }
 
       setCortesAgregados([]);
@@ -1031,7 +1043,7 @@ const ProductionProcess = () => {
       localStorage.removeItem(LS_KEYS.SIN_REMITO);
       localStorage.removeItem(LS_KEYS.COMPROBANTES);
 
-      navigate("/operator-panel");
+      navigate(`/production-process/details/${processParam}`);
     } catch (err) {
       Swal.fire("Error", err.message || "Ocurrió un error al guardar.", "error");
     }
@@ -1115,29 +1127,53 @@ const ProductionProcess = () => {
                 />
               </div>
 
-              <div>
+              <div style={{ minWidth: "360px", flex: "1" }}>
                 <label>O seleccionar disponible</label>
-                <select
-                  value={comprobanteSeleccionado}
-                  onChange={(e) => setComprobanteSeleccionado(e.target.value)}
-                  style={{ height: "45px" }}
-                >
-                  <option value="">-- Elegir comprobante --</option>
 
-                  {comprobantesDisponibles.map((comp) => {
+                <Select
+                  className="pp-select-react"
+                  placeholder="Buscar comprobante..."
+                  isClearable
+                  options={comprobantesDisponibles.map((comp) => {
                     const piezas = comp.piezasAgrupadas || {};
                     const piezaStr = Object.entries(piezas)
                       .map(([tipo, cant]) => `${tipo}: ${cant}`)
                       .join(" | ");
 
-                    return (
-                      <option key={comp.id} value={comp.id}>
-                        {comp.supplier} — {piezaStr} | 🕒{" "}
-                        {formatFecha(comp.updatedAt)}
-                      </option>
-                    );
+                    return {
+                      value: comp.id,
+                      label: `${comp.supplier} — ${piezaStr} | 🕒 ${formatFecha(
+                        comp.updatedAt
+                      )}`,
+                    };
                   })}
-                </select>
+                  value={
+                    comprobanteSeleccionado
+                      ? comprobantesDisponibles
+                          .map((comp) => {
+                            const piezas = comp.piezasAgrupadas || {};
+                            const piezaStr = Object.entries(piezas)
+                              .map(([tipo, cant]) => `${tipo}: ${cant}`)
+                              .join(" | ");
+
+                            return {
+                              value: comp.id,
+                              label: `${comp.supplier} — ${piezaStr} | 🕒 ${formatFecha(
+                                comp.updatedAt
+                              )}`,
+                            };
+                          })
+                          .find(
+                            (opt) =>
+                              String(opt.value) ===
+                              String(comprobanteSeleccionado)
+                          ) || null
+                      : null
+                  }
+                  onChange={(selected) =>
+                    setComprobanteSeleccionado(selected ? selected.value : "")
+                  }
+                />
               </div>
 
               <div className="pp-boton-agregar-wrapper">
@@ -1650,31 +1686,39 @@ const ProductionProcess = () => {
                 <div>
                   <label>TARA</label>
 
-                  <select
-                    name="tara"
-                    value={taraSeleccionadaId}
-                    onChange={(e) => {
-                      const selected = tares.find(
-                        (t) => t.id === parseInt(e.target.value)
-                      );
-
-                      setTaraSeleccionadaId(e.target.value);
+                  <Select
+                    className="pp-select-react"
+                    placeholder="Buscar tara..."
+                    isClearable
+                    options={tares.map((t) => ({
+                      value: t.id,
+                      label: `${t.nombre} (${t.peso} kg)`,
+                      peso: t.peso,
+                    }))}
+                    value={
+                      taraSeleccionadaId
+                        ? tares
+                            .map((t) => ({
+                              value: t.id,
+                              label: `${t.nombre} (${t.peso} kg)`,
+                              peso: t.peso,
+                            }))
+                            .find(
+                              (opt) =>
+                                String(opt.value) ===
+                                String(taraSeleccionadaId)
+                            ) || null
+                        : null
+                    }
+                    onChange={(selected) => {
+                      setTaraSeleccionadaId(selected ? selected.value : "");
 
                       setFormData((prev) => ({
                         ...prev,
-                        tara: selected?.peso || 0,
+                        tara: selected ? Number(selected.peso || 0) : 0,
                       }));
                     }}
-                    required
-                  >
-                    <option value="">Seleccionar</option>
-
-                    {tares.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.nombre} ({t.peso} kg)
-                      </option>
-                    ))}
-                  </select>
+                  />
                 </div>
 
                 <div>
@@ -1763,15 +1807,7 @@ const ProductionProcess = () => {
                 kg
               </div>
 
-              {!isEdit &&
-                comprobantesAgregados.length === 0 &&
-                !(
-                  Array.isArray(productosSinRemito) &&
-                  productosSinRemito.some(
-                    (p) =>
-                      Number(p.cantidad || 0) > 0 || Number(p.weight || 0) > 0
-                  )
-                ) && (
+              {!isEdit && comprobantesAgregados.length === 0 && (
                   <button
                     type="button"
                     className="pp-btn-agregar"

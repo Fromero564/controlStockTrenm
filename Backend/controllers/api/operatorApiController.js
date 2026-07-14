@@ -111,25 +111,73 @@ const operatorApiController = {
                 ],
             });
 
+            // Los cortes de ROMANEO enviados a cámara ya están incluidos físicamente
+            // en ProductStock, pero mientras sigan con a_camara = 1 NO deben contarse
+            // como stock disponible para usar.
+            const cortesEnCamara = await sequelize.query(
+                `
+                    SELECT
+                        product_name,
+                        SUM(COALESCE(quantity, 0)) AS unavailable_quantity,
+                        SUM(COALESCE(romaneo_weight, 0)) AS unavailable_weight
+                    FROM camara_romaneo_cuts
+                    WHERE a_camara = 1
+                    GROUP BY product_name
+                `,
+                { type: QueryTypes.SELECT }
+            );
+
+            const camaraPorProducto = new Map(
+                cortesEnCamara.map((row) => [
+                    String(row.product_name || "").trim().toLowerCase(),
+                    {
+                        quantity: Number(row.unavailable_quantity || 0),
+                        weight: Number(row.unavailable_weight || 0),
+                    },
+                ])
+            );
+
             const result = AllProductStock.map((stock) => {
                 const unitFromProduct =
                     stock.productAvailable && stock.productAvailable.unit_measure
                         ? String(stock.productAvailable.unit_measure).toUpperCase()
                         : "UN";
 
-                // Unidad base del producto: UN o KG (viene desde products_available)
                 const unit_type = unitFromProduct === "KG" ? "KG" : "UN";
+
+                const physicalQuantity = Number(stock.product_quantity || 0);
+                const physicalWeight = Number(stock.product_total_weight || 0);
+
+                const cameraInfo = camaraPorProducto.get(
+                    String(stock.product_name || "").trim().toLowerCase()
+                ) || { quantity: 0, weight: 0 };
+
+                const unavailableQuantity = Number(cameraInfo.quantity || 0);
+                const unavailableWeight = Number(cameraInfo.weight || 0);
 
                 return {
                     id: stock.id,
                     product_name: stock.product_name,
-                    product_quantity: stock.product_quantity,
+
+                    // Stock realmente utilizable: excluye lo que sigue en cámara.
+                    product_quantity: Math.max(0, physicalQuantity - unavailableQuantity),
+                    product_total_weight: Math.max(0, physicalWeight - unavailableWeight),
+
+                    // Datos extra para mostrar el cartel "NO DISPONIBLE EN CÁMARA".
+                    unavailable_camera_quantity: unavailableQuantity,
+                    unavailable_camera_weight: unavailableWeight,
+                    has_unavailable_camera_stock:
+                        unavailableQuantity > 0 || unavailableWeight > 0,
+
+                    // Totales físicos, útiles para auditoría/visualización si hacen falta.
+                    physical_product_quantity: physicalQuantity,
+                    physical_product_total_weight: physicalWeight,
+
                     product_cod: stock.product_cod,
                     product_category: stock.product_category,
-                    product_total_weight: stock.product_total_weight,
                     min_stock: stock.productAvailable?.min_stock || 0,
                     max_stock: stock.productAvailable?.max_stock || 0,
-                    unit_type, // 👈 esto usa el front para saber si trabajar en KG o UN
+                    unit_type,
                 };
             });
 
@@ -783,7 +831,7 @@ updateProviderBill: async (req, res) => {
         }
     },
 
-  updateProductFromRemit: async (req, res) => {
+updateProductFromRemit: async (req, res) => {
     const { id } = req.params;
 
     try {
@@ -815,7 +863,6 @@ updateProviderBill: async (req, res) => {
             if (uniqueCode) {
                 estaEnCamara = setUniqueCodesCamara.has(uniqueCode);
             } else {
-                // fallback por si algún registro viejo no tiene unique_code
                 estaEnCamara = cortesCamara.some(
                     (cam) =>
                         String(cam.product_name || "").trim() === String(item.products_name || "").trim() &&
@@ -831,6 +878,7 @@ updateProviderBill: async (req, res) => {
                 provider_weight: item.provider_weight,
                 gross_weight: item.gross_weight,
                 tare: item.tare,
+                tara_id: item.tara_id || null,
                 net_weight: item.net_weight,
                 products_garron: item.products_garron,
                 unique_code: item.unique_code,
@@ -838,7 +886,7 @@ updateProviderBill: async (req, res) => {
             };
         });
 
-        res.json({
+        return res.json({
             cortes: cortesFormateados,
             observacion: {
                 id: observacionData?.id || null,
@@ -847,7 +895,7 @@ updateProviderBill: async (req, res) => {
         });
     } catch (error) {
         console.error("Error al obtener los datos del remito:", error);
-        res.status(500).json({ error: "Error al obtener los datos del remito" });
+        return res.status(500).json({ error: "Error al obtener los datos del remito" });
     }
 },
     updateBillSupplier: async (req, res) => {
@@ -902,6 +950,11 @@ updateProviderBill: async (req, res) => {
     },
     getCamaraCutsForSubproduction: async (req, res) => {
     try {
+        // En GeneralStock usamos include_used=1 para mostrar también los cortes ya usados.
+        // Si no se manda el parámetro, se devuelven SOLO los disponibles para producción.
+        const includeUsed = String(req.query.include_used || "0") === "1";
+        const whereClause = includeUsed ? "" : "WHERE a_camara = 1";
+
         const manualRows = await sequelize.query(
             `
             SELECT
@@ -911,9 +964,10 @@ updateProviderBill: async (req, res) => {
                 quantity,
                 net_weight AS weight,
                 unique_code,
+                a_camara,
                 'manual' AS source
             FROM camara_manual_cuts
-            WHERE a_camara = 1
+            ${whereClause}
             `,
             { type: QueryTypes.SELECT }
         );
@@ -927,22 +981,30 @@ updateProviderBill: async (req, res) => {
                 quantity,
                 romaneo_weight AS weight,
                 unique_code,
+                a_camara,
                 'romaneo' AS source
             FROM camara_romaneo_cuts
-            WHERE a_camara = 1
+            ${whereClause}
             `,
             { type: QueryTypes.SELECT }
         );
 
-        const data = [...manualRows, ...romaneoRows].map((row) => ({
-            id: row.id,
-            bill_supplier_id: row.bill_supplier_id,
-            product_name: row.product_name,
-            quantity: Number(row.quantity || 0),
-            weight: Number(row.weight || 0),
-            unique_code: row.unique_code || null,
-            source: row.source,
-        }));
+        const data = [...manualRows, ...romaneoRows].map((row) => {
+            const available = Number(row.a_camara || 0) === 1;
+
+            return {
+                id: row.id,
+                bill_supplier_id: row.bill_supplier_id,
+                product_name: row.product_name,
+                quantity: Number(row.quantity || 0),
+                weight: Number(row.weight || 0),
+                unique_code: row.unique_code || null,
+                source: row.source,
+                available,
+                a_camara: available ? 1 : 0,
+                status: available ? "Disponible" : "Usado / no disponible",
+            };
+        });
 
         return res.json(data);
     } catch (err) {
@@ -1005,16 +1067,45 @@ uploadProductsProcess: async (req, res) => {
         t = await sequelize.transaction();
 
         // =========================================================
-        // 1) Obtener / generar número de proceso
+        // 1) Obtener / generar número de proceso NUEVO
         // =========================================================
-        const ultimoProceso = await ProcessNumber.findOne({
-            order: [["process_number", "DESC"]],
-            transaction: t,
-        });
+        // IMPORTANTE:
+        // Antes se calculaba solo desde ProcessNumber. Si el proceso no tenía
+        // comprobantes, no se creaba ninguna fila en process_number y el próximo
+        // proceso podía reutilizar un número anterior.
+        //
+        // Ahora tomamos el máximo desde TODAS las tablas que guardan procesos:
+        // - process_number
+        // - process_meats
+        // - productionprocess_subproduction
+        // Así, aunque el proceso sea solo con subproducción/cámara, siempre queda
+        // con un process_number nuevo y no se mezcla con procesos viejos.
+        const maxRows = await sequelize.query(
+            `
+            SELECT MAX(max_process_number) AS maxProcessNumber
+            FROM (
+                SELECT COALESCE(MAX(process_number), 0) AS max_process_number
+                FROM process_number
 
-        const nuevoProcessNumber = ultimoProceso
-            ? Number(ultimoProceso.process_number) + 1
-            : 1;
+                UNION ALL
+
+                SELECT COALESCE(MAX(process_number), 0) AS max_process_number
+                FROM process_meats
+
+                UNION ALL
+
+                SELECT COALESCE(MAX(process_number), 0) AS max_process_number
+                FROM productionprocess_subproduction
+            ) AS process_numbers
+            `,
+            {
+                type: QueryTypes.SELECT,
+                transaction: t,
+            }
+        );
+
+        const ultimoProcessNumber = Number(maxRows?.[0]?.maxProcessNumber || 0);
+        const nuevoProcessNumber = ultimoProcessNumber + 1;
 
         // =========================================================
         // 2) Asociar comprobantes al proceso
@@ -1537,7 +1628,9 @@ addIncomeMeat: async (req, res) => {
         const { cortes, observacion } = req.body;
 
         if (!Array.isArray(cortes) || cortes.length === 0) {
-            return res.status(400).json({ mensaje: "El cuerpo de la solicitud debe contener una lista de productos." });
+            return res.status(400).json({
+                mensaje: "El cuerpo de la solicitud debe contener una lista de productos.",
+            });
         }
 
         for (const corte of cortes) {
@@ -1548,22 +1641,35 @@ addIncomeMeat: async (req, res) => {
                 cantidad,
                 pesoBruto,
                 tara,
+                tara_id,
                 pesoNeto,
                 pesoProveedor,
                 mermaPorcentaje,
                 cod,
                 categoria,
                 unique_code,
-                aCamara, // Check del frontend
+                aCamara,
             } = corte;
 
-            if (!tipo || !garron || cabeza == null || cantidad == null || pesoBruto == null || tara == null || pesoNeto == null) {
-                return res.status(400).json({ mensaje: "Faltan campos obligatorios en al menos un producto." });
+            if (
+                !tipo ||
+                !garron ||
+                cabeza == null ||
+                cantidad == null ||
+                pesoBruto == null ||
+                tara == null ||
+                pesoNeto == null
+            ) {
+                return res.status(400).json({
+                    mensaje: "Faltan campos obligatorios en al menos un producto.",
+                });
             }
 
-            const finalUniqueCode = typeof unique_code === 'string' && unique_code.trim() ? unique_code.trim() : null;
+            const finalUniqueCode =
+                typeof unique_code === "string" && unique_code.trim()
+                    ? unique_code.trim()
+                    : null;
 
-            // 1. SIEMPRE se crea en la tabla general de ingresos manuales
             await meatIncome.create({
                 id_bill_suppliers: Supplierid,
                 products_name: tipo,
@@ -1573,12 +1679,12 @@ addIncomeMeat: async (req, res) => {
                 provider_weight: pesoProveedor,
                 gross_weight: pesoBruto,
                 tare: tara,
+                tara_id: tara_id || null,
                 net_weight: pesoNeto,
                 decrease: mermaPorcentaje || 0,
                 unique_code: finalUniqueCode,
             });
 
-            // 2. SI TIENE EL CHECK, se crea en la tabla de cámara manual
             if (aCamara) {
                 await CamaraManualCut.create({
                     bill_supplier_id: Supplierid,
@@ -1591,12 +1697,14 @@ addIncomeMeat: async (req, res) => {
                     tare_weight: tara,
                     net_weight: pesoNeto,
                     unique_code: finalUniqueCode,
-                    a_camara: true
+                    a_camara: true,
                 });
             }
 
-            // 3. Actualización de Stock
-            const stock = await ProductStock.findOne({ where: { product_name: tipo } });
+            const stock = await ProductStock.findOne({
+                where: { product_name: tipo },
+            });
+
             if (stock) {
                 await stock.increment("product_quantity", { by: cantidad });
                 await stock.increment("product_total_weight", { by: pesoNeto });
@@ -1618,10 +1726,15 @@ addIncomeMeat: async (req, res) => {
             });
         }
 
-        return res.status(201).json({ mensaje: "Todos los productos fueron cargados correctamente." });
+        return res.status(201).json({
+            mensaje: "Todos los productos fueron cargados correctamente.",
+        });
     } catch (error) {
         console.error("Error en addIncomeMeat:", error);
-        return res.status(500).json({ mensaje: "Error en la base de datos", error: error.message });
+        return res.status(500).json({
+            mensaje: "Error en la base de datos",
+            error: error.message,
+        });
     }
 },
 
@@ -1631,36 +1744,76 @@ editAddIncome: async (req, res) => {
         const { cortes } = req.body;
 
         if (!Array.isArray(cortes) || cortes.length === 0) {
-            return res.status(400).json({ mensaje: "El cuerpo de la solicitud debe contener una lista de productos." });
+            return res.status(400).json({
+                mensaje: "El cuerpo de la solicitud debe contener una lista de productos.",
+            });
         }
 
-        // 1. Obtener datos actuales para descontar del stock antes de borrar
         const anteriores = await meatIncome.findAll({
             where: { id_bill_suppliers: Supplierid },
         });
 
         for (const item of anteriores) {
-            const stock = await ProductStock.findOne({ where: { product_name: item.products_name } });
+            const stock = await ProductStock.findOne({
+                where: { product_name: item.products_name },
+            });
+
             if (stock) {
-                await stock.decrement("product_quantity", { by: item.products_quantity });
-                await stock.decrement("product_total_weight", { by: item.net_weight });
+                await stock.decrement("product_quantity", {
+                    by: item.products_quantity,
+                });
+
+                await stock.decrement("product_total_weight", {
+                    by: item.net_weight,
+                });
             }
         }
 
-        // 2. Limpiar registros anteriores de AMBAS tablas para evitar duplicados
-        await meatIncome.destroy({ where: { id_bill_suppliers: Supplierid } });
-        await CamaraManualCut.destroy({ where: { bill_supplier_id: Supplierid } });
+        await meatIncome.destroy({
+            where: { id_bill_suppliers: Supplierid },
+        });
 
-        // 3. Re-insertar los nuevos datos actualizados
+        await CamaraManualCut.destroy({
+            where: { bill_supplier_id: Supplierid },
+        });
+
         for (const corte of cortes) {
             const {
-                tipo, garron, cabeza, cantidad, pesoBruto, tara, pesoNeto,
-                pesoProveedor, cod, categoria, mermaPorcentaje, unique_code, aCamara
+                tipo,
+                garron,
+                cabeza,
+                cantidad,
+                pesoBruto,
+                tara,
+                tara_id,
+                pesoNeto,
+                pesoProveedor,
+                cod,
+                categoria,
+                mermaPorcentaje,
+                unique_code,
+                aCamara,
             } = corte;
 
-            const finalUniqueCode = typeof unique_code === "string" && unique_code.trim() ? unique_code.trim() : null;
+            if (
+                !tipo ||
+                !garron ||
+                cabeza == null ||
+                cantidad == null ||
+                pesoBruto == null ||
+                tara == null ||
+                pesoNeto == null
+            ) {
+                return res.status(400).json({
+                    mensaje: "Faltan campos obligatorios en al menos un producto.",
+                });
+            }
 
-            // Inserción en tabla general
+            const finalUniqueCode =
+                typeof unique_code === "string" && unique_code.trim()
+                    ? unique_code.trim()
+                    : null;
+
             await meatIncome.create({
                 id_bill_suppliers: Supplierid,
                 products_name: tipo,
@@ -1670,12 +1823,12 @@ editAddIncome: async (req, res) => {
                 provider_weight: pesoProveedor,
                 gross_weight: pesoBruto,
                 tare: tara,
+                tara_id: tara_id || null,
                 net_weight: pesoNeto,
                 decrease: mermaPorcentaje || 0,
-                unique_code: finalUniqueCode, 
+                unique_code: finalUniqueCode,
             });
 
-            // Inserción en cámara si el check está activo
             if (aCamara) {
                 await CamaraManualCut.create({
                     bill_supplier_id: Supplierid,
@@ -1688,12 +1841,14 @@ editAddIncome: async (req, res) => {
                     tare_weight: tara,
                     net_weight: pesoNeto,
                     unique_code: finalUniqueCode,
-                    a_camara: true
+                    a_camara: true,
                 });
             }
 
-            // Actualizar stock con los nuevos valores
-            const stock = await ProductStock.findOne({ where: { product_name: tipo } });
+            const stock = await ProductStock.findOne({
+                where: { product_name: tipo },
+            });
+
             if (stock) {
                 await stock.increment("product_quantity", { by: cantidad });
                 await stock.increment("product_total_weight", { by: pesoNeto });
@@ -1708,13 +1863,82 @@ editAddIncome: async (req, res) => {
             }
         }
 
-        return res.status(200).json({ mensaje: "Productos actualizados correctamente." });
+        return res.status(200).json({
+            mensaje: "Productos actualizados correctamente.",
+        });
     } catch (error) {
         console.error("❌ Error en editAddIncome:", error);
-        return res.status(500).json({ mensaje: "Error al actualizar los cortes", error: error.message });
+        return res.status(500).json({
+            mensaje: "Error al actualizar los cortes",
+            error: error.message,
+        });
     }
 },
+removeCutFromCamara: async (req, res) => {
+    try {
+        const { source, id } = req.params;
 
+        const sourceNormalizado = String(source || "").trim().toLowerCase();
+        const idNormalizado = Number(id);
+
+        if (!Number.isFinite(idNormalizado) || idNormalizado <= 0) {
+            return res.status(400).json({
+                ok: false,
+                message: "ID de cámara inválido.",
+            });
+        }
+
+        if (!["manual", "romaneo"].includes(sourceNormalizado)) {
+            return res.status(400).json({
+                ok: false,
+                message: "Origen inválido. Debe ser manual o romaneo.",
+            });
+        }
+
+        const modelo =
+            sourceNormalizado === "manual"
+                ? CamaraManualCut
+                : CamaraRomaneoCut;
+
+        const item = await modelo.findByPk(idNormalizado);
+
+        if (!item) {
+            return res.status(404).json({
+                ok: false,
+                message: "El producto no se encontró en la tabla de cámara.",
+            });
+        }
+
+        if (Number(item.a_camara || 0) !== 1) {
+            return res.status(409).json({
+                ok: false,
+                message: "Este producto ya fue usado o ya no está disponible en cámara.",
+            });
+        }
+
+        await item.update({
+            a_camara: false,
+        });
+
+        return res.status(200).json({
+            ok: true,
+            message: "Producto eliminado de cámara correctamente.",
+            item: {
+                id: item.id,
+                source: sourceNormalizado,
+                product_name: item.product_name,
+                a_camara: 0,
+            },
+        });
+    } catch (error) {
+        console.error("removeCutFromCamara error:", error);
+        return res.status(500).json({
+            ok: false,
+            message: "Error al eliminar producto de cámara.",
+            error: error.message,
+        });
+    }
+},
 
 
 

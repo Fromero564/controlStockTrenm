@@ -155,7 +155,7 @@ const MeatManualIncome = () => {
           pesoBruto: parseFloat(item.product_gross_weight) || 0,
           tara:
             parseFloat(item.product_tare ?? item.tare ?? item.tara ?? 0) || 0,
-          tara_id: item.tara_id ?? null,
+          tara_id: item.tara_id ? Number(item.tara_id) : null,
           unique_code: item.unique_code ?? item.uniqueCode ?? "",
           decrease: parseFloat(item.decrease) || 0,
         }));
@@ -212,7 +212,7 @@ const MeatManualIncome = () => {
           pesoProveedor: parseFloat(item.provider_weight) || 0,
           pesoBruto: parseFloat(item.gross_weight) || 0,
           tara: parseFloat(item.tare) || 0,
-          tara_id: item.tara_id ?? null,
+          tara_id: item.tara_id ? Number(item.tara_id) : null,
           garron: item.products_garron || "",
           unique_code: item.unique_code ?? item.uniqueCode ?? "",
           aCamara: !!(item.aCamara ?? item.a_camara),
@@ -1301,12 +1301,14 @@ const MeatManualIncome = () => {
                 classNamePrefix="tara-select"
                 options={opcionesTares}
                 formatOptionLabel={formatTaraOption}
-                value={opcionesTares.find((o) => o.value === formData.tara_id) || null}
+                value={
+                  opcionesTares.find((o) => Number(o.value) === Number(formData.tara_id)) || null
+                }
                 onChange={(selected) => {
-                  setTaraSeleccionadaId(selected?.value || "");
+                  setTaraSeleccionadaId(selected?.value ? Number(selected.value) : "");
                   setFormData((prev) => ({
                     ...prev,
-                    tara_id: selected?.value || null,
+                    tara_id: selected?.value ? Number(selected.value) : null,
                     tara: selected?.peso || 0,
                   }));
                 }}
@@ -1474,9 +1476,11 @@ const MeatManualIncome = () => {
                     classNamePrefix="tara-row-select"
                     options={opcionesTares}
                     formatOptionLabel={formatTaraOption}
-                    value={opcionesTares.find((o) => o.value === corte.tara_id) || null}
+                    value={
+                      opcionesTares.find((o) => Number(o.value) === Number(corte.tara_id)) || null
+                    }
                     onChange={(selected) => {
-                      updateCorteField(corte, "tara_id", selected?.value || null);
+                      updateCorteField(corte, "tara_id", selected?.value ? Number(selected.value) : null);
                       updateCorteField(corte, "tara", Number(selected?.peso || 0));
                     }}
                     placeholder=""
@@ -1673,13 +1677,13 @@ const MeatManualIncome = () => {
                 options={opcionesTares}
                 formatOptionLabel={formatTaraOption}
                 value={
-                  opcionesTares.find((o) => o.value === formCongelado.tara_id) || null
+                  opcionesTares.find((o) => Number(o.value) === Number(formCongelado.tara_id)) || null
                 }
                 onChange={(selected) => {
-                  setTaraSeleccionadaIdCongelado(selected?.value || "");
+                  setTaraSeleccionadaIdCongelado(selected?.value ? Number(selected.value) : "");
                   setFormCongelado((prev) => ({
                     ...prev,
-                    tara_id: selected?.value || null,
+                    tara_id: selected?.value ? Number(selected.value) : null,
                     tara: selected?.peso || 0,
                   }));
                 }}
@@ -1829,9 +1833,11 @@ const MeatManualIncome = () => {
                     classNamePrefix="tara-row-select"
                     options={opcionesTares}
                     formatOptionLabel={formatTaraOption}
-                    value={opcionesTares.find((o) => o.value === item.tara_id) || null}
+                    value={
+                      opcionesTares.find((o) => Number(o.value) === Number(item.tara_id)) || null
+                    }
                     onChange={(selected) => {
-                      updateCongeladoField(item, "tara_id", selected?.value || null);
+                      updateCongeladoField(item, "tara_id", selected?.value ? Number(selected.value) : null);
                       updateCongeladoField(item, "tara", Number(selected?.peso || 0));
                     }}
                     placeholder=""
